@@ -102,7 +102,12 @@ class WebInterface(BaseInterface):
                     },
                 )
             else:
-                result = await self.agent_core.process_message(incoming)
+                from portal.core.types import InterfaceType
+                result = await self.agent_core.process_message(
+                    chat_id=incoming.id,
+                    message=incoming.text,
+                    interface=InterfaceType.WEB,
+                )
                 return JSONResponse(self._format_completion(result, request.model))
 
         @app.get("/v1/models")
@@ -160,11 +165,18 @@ class WebInterface(BaseInterface):
 
         @app.get("/health")
         async def health():
+            agent_health = "ok"
+            if hasattr(self.agent_core, 'health_check'):
+                try:
+                    healthy = await self.agent_core.health_check()
+                    agent_health = "ok" if healthy else "degraded"
+                except Exception:
+                    agent_health = "error"
             return {
                 "status": "ok",
-                "version": "1.0.0",
+                "version": "1.0.1",
                 "interface": "web",
-                "agent_core": "ok",
+                "agent_core": agent_health,
             }
 
         return app
@@ -213,7 +225,7 @@ class WebInterface(BaseInterface):
             "choices": [
                 {
                     "index": 0,
-                    "message": {"role": "assistant", "content": result.text},
+                    "message": {"role": "assistant", "content": result.response},
                     "finish_reason": "stop",
                 }
             ],

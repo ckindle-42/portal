@@ -24,8 +24,7 @@ Architecture:
 import asyncio
 import logging
 import time
-from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, field
+from typing import AsyncIterator, Dict, Any, Optional, List
 from datetime import datetime
 from pathlib import Path
 
@@ -42,7 +41,7 @@ from .context_manager import ContextManager
 from .event_bus import EventBus, EventType, EventEmitter
 from .prompt_manager import PromptManager
 from .structured_logger import get_logger, TraceContext
-from .types import InterfaceType
+from .types import InterfaceType, IncomingMessage, ProcessingResult
 from .exceptions import (
     PortalError,
     ModelNotAvailableError,
@@ -50,19 +49,6 @@ from .exceptions import (
 )
 
 logger = get_logger('AgentCore')
-
-
-@dataclass
-class ProcessingResult:
-    """Result from processing a message"""
-    success: bool
-    response: str
-    model_used: str
-    execution_time: float
-    tools_used: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    trace_id: Optional[str] = None
 
 
 class AgentCore:
@@ -90,7 +76,8 @@ class AgentCore:
         prompt_manager: PromptManager,
         tool_registry: 'ToolRegistry',
         config: Dict[str, Any],
-        confirmation_middleware: Optional['ToolConfirmationMiddleware'] = None
+        confirmation_middleware: Optional['ToolConfirmationMiddleware'] = None,
+        mcp_registry: Optional[Any] = None,
     ):
         """
         Initialize the unified core with dependency injection
@@ -118,6 +105,7 @@ class AgentCore:
         self.prompt_manager = prompt_manager
         self.tool_registry = tool_registry
         self.confirmation_middleware = confirmation_middleware
+        self.mcp_registry = mcp_registry
 
         # Event emitter helper
         self.events = EventEmitter(self.event_bus)
@@ -149,7 +137,7 @@ class AgentCore:
         message: str,
         interface: InterfaceType = InterfaceType.UNKNOWN,
         user_context: Optional[Dict] = None,
-        files: Optional[List[Any]] = None
+        files: Optional[List[Any]] = None,
     ) -> ProcessingResult:
         """
         Process a message from ANY interface
@@ -172,6 +160,13 @@ class AgentCore:
         """
         start_time = time.perf_counter()
         user_context = user_context or {}
+
+        # Coerce plain strings to InterfaceType so callers can pass either form
+        if isinstance(interface, str) and not isinstance(interface, InterfaceType):
+            try:
+                interface = InterfaceType(interface)
+            except ValueError:
+                interface = InterfaceType.UNKNOWN
 
         # Create trace context for this request
         with TraceContext() as trace_id:
@@ -256,9 +251,12 @@ class AgentCore:
                         'chat_id': chat_id,
                         'interface': interface.value,
                         'timestamp': datetime.now().isoformat(),
-                        'routing_strategy': self.router.strategy.value if hasattr(self.router, 'strategy') else 'auto'
+                        'routing_strategy': (
+                            self.router.strategy.value
+                            if hasattr(self.router, 'strategy') else 'auto'
+                        ),
                     },
-                    trace_id=trace_id
+                    trace_id=trace_id,
                 )
 
             except PortalError as e:
@@ -431,6 +429,82 @@ class AgentCore:
         """Get list of available tools"""
         return self.tool_registry.get_tool_list()
 
+    async def stream_response(self, incoming: IncomingMessage) -> AsyncIterator[str]:
+        """
+        Yield response tokens for streaming interfaces (WebInterface, SlackInterface).
+
+        Extracts fields from IncomingMessage and delegates to process_message.
+        Once ExecutionEngine surfaces per-token streaming from Ollama, this method
+        should be updated to yield chunks as they arrive instead of one final token.
+        """
+        try:
+            interface = InterfaceType(incoming.source) if incoming.source else InterfaceType.WEB
+        except ValueError:
+            interface = InterfaceType.WEB
+
+        result = await self.process_message(
+            chat_id=incoming.id,
+            message=incoming.text,
+            interface=interface,
+        )
+        # Yield the full response as a single token until true streaming is wired
+        yield result.response
+
+    async def health_check(self) -> bool:
+        """
+        Return True if AgentCore is operational.
+
+        Checks that the execution engine has at least one reachable backend.
+        Falls back to True if the engine does not expose a health method.
+        """
+        try:
+            if hasattr(self.execution_engine, 'health_check'):
+                return await self.execution_engine.health_check()
+            # Minimal liveness: just check that start_time is set
+            return self.start_time is not None
+        except Exception:
+            return False
+
+    async def _dispatch_mcp_tools(
+        self,
+        tool_calls: List[Dict[str, Any]],
+        chat_id: str,
+        trace_id: str,
+    ) -> List[Dict[str, Any]]:
+        """
+        Dispatch a list of tool-call requests to the MCP registry.
+
+        Called from process_message after the LLM returns tool_call entries.
+        Returns a list of tool results that can be fed back into the context.
+
+        ARCH-3 NOTE: Full tool-use loop requires ExecutionEngine to surface
+        tool_call entries from the LLM response.  This method is wired and
+        ready; the ExecutionEngine integration is Phase 2 work.
+        """
+        if not self.mcp_registry:
+            return []
+
+        results = []
+        for call in tool_calls:
+            server_name = call.get('server', 'core')
+            tool_name = call.get('tool') or call.get('name', '')
+            arguments = call.get('arguments', {})
+
+            if not tool_name:
+                continue
+
+            logger.info(
+                "Dispatching MCP tool",
+                server=server_name,
+                tool=tool_name,
+                chat_id=chat_id,
+            )
+
+            result = await self.mcp_registry.call_tool(server_name, tool_name, arguments)
+            results.append({'tool': tool_name, 'result': result})
+
+        return results
+
     async def execute_tool(
         self,
         tool_name: str,
@@ -526,33 +600,28 @@ class AgentCore:
 # FACTORY FUNCTION
 # =============================================================================
 
-def create_agent_core(config: Dict[str, Any]) -> AgentCore:
+def create_agent_core(config) -> AgentCore:
     """
-    Factory function to create AgentCore with all dependencies
+    Factory function to create AgentCore with all dependencies.
 
     This is the recommended way to instantiate AgentCore.
 
-    v4.6.1: Refactored to use decoupled factory functions from core.factories
-            for better testability and flexibility.
-
     Args:
-        config: Configuration dictionary
+        config: Configuration dict OR a Settings object.  When a Settings
+                object is passed (e.g. from lifecycle.py) it is converted to a
+                plain dict via Settings.to_agent_config() before use.
 
     Returns:
         Initialized AgentCore instance
-
-    Example:
-        >>> config = {
-        ...     'routing_strategy': 'AUTO',
-        ...     'circuit_breaker_enabled': True,
-        ...     'max_context_messages': 50
-        ... }
-        >>> agent = create_agent_core(config)
     """
     from .factories import create_dependencies
 
-    # Create all dependencies using factory
-    deps = create_dependencies(config)
+    # Allow callers to pass a Settings object (lifecycle.py) or a plain dict
+    if not isinstance(config, dict):
+        if hasattr(config, 'to_agent_config'):
+            config = config.to_agent_config()
+        else:
+            config = {}
 
-    # Create and return AgentCore with injected dependencies
+    deps = create_dependencies(config)
     return AgentCore(**deps.get_all())
