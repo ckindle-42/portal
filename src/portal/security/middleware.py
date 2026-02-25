@@ -145,7 +145,11 @@ class SecurityMiddleware:
 
         # Append security warnings to result
         if sec_ctx.warnings:
-            result.warnings.extend(sec_ctx.warnings)
+            existing_warnings = getattr(result, 'warnings', None)
+            if isinstance(existing_warnings, list):
+                existing_warnings.extend(sec_ctx.warnings)
+            else:
+                setattr(result, 'warnings', list(sec_ctx.warnings))
 
         return result
 

@@ -56,10 +56,19 @@ class SlackInterface(BaseInterface):
 
     def _verify_slack_signature(self, body: bytes, timestamp: str, signature: str) -> bool:
         """Verify Slack request signature to prevent spoofing."""
-        if abs(time.time() - int(timestamp)) > 300:
+        if not signature:
+            return False
+
+        try:
+            parsed_timestamp = int(timestamp)
+        except (TypeError, ValueError):
+            logger.warning("Invalid Slack signature timestamp", extra={"timestamp": timestamp})
+            return False
+
+        if abs(time.time() - parsed_timestamp) > 300:
             return False  # Reject requests older than 5 minutes
 
-        sig_basestring = f"v0:{timestamp}:{body.decode('utf-8')}"
+        sig_basestring = f"v0:{parsed_timestamp}:{body.decode('utf-8')}"
         my_signature = (
             "v0="
             + hmac.new(

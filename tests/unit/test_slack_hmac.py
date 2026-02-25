@@ -62,9 +62,18 @@ def _verify_slack_signature(signing_secret: str, body: bytes, timestamp: str, si
     """
     Mirror of SlackInterface._verify_slack_signature for isolated testing.
     """
-    if abs(time.time() - int(timestamp)) > 300:
+    if not signature:
         return False
-    sig_basestring = f"v0:{timestamp}:{body.decode('utf-8')}"
+
+    try:
+        parsed_timestamp = int(timestamp)
+    except (TypeError, ValueError):
+        return False
+
+    if abs(time.time() - parsed_timestamp) > 300:
+        return False
+
+    sig_basestring = f"v0:{parsed_timestamp}:{body.decode('utf-8')}"
     my_signature = (
         "v0="
         + hmac.new(
@@ -124,3 +133,18 @@ def test_slack_signature_tampered_body():
         "v0=" + hmac.new(secret.encode(), sig_basestring.encode(), hashlib.sha256).hexdigest()
     )
     assert _verify_slack_signature(secret, tampered_body, timestamp, sig_for_original) is False
+
+
+def test_slack_signature_invalid_timestamp_header():
+    """Malformed timestamp headers are rejected instead of raising errors."""
+    secret = "my_secret"
+    body = b"payload=test"
+    assert _verify_slack_signature(secret, body, "not-a-timestamp", "v0=fake") is False
+
+
+def test_slack_signature_missing_header():
+    """Missing signature headers are rejected."""
+    secret = "my_secret"
+    body = b"payload=test"
+    timestamp = str(int(time.time()))
+    assert _verify_slack_signature(secret, body, timestamp, "") is False
