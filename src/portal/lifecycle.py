@@ -154,8 +154,11 @@ class Runtime:
         )
 
         # Step 3: Create agent core
+        # create_agent_core expects a plain dict; Settings.to_agent_config()
+        # extracts the relevant keys so DependencyContainer.create_* functions
+        # can call config.get(...) without AttributeError on the Settings object.
         logger.info("Creating agent core")
-        agent_core = create_agent_core(settings)
+        agent_core = create_agent_core(settings.to_agent_config())
 
         # Step 4: Wrap with security middleware
         logger.info("Initializing security middleware")

@@ -10,6 +10,98 @@ version references (`__init__.py`) must stay in sync with it.
 
 ---
 
+## [1.0.2] - 2026-02-25
+
+### Fixed — Phase 1 quality review resolutions
+
+All critical runtime breaks, architectural seams, and quality gaps identified in
+the 1.0.1 quality review have been addressed in this patch.
+
+#### Critical fixes
+
+- **CRIT-1** `factories.py:DependencyContainer.create_agent_core()` — replaced the
+  broken hand-rolled `AgentCore(context_manager=..., event_broker=None, ...)` call
+  (wrong kwargs, five missing args) with `AgentCore(**self.get_all())`.
+- **CRIT-2** `agent_core.py` — added `stream_response(incoming: IncomingMessage)`
+  async generator; wraps `process_message()` and yields the response as a single
+  token until true per-token streaming is wired to the Ollama backend (Phase 2).
+- **CRIT-3** `core/types.py` — consolidated the two incompatible `ProcessingResult`
+  classes into one canonical dataclass.  The local definition in `agent_core.py`
+  is removed; all modules now import from `portal.core.types`.  Unified fields:
+  `response`, `success`, `model_used`, `execution_time`, `tools_used`, `warnings`,
+  `metadata`, `trace_id`, `prompt_tokens`, `completion_tokens`, `error`,
+  `tool_results`.
+- **CRIT-4** `config/settings.py` — dual config schema resolved:
+  - `env_prefix` changed from `POCKETPORTAL_` → `PORTAL_` (ARCH-4).
+  - `SlackConfig` added (was missing entirely).
+  - `TelegramConfig.allowed_user_ids` renamed to `authorized_users` to match
+    `TelegramInterface`'s access pattern.
+  - `SecurityConfig.rate_limit_requests` added (used by `TelegramInterface`).
+  - `Settings.to_agent_config()` added — converts a `Settings` object into the
+    plain dict that `DependencyContainer` and `create_agent_core()` consume;
+    fixes the `lifecycle.py` path where `create_agent_core(settings)` was called
+    with a Pydantic object instead of a dict.
+  - `validate_required_config()` updated to use the renamed field.
+  - `LoggingConfig.verbose` field added (used by `TelegramInterface`).
+- **CRIT-5** `slack/interface.py` — `hmac.new(key, msg, hashlib.sha256)` confirmed
+  valid for Python 3.11; `hashlib.sha256` (constructor, not instance) is the
+  correct digestmod argument.  Comprehensive unit tests added in
+  `tests/unit/test_slack_hmac.py`.
+
+#### Architectural fixes
+
+- **ARCH-1** `interfaces/base.py` — confirmed already a clean re-export of
+  `core/interfaces/agent_interface.BaseInterface`; no second contract exists.
+- **ARCH-2** `interfaces/web/server.py` — fixed non-streaming path from
+  `await agent_core.process_message(incoming)` (passing an `IncomingMessage`
+  dataclass) to the correct kwargs call
+  `process_message(chat_id=..., message=..., interface=InterfaceType.WEB)`.
+  `_format_completion()` fixed: `result.text` → `result.response`.
+- **ARCH-3** `agent_core.py` — MCP dispatch wired: `mcp_registry` is now an
+  optional parameter to `AgentCore.__init__()`, stored as `self.mcp_registry`,
+  and a `_dispatch_mcp_tools()` method is ready to be called once
+  `ExecutionEngine` surfaces tool-call entries from LLM responses (Phase 2).
+- **ARCH-4** — resolved under CRIT-4 above.
+
+Also in `agent_core.py`:
+  - `process_message()` now coerces plain string `interface` arguments to
+    `InterfaceType` so that callers like `TelegramInterface` that pass
+    `interface="telegram"` (string) don't trigger `AttributeError` on `.value`.
+
+#### Quality fixes
+
+- **QUAL-1** `docs/ARCHITECTURE.md` — replaced five-line placeholder with full
+  architecture document covering component roles, data flow, startup sequence,
+  directory structure, and known Phase 2 limitations.
+- **QUAL-2** `web/server.py:/health` — endpoint now calls
+  `agent_core.health_check()` and reflects the real state (`"ok"` /
+  `"degraded"` / `"error"`) instead of hard-coding `"ok"`. `AgentCore.health_check()`
+  added.
+- **QUAL-3** `mcp_registry.py:call_tool()` — mcpo endpoint format documented
+  in-code; integration test against a live mcpo instance deferred to Phase 2.
+- **QUAL-4** `settings.py:validate_required_config()` — updated to use
+  `telegram.authorized_users` (renamed field) and extended to cover the Slack
+  `require_approval_for_high_risk` check.
+- **QUAL-5** `tests/unit/test_bootstrap.py` — bootstrap smoke tests added:
+  `DependencyContainer` initialisation, `get_all()` completeness, `create_agent_core()`
+  return type, async method signatures, Settings-object acceptance, and
+  `ProcessingResult` field coverage.
+- **QUAL-6** `telegram/interface.py` — `ToolConfirmationMiddleware` import from
+  `portal.middleware` confirmed working; `portal.middleware.__init__` correctly
+  exports the class.  Additionally, `TelegramInterface` updated to import and
+  pass `InterfaceType.TELEGRAM` (enum) instead of the plain string `"telegram"`.
+- **QUAL-7** `factories.py:get_all()` — `mcp_registry` added to the returned
+  dict so it reaches `AgentCore` on every `create_agent_core()` call.
+
+#### Tests added
+
+| File | Covers |
+|------|--------|
+| `tests/unit/test_bootstrap.py` | QUAL-5: DI wiring, ProcessingResult fields, factory function |
+| `tests/unit/test_slack_hmac.py` | CRIT-5: hmac.new() correctness, Slack signature verify/reject |
+
+---
+
 ## [1.0.1] - 2026-02-25
 
 ### Changed — Quality Review & Issue Register

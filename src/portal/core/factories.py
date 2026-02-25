@@ -301,18 +301,22 @@ class DependencyContainer:
         return registry
 
     def create_agent_core(self, mcp_registry=None) -> "AgentCore":
+        """
+        Create an AgentCore using all dependencies held by this container.
+
+        The optional mcp_registry argument allows callers to supply an already-
+        initialised MCPRegistry; otherwise self.mcp_registry is used (which may
+        be None if create_mcp_registry() has not been awaited yet).
+        """
         from portal.core.agent_core import AgentCore
-        return AgentCore(
-            context_manager=self.context_manager,
-            router=self.router,
-            tool_registry=self.tool_registry,
-            event_broker=None,
-            mcp_registry=mcp_registry,
-        )
+        deps = self.get_all()
+        if mcp_registry is not None:
+            deps['mcp_registry'] = mcp_registry
+        return AgentCore(**deps)
 
     def get_all(self) -> Dict[str, Any]:
         """
-        Get all dependencies as a dictionary.
+        Get all dependencies as a dictionary, including mcp_registry.
 
         Returns:
             Dictionary of all dependencies
@@ -325,7 +329,8 @@ class DependencyContainer:
             'event_bus': self.event_bus,
             'prompt_manager': self.prompt_manager,
             'tool_registry': self.tool_registry,
-            'config': self.config
+            'config': self.config,
+            'mcp_registry': self.mcp_registry,
         }
 
 

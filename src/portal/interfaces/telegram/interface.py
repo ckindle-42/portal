@@ -30,7 +30,7 @@ from telegram.ext import (
 from telegram.constants import ChatAction
 
 # Import types
-from portal.core.types import ProcessingResult
+from portal.core.types import ProcessingResult, InterfaceType
 
 # Import confirmation middleware
 from portal.middleware import ToolConfirmationMiddleware, ConfirmationRequest
@@ -455,8 +455,8 @@ class TelegramInterface:
             result: ProcessingResult = await self.agent_core.process_message(
                 chat_id=chat_id,
                 message=message,
-                interface="telegram",
-                user_context={'user_id': user_id}
+                interface=InterfaceType.TELEGRAM,
+                user_context={'user_id': user_id},
             )
             
             # Show warnings if any

@@ -4,11 +4,15 @@ Core Type Definitions
 
 Centralized type definitions for the core module.
 Provides type safety and prevents magic strings throughout the codebase.
+
+ProcessingResult is the single canonical result object returned by AgentCore
+and consumed by all interfaces (Web, Telegram, Slack).  Fields cover both the
+response text and the richer metadata that Telegram/debug views surface.
 """
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 class InterfaceType(str, Enum):
@@ -40,20 +44,52 @@ class IncomingMessage:
     id: str
     text: str
     model: str = "auto"
-    history: list[dict] = field(default_factory=list)
+    history: List[Dict[str, Any]] = field(default_factory=list)
     source: str = "web"
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class ProcessingResult:
-    """Standardized result from AgentCore processing."""
-    text: str
-    model: str = ""
+    """
+    Unified result from AgentCore.process_message().
+
+    This is the single source of truth for processing results — the local
+    ProcessingResult that previously lived in agent_core.py has been removed
+    and all code now imports from here.
+
+    Fields used by WebInterface:
+        response, prompt_tokens, completion_tokens
+
+    Fields used by TelegramInterface:
+        response, success, model_used, execution_time, tools_used, warnings
+
+    Fields used internally / for debugging:
+        trace_id, metadata, tool_results, error
+    """
+    # Primary response text
+    response: str
+
+    # Execution metadata
+    success: bool = True
+    model_used: str = ""
+    execution_time: float = 0.0
+
+    # Tool usage
+    tools_used: List[str] = field(default_factory=list)
+    tool_results: List[Dict[str, Any]] = field(default_factory=list)
+
+    # Token accounting (for OpenAI-compat /v1/chat/completions usage block)
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
-    tool_results: list[dict] = field(default_factory=list)
+
+    # Warnings and errors
+    warnings: List[str] = field(default_factory=list)
     error: Optional[str] = None
+
+    # Tracing
+    trace_id: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 __all__ = ['InterfaceType', 'IncomingMessage', 'ProcessingResult']

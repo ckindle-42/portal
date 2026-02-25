@@ -38,11 +38,12 @@ class ModelConfig(BaseModel):
 class SecurityConfig(BaseModel):
     """Security and rate limiting configuration"""
     rate_limit_enabled: bool = Field(True, description="Enable rate limiting")
+    rate_limit_requests: int = Field(20, ge=1, description="Max requests per rate-limit window")
     max_requests_per_minute: int = Field(20, ge=1, le=1000, description="Max requests per minute")
     max_requests_per_hour: int = Field(100, ge=1, le=10000, description="Max requests per hour")
     max_file_size_mb: int = Field(10, ge=1, le=1000, description="Max file size in MB")
     allowed_commands: List[str] = Field(default_factory=list, description="Whitelist of allowed shell commands (empty = none allowed, secure by default)")
-    sandbox_enabled: bool = Field(True, description="Enable Docker sandboxing for code execution")
+    sandbox_enabled: bool = Field(False, description="Enable Docker sandboxing for code execution")
     require_approval_for_high_risk: bool = Field(False, description="Require human approval for high-risk actions")
 
     @field_validator('max_requests_per_minute')
@@ -84,7 +85,7 @@ class SecurityConfig(BaseModel):
 class TelegramConfig(BaseModel):
     """Telegram interface configuration"""
     bot_token: str = Field(..., description="Telegram bot token from BotFather")
-    allowed_user_ids: List[int] = Field(default_factory=list, description="List of allowed Telegram user IDs")
+    authorized_users: List[int] = Field(default_factory=list, description="List of authorized Telegram user IDs")
     enable_group_chat: bool = Field(False, description="Allow bot in group chats")
     enable_inline_mode: bool = Field(False, description="Enable inline query mode")
     webhook_url: Optional[str] = Field(None, description="Webhook URL for receiving updates")
@@ -102,10 +103,19 @@ class TelegramConfig(BaseModel):
     model_config = ConfigDict(extra='allow')
 
 
+class SlackConfig(BaseModel):
+    """Slack interface configuration"""
+    bot_token: str = Field(..., description="Slack bot token (xoxb-...)")
+    signing_secret: str = Field(..., description="Slack signing secret for request verification")
+    channel_whitelist: List[str] = Field(default_factory=list, description="Channels the bot responds in (empty = all)")
+
+    model_config = ConfigDict(extra='allow')
+
+
 class WebConfig(BaseModel):
     """Web interface configuration"""
     host: str = Field("0.0.0.0", description="Host to bind to")
-    port: int = Field(8000, ge=1, le=65535, description="Port to bind to")
+    port: int = Field(8081, ge=1, le=65535, description="Port to bind to")
     enable_websocket: bool = Field(True, description="Enable WebSocket support")
     enable_cors: bool = Field(False, description="Enable CORS")
     cors_origins: List[str] = Field(default_factory=list, description="Allowed CORS origins")
@@ -118,6 +128,7 @@ class WebConfig(BaseModel):
 class InterfacesConfig(BaseModel):
     """Configuration for all interfaces"""
     telegram: Optional[TelegramConfig] = None
+    slack: Optional[SlackConfig] = None
     web: Optional[WebConfig] = None
 
     model_config = ConfigDict(extra='allow')
@@ -163,6 +174,7 @@ class LoggingConfig(BaseModel):
     format: str = Field("json", description="Log format (json, text)")
     output_file: Optional[Path] = Field(None, description="Log file path")
     enable_trace_ids: bool = Field(True, description="Enable trace IDs for request tracking")
+    verbose: bool = Field(False, description="Enable verbose output (e.g., routing info in responses)")
 
     @field_validator('level')
     @classmethod
@@ -183,8 +195,13 @@ class Settings(BaseSettings):
 
     Configuration is loaded from:
     1. YAML config file (if provided)
-    2. Environment variables (override)
+    2. Environment variables with PORTAL_ prefix (override)
     3. Default values (fallback)
+
+    Environment variable mapping uses double-underscore nesting:
+      PORTAL_INTERFACES__TELEGRAM__BOT_TOKEN
+      PORTAL_BACKENDS__OLLAMA_URL
+      PORTAL_SECURITY__SANDBOX_ENABLED
     """
 
     # Core configuration
@@ -203,7 +220,7 @@ class Settings(BaseSettings):
     logs_dir: Path = Field(Path("logs"), description="Logs directory")
 
     model_config = ConfigDict(
-        env_prefix='POCKETPORTAL_',
+        env_prefix='PORTAL_',
         env_nested_delimiter='__',
         extra='allow',
         validate_assignment=True,
@@ -271,10 +288,28 @@ class Settings(BaseSettings):
 
         # Check security settings
         if self.security.require_approval_for_high_risk:
-            if not self.interfaces.telegram or not self.interfaces.telegram.allowed_user_ids:
-                errors.append("Human approval requires Telegram interface with allowed_user_ids")
+            telegram = self.interfaces.telegram
+            if not telegram or not telegram.authorized_users:
+                errors.append("Human approval requires Telegram interface with authorized_users")
 
         return errors
+
+    def to_agent_config(self) -> dict:
+        """
+        Extract a plain dict suitable for DependencyContainer / create_agent_core.
+
+        AgentCore and its factories expect a plain dict, not a Settings object.
+        This converts the relevant settings into the dict format they consume.
+        """
+        return {
+            'routing_strategy': 'AUTO',
+            'max_context_messages': self.context.max_context_messages,
+            'ollama_base_url': self.backends.ollama_url,
+            'circuit_breaker_enabled': True,
+            'circuit_breaker_threshold': 3,
+            'circuit_breaker_timeout': 60,
+            'circuit_breaker_half_open_calls': 1,
+        }
 
 
 def load_settings(config_path: Optional[str | Path] = None) -> Settings:
@@ -314,6 +349,7 @@ __all__ = [
     'ModelConfig',
     'SecurityConfig',
     'TelegramConfig',
+    'SlackConfig',
     'WebConfig',
     'InterfacesConfig',
     'BackendsConfig',
