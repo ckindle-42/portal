@@ -1,6 +1,6 @@
 # Portal Architecture
 
-**Version:** 1.0.x
+**Version:** 1.0.3
 **Last updated:** February 2026
 
 ---
@@ -63,7 +63,7 @@ The central processing engine.  All interfaces funnel requests through here.
 | `stream_response(incoming: IncomingMessage)` | Async generator used by WebInterface SSE and WebSocket paths |
 | `health_check()` | Returns `True` if the execution engine is reachable |
 | `execute_tool(tool_name, parameters, ...)` | Direct tool execution with optional human-in-the-loop confirmation |
-| `_dispatch_mcp_tools(tool_calls, ...)` | Dispatches LLM-requested tool calls to MCPRegistry (Phase 2) |
+| `_dispatch_mcp_tools(tool_calls, ...)` | Dispatches LLM-requested tool calls to MCPRegistry |
 
 **Dependencies (all injected via DependencyContainer):**
 - `ModelRegistry` — catalogue of available models and their capabilities
@@ -284,13 +284,13 @@ Entry point: `portal` (registered in `pyproject.toml`).
    b. Saves user message immediately (crash-safety)
    c. Builds system prompt (PromptManager)
    d. Routes query → ModelDecision (IntelligentRouter)
-   e. Calls LLM (ExecutionEngine → Ollama)
-   f. [Phase 2] If LLM returns tool calls → _dispatch_mcp_tools()
+   e. Calls LLM (ExecutionEngine → Ollama /api/chat)
+   f. If LLM returns tool calls → _dispatch_mcp_tools() → MCPRegistry
    g. Saves assistant response
    h. Returns ProcessingResult(response=..., model_used=..., ...)
        ↓
 4. WebInterface streams ProcessingResult.response as SSE chunks
-   (currently single-token until ExecutionEngine wires true streaming)
+   (real per-token streaming via ExecutionEngine.generate_stream())
        ↓
 5. Open WebUI renders the response
 ```
@@ -377,13 +377,15 @@ portal/
 
 ---
 
-## Known Limitations & Phase 2 Work
+## Status & Remaining Work
 
 | Issue | Status |
 |-------|--------|
-| Token streaming (true per-token from Ollama) | Phase 2 — currently yields full response as one chunk |
-| MCP tool-use loop in AgentCore | Phase 2 — `_dispatch_mcp_tools()` is wired; ExecutionEngine must surface tool calls |
-| mcpo endpoint format verification | Phase 2 — see QUAL-3 note in `mcp_registry.py` |
+| Token streaming (true per-token from Ollama) | **Done** — `ExecutionEngine.generate_stream()` calls Ollama `/api/chat` with `stream: true` and yields tokens as they arrive |
+| MCP tool-use loop in AgentCore | **Done** — `OllamaBackend.generate()` uses `/api/chat`; `tool_calls` surface via `ExecutionResult`; `AgentCore._dispatch_mcp_tools()` dispatches them to `MCPRegistry` |
+| Security headers on WebInterface | **Done** — `SecurityHeadersMiddleware` adds CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy; HSTS opt-in via `PORTAL_HSTS=1` |
+| API-key guard on /v1/* routes | **Done** — `WEB_API_KEY` env var enables `_verify_api_key` dependency; must be set before any non-localhost exposure |
+| mcpo endpoint format verification | Phase 3 — see QUAL-3 note in `mcp_registry.py` |
 | Slack E2E test (needs ngrok/Cloudflare) | Phase 3 |
 | ComfyUI / Whisper MCP integration tests | Phase 3 |
 | LaunchAgent plist for M4 autostart | Phase 3 |

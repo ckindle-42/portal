@@ -76,8 +76,16 @@ case "$COMMAND" in
   down)
     echo "=== Portal Stopping ==="
     (cd "$PORTAL_ROOT/deploy/web-ui/$WEB_UI" && docker compose down) 2>/dev/null || true
-    [ -f /tmp/portal-web.pid ]    && kill "$(cat /tmp/portal-web.pid)"    2>/dev/null || true
-    [ -f /tmp/portal-router.pid ] && kill "$(cat /tmp/portal-router.pid)" 2>/dev/null || true
+    # Kill Portal web (:8081) — try PID file first, then pkill fallback in case PID file is absent
+    if [ -f /tmp/portal-web.pid ]; then
+        kill "$(cat /tmp/portal-web.pid)" 2>/dev/null || true
+    fi
+    pkill -f "uvicorn.*8081" 2>/dev/null || true
+    # Kill router (:8000)
+    if [ -f /tmp/portal-router.pid ]; then
+        kill "$(cat /tmp/portal-router.pid)" 2>/dev/null || true
+    fi
+    pkill -f "uvicorn.*portal.routing.router" 2>/dev/null || true
     pkill -f "mcpo" 2>/dev/null || true
     pkill -f "comfyui_mcp" 2>/dev/null || true
     pkill -f "whisper_mcp" 2>/dev/null || true

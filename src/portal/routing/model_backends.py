@@ -21,6 +21,7 @@ class GenerationResult:
     model_id: str
     success: bool
     error: Optional[str] = None
+    tool_calls: Optional[list] = None  # Parsed tool-call entries from the LLM response
 
 
 class ModelBackend(ABC):
@@ -75,40 +76,44 @@ class OllamaBackend(ModelBackend):
                       system_prompt: Optional[str] = None,
                       max_tokens: int = 2048,
                       temperature: float = 0.7) -> GenerationResult:
-        """Generate text using Ollama API"""
+        """Generate text using Ollama /api/chat (supports tool calls)."""
         import time
         start_time = time.time()
-        
+
         try:
             session = await self._get_session()
-            
+
+            messages: list[Dict[str, Any]] = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
             payload = {
                 "model": model_name,
-                "prompt": prompt,
+                "messages": messages,
                 "stream": False,
                 "options": {
                     "num_predict": max_tokens,
-                    "temperature": temperature
-                }
+                    "temperature": temperature,
+                },
             }
-            
-            if system_prompt:
-                payload["system"] = system_prompt
-            
+
             async with session.post(
-                f"{self.base_url}/api/generate",
-                json=payload
+                f"{self.base_url}/api/chat",
+                json=payload,
             ) as response:
                 if response.status == 200:
                     data = await response.json()
                     elapsed = (time.time() - start_time) * 1000
-                    
+                    msg = data.get("message", {})
+                    tool_calls = msg.get("tool_calls") or None
                     return GenerationResult(
-                        text=data.get("response", ""),
+                        text=msg.get("content", ""),
                         tokens_generated=data.get("eval_count", 0),
                         time_ms=elapsed,
                         model_id=model_name,
-                        success=True
+                        success=True,
+                        tool_calls=tool_calls,
                     )
                 else:
                     error_text = await response.text()
@@ -118,9 +123,9 @@ class OllamaBackend(ModelBackend):
                         time_ms=(time.time() - start_time) * 1000,
                         model_id=model_name,
                         success=False,
-                        error=f"HTTP {response.status}: {error_text}"
+                        error=f"HTTP {response.status}: {error_text}",
                     )
-        
+
         except Exception as e:
             logger.error(f"Ollama generation error: {e}")
             return GenerationResult(
@@ -129,44 +134,47 @@ class OllamaBackend(ModelBackend):
                 time_ms=(time.time() - start_time) * 1000,
                 model_id=model_name,
                 success=False,
-                error=str(e)
+                error=str(e),
             )
     
     async def generate_stream(self, prompt: str, model_name: str,
                              system_prompt: Optional[str] = None,
                              max_tokens: int = 2048,
                              temperature: float = 0.7) -> AsyncGenerator[str, None]:
-        """Stream generation from Ollama"""
+        """Stream generation from Ollama /api/chat."""
         try:
             session = await self._get_session()
-            
+
+            messages: list[Dict[str, Any]] = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
             payload = {
                 "model": model_name,
-                "prompt": prompt,
+                "messages": messages,
                 "stream": True,
                 "options": {
                     "num_predict": max_tokens,
-                    "temperature": temperature
-                }
+                    "temperature": temperature,
+                },
             }
-            
-            if system_prompt:
-                payload["system"] = system_prompt
-            
+
             async with session.post(
-                f"{self.base_url}/api/generate",
-                json=payload
+                f"{self.base_url}/api/chat",
+                json=payload,
             ) as response:
                 async for line in response.content:
                     if line:
                         try:
                             import json
-                            data = json.loads(line.decode('utf-8'))
-                            if "response" in data:
-                                yield data["response"]
+                            data = json.loads(line.decode("utf-8"))
+                            content = data.get("message", {}).get("content", "")
+                            if content:
+                                yield content
                         except json.JSONDecodeError:
                             continue
-        
+
         except Exception as e:
             logger.error(f"Ollama stream error: {e}")
             yield f"[Error: {str(e)}]"

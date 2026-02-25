@@ -153,6 +153,7 @@ class ExecutionResult:
     routing_decision: Optional[RoutingDecision] = None
     fallbacks_used: int = 0
     error: Optional[str] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None  # LLM-requested tool calls (MCP dispatch)
 
 
 class ExecutionEngine:
@@ -280,7 +281,8 @@ class ExecutionEngine:
                         execution_time_ms=elapsed,
                         tokens_generated=result.tokens_generated,
                         routing_decision=decision,
-                        fallbacks_used=fallbacks_used
+                        fallbacks_used=fallbacks_used,
+                        tool_calls=result.tool_calls or [],
                     )
                 else:
                     # Record failure in circuit breaker
