@@ -23,10 +23,12 @@ import uuid
 from typing import AsyncIterator, Optional
 
 import httpx
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Header
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from portal.interfaces.base import BaseInterface
 from portal.core.types import IncomingMessage, ProcessingResult
@@ -51,6 +53,40 @@ def _build_cors_origins() -> list[str]:
     return [o.strip() for o in raw.split(",") if o.strip()]
 
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Injects defensive security headers on every response.
+
+    Headers set:
+    - X-Content-Type-Options: nosniff
+    - X-Frame-Options: DENY
+    - X-XSS-Protection: 1; mode=block
+    - Referrer-Policy: strict-origin-when-cross-origin
+    - Content-Security-Policy: default-src 'self' (overridable via PORTAL_CSP env var)
+    - Strict-Transport-Security: only set when PORTAL_HSTS=1 (i.e. behind TLS terminator)
+
+    Note: When Portal sits behind Caddy (the standard deploy), Caddy's own headers
+    take precedence and these act as a defence-in-depth fallback.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        csp = os.getenv(
+            "PORTAL_CSP",
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+        )
+        response.headers["Content-Security-Policy"] = csp
+        if os.getenv("PORTAL_HSTS", "0") == "1":
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=63072000; includeSubDomains; preload"
+            )
+        return response
+
+
 async def _verify_api_key(authorization: Optional[str] = Header(None)) -> None:
     """
     Optional API-key guard for /v1/* routes.
@@ -58,6 +94,10 @@ async def _verify_api_key(authorization: Optional[str] = Header(None)) -> None:
     Active only when WEB_API_KEY env var is set.  Accepts the key as either:
       Authorization: Bearer <key>
       X-API-Key: <key>   (checked via the authorization header alias)
+
+    IMPORTANT: Set WEB_API_KEY to a strong random secret before exposing
+    the Portal API outside of localhost or a trusted LAN.  Without it every
+    caller on the network can reach your LLM backend without authentication.
     """
     required = os.getenv("WEB_API_KEY", "")
     if not required:
@@ -80,11 +120,19 @@ class WebInterface(BaseInterface):
         self._server = None
 
     def _build_app(self) -> FastAPI:
+        try:
+            from portal import __version__ as _portal_version
+        except Exception:
+            _portal_version = "unknown"
+
         app = FastAPI(
             title="Portal Web Interface",
-            version="1.0.0",
+            version=_portal_version,
             description="OpenAI-compatible endpoint for Portal AgentCore",
         )
+
+        # Security headers (defence-in-depth; Caddy provides the outer layer in production)
+        app.add_middleware(SecurityHeadersMiddleware)
 
         app.add_middleware(
             CORSMiddleware,
@@ -197,11 +245,19 @@ class WebInterface(BaseInterface):
                     agent_health = "ok" if healthy else "degraded"
                 except Exception:
                     agent_health = "error"
+            try:
+                from portal import __version__ as _ver
+            except Exception:
+                _ver = "unknown"
             return {
                 "status": "ok",
-                "version": "1.0.1",
+                "version": _ver,
                 "interface": "web",
                 "agent_core": agent_health,
+                "build": {
+                    "python_version": __import__("sys").version.split()[0],
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                },
             }
 
         return app

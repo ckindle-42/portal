@@ -217,8 +217,10 @@ class AgentCore:
                 execution_time = time.perf_counter() - start_time
                 self.stats['total_execution_time'] += execution_time
 
-                # MCP tool loop: dispatch any tool calls returned by the LLM
-                tool_calls = getattr(result, 'tool_calls', [])
+                # MCP tool loop: dispatch any tool calls returned by the LLM.
+                # ExecutionEngine now surfaces tool_calls from the Ollama /api/chat
+                # response so this loop executes whenever the model requests tools.
+                tool_calls = result.tool_calls or []
                 if tool_calls and self.mcp_registry:
                     mcp_results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
                     logger.info("MCP tools dispatched", count=len(mcp_results))

@@ -24,6 +24,80 @@ To cut a release:
 
 ---
 
+## [1.0.3] - 2026-02-25
+
+### Phase 2 — MCP tool dispatch, security hardening, CI, docs
+
+All medium, low, and improvement items from the targeted fix list are resolved.
+The MCP tool-use loop is fully wired end-to-end, security headers and API-key
+documentation are in place, and the project now ships CI and a contributing guide.
+
+#### Runtime fixes
+
+- **`routing/model_backends.py`** — `OllamaBackend.generate()` and
+  `generate_stream()` now use `/api/chat` instead of `/api/generate`.
+  This surfaces `tool_calls` from tool-capable Ollama models and aligns
+  the non-streaming and streaming paths to the same API endpoint.
+  `GenerationResult` gains a `tool_calls: Optional[list]` field.
+- **`routing/execution_engine.py`** — `ExecutionResult` gains a
+  `tool_calls: Optional[List[Dict]]` field; `execute()` populates it from
+  the backend result so `AgentCore._dispatch_mcp_tools()` receives real
+  tool-call data instead of an always-empty list.
+- **`core/agent_core.py`** — MCP tool loop now reads `result.tool_calls`
+  directly (no more `getattr` fallback returning `[]`).
+
+#### Security
+
+- **`interfaces/web/server.py`** — `SecurityHeadersMiddleware` added;
+  injects `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`,
+  `Referrer-Policy`, and `Content-Security-Policy` on every response.
+  HSTS is opt-in via `PORTAL_HSTS=1` (for deployments behind a TLS
+  terminator such as Caddy).  CSP value overridable via `PORTAL_CSP`.
+- **`interfaces/web/server.py`** — `_verify_api_key` docstring updated
+  to document that `WEB_API_KEY` must be set before any non-localhost
+  exposure of the `/v1/*` routes.
+
+#### Ops / launch
+
+- **`hardware/m4-mac/launch.sh`** — `down` command now includes
+  `pkill -f "uvicorn.*8081"` and `pkill -f "uvicorn.*portal.routing.router"`
+  as belt-and-suspenders fallbacks when PID files are absent.
+
+#### Observability
+
+- **`interfaces/web/server.py`** — `/health` response now includes
+  `version` (from `portal.__version__`) and `build` metadata
+  (`python_version`, `timestamp`) instead of a hardcoded `"1.0.1"` string.
+
+#### CI
+
+- **`.github/workflows/ci.yml`** added — runs `ruff` lint + format check,
+  `mypy` type check, `pytest` (unit + integration), and a `docker build`
+  on every push to `main`/`master`/`claude/**` and on all PRs.
+
+#### Docs
+
+- **`docs/ARCHITECTURE.md`** — Phase 2 work table updated to reflect
+  current implementation state: true per-token streaming is done, MCP
+  tool dispatch is wired end-to-end.  Data-flow diagram updated.
+- **`README.md`** — Quick-start expanded with step-by-step launch
+  instructions, `portal doctor` verification output, manual `curl` checks,
+  and a security notes table.
+- **`CONTRIBUTING.md`** added — covers dev setup, test commands, code
+  quality tools, commit style, branching, and release process.
+
+#### Project
+
+- **`pyproject.toml`** — All runtime dependencies changed from `>=` to `~=`
+  (compatible-release pinning); `requires-python` tightened to `>=3.11,<3.13`.
+  Ruff `[tool.ruff.lint]` and `[tool.mypy]` sections added.
+- **`tests/integration/test_web_interface.py`** — Expanded with tests for
+  security headers, `/health` version field, agent_core degraded status,
+  API key guard (401 without key, 200 with Bearer token), and
+  `create_app()` factory.
+
+---
+
 ## [1.0.2] - 2026-02-25
 
 ### Phase 1 — Boot-path quality pass

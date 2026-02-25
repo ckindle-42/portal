@@ -26,20 +26,100 @@ Adding a 4th interface is ~50 lines of Python.
 
 ## Quick Start
 
+### 1. Install
+
 ```bash
-git clone https://github.com/yourname/portal
+git clone https://github.com/ckindle-42/portal
 cd portal
-cp .env.example .env   # edit with your values
+cp .env.example .env          # edit with your real values (see comments inside)
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[all]"
+```
+
+### 2. Launch
+
+**Apple M4 Mac (recommended):**
+```bash
 bash hardware/m4-mac/launch.sh up
 ```
 
-Then navigate to `http://localhost:8080`.
+**Linux bare-metal:**
+```bash
+bash hardware/linux-bare/launch.sh up
+```
+
+**Linux WSL2:**
+```bash
+bash hardware/linux-wsl2/launch.sh up
+```
+
+**Minimal (Portal API only, no Docker stack):**
+```bash
+bash hardware/m4-mac/launch.sh up --minimal
+```
+
+### 3. Verify with `portal doctor`
+
+After startup, run the built-in health check to confirm every service is live:
+
+```bash
+bash hardware/m4-mac/launch.sh doctor
+```
+
+Expected output when everything is healthy:
+
+```
+=== Portal Doctor ===
+[ollama]      OK
+[router]      OK
+[portal-api]  OK
+[web-ui]      OK
+[mcpo]        OK
+[scrapling]   OK (optional)
+```
+
+You can also hit each endpoint manually:
+
+```bash
+# Portal API health (version + agent_core status)
+curl http://localhost:8081/health
+
+# Virtual model list
+curl http://localhost:8081/v1/models
+
+# Router health
+curl http://localhost:8000/health
+
+# Open WebUI
+open http://localhost:8080
+```
+
+The Portal API endpoint for Open WebUI / LibreChat is:
+```
+http://localhost:8081/v1
+```
+
+### 4. Stop
+
+```bash
+bash hardware/m4-mac/launch.sh down
+```
+
+## Security Notes
+
+| Setting | What to do |
+|---------|-----------|
+| `MCP_API_KEY` | Replace `changeme-mcp-secret` in `.env` before enabling MCP |
+| `WEB_API_KEY` | Set to a strong random string before exposing `:8081` outside localhost |
+| `ALLOWED_ORIGINS` | Already defaults to `localhost:8080`; extend only when needed |
 
 ## Architecture
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Forked From
 
