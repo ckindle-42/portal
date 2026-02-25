@@ -1,0 +1,47 @@
+version: "3.8"
+
+# Portal — LibreChat Stack
+# Usage: docker compose up -d
+# Requires: Ollama running on host at :11434
+#           Portal WebInterface running on host at :8081
+
+services:
+  # -----------------------------------------------------------------------
+  # LibreChat — browser chat UI
+  # -----------------------------------------------------------------------
+  librechat:
+    image: ghcr.io/danny-avila/librechat:latest
+    container_name: portal-librechat
+    restart: unless-stopped
+    ports:
+      - "8080:3080"
+    volumes:
+      - ./librechat.yaml:/app/librechat.yaml:ro
+      - librechat-data:/app/data
+      - ${HOME}/.portal:/root/.portal:ro
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3080
+      - MONGO_URI=mongodb://mongodb:27017/LibreChat
+      - ALLOW_EMAIL_LOGIN=true
+      - ALLOW_REGISTRATION=true
+      - JWT_SECRET=${JWT_SECRET:-portal-jwt-secret-change-me}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-portal-jwt-refresh-change-me}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - mongodb
+
+  # -----------------------------------------------------------------------
+  # MongoDB — LibreChat database
+  # -----------------------------------------------------------------------
+  mongodb:
+    image: mongo:7
+    container_name: portal-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb-data:/data/db
+
+volumes:
+  librechat-data:
+  mongodb-data:

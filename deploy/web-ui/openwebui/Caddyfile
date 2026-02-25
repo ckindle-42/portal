@@ -1,0 +1,46 @@
+{
+    admin off
+    auto_https off
+}
+
+:8080 {
+    # Open WebUI
+    @webui not path /router/* /portal/* /images/* /audio/* /voice/* /docs/* /slides/*
+    handle @webui {
+        reverse_proxy open-webui:8080
+    }
+
+    # Portal WebInterface (direct access)
+    handle /portal/* {
+        uri strip_prefix /portal
+        reverse_proxy host.docker.internal:8081
+    }
+
+    # Router telemetry
+    handle /router/* {
+        uri strip_prefix /router
+        reverse_proxy {$DOCKER_HOST_IP}:8000
+    }
+
+    # Generated file serving
+    handle /images/* {
+        root * /srv/ai-output
+        file_server
+    }
+    handle /audio/* {
+        root * /srv/ai-output
+        file_server
+    }
+    handle /voice/* {
+        root * /srv/ai-output
+        file_server
+    }
+    handle /docs/* {
+        root * /srv/ai-output
+        file_server
+    }
+    handle /slides/* {
+        root * /srv/ai-output
+        file_server
+    }
+}

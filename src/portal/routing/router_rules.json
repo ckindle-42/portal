@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "default_model": "qwen2.5:7b",
+  "warm_model": "qwen2.5:7b",
+  "workspaces": {
+    "auto": {
+      "model": "qwen2.5:7b",
+      "lock": false,
+      "fallback": ["qwen2.5:7b"]
+    },
+    "auto-coding": {
+      "model": "qwen2.5-coder:32b",
+      "lock": true,
+      "fallback": ["qwen2.5:14b", "qwen2.5:7b"]
+    },
+    "auto-reasoning": {
+      "model": "deepseek-r1:32b",
+      "lock": true,
+      "fallback": ["qwen2.5:14b", "qwen2.5:7b"]
+    },
+    "auto-fast": {
+      "model": "qwen2.5:7b",
+      "lock": false,
+      "fallback": ["qwen2.5:7b"]
+    }
+  },
+  "regex_rules": [
+    {
+      "name": "splunk",
+      "keywords": ["(?i)\\b(splunk|es notable|tstats|cim\\b)"],
+      "model": "deepseek-r1:32b",
+      "priority": 10
+    },
+    {
+      "name": "coding",
+      "keywords": ["(?i)\\b(write|debug|function|class|def |import |async def)\\b"],
+      "model": "qwen2.5-coder:32b",
+      "priority": 8
+    },
+    {
+      "name": "reasoning",
+      "keywords": ["(?i)\\b(analyze|reason|think through|explain why|step by step)\\b"],
+      "model": "deepseek-r1:32b",
+      "priority": 7
+    }
+  ],
+  "manual_override_prefix": "@model:",
+  "auth_token_env": "ROUTER_TOKEN"
+}

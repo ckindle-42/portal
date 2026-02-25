@@ -1,0 +1,74 @@
+version: "3.8"
+
+# Portal — Open WebUI Stack
+# Usage: docker compose up -d
+# Requires: Ollama running on host at :11434
+#           Portal router running on host at :8000
+#           Portal WebInterface running on host at :8081
+
+services:
+  # -----------------------------------------------------------------------
+  # Caddy — reverse proxy and static file server
+  # -----------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: portal-caddy
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${AI_OUTPUT_DIR:-${HOME}/AI_Output}:/srv/ai-output:ro
+    environment:
+      - DOCKER_HOST_IP=${DOCKER_HOST_IP:-host.docker.internal}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - open-webui
+
+  # -----------------------------------------------------------------------
+  # Open WebUI — browser chat UI
+  # -----------------------------------------------------------------------
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: portal-open-webui
+    restart: unless-stopped
+    volumes:
+      - open-webui-data:/app/backend/data
+    environment:
+      # Point to Portal WebInterface as the OpenAI-compatible backend
+      - OPENAI_API_BASE_URL=http://portal-core:8081/v1
+      - OPENAI_API_KEY=portal
+      # Also expose direct Ollama access for model management
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-portal-secret-change-me}
+      - WEBUI_AUTH=false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - portal-core
+
+  # -----------------------------------------------------------------------
+  # Portal Core — WebInterface (OpenAI-compatible endpoint)
+  # -----------------------------------------------------------------------
+  portal-core:
+    build:
+      context: ../../../
+      dockerfile: Dockerfile
+    container_name: portal-core
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - ${HOME}/.portal:/root/.portal
+      - ${HOME}/Projects:/mnt/projects:ro
+    environment:
+      - COMPUTE_BACKEND=${COMPUTE_BACKEND:-mps}
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - ROUTER_PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  open-webui-data:
