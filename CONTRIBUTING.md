@@ -71,11 +71,42 @@ Example: `fix: switch OllamaBackend to /api/chat for tool call support`
 
 ## Release Process
 
-1. Bump `version` in `pyproject.toml` and `__version__` in `src/portal/__init__.py`
-2. Add a `## [x.y.z] - YYYY-MM-DD` section in `CHANGELOG.md`
+Portal releases are **source-only**. There are no compiled artefacts or pip
+packages to publish — end users run Portal directly from the extracted source
+on their own machines. The GitHub Release asset is a plain zip archive of the
+versioned source files.
+
+### Automated (recommended)
+
+```bash
+# 1. Add a ## [x.y.z] - YYYY-MM-DD section to CHANGELOG.md first, then:
+python scripts/release.py x.y.z
+
+# 2. Push the commit and tag; the workflow does the rest
+git push origin HEAD && git push origin vx.y.z
+```
+
+`scripts/release.py` validates the version bump, verifies the CHANGELOG entry,
+updates both version files, and creates the git commit + annotated tag.
+
+### Manual (if needed)
+
+1. Add a `## [x.y.z] - YYYY-MM-DD` section to `CHANGELOG.md`
+2. Bump `version` in `pyproject.toml` and `__version__` in `src/portal/__init__.py`
 3. Commit: `chore: release vx.y.z`
-4. Tag: `git tag vx.y.z && git push origin vx.y.z`
-5. The `release.yml` workflow creates the GitHub Release automatically
+4. Tag: `git tag -a vx.y.z -m "Portal vx.y.z"`
+5. Push: `git push origin HEAD && git push origin vx.y.z`
+
+### What the workflow does
+
+The `release.yml` GitHub Actions workflow triggers on the version tag and:
+
+1. Verifies the tag matches `pyproject.toml`
+2. Extracts the release notes from `CHANGELOG.md`
+3. Builds `portal-vx.y.z.zip` — a zip archive containing `src/portal/`,
+   `hardware/`, `mcp/`, `deploy/`, `pyproject.toml`, `.env.example`,
+   `Dockerfile`, `README.md`, `CHANGELOG.md`, and `LICENSE`
+4. Creates the GitHub Release with the zip attached
 
 ## Architecture Overview
 
