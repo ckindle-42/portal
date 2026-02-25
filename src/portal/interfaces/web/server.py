@@ -17,12 +17,13 @@ Endpoints:
 
 import asyncio
 import json
+import os
 import time
 import uuid
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 import httpx
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -42,6 +43,28 @@ class ChatCompletionRequest(BaseModel):
     stream: bool = True
     temperature: float = 0.7
     max_tokens: int | None = None
+
+
+def _build_cors_origins() -> list[str]:
+    """Resolve allowed CORS origins from the ALLOWED_ORIGINS env var."""
+    raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+async def _verify_api_key(authorization: Optional[str] = Header(None)) -> None:
+    """
+    Optional API-key guard for /v1/* routes.
+
+    Active only when WEB_API_KEY env var is set.  Accepts the key as either:
+      Authorization: Bearer <key>
+      X-API-Key: <key>   (checked via the authorization header alias)
+    """
+    required = os.getenv("WEB_API_KEY", "")
+    if not required:
+        return  # auth disabled
+    if authorization == f"Bearer {required}":
+        return
+    raise HTTPException(status_code=401, detail="Unauthorized: invalid or missing API key")
 
 
 class WebInterface(BaseInterface):
@@ -65,12 +88,12 @@ class WebInterface(BaseInterface):
 
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],  # tighten in production if needed
+            allow_origins=_build_cors_origins(),
             allow_methods=["*"],
             allow_headers=["*"],
         )
 
-        @app.post("/v1/chat/completions")
+        @app.post("/v1/chat/completions", dependencies=[Depends(_verify_api_key)])
         async def chat_completions(request: ChatCompletionRequest):
             """
             OpenAI-compatible chat completion.
@@ -110,11 +133,13 @@ class WebInterface(BaseInterface):
                 )
                 return JSONResponse(self._format_completion(result, request.model))
 
-        @app.get("/v1/models")
+        @app.get("/v1/models", dependencies=[Depends(_verify_api_key)])
         async def list_models():
             """Return virtual model names from the Portal router."""
             router_port = getattr(self.config, "llm", None)
             router_port = getattr(router_port, "router_port", 8000) if router_port else 8000
+            if isinstance(self.config, dict):
+                router_port = self.config.get("router_port", 8000)
             try:
                 async with httpx.AsyncClient(timeout=5.0) as client:
                     resp = await client.get(
@@ -240,6 +265,8 @@ class WebInterface(BaseInterface):
         import uvicorn
         web_config = getattr(self.config, "interfaces", None)
         web_port = getattr(getattr(web_config, "web", None), "port", 8081) if web_config else 8081
+        if isinstance(self.config, dict):
+            web_port = self.config.get("web_port", 8081)
         config = uvicorn.Config(
             self.app,
             host="0.0.0.0",
@@ -266,3 +293,41 @@ class WebInterface(BaseInterface):
     # Required by BaseInterface ABC
     async def handle_message(self, message):
         pass
+
+
+def create_app(agent_core=None, config: dict | None = None) -> FastAPI:
+    """
+    Clean FastAPI application factory.
+
+    For programmatic use (lifecycle.py / tests): pass agent_core + config.
+    For standalone deployment (Docker / uvicorn direct): call with no args;
+    AgentCore is bootstrapped from environment variables / defaults.
+
+    Usage:
+        # Standalone (Docker):
+        uvicorn portal.interfaces.web.server:app --host 0.0.0.0 --port 8081
+
+        # Programmatic:
+        from portal.interfaces.web.server import create_app
+        app = create_app(agent_core=my_core, config=my_cfg)
+    """
+    if agent_core is None:
+        from portal.core.agent_core import create_agent_core as _create
+        cfg: dict = config or {
+            "routing_strategy": "AUTO",
+            "ollama_base_url": os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+            "max_context_messages": 100,
+            "circuit_breaker_enabled": True,
+            "circuit_breaker_threshold": 3,
+            "circuit_breaker_timeout": 60,
+            "circuit_breaker_half_open_calls": 1,
+        }
+        agent_core = _create(cfg)
+        config = cfg
+
+    return WebInterface(agent_core, config or {}).app
+
+
+# Module-level ASGI app for `uvicorn portal.interfaces.web.server:app`
+# Bootstraps AgentCore from env-vars when started standalone (Docker / bare metal).
+app: FastAPI = create_app()

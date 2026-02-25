@@ -211,19 +211,24 @@ class AgentCore:
                 )
 
                 # Step 6: Save assistant response (after successful generation)
-                await self._save_assistant_response(chat_id, result.content, interface.value)
+                await self._save_assistant_response(chat_id, result.response, interface.value)
 
                 # Track execution time
                 execution_time = time.perf_counter() - start_time
                 self.stats['total_execution_time'] += execution_time
 
-                # Extract tools used
+                # MCP tool loop: dispatch any tool calls returned by the LLM
+                tool_calls = getattr(result, 'tool_calls', [])
+                if tool_calls and self.mcp_registry:
+                    mcp_results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
+                    logger.info("MCP tools dispatched", count=len(mcp_results))
+
                 tools_used = getattr(result, 'tools_used', [])
                 self.stats['tools_executed'] += len(tools_used)
 
                 logger.info(
                     "Completed processing",
-                    model=result.model_id,
+                    model=result.model_used,
                     execution_time=execution_time,
                     tools_count=len(tools_used)
                 )
@@ -233,7 +238,7 @@ class AgentCore:
                     EventType.PROCESSING_COMPLETED,
                     chat_id,
                     {
-                        'model': result.model_id,
+                        'model': result.model_used,
                         'execution_time': execution_time,
                         'tools_used': tools_used
                     },
@@ -242,8 +247,8 @@ class AgentCore:
 
                 return ProcessingResult(
                     success=result.success,
-                    response=result.content,
-                    model_used=result.model_id,
+                    response=result.response,
+                    model_used=result.model_used,
                     execution_time=execution_time,
                     tools_used=tools_used,
                     warnings=[],
@@ -398,7 +403,6 @@ class AgentCore:
         result = await self.execution_engine.execute(
             query=query,
             system_prompt=system_prompt,
-            available_tools=available_tools
         )
 
         if not result.success:
@@ -433,22 +437,21 @@ class AgentCore:
         """
         Yield response tokens for streaming interfaces (WebInterface, SlackInterface).
 
-        Extracts fields from IncomingMessage and delegates to process_message.
-        Once ExecutionEngine surfaces per-token streaming from Ollama, this method
-        should be updated to yield chunks as they arrive instead of one final token.
+        Uses ExecutionEngine.generate_stream() to produce real token-by-token output
+        from the Ollama backend rather than buffering the full response.
         """
         try:
             interface = InterfaceType(incoming.source) if incoming.source else InterfaceType.WEB
         except ValueError:
             interface = InterfaceType.WEB
 
-        result = await self.process_message(
-            chat_id=incoming.id,
-            message=incoming.text,
-            interface=interface,
-        )
-        # Yield the full response as a single token until true streaming is wired
-        yield result.response
+        system_prompt = self._build_system_prompt(interface.value, {})
+
+        async for token in self.execution_engine.generate_stream(
+            query=incoming.text,
+            system_prompt=system_prompt,
+        ):
+            yield token
 
     async def health_check(self) -> bool:
         """

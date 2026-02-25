@@ -36,8 +36,17 @@ def up(minimal: bool):
 @cli.command()
 def down():
     """Stop the Portal stack."""
+    hardware_dir = Path(__file__).parent.parent.parent.parent / "hardware"
+    if sys.platform == "darwin":
+        launcher = hardware_dir / "m4-mac" / "launch.sh"
+    else:
+        launcher = hardware_dir / "linux-bare" / "launch.sh"
+
     click.echo("Stopping Portal stack...")
-    # Implementation: call hardware-specific stop script
+    result = subprocess.run([str(launcher), "down"], check=False)
+    if result.returncode != 0:
+        click.echo("Warning: shutdown script returned non-zero exit code", err=True)
+        sys.exit(result.returncode)
 
 
 @cli.command()

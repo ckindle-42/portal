@@ -49,3 +49,30 @@ if curl -s "http://$BIND_IP:$PORT/health" >/dev/null 2>&1; then
 else
     echo "[portal-router] WARNING: health check failed — check $LOG_FILE"
 fi
+
+# ── Portal web interface (:8081) ──────────────────────────────────────────────
+WEB_PID_FILE="/tmp/portal-web.pid"
+WEB_LOG_FILE="$HOME/.portal/logs/portal.log"
+mkdir -p "$(dirname "$WEB_LOG_FILE")"
+
+if [ -f "$WEB_PID_FILE" ] && kill -0 "$(cat "$WEB_PID_FILE")" 2>/dev/null; then
+    echo "[portal-web] already running (PID $(cat "$WEB_PID_FILE"))"
+else
+    echo "[portal-web] starting..."
+    WEB_PORT="${WEB_PORT:-8081}"
+    nohup uvicorn portal.interfaces.web.server:app \
+        --host 0.0.0.0 \
+        --port "$WEB_PORT" \
+        --workers 1 \
+        --app-dir "$PORTAL_ROOT/src" \
+        >> "$WEB_LOG_FILE" 2>&1 &
+    echo $! > "$WEB_PID_FILE"
+    echo "[portal-web] started (PID $(cat "$WEB_PID_FILE")) on 0.0.0.0:$WEB_PORT"
+
+    sleep 2
+    if curl -s "http://localhost:$WEB_PORT/health" >/dev/null 2>&1; then
+        echo "[portal-web] health check OK"
+    else
+        echo "[portal-web] WARNING: health check failed — check $WEB_LOG_FILE"
+    fi
+fi

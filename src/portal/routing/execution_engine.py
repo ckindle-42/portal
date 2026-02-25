@@ -5,7 +5,7 @@ Execution Engine - Handles model execution with fallbacks and retries
 import asyncio
 import logging
 import time
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, AsyncIterator
 from dataclasses import dataclass
 from collections import defaultdict
 from enum import Enum
@@ -340,6 +340,67 @@ class ExecutionEngine:
                 error=f"Timeout after {self.timeout_seconds}s"
             )
     
+    async def generate_stream(
+        self,
+        query: str,
+        system_prompt: Optional[str] = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+    ) -> AsyncIterator[str]:
+        """
+        Stream generation token-by-token from the best available backend.
+
+        Follows the same model-chain / circuit-breaker logic as execute() but
+        calls each backend's generate_stream() so tokens flow to the caller as
+        they are produced by Ollama rather than being buffered.
+        """
+        decision = self.router.route(query)
+        model_chain = [decision.model_id] + decision.fallback_models
+
+        for model_id in model_chain:
+            model = self.registry.get_model(model_id)
+            if not model:
+                continue
+
+            backend = self.backends.get(model.backend)
+            if not backend:
+                logger.warning(f"No backend for {model.backend}")
+                continue
+
+            if self.circuit_breaker:
+                allowed, reason = self.circuit_breaker.should_allow_request(model.backend)
+                if not allowed:
+                    logger.info(f"Circuit breaker blocked {model.backend}: {reason}")
+                    continue
+
+            if not await backend.is_available():
+                logger.warning(f"Backend {model.backend} not available for streaming")
+                if self.circuit_breaker:
+                    self.circuit_breaker.record_failure(model.backend)
+                continue
+
+            try:
+                yielded = False
+                async for token in backend.generate_stream(
+                    prompt=query,
+                    model_name=model.api_model_name or model.model_id,
+                    system_prompt=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                ):
+                    yielded = True
+                    yield token
+                if yielded and self.circuit_breaker:
+                    self.circuit_breaker.record_success(model.backend)
+                return
+            except Exception as e:
+                logger.error(f"Streaming error with model {model_id}: {e}")
+                if self.circuit_breaker:
+                    self.circuit_breaker.record_failure(model.backend)
+                continue
+
+        yield "[Error: no models available for streaming]"
+
     async def execute_parallel(self, queries: List[str],
                               system_prompt: Optional[str] = None) -> List[ExecutionResult]:
         """Execute multiple queries in parallel"""

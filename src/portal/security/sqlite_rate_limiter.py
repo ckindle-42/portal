@@ -9,6 +9,7 @@ Replaces JSON-based rate limiting with SQLite for:
 - No race conditions
 """
 
+import os
 import sqlite3
 import time
 import logging
@@ -48,11 +49,17 @@ class SQLiteRateLimiter:
         self.max_requests = max_requests
         self.window = window_seconds
 
-        # Ensure data directory exists
+        # Ensure data directory exists with restricted permissions
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Initialize database
         self._init_db()
+
+        # Restrict DB file to owner-only (0600) so other OS users cannot read it
+        try:
+            os.chmod(self.db_path, 0o600)
+        except OSError:
+            logger.warning(f"Could not set 0600 permissions on {self.db_path}")
 
         logger.info(
             f"SQLiteRateLimiter initialized: {self.db_path} "
