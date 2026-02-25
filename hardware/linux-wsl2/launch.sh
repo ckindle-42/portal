@@ -73,8 +73,10 @@ case "$COMMAND" in
   down)
     echo "=== Portal Stopping ==="
     (cd "$PORTAL_ROOT/deploy/web-ui/$WEB_UI" && docker compose down) 2>/dev/null || true
+    [ -f /tmp/portal-web.pid ]    && kill "$(cat /tmp/portal-web.pid)"    2>/dev/null || true
     [ -f /tmp/portal-router.pid ] && kill "$(cat /tmp/portal-router.pid)" 2>/dev/null || true
     pkill -f "mcpo" 2>/dev/null || true
+    rm -f /tmp/portal-web.pid /tmp/portal-router.pid
     echo "=== Portal Stopped ==="
     ;;
 

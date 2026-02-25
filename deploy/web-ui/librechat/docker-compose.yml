@@ -29,8 +29,15 @@ services:
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-portal-jwt-refresh-change-me}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3080/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
 
   # -----------------------------------------------------------------------
   # MongoDB — LibreChat database
@@ -41,6 +48,12 @@ services:
     restart: unless-stopped
     volumes:
       - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
 
 volumes:
   librechat-data:

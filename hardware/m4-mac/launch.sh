@@ -32,7 +32,7 @@ case "$COMMAND" in
     fi
     echo "[ollama] OK"
 
-    # 2. Start model router
+    # 2. Start model router + Portal web interface (:8081)
     bash "$PORTAL_ROOT/hardware/m4-mac/launch_router.sh"
 
     if [ "$MINIMAL" != "--minimal" ]; then
@@ -76,11 +76,13 @@ case "$COMMAND" in
   down)
     echo "=== Portal Stopping ==="
     (cd "$PORTAL_ROOT/deploy/web-ui/$WEB_UI" && docker compose down) 2>/dev/null || true
+    [ -f /tmp/portal-web.pid ]    && kill "$(cat /tmp/portal-web.pid)"    2>/dev/null || true
     [ -f /tmp/portal-router.pid ] && kill "$(cat /tmp/portal-router.pid)" 2>/dev/null || true
     pkill -f "mcpo" 2>/dev/null || true
     pkill -f "comfyui_mcp" 2>/dev/null || true
     pkill -f "whisper_mcp" 2>/dev/null || true
     pkill -f "scrapling" 2>/dev/null || true
+    rm -f /tmp/portal-web.pid /tmp/portal-router.pid
     echo "=== Portal Stopped ==="
     ;;
 

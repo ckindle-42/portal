@@ -23,6 +23,15 @@ def _project_version() -> str:
         return "0.0.0-dev"
 
 
+_CHANGEME_PREFIXES = ("changeme", "change-me", "your_", "your-", "placeholder", "secret-change-me")
+
+
+def _is_placeholder(value: str) -> bool:
+    """Return True if value looks like an unfilled template placeholder."""
+    v = value.lower()
+    return any(v.startswith(p) or p in v for p in _CHANGEME_PREFIXES)
+
+
 class ModelConfig(BaseModel):
     """Configuration for a single model"""
     name: str = Field(..., description="Model name/identifier")
@@ -45,6 +54,17 @@ class SecurityConfig(BaseModel):
     allowed_commands: List[str] = Field(default_factory=list, description="Whitelist of allowed shell commands (empty = none allowed, secure by default)")
     sandbox_enabled: bool = Field(False, description="Enable Docker sandboxing for code execution")
     require_approval_for_high_risk: bool = Field(False, description="Require human approval for high-risk actions")
+    mcp_api_key: Optional[str] = Field(None, description="MCP server API key (must not be a placeholder in production)")
+
+    @field_validator('mcp_api_key')
+    @classmethod
+    def validate_mcp_api_key(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and _is_placeholder(v):
+            raise ValueError(
+                "MCP_API_KEY is still set to a placeholder value. "
+                "Set a strong random key before enabling MCP."
+            )
+        return v
 
     @field_validator('max_requests_per_minute')
     @classmethod
@@ -96,6 +116,11 @@ class TelegramConfig(BaseModel):
         """Validate bot token format"""
         if not v or v.startswith('your_'):
             raise ValueError("Invalid bot token. Get one from @BotFather")
+        if _is_placeholder(v):
+            raise ValueError(
+                "TELEGRAM_BOT_TOKEN is still set to a placeholder value. "
+                "Set a real token from @BotFather."
+            )
         if ':' not in v:
             raise ValueError("Bot token must be in format: 123456:ABC-DEF...")
         return v
@@ -108,6 +133,16 @@ class SlackConfig(BaseModel):
     bot_token: str = Field(..., description="Slack bot token (xoxb-...)")
     signing_secret: str = Field(..., description="Slack signing secret for request verification")
     channel_whitelist: List[str] = Field(default_factory=list, description="Channels the bot responds in (empty = all)")
+
+    @field_validator('signing_secret')
+    @classmethod
+    def validate_signing_secret(cls, v: str) -> str:
+        if _is_placeholder(v):
+            raise ValueError(
+                "SLACK_SIGNING_SECRET is still set to a placeholder value. "
+                "Set the real signing secret from your Slack app settings."
+            )
+        return v
 
     model_config = ConfigDict(extra='allow')
 
