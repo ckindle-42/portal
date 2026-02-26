@@ -23,6 +23,7 @@ class UserStore:
         self.db_path = Path(db_path or os.getenv("PORTAL_AUTH_DB", "data/auth.db"))
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
+        self._ensure_bootstrap_api_key()
 
     def _init_db(self) -> None:
         with sqlite3.connect(self.db_path) as conn:
@@ -93,6 +94,28 @@ class UserStore:
         if not row:
             raise ValueError("Invalid API key")
         return AuthContext(api_key_id=row[0], user_id=row[1], role=row[2])
+
+    def _ensure_bootstrap_api_key(self) -> None:
+        """Optionally pre-provision a static API key for local/dev stacks."""
+        token = os.getenv("PORTAL_BOOTSTRAP_API_KEY")
+        if not token:
+            return
+
+        user_id = os.getenv("PORTAL_BOOTSTRAP_USER_ID", "open-webui")
+        role = os.getenv("PORTAL_BOOTSTRAP_USER_ROLE", "user")
+        self.ensure_user(user_id=user_id, role=role)
+
+        key_hash = hashlib.sha256(token.encode()).hexdigest()
+        now = datetime.now(timezone.utc).isoformat()
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO api_keys(user_id, key_hash, name, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (user_id, key_hash, "bootstrap", now),
+            )
+            conn.commit()
 
     def add_tokens(self, user_id: str, tokens: int) -> None:
         period = datetime.now(timezone.utc).strftime("%Y-%W")
