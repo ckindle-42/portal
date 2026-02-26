@@ -197,10 +197,10 @@ class ExecutionEngine:
         ) if self.circuit_breaker_enabled else None
 
         logger.info(
-            "ExecutionEngine initialized",
-            circuit_breaker_enabled=self.circuit_breaker_enabled,
-            max_retries=self.max_retries,
-            timeout_seconds=self.timeout_seconds
+            "ExecutionEngine initialized: circuit_breaker=%s, retries=%s, timeout=%ss",
+            self.circuit_breaker_enabled,
+            self.max_retries,
+            self.timeout_seconds,
         )
 
     async def execute(self, query: str, system_prompt: str | None = None,

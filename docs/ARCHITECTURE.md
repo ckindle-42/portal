@@ -508,6 +508,16 @@ portal/
 | LaunchAgent plist for M4 autostart | Phase 3 |
 | `portal doctor` structured output | Phase 3 |
 
+### v1.2.2 Code Quality Pass (Feb 2026)
+- Python 3.11+ modernization: removed `importlib_metadata` fallback
+- Replaced `os.path` → `pathlib` in security module
+- Fixed `TelegramInterface._check_rate_limit()` async/sync mismatch
+- Hardened `InputSanitizer.validate_file_path()` — uses `Path.relative_to()` instead of `str.startswith()`
+- Fixed log rotation crash in sync context (missing event loop)
+- Fixed hardcoded version in Prometheus metrics
+- Added missing `ToolMetadata.async_capable` field
+- Aligned `ToolCategory` constants across registry and config
+
 ### v1.2.1 Modernization (Feb 2026)
 - Removed ~3,200 lines dead/stale code across 11+ files and directories
 - Security hardened: bash sidecar (`shell=True` → allowlist), `eval()` → AST, pickle gating, secret redaction in logger, Docker sandbox resource limits + network isolation

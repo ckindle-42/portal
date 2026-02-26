@@ -12,12 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Try to import importlib.metadata (Python 3.8+)
-try:
-    from importlib import metadata as importlib_metadata
-except ImportError:
-    # Fallback for older Python versions
-    import importlib_metadata
+from importlib import metadata as importlib_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +45,13 @@ class ToolRegistry:
     def __init__(self):
         self.tools: dict[str, Any] = {}
         self.tool_categories: dict[str, list[str]] = {
+            'utility': [],
             'data': [],
-            'system': [],
             'web': [],
             'audio': [],
             'dev': [],
             'automation': [],
-            'knowledge': []
+            'knowledge': [],
         }
         self.tool_stats: dict[str, ToolExecutionStats] = {}
         self.failed_tools: list[dict[str, str]] = []

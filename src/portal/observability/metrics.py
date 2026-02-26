@@ -92,9 +92,14 @@ class MetricsCollector:
             'portal_service',
             'Service information'
         )
+        try:
+            from importlib.metadata import version as _pkg_version
+            _version = _pkg_version("portal")
+        except Exception:
+            _version = "0.0.0-dev"
         self._metrics['service_info'].info({
             'service': self.service_name,
-            'version': '4.3.0'
+            'version': _version,
         })
 
         # HTTP request metrics

@@ -254,8 +254,8 @@ class RateLimiter:
                 shutil.move(temp_path, self.persist_path)
 
             except Exception:
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
+                if Path(temp_path).exists():
+                    Path(temp_path).unlink()
                 raise
 
         except Exception as e:
@@ -363,11 +363,14 @@ class InputSanitizer:
 
         # Check for absolute paths to sensitive directories
         path_obj = Path(decoded_path).resolve()
-        sensitive_dirs = ['/etc', '/boot', '/sys', '/proc', '/dev']
+        sensitive_dirs = [Path('/etc'), Path('/boot'), Path('/sys'), Path('/proc'), Path('/dev')]
 
         for sensitive_dir in sensitive_dirs:
-            if str(path_obj).startswith(sensitive_dir):
+            try:
+                path_obj.relative_to(sensitive_dir)
                 return False, f"Access to {sensitive_dir} is restricted"
+            except ValueError:
+                continue
 
         return True, None
 

@@ -493,7 +493,6 @@ class MLXBackend(ModelBackend):
             chunk_size = 50
             for i in range(0, len(result.text), chunk_size):
                 yield result.text[i:i+chunk_size]
-                await asyncio.sleep(0.01)  # Small delay for effect
         else:
             logger.error(f"MLX stream error: {result.error}")
             return

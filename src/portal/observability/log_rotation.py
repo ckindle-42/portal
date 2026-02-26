@@ -412,7 +412,18 @@ class RotatingStructuredLogHandler(logging.Handler):
 
             # Compress in background if needed
             if self.config.compress_rotated:
-                asyncio.create_task(self._compress_async(rotated_path))
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(self._compress_async(rotated_path))
+                except RuntimeError:
+                    # No running event loop — compress synchronously
+                    try:
+                        compressed = rotated_path.with_suffix(rotated_path.suffix + '.gz')
+                        LogRotator._compress_file(rotated_path, compressed)
+                        rotated_path.unlink()
+                    except Exception as comp_err:
+                        import sys
+                        print(f"Sync compression failed: {comp_err}", file=sys.stderr)
 
             # Create new handler
             self._file_handler = logging.FileHandler(self.log_file)
