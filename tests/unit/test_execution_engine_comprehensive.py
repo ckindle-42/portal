@@ -158,7 +158,6 @@ class TestExecutionEngineInit:
         reg = _empty_registry()
         router = MagicMock(spec=IntelligentRouter)
         engine = ExecutionEngine(reg, router)
-        assert engine.max_retries == 3
         assert engine.timeout_seconds == 60
         assert engine.circuit_breaker_enabled is True
         assert engine.circuit_breaker is not None
@@ -167,12 +166,10 @@ class TestExecutionEngineInit:
         reg = _empty_registry()
         router = MagicMock(spec=IntelligentRouter)
         config = {
-            "max_retries": 5,
             "timeout_seconds": 120,
             "circuit_breaker_threshold": 5,
         }
         engine = ExecutionEngine(reg, router, config=config)
-        assert engine.max_retries == 5
         assert engine.timeout_seconds == 120
 
     def test_circuit_breaker_disabled(self):

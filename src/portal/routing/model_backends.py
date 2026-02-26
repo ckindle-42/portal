@@ -31,6 +31,18 @@ class GenerationResult:
 class ModelBackend(ABC):
     """Abstract base class for model backends"""
 
+    @staticmethod
+    def _error_result(model_id: str, start_time: float, error: str) -> "GenerationResult":
+        """Return a failed GenerationResult with elapsed time populated."""
+        return GenerationResult(
+            text="",
+            tokens_generated=0,
+            time_ms=(time.time() - start_time) * 1000,
+            model_id=model_id,
+            success=False,
+            error=error,
+        )
+
     @abstractmethod
     async def generate(self, prompt: str, model_name: str,
                       system_prompt: str | None = None,
@@ -174,25 +186,11 @@ class OllamaBackend(BaseHTTPBackend):
                     )
                 else:
                     error_text = await response.text()
-                    return GenerationResult(
-                        text="",
-                        tokens_generated=0,
-                        time_ms=(time.time() - start_time) * 1000,
-                        model_id=model_name,
-                        success=False,
-                        error=f"HTTP {response.status}: {error_text}",
-                    )
+                    return self._error_result(model_name, start_time, f"HTTP {response.status}: {error_text}")
 
         except Exception as e:
             logger.error("Ollama generation error: %s", e)
-            return GenerationResult(
-                text="",
-                tokens_generated=0,
-                time_ms=(time.time() - start_time) * 1000,
-                model_id=model_name,
-                success=False,
-                error=str(e),
-            )
+            return self._error_result(model_name, start_time, str(e))
 
     async def generate_stream(self, prompt: str, model_name: str,
                              system_prompt: str | None = None,
@@ -300,25 +298,11 @@ class LMStudioBackend(BaseHTTPBackend):
                     )
                 else:
                     error_text = await response.text()
-                    return GenerationResult(
-                        text="",
-                        tokens_generated=0,
-                        time_ms=(time.time() - start_time) * 1000,
-                        model_id=model_name,
-                        success=False,
-                        error=f"HTTP {response.status}: {error_text}"
-                    )
+                    return self._error_result(model_name, start_time, f"HTTP {response.status}: {error_text}")
 
         except Exception as e:
             logger.error("LM Studio generation error: %s", e)
-            return GenerationResult(
-                text="",
-                tokens_generated=0,
-                time_ms=(time.time() - start_time) * 1000,
-                model_id=model_name,
-                success=False,
-                error=str(e)
-            )
+            return self._error_result(model_name, start_time, str(e))
 
     async def generate_stream(self, prompt: str, model_name: str,
                              system_prompt: str | None = None,
@@ -456,14 +440,7 @@ class MLXBackend(ModelBackend):
 
         except Exception as e:
             logger.error("MLX generation error: %s", e)
-            return GenerationResult(
-                text="",
-                tokens_generated=0,
-                time_ms=(time.time() - start_time) * 1000,
-                model_id=model_name,
-                success=False,
-                error=str(e)
-            )
+            return self._error_result(model_name, start_time, str(e))
 
     async def generate_stream(self, prompt: str, model_name: str,
                              system_prompt: str | None = None,

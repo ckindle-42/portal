@@ -185,11 +185,9 @@ class ExecutionEngine:
             )
         }
 
-        # Execution settings
-        self.max_retries = self.config.get('max_retries', 3)
         self.timeout_seconds = self.config.get('timeout_seconds', 60)
 
-        # Circuit breaker for backend failure protection (v4.6.2: Made configurable)
+        # Circuit breaker for backend failure protection
         self.circuit_breaker_enabled = self.config.get('circuit_breaker_enabled', True)
         self.circuit_breaker = CircuitBreaker(
             failure_threshold=self.config.get('circuit_breaker_threshold', 3),
@@ -198,9 +196,8 @@ class ExecutionEngine:
         ) if self.circuit_breaker_enabled else None
 
         logger.info(
-            "ExecutionEngine initialized: circuit_breaker=%s, retries=%s, timeout=%ss",
+            "ExecutionEngine initialized: circuit_breaker=%s, timeout=%ss",
             self.circuit_breaker_enabled,
-            self.max_retries,
             self.timeout_seconds,
         )
 
@@ -245,7 +242,6 @@ class ExecutionEngine:
                     logger.warning("No backend for %s", model.backend)
                     continue
 
-                # Check circuit breaker (v4.6.2: Skip if disabled)
                 if self.circuit_breaker:
                     allowed, reason = self.circuit_breaker.should_allow_request(model.backend)
                     if not allowed:
@@ -430,11 +426,7 @@ class ExecutionEngine:
                 await backend.close()
 
     async def health_check(self) -> dict[str, Any]:
-        """
-        Check health of all backends including circuit breaker status
-
-        v4.6.2: Enhanced to handle disabled circuit breaker
-        """
+        """Check health of all backends including circuit breaker status."""
         health = {}
 
         for name, backend in self.backends.items():
@@ -466,11 +458,7 @@ class ExecutionEngine:
         return health
 
     def get_circuit_breaker_status(self) -> dict[str, dict[str, Any]]:
-        """
-        Get detailed circuit breaker status for all backends
-
-        v4.6.2: Returns disabled status when circuit breaker is off
-        """
+        """Get detailed circuit breaker status for all backends."""
         if not self.circuit_breaker:
             return {
                 'enabled': False,
@@ -489,11 +477,7 @@ class ExecutionEngine:
         return status
 
     def reset_circuit_breaker(self, backend_name: str) -> None:
-        """
-        Manually reset circuit breaker for a backend
-
-        v4.6.2: Safe handling when circuit breaker is disabled
-        """
+        """Manually reset circuit breaker for a backend."""
         if not self.circuit_breaker:
             logger.warning("Circuit breaker is disabled, cannot reset")
             return
@@ -505,11 +489,7 @@ class ExecutionEngine:
             logger.warning("Unknown backend: %s", backend_name)
 
     async def cleanup(self) -> None:
-        """
-        Cleanup resources
-
-        v4.6.2: Added cleanup method for graceful shutdown
-        """
+        """Cleanup resources."""
         logger.info("Cleaning up ExecutionEngine...")
         await self.close()
         logger.info("ExecutionEngine cleanup complete")

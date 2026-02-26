@@ -120,6 +120,16 @@ class SQLiteConversationRepository(ConversationRepository):
     # Private sync helpers (called via asyncio.to_thread)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _row_to_message(row: sqlite3.Row) -> "Message":
+        """Convert a sqlite3.Row to a Message dataclass."""
+        return Message(
+            role=row["role"],
+            content=row["content"],
+            timestamp=datetime.fromisoformat(row["timestamp"]) if row["timestamp"] else None,
+            metadata=json.loads(row["metadata"]) if row["metadata"] else None,
+        )
+
     def _sync_create_conversation(self, chat_id: str, metadata: dict[str, Any] | None) -> None:
         conn = self._pool.get()
         conn.execute(
@@ -178,16 +188,7 @@ class SQLiteConversationRepository(ConversationRepository):
             params.extend([limit, offset])
 
         rows = conn.execute(query, params).fetchall()
-
-        return [
-            Message(
-                role=row["role"],
-                content=row["content"],
-                timestamp=datetime.fromisoformat(row["timestamp"]) if row["timestamp"] else None,
-                metadata=json.loads(row["metadata"]) if row["metadata"] else None
-            )
-            for row in rows
-        ]
+        return [self._row_to_message(row) for row in rows]
 
     def _sync_get_messages_standalone(
         self,
@@ -317,16 +318,7 @@ class SQLiteConversationRepository(ConversationRepository):
         params.append(limit)
 
         rows = conn.execute(sql, params).fetchall()
-
-        return [
-            Message(
-                role=row["role"],
-                content=row["content"],
-                timestamp=datetime.fromisoformat(row["timestamp"]) if row["timestamp"] else None,
-                metadata=json.loads(row["metadata"]) if row["metadata"] else None
-            )
-            for row in rows
-        ]
+        return [self._row_to_message(row) for row in rows]
 
     def _sync_get_stats(self) -> dict[str, Any]:
         conn = self._pool.get()
@@ -465,6 +457,17 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
     # Private sync helpers (called via asyncio.to_thread)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _row_to_document(row: sqlite3.Row) -> "Document":
+        """Convert a sqlite3.Row to a Document dataclass."""
+        return Document(
+            id=row["id"],
+            content=row["content"],
+            embedding=json.loads(row["embedding"]) if row["embedding"] else None,
+            metadata=json.loads(row["metadata"]) if row["metadata"] else None,
+            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None,
+        )
+
     def _sync_add_document(
         self,
         doc_id: str,
@@ -522,17 +525,7 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
         """
 
         rows = conn.execute(sql, [query, limit]).fetchall()
-
-        return [
-            Document(
-                id=row["id"],
-                content=row["content"],
-                embedding=json.loads(row["embedding"]) if row["embedding"] else None,
-                metadata=json.loads(row["metadata"]) if row["metadata"] else None,
-                created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
-            )
-            for row in rows
-        ]
+        return [self._row_to_document(row) for row in rows]
 
     def _sync_search_by_embedding(self, embedding: list[float], limit: int) -> list[Document]:
         import numpy as np
@@ -559,18 +552,7 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
             similarities.append((similarity, row))
 
         similarities.sort(reverse=True, key=lambda x: x[0])
-        top_results = similarities[:limit]
-
-        return [
-            Document(
-                id=row["id"],
-                content=row["content"],
-                embedding=json.loads(row["embedding"]) if row["embedding"] else None,
-                metadata=json.loads(row["metadata"]) if row["metadata"] else None,
-                created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
-            )
-            for _, row in top_results
-        ]
+        return [self._row_to_document(row) for _, row in similarities[:limit]]
 
     def _sync_get_document(self, document_id: str) -> Document | None:
         conn = self._pool.get()
@@ -581,16 +563,7 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
             (document_id,)
         ).fetchone()
 
-        if not row:
-            return None
-
-        return Document(
-            id=row["id"],
-            content=row["content"],
-            embedding=json.loads(row["embedding"]) if row["embedding"] else None,
-            metadata=json.loads(row["metadata"]) if row["metadata"] else None,
-            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
-        )
+        return self._row_to_document(row) if row else None
 
     def _sync_update_document(
         self,
@@ -655,17 +628,7 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
             params.extend([limit, offset])
 
         rows = conn.execute(query, params).fetchall()
-
-        return [
-            Document(
-                id=row["id"],
-                content=row["content"],
-                embedding=json.loads(row["embedding"]) if row["embedding"] else None,
-                metadata=json.loads(row["metadata"]) if row["metadata"] else None,
-                created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
-            )
-            for row in rows
-        ]
+        return [self._row_to_document(row) for row in rows]
 
     def _sync_get_stats(self) -> dict[str, Any]:
         conn = self._pool.get()

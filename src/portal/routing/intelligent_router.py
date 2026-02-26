@@ -78,19 +78,15 @@ class IntelligentRouter:
         # Classify the task
         classification = self.classifier.classify(query)
 
-        # Select model based on strategy
-        if self.strategy == RoutingStrategy.AUTO:
-            model = self._route_auto(classification, max_cost)
-        elif self.strategy == RoutingStrategy.SPEED:
-            model = self._route_speed(classification)
-        elif self.strategy == RoutingStrategy.QUALITY:
-            model = self._route_quality(classification, max_cost)
-        elif self.strategy == RoutingStrategy.BALANCED:
-            model = self._route_balanced(classification, max_cost)
-        elif self.strategy == RoutingStrategy.COST_OPTIMIZED:
-            model = self._route_cost_optimized(classification)
-        else:
-            model = self._route_auto(classification, max_cost)
+        # Dispatch to strategy-specific routing method
+        strategy_dispatch = {
+            RoutingStrategy.SPEED: lambda c: self._route_speed(c),
+            RoutingStrategy.COST_OPTIMIZED: lambda c: self._route_cost_optimized(c),
+            RoutingStrategy.QUALITY: lambda c: self._route_quality(c, max_cost),
+            RoutingStrategy.BALANCED: lambda c: self._route_balanced(c, max_cost),
+        }
+        route_fn = strategy_dispatch.get(self.strategy, lambda c: self._route_auto(c, max_cost))
+        model = route_fn(classification)
 
         # Build fallback chain
         fallbacks = self._build_fallback_chain(model, classification)
@@ -211,20 +207,13 @@ class IntelligentRouter:
 
     def _build_fallback_chain(self, primary: ModelMetadata,
                              classification: TaskClassification) -> list[str]:
-        """Build fallback model chain"""
-
-        fallbacks = []
-        all_models = self.registry.get_all_models()
-        available = [m for m in all_models if m.available and m.model_id != primary.model_id]
-
-        # Sort by quality (descending)
-        available.sort(key=lambda m: m.general_quality, reverse=True)
-
-        # Add up to 3 fallbacks
-        for model in available[:3]:
-            fallbacks.append(model.model_id)
-
-        return fallbacks
+        """Build fallback model chain (up to 3, sorted by quality descending)."""
+        available = sorted(
+            (m for m in self.registry.get_all_models() if m.available and m.model_id != primary.model_id),
+            key=lambda m: m.general_quality,
+            reverse=True,
+        )
+        return [m.model_id for m in available[:3]]
 
     def _get_any_available_model(self) -> ModelMetadata:
         """Get any available model as last resort"""
