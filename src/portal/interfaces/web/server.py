@@ -45,7 +45,7 @@ class ChatCompletionRequest(BaseModel):
 
 
 def _build_cors_origins() -> list[str]:
-    raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
+    raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000")
     origins = [o.strip() for o in raw.split(",") if o.strip()]
     return origins or ["http://localhost:8080"]
 
@@ -64,7 +64,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+        csp = os.getenv(
+            "PORTAL_CSP",
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: blob:; frame-ancestors 'none'; base-uri 'self'",
+        )
+        response.headers["Content-Security-Policy"] = csp
+        if _bool_env("PORTAL_HSTS"):
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
 
 
