@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+import hmac
 import json
 import logging
 import os
+import secrets
 import time
 import uuid
+from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Optional
 
 import httpx
@@ -105,7 +109,8 @@ class WebInterface(BaseInterface):
         require_api_key = _bool_env("REQUIRE_API_KEY", default=bool(static_web_api_key))
 
         if static_web_api_key:
-            if token != static_web_api_key:
+            # Use hmac.compare_digest to prevent timing-attack enumeration of the key
+            if not hmac.compare_digest((token or "").encode(), static_web_api_key.encode()):
                 raise HTTPException(status_code=401, detail="Invalid API key")
             return {"user_id": user_id, "role": "api_key"}
 
@@ -119,7 +124,27 @@ class WebInterface(BaseInterface):
         return {"user_id": ctx.user_id, "role": ctx.role}
 
     def _build_app(self) -> FastAPI:
-        app = FastAPI(title="Portal Web Interface", version="1.1.0")
+        _agent_ready: asyncio.Event = asyncio.Event()
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            """Async lifespan: warm up AgentCore in the background so startup is non-blocking."""
+            async def _warmup():
+                try:
+                    if hasattr(self.agent_core, "health_check"):
+                        await self.agent_core.health_check()
+                except Exception:
+                    pass
+                finally:
+                    _agent_ready.set()
+
+            warmup_task = asyncio.create_task(_warmup(), name="agent-warmup")
+            try:
+                yield
+            finally:
+                warmup_task.cancel()
+
+        app = FastAPI(title="Portal Web Interface", version="1.1.0", lifespan=lifespan)
 
         @app.exception_handler(RateLimitError)
         async def rate_limit_handler(request: Request, exc: RateLimitError):
@@ -269,7 +294,7 @@ class WebInterface(BaseInterface):
             static_key = os.getenv("WEB_API_KEY", "").strip()
             if static_key:
                 token = websocket.query_params.get("api_key", "")
-                if token != static_key:
+                if not hmac.compare_digest(token.encode(), static_key.encode()):
                     await websocket.close(code=4001, reason="Unauthorized")
                     return
             await websocket.accept()
@@ -327,11 +352,16 @@ class WebInterface(BaseInterface):
 
         @app.get("/health")
         async def health():
+            if not _agent_ready.is_set():
+                return JSONResponse(
+                    {"status": "warming_up", "interface": "web"},
+                    status_code=200,
+                )
             try:
                 healthy = await self.agent_core.health_check()
             except Exception:
                 healthy = False
-            status = "ok" if healthy else "degraded"
+            status = "ready" if healthy else "degraded"
             code = 200 if healthy else 503
             return JSONResponse(
                 {"status": status, "interface": "web"},
