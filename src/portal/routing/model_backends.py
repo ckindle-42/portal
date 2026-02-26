@@ -71,6 +71,33 @@ class OllamaBackend(ModelBackend):
     async def close(self):
         if self._session and not self._session.closed:
             await self._session.close()
+
+    @staticmethod
+    def _normalize_tool_calls(raw_tool_calls: Any) -> Optional[list[Dict[str, Any]]]:
+        """Normalize Ollama/OpenAI-style tool call payloads for MCP dispatch."""
+        if not isinstance(raw_tool_calls, list):
+            return None
+
+        normalized_calls: list[Dict[str, Any]] = []
+        for call in raw_tool_calls:
+            if not isinstance(call, dict):
+                continue
+
+            function_payload = call.get("function")
+            if isinstance(function_payload, dict):
+                normalized_call = {
+                    "tool": function_payload.get("name") or call.get("name", ""),
+                    "name": function_payload.get("name") or call.get("name", ""),
+                    "arguments": function_payload.get("arguments", {}),
+                }
+                if "server" in call:
+                    normalized_call["server"] = call["server"]
+                normalized_calls.append(normalized_call)
+                continue
+
+            normalized_calls.append(call)
+
+        return normalized_calls or None
     
     async def generate(self, prompt: str, model_name: str,
                       system_prompt: Optional[str] = None,
@@ -106,7 +133,7 @@ class OllamaBackend(ModelBackend):
                     data = await response.json()
                     elapsed = (time.time() - start_time) * 1000
                     msg = data.get("message", {})
-                    tool_calls = msg.get("tool_calls") or None
+                    tool_calls = self._normalize_tool_calls(msg.get("tool_calls"))
                     return GenerationResult(
                         text=msg.get("content", ""),
                         tokens_generated=data.get("eval_count", 0),
