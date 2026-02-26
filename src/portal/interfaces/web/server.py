@@ -195,6 +195,13 @@ class WebInterface(BaseInterface):
 
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
+            # Verify API key from query params before accepting connection
+            static_key = os.getenv("WEB_API_KEY", "").strip()
+            if static_key:
+                token = websocket.query_params.get("api_key", "")
+                if token != static_key:
+                    await websocket.close(code=4001, reason="Unauthorized")
+                    return
             await websocket.accept()
             try:
                 while True:
@@ -204,6 +211,14 @@ class WebInterface(BaseInterface):
                         await websocket.send_json({"token": token, "done": False})
                     await websocket.send_json({"token": "", "done": True})
             except WebSocketDisconnect:
+                return
+            except Exception as e:
+                import logging as _logging
+                _logging.getLogger(__name__).error(f"WebSocket error: {e}", exc_info=True)
+                try:
+                    await websocket.send_json({"error": "Internal error", "done": True})
+                except Exception:
+                    pass
                 return
 
         @app.get("/health")
@@ -285,4 +300,3 @@ def create_app(agent_core=None, config: dict | None = None) -> FastAPI:
     return WebInterface(agent_core, config or {}).app
 
 
-app: FastAPI = create_app()

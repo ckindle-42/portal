@@ -241,6 +241,8 @@ async def proxy(request: Request, path: str) -> Response:
     if path in ("api/chat", "api/generate") and body:
         try:
             payload = json.loads(body)
+            if not isinstance(payload, dict):
+                raise TypeError("payload must be a JSON object, not an array or scalar")
             messages = payload.get("messages", [])
             if not messages:
                 # generate endpoint uses "prompt" not "messages"
@@ -251,7 +253,7 @@ async def proxy(request: Request, path: str) -> Response:
             body = json.dumps(payload).encode()
             headers["content-length"] = str(len(body))
             logger.debug(f"Routing {requested!r} → {resolved_model!r} ({reason})")
-        except (json.JSONDecodeError, KeyError):
+        except (json.JSONDecodeError, KeyError, TypeError):
             pass
 
     target_url = f"{OLLAMA_HOST}/{path}"
@@ -263,7 +265,8 @@ async def proxy(request: Request, path: str) -> Response:
     if body:
         try:
             payload = json.loads(body)
-            is_stream = payload.get("stream", True)  # Ollama defaults to streaming
+            if isinstance(payload, dict):
+                is_stream = payload.get("stream", True)  # Ollama defaults to streaming
         except (json.JSONDecodeError, TypeError):
             pass
 
