@@ -52,7 +52,14 @@ generation = [
     "faster-whisper>=1.0.0",
     "pillow>=10.3.0",
 ]
+all = [
+    "python-telegram-bot>=21.0,<22.0",
+    "slack-sdk>=3.29.0",
+    "faster-whisper>=1.0.0",
+    "pillow>=10.3.0",
+]
 dev = [
+    "portal[all]",
     "pytest>=8.2.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=5.0.0",
@@ -60,7 +67,6 @@ dev = [
     "ruff>=0.4.0",
     "mypy>=1.10.0",
 ]
-all = ["python-telegram-bot>=21.0,<22.0", "slack-sdk>=3.29.0", "faster-whisper>=1.0.0", "pillow>=10.3.0"]
 
 [project.scripts]
 portal = "portal.cli:cli"

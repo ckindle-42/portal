@@ -1,13 +1,56 @@
 """
-Pytest configuration for all Portal tests — registers markers and applies xfail
-markers to known-failing legacy API tests.
+Pytest configuration for all Portal tests — validates the environment,
+registers markers, and applies xfail markers to known-failing legacy API tests.
 """
+
+import sys
 
 import pytest
 
 
 def pytest_configure(config):
-    """Configure pytest with custom markers"""
+    """Validate test environment and configure pytest with custom markers."""
+    missing = []
+    for mod in ("httpx", "aiohttp", "fastapi", "pydantic"):
+        try:
+            __import__(mod)
+        except ImportError:
+            missing.append(mod)
+
+    if missing:
+        print(
+            "\n"
+            "=" * 70 + "\n"
+            " TEST ENVIRONMENT ERROR\n"
+            "=" * 70 + "\n"
+            f"\n"
+            f" Missing dependencies: {', '.join(missing)}\n"
+            f"\n"
+            f" Portal must be installed before running tests.\n"
+            f" Run one of:\n"
+            f"\n"
+            f"   pip install -e '.[dev]'     # pip (includes all extras)\n"
+            f"   uv sync --all-extras --dev  # uv\n"
+            f"   make install                # Makefile shortcut\n"
+            f"\n"
+            "=" * 70,
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    try:
+        import portal  # noqa: F401
+    except ImportError:
+        print(
+            "\n"
+            "=" * 70 + "\n"
+            " Portal package not installed.\n"
+            " Run: pip install -e '.[dev]'\n"
+            "=" * 70,
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
     config.addinivalue_line(
         "markers", "unit: Fast unit tests with no external dependencies"
     )
