@@ -341,7 +341,7 @@ class DockerPythonExecutionTool(BaseTool):
         return ToolMetadata(
             name="python_sandbox",
             description="Execute Python code in secure Docker container",
-            category=ToolCategory.DEVELOPMENT,
+            category=ToolCategory.DEV,
             version="1.0.0",
             requires_confirmation=True,  # Still confirm for user awareness
             parameters=[
