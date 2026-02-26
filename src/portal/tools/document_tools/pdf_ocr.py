@@ -2,12 +2,11 @@
 PDF OCR Tool - Extract text from PDFs using OCR
 """
 
-import asyncio
 import logging
-from typing import Dict, Any
 from pathlib import Path
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ except ImportError:
 
 class PDFOCRTool(BaseTool):
     """Extract text from PDFs using OCR"""
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="pdf_ocr",
@@ -46,36 +45,36 @@ class PDFOCRTool(BaseTool):
                 }
             }
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Perform OCR on PDF"""
-        
+
         if not OCR_AVAILABLE:
             return self._error_response(
                 "OCR dependencies not installed. Run: pip install pytesseract pdf2image"
             )
-        
+
         pdf_path = Path(parameters.get("pdf_path"))
         language = parameters.get("language", "eng")
         dpi = parameters.get("dpi", 300)
-        
+
         if not pdf_path.exists():
             return self._error_response(f"PDF not found: {pdf_path}")
-        
+
         try:
             # Convert PDF to images
             logger.info(f"Converting PDF to images: {pdf_path}")
             images = convert_from_path(str(pdf_path), dpi=dpi)
-            
+
             # OCR each page
             text_pages = []
             for i, image in enumerate(images):
                 logger.info(f"Processing page {i+1}/{len(images)}")
                 text = pytesseract.image_to_string(image, lang=language)
                 text_pages.append(text)
-            
+
             full_text = "\n\n--- Page Break ---\n\n".join(text_pages)
-            
+
             return self._success_response(
                 result=full_text,
                 metadata={
@@ -84,6 +83,6 @@ class PDFOCRTool(BaseTool):
                     "language": language
                 }
             )
-        
+
         except Exception as e:
             return self._error_response(f"OCR failed: {str(e)}")

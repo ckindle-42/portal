@@ -2,17 +2,15 @@
 Git Diff Tool - Show differences in repository
 """
 
-import asyncio
 import logging
-from typing import Dict, Any
-from pathlib import Path
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolCategory, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
 try:
-    from git import Repo, GitCommandError, InvalidGitRepositoryError
+    from git import GitCommandError, InvalidGitRepositoryError, Repo
     GIT_AVAILABLE = True
 except ImportError:
     GIT_AVAILABLE = False
@@ -55,7 +53,7 @@ class GitDiffTool(BaseTool):
             ]
         )
 
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute git diff"""
 
         if not GIT_AVAILABLE:

@@ -9,7 +9,7 @@ import secrets
 import sqlite3
 import threading
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -81,7 +81,7 @@ class UserStore:
         conn.commit()
 
     def ensure_user(self, user_id: str, role: str = "user") -> None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._pool.get()
         conn.execute(
             "INSERT OR IGNORE INTO users(id, role, created_at) VALUES (?, ?, ?)",
@@ -93,7 +93,7 @@ class UserStore:
         self.ensure_user(user_id)
         token = f"ptl_{secrets.token_urlsafe(24)}"
         key_hash = hashlib.sha256(token.encode()).hexdigest()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._pool.get()
         conn.execute(
             "INSERT INTO api_keys(user_id, key_hash, name, created_at) VALUES (?, ?, ?, ?)",
@@ -126,8 +126,8 @@ class UserStore:
         return AuthContext(api_key_id=row[0], user_id=row[1], role=row[2])
 
     def _sync_add_tokens(self, user_id: str, tokens: int) -> None:
-        period = datetime.now(timezone.utc).strftime("%Y-%W")
-        now = datetime.now(timezone.utc).isoformat()
+        period = datetime.now(UTC).strftime("%Y-%W")
+        now = datetime.now(UTC).isoformat()
         conn = self._pool.get()
         conn.execute(
             """
@@ -161,7 +161,7 @@ class UserStore:
         self.ensure_user(user_id=user_id, role=role)
 
         key_hash = hashlib.sha256(token.encode()).hexdigest()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._pool.get()
         conn.execute(
             """
@@ -173,7 +173,7 @@ class UserStore:
         conn.commit()
 
     def get_tokens(self, user_id: str) -> int:
-        period = datetime.now(timezone.utc).strftime("%Y-%W")
+        period = datetime.now(UTC).strftime("%Y-%W")
         conn = self._pool.get()
         row = conn.execute(
             "SELECT token_count FROM quotas WHERE user_id = ? AND period = ?",

@@ -6,13 +6,14 @@ Type-safe configuration management using Pydantic.
 Validates all configuration values at startup and fails fast with clear error messages.
 """
 
-from typing import Dict, List, Optional, Any
-from pathlib import Path
-from importlib import metadata
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from pydantic_settings import BaseSettings
-import yaml
 import os
+from importlib import metadata
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_settings import BaseSettings
 
 
 def _project_version() -> str:
@@ -50,10 +51,10 @@ class ModelConfig(BaseModel):
     """Configuration for a single model"""
     name: str = Field(..., description="Model name/identifier")
     backend: str = Field(..., description="Backend type (ollama, mlx, etc.)")
-    capabilities: List[str] = Field(default_factory=list, description="Model capabilities")
+    capabilities: list[str] = Field(default_factory=list, description="Model capabilities")
     speed_class: str = Field(..., description="Speed classification (fast, medium, slow)")
-    context_window: Optional[int] = Field(None, description="Maximum context window size")
-    max_tokens: Optional[int] = Field(None, description="Maximum output tokens")
+    context_window: int | None = Field(None, description="Maximum context window size")
+    max_tokens: int | None = Field(None, description="Maximum output tokens")
 
     model_config = ConfigDict(extra='allow')
 
@@ -66,14 +67,14 @@ class SecurityConfig(BaseModel):
     max_requests_per_hour: int = Field(100, ge=1, le=10000, description="Max requests per hour")
     max_file_size_mb: int = Field(10, ge=1, le=1000, description="Max file size in MB")
     max_message_length: int = Field(10000, ge=100, le=1000000, description="Maximum message length in characters")
-    allowed_commands: List[str] = Field(default_factory=list, description="Whitelist of allowed shell commands (empty = none allowed, secure by default)")
+    allowed_commands: list[str] = Field(default_factory=list, description="Whitelist of allowed shell commands (empty = none allowed, secure by default)")
     sandbox_enabled: bool = Field(False, description="Enable Docker sandboxing for code execution")
     require_approval_for_high_risk: bool = Field(False, description="Require human approval for high-risk actions")
-    mcp_api_key: Optional[str] = Field(None, description="MCP server API key (must not be a placeholder in production)")
+    mcp_api_key: str | None = Field(None, description="MCP server API key (must not be a placeholder in production)")
 
     @field_validator('mcp_api_key')
     @classmethod
-    def validate_mcp_api_key(cls, v: Optional[str]) -> Optional[str]:
+    def validate_mcp_api_key(cls, v: str | None) -> str | None:
         if v is None:
             return v
         if _is_placeholder(v):
@@ -127,10 +128,10 @@ class SecurityConfig(BaseModel):
 class TelegramConfig(BaseModel):
     """Telegram interface configuration"""
     bot_token: str = Field(..., description="Telegram bot token from BotFather")
-    authorized_users: List[int] = Field(default_factory=list, description="List of authorized Telegram user IDs")
+    authorized_users: list[int] = Field(default_factory=list, description="List of authorized Telegram user IDs")
     enable_group_chat: bool = Field(False, description="Allow bot in group chats")
     enable_inline_mode: bool = Field(False, description="Enable inline query mode")
-    webhook_url: Optional[str] = Field(None, description="Webhook URL for receiving updates")
+    webhook_url: str | None = Field(None, description="Webhook URL for receiving updates")
 
     @field_validator('bot_token')
     @classmethod
@@ -154,7 +155,7 @@ class SlackConfig(BaseModel):
     """Slack interface configuration"""
     bot_token: str = Field(..., description="Slack bot token (xoxb-...)")
     signing_secret: str = Field(..., description="Slack signing secret for request verification")
-    channel_whitelist: List[str] = Field(default_factory=list, description="Channels the bot responds in (empty = all)")
+    channel_whitelist: list[str] = Field(default_factory=list, description="Channels the bot responds in (empty = all)")
 
     @field_validator('signing_secret')
     @classmethod
@@ -180,18 +181,18 @@ class WebConfig(BaseModel):
     port: int = Field(8081, ge=1, le=65535, description="Port to bind to")
     enable_websocket: bool = Field(True, description="Enable WebSocket support")
     enable_cors: bool = Field(False, description="Enable CORS")
-    cors_origins: List[str] = Field(default_factory=list, description="Allowed CORS origins")
-    ssl_cert: Optional[Path] = Field(None, description="Path to SSL certificate")
-    ssl_key: Optional[Path] = Field(None, description="Path to SSL key")
+    cors_origins: list[str] = Field(default_factory=list, description="Allowed CORS origins")
+    ssl_cert: Path | None = Field(None, description="Path to SSL certificate")
+    ssl_key: Path | None = Field(None, description="Path to SSL key")
 
     model_config = ConfigDict(extra='allow')
 
 
 class InterfacesConfig(BaseModel):
     """Configuration for all interfaces"""
-    telegram: Optional[TelegramConfig] = None
-    slack: Optional[SlackConfig] = None
-    web: Optional[WebConfig] = None
+    telegram: TelegramConfig | None = None
+    slack: SlackConfig | None = None
+    web: WebConfig | None = None
 
     model_config = ConfigDict(extra='allow')
 
@@ -208,12 +209,12 @@ class BackendsConfig(BaseModel):
 
 class ToolsConfig(BaseModel):
     """Tools configuration"""
-    enabled_categories: List[str] = Field(
+    enabled_categories: list[str] = Field(
         default_factory=lambda: ["system", "git", "data", "web"],
         description="Enabled tool categories"
     )
-    disabled_tools: List[str] = Field(default_factory=list, description="Specific tools to disable")
-    mcp_servers: Dict[str, Any] = Field(default_factory=dict, description="MCP server configurations")
+    disabled_tools: list[str] = Field(default_factory=list, description="Specific tools to disable")
+    mcp_servers: dict[str, Any] = Field(default_factory=dict, description="MCP server configurations")
     browser_headless: bool = Field(True, description="Run browser automation in headless mode")
 
     model_config = ConfigDict(extra='allow')
@@ -234,7 +235,7 @@ class LoggingConfig(BaseModel):
     """Logging configuration"""
     level: str = Field("INFO", description="Log level (DEBUG, INFO, WARNING, ERROR)")
     format: str = Field("json", description="Log format (json, text)")
-    output_file: Optional[Path] = Field(None, description="Log file path")
+    output_file: Path | None = Field(None, description="Log file path")
     enable_trace_ids: bool = Field(True, description="Enable trace IDs for request tracking")
     verbose: bool = Field(False, description="Enable verbose output (e.g., routing info in responses)")
 
@@ -267,7 +268,7 @@ class Settings(BaseSettings):
     """
 
     # Core configuration
-    models: Dict[str, ModelConfig] = Field(default_factory=dict, description="Model configurations")
+    models: dict[str, ModelConfig] = Field(default_factory=dict, description="Model configurations")
     backends: BackendsConfig = Field(default_factory=BackendsConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     interfaces: InterfacesConfig = Field(default_factory=InterfacesConfig)
@@ -331,7 +332,7 @@ class Settings(BaseSettings):
         if 'browser' in self.tools.enabled_categories:
             Path("screenshots").mkdir(exist_ok=True)
 
-    def validate_required_config(self) -> List[str]:
+    def validate_required_config(self) -> list[str]:
         """
         Validate that all required configuration is present.
 
@@ -374,7 +375,7 @@ class Settings(BaseSettings):
         }
 
 
-def load_settings(config_path: Optional[str | Path] = None) -> Settings:
+def load_settings(config_path: str | Path | None = None) -> Settings:
     """
     Load and validate application settings.
 
@@ -400,7 +401,7 @@ def load_settings(config_path: Optional[str | Path] = None) -> Settings:
     errors = settings.validate_required_config()
     if errors:
         raise ValueError(
-            f"Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
+            "Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
         )
 
     return settings

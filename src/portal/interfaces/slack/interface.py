@@ -19,11 +19,11 @@ Setup:
 
 import hashlib
 import hmac
-import time
 import logging
-from typing import AsyncIterator
+import time
+from collections.abc import AsyncIterator
 
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from slack_sdk.web.async_client import AsyncWebClient
 
 from portal.agent.dispatcher import CentralDispatcher

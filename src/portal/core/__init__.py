@@ -1,8 +1,8 @@
 """Core portal module — canonical public API."""
 
 from portal.core.agent_core import AgentCore, create_agent_core
-from portal.core.event_bus import EventBus, EventType
 from portal.core.event_broker import EventBroker, create_event_broker
+from portal.core.event_bus import EventBus, EventType
 from portal.core.exceptions import (
     AuthorizationError,
     ModelNotAvailableError,

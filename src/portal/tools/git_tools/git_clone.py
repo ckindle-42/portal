@@ -2,17 +2,15 @@
 Git Clone Tool - Clone repositories
 """
 
-import asyncio
 import logging
-from typing import Dict, Any
-from pathlib import Path
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolCategory, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
 try:
-    from git import Repo, GitCommandError
+    from git import GitCommandError, Repo
     GIT_AVAILABLE = True
 except ImportError:
     GIT_AVAILABLE = False
@@ -20,7 +18,7 @@ except ImportError:
 
 class GitCloneTool(BaseTool):
     """Clone Git repositories"""
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="git_clone",
@@ -54,18 +52,18 @@ class GitCloneTool(BaseTool):
                 )
             ]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute git clone"""
-        
+
         if not GIT_AVAILABLE:
             return self._error_response("GitPython not installed. Run: pip install GitPython")
-        
+
         url = parameters.get("url")
         destination = parameters.get("destination")
         branch = parameters.get("branch")
         depth = parameters.get("depth")
-        
+
         try:
             # Prepare clone arguments
             kwargs = {}
@@ -73,11 +71,11 @@ class GitCloneTool(BaseTool):
                 kwargs["branch"] = branch
             if depth:
                 kwargs["depth"] = depth
-            
+
             # Clone repository
             logger.info(f"Cloning {url}")
             repo = Repo.clone_from(url, destination or None, **kwargs)
-            
+
             return self._success_response(
                 result=f"Successfully cloned to {repo.working_dir}",
                 metadata={
@@ -87,7 +85,7 @@ class GitCloneTool(BaseTool):
                     "commit": repo.head.commit.hexsha[:8]
                 }
             )
-        
+
         except GitCommandError as e:
             return self._error_response(f"Git clone failed: {e}")
         except Exception as e:

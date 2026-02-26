@@ -1,5 +1,5 @@
 """
-Tests for intelligent router
+Tests for intelligent router and CentralDispatcher interface registry.
 """
 
 import pytest
@@ -82,6 +82,55 @@ class TestIntelligentRouter:
         # Complex query should use larger model
         complex_task = router.classifier.classify("Write a detailed analysis with code examples")
         assert complex_task.complexity.value in ["moderate", "complex", "expert"]
+
+
+class TestCentralDispatcher:
+    """Tests for the CentralDispatcher interface registry."""
+
+    def test_registered_interfaces_accessible(self):
+        """Interfaces decorated with @CentralDispatcher.register are retrievable."""
+        from portal.agent.dispatcher import CentralDispatcher
+
+        # web, telegram, and slack are registered at import time
+        import portal.interfaces.web.server  # noqa: F401 — trigger registration
+        import portal.interfaces.telegram.interface  # noqa: F401
+        import portal.interfaces.slack.interface  # noqa: F401
+
+        names = CentralDispatcher.registered_names()
+        assert "web" in names
+        assert "telegram" in names
+        assert "slack" in names
+
+    def test_get_known_interface_returns_class(self):
+        """CentralDispatcher.get() returns the registered class."""
+        import inspect
+
+        from portal.agent.dispatcher import CentralDispatcher
+        import portal.interfaces.web.server  # noqa: F401 — trigger registration
+
+        web_cls = CentralDispatcher.get("web")
+        assert inspect.isclass(web_cls)
+
+    def test_get_unknown_interface_raises(self):
+        """CentralDispatcher.get() raises UnknownInterfaceError for unknown names."""
+        from portal.agent.dispatcher import CentralDispatcher, UnknownInterfaceError
+
+        with pytest.raises(UnknownInterfaceError):
+            CentralDispatcher.get("__no_such_interface__")
+
+    def test_unknown_interface_error_message_contains_name(self):
+        """The error message includes the unknown interface name."""
+        from portal.agent.dispatcher import CentralDispatcher, UnknownInterfaceError
+
+        with pytest.raises(UnknownInterfaceError, match="__bogus__"):
+            CentralDispatcher.get("__bogus__")
+
+    def test_registered_names_sorted(self):
+        """registered_names() returns a sorted list."""
+        from portal.agent.dispatcher import CentralDispatcher
+
+        names = CentralDispatcher.registered_names()
+        assert names == sorted(names)
 
 
 if __name__ == "__main__":

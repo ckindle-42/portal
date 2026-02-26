@@ -22,12 +22,11 @@ Architecture:
 import asyncio
 import logging
 import uuid
-from typing import Dict, Any, Optional, Callable, Awaitable
 from abc import ABC, abstractmethod
-from datetime import datetime
+from typing import Any
 
-from portal.persistence.repositories import Job, JobStatus, JobRepository
 from portal.core.event_bus import EventBus, EventType
+from portal.persistence.repositories import Job, JobRepository, JobStatus
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +75,7 @@ class JobRegistry:
 
     def __init__(self):
         """Initialize job registry"""
-        self._handlers: Dict[str, JobHandler] = {}
+        self._handlers: dict[str, JobHandler] = {}
         logger.info("JobRegistry initialized")
 
     def register(self, job_type: str, handler: JobHandler):
@@ -84,11 +83,11 @@ class JobRegistry:
         self._handlers[job_type] = handler
         logger.info(f"Registered handler for job type: {job_type}")
 
-    def get_handler(self, job_type: str) -> Optional[JobHandler]:
+    def get_handler(self, job_type: str) -> JobHandler | None:
         """Get handler for job type"""
         return self._handlers.get(job_type)
 
-    def list_handlers(self) -> Dict[str, JobHandler]:
+    def list_handlers(self) -> dict[str, JobHandler]:
         """List all registered handlers"""
         return self._handlers.copy()
 
@@ -115,7 +114,7 @@ class JobWorker:
         worker_id: str,
         job_repository: JobRepository,
         job_registry: JobRegistry,
-        event_bus: Optional[EventBus] = None,
+        event_bus: EventBus | None = None,
         poll_interval: float = 1.0
     ):
         """
@@ -135,8 +134,8 @@ class JobWorker:
         self.poll_interval = poll_interval
 
         self._running = False
-        self._current_job: Optional[Job] = None
-        self._task: Optional[asyncio.Task] = None
+        self._current_job: Job | None = None
+        self._task: asyncio.Task | None = None
 
         logger.info(f"JobWorker {worker_id} initialized")
 
@@ -168,7 +167,7 @@ class JobWorker:
         if self._task:
             try:
                 await asyncio.wait_for(self._task, timeout=timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning(
                     f"Worker {self.worker_id} did not stop within {timeout}s, "
                     "cancelling task"
@@ -316,7 +315,7 @@ class JobWorker:
         finally:
             self._current_job = None
 
-    def get_current_job(self) -> Optional[Job]:
+    def get_current_job(self) -> Job | None:
         """Get currently processing job"""
         return self._current_job
 
@@ -341,7 +340,7 @@ class JobWorkerPool:
         self,
         job_repository: JobRepository,
         job_registry: JobRegistry,
-        event_bus: Optional[EventBus] = None,
+        event_bus: EventBus | None = None,
         num_workers: int = 4,
         poll_interval: float = 1.0
     ):
@@ -361,9 +360,9 @@ class JobWorkerPool:
         self.num_workers = num_workers
         self.poll_interval = poll_interval
 
-        self._workers: Dict[str, JobWorker] = {}
+        self._workers: dict[str, JobWorker] = {}
         self._running = False
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self._cleanup_task: asyncio.Task | None = None
 
         logger.info(f"JobWorkerPool initialized with {num_workers} workers")
 
@@ -454,7 +453,7 @@ class JobWorkerPool:
             except Exception as e:
                 logger.exception(f"Error in cleanup loop: {e}")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get worker pool statistics"""
         active_workers = sum(1 for w in self._workers.values() if w.is_running())
         busy_workers = sum(

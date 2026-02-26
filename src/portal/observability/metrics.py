@@ -29,22 +29,21 @@ app.add_route("/metrics", metrics.get_metrics_handler())
 """
 
 import logging
-from typing import Dict, Any, Optional
-from datetime import datetime
 import time
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Try to import Prometheus client
 try:
     from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        REGISTRY,
         Counter,
-        Histogram,
         Gauge,
+        Histogram,
         Info,
         generate_latest,
-        REGISTRY,
-        CONTENT_TYPE_LATEST
     )
 
     PROMETHEUS_AVAILABLE = True
@@ -72,7 +71,7 @@ class MetricsCollector:
             service_name: Name of the service
         """
         self.service_name = service_name
-        self._metrics: Dict[str, Any] = {}
+        self._metrics: dict[str, Any] = {}
 
         if not PROMETHEUS_AVAILABLE:
             logger.warning("Prometheus client not available, metrics disabled")

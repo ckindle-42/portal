@@ -15,34 +15,35 @@ All dependencies are injected via the constructor.
 
 import asyncio
 import logging
+import sys
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ChatAction
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 from portal.agent.dispatcher import CentralDispatcher
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    filters
-)
-from telegram.constants import ChatAction
-
 # Import types
-from portal.core.types import ProcessingResult, InterfaceType
+from portal.core.types import InterfaceType, ProcessingResult
 
 # Import confirmation middleware
-from portal.middleware import ToolConfirmationMiddleware, ConfirmationRequest
+from portal.middleware import ConfirmationRequest, ToolConfirmationMiddleware
 
 # Import security module
 from portal.security.security_module import RateLimiter
 
 if TYPE_CHECKING:
-    from portal.core import AgentCore
     from portal.config.settings import Settings
+    from portal.core import AgentCore
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +148,9 @@ class TelegramInterface:
         logger.info("Telegram Interface ready!")
         logger.info(f"  Bot token: {self.bot_token[:20]}...")
         logger.info(f"  Authorized users: {len(self.authorized_user_ids)}")
-        logger.info(f"  Dependency Injection: ✓")
+        logger.info("  Dependency Injection: ✓")
         logger.info("=" * 60)
-    
+
     # ========================================================================
     # AUTHORIZATION & SECURITY
     # ========================================================================
@@ -157,8 +158,8 @@ class TelegramInterface:
     def _is_authorized(self, update: Update) -> bool:
         """Check if user is authorized"""
         return update.effective_user.id in self.authorized_user_ids
-    
-    def _check_rate_limit(self, user_id: int) -> tuple[bool, Optional[str]]:
+
+    def _check_rate_limit(self, user_id: int) -> tuple[bool, str | None]:
         """Check rate limiting"""
         return self.rate_limiter.check_limit(user_id)
 
@@ -276,8 +277,8 @@ class TelegramInterface:
                     logger.info(f"Tool execution approved: {confirmation_id}")
                 else:
                     await query.edit_message_text(
-                        f"⚠️ **Confirmation Not Found**\n\n"
-                        f"The confirmation may have already been processed or expired.",
+                        "⚠️ **Confirmation Not Found**\n\n"
+                        "The confirmation may have already been processed or expired.",
                         parse_mode='Markdown'
                     )
 
@@ -298,12 +299,12 @@ class TelegramInterface:
                     logger.info(f"Tool execution denied: {confirmation_id}")
                 else:
                     await query.edit_message_text(
-                        f"⚠️ **Confirmation Not Found**\n\n"
-                        f"The confirmation may have already been processed or expired.",
+                        "⚠️ **Confirmation Not Found**\n\n"
+                        "The confirmation may have already been processed or expired.",
                         parse_mode='Markdown'
                     )
 
-        except ValueError as e:
+        except ValueError:
             logger.error(f"Invalid callback data: {callback_data}", exc_info=True)
             await query.edit_message_text("⚠️ Invalid callback data")
         except Exception as e:
@@ -313,13 +314,13 @@ class TelegramInterface:
     # ========================================================================
     # COMMAND HANDLERS
     # ========================================================================
-    
+
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
-        
+
         welcome = (
             "🤖 **Portal Agent v3.1**\n\n"
             "🧠 Unified core architecture\n"
@@ -332,15 +333,15 @@ class TelegramInterface:
             "• `/health` - System health\n\n"
             "Just send me a message to get started!"
         )
-        
+
         await update.message.reply_text(welcome, parse_mode='Markdown')
-    
+
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
-        
+
         help_text = (
             "**Available Commands:**\n\n"
             "• `/start` - Welcome message\n"
@@ -352,19 +353,19 @@ class TelegramInterface:
             "Just send me a message with your request. "
             "I'll automatically select the best model and tools to help you!"
         )
-        
+
         await update.message.reply_text(help_text, parse_mode='Markdown')
-    
+
     async def tools_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /tools command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
-        
+
         tools = self.agent_core.get_tool_list()
-        
+
         message = f"**Available Tools ({len(tools)}):**\n\n"
-        
+
         # Group by category
         by_category = {}
         for tool in tools:
@@ -372,22 +373,22 @@ class TelegramInterface:
             if cat not in by_category:
                 by_category[cat] = []
             by_category[cat].append(tool)
-        
+
         for category, cat_tools in sorted(by_category.items()):
             message += f"**{category.upper()}:**\n"
             for tool in cat_tools:
                 confirm = "🔒" if tool['requires_confirmation'] else ""
                 message += f"  • {confirm} {tool['name']}: {tool['description']}\n"
             message += "\n"
-        
+
         await update.message.reply_text(message, parse_mode='Markdown')
-    
+
     async def stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /stats command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
-        
+
         stats = await self.agent_core.get_stats()
 
         message = (
@@ -398,22 +399,22 @@ class TelegramInterface:
             f"• Uptime: {stats['uptime_seconds']:.0f}s\n\n"
             "**By Interface:**\n"
         )
-        
+
         for interface, count in stats['by_interface'].items():
             message += f"  • {interface}: {count}\n"
-        
+
         await update.message.reply_text(message, parse_mode='Markdown')
-    
+
     async def health_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /health command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
-        
+
         # Get stats
         stats = await self.agent_core.get_stats()
         tools = self.agent_core.get_tool_list()
-        
+
         health = (
             "**🏥 System Health:**\n\n"
             f"✅ Core: Running\n"
@@ -423,36 +424,36 @@ class TelegramInterface:
             f"✅ Uptime: {stats['uptime_seconds']:.0f}s\n\n"
             "All systems operational! 🚀"
         )
-        
+
         await update.message.reply_text(health, parse_mode='Markdown')
-    
+
     # ========================================================================
     # MESSAGE HANDLER
     # ========================================================================
-    
+
     async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle text messages - the main interaction"""
-        
+
         # Authorization check
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
-        
+
         # Rate limiting check
         user_id = update.effective_user.id
         allowed, error_msg = self._check_rate_limit(user_id)
         if not allowed:
             await update.message.reply_text(error_msg)
             return
-        
+
         message = update.message.text
         chat_id = f"telegram_{update.effective_chat.id}"
-        
+
         logger.info(f"Received message from user {user_id}: {message[:50]}...")
-        
+
         # Show typing indicator
         await update.message.chat.send_action(ChatAction.TYPING)
-        
+
         try:
             # Process with unified core
             result: ProcessingResult = await self.agent_core.process_message(
@@ -461,12 +462,12 @@ class TelegramInterface:
                 interface=InterfaceType.TELEGRAM,
                 user_context={'user_id': user_id},
             )
-            
+
             # Show warnings if any
             if result.warnings:
                 warning_text = "⚠️ Security warnings:\n" + "\n".join(result.warnings)
                 await update.message.reply_text(warning_text)
-            
+
             # Format response for Telegram
             response_text = result.response
 
@@ -484,7 +485,7 @@ class TelegramInterface:
                     footer += f" | Tools: {', '.join(result.tools_used)}"
                 footer += "_"
                 response_text += footer
-            
+
             # Send response (handle long messages)
             if len(response_text) > 4096:
                 # Split into chunks
@@ -493,17 +494,17 @@ class TelegramInterface:
                     await update.message.reply_text(chunk, parse_mode='Markdown')
             else:
                 await update.message.reply_text(response_text, parse_mode='Markdown')
-        
+
         except Exception as e:
             logger.error(f"Error handling message: {e}", exc_info=True)
             await update.message.reply_text(
                 f"⚠️ Error processing your request: {str(e)}"
             )
-    
+
     # ========================================================================
     # STARTUP & RUN
     # ========================================================================
-    
+
     def run(self):
         """Start the Telegram bot"""
 
@@ -553,12 +554,12 @@ class TelegramInterface:
 
 def main():
     """Main entry point"""
-    
+
     # Ensure required directories exist
     Path("logs").mkdir(exist_ok=True)
     Path("screenshots").mkdir(exist_ok=True)
     Path("browser_data").mkdir(exist_ok=True)
-    
+
     # Create and run interface
     interface = TelegramInterface()
     interface.run()

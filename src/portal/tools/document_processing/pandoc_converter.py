@@ -17,12 +17,10 @@ Install: brew install pandoc
 import asyncio
 import logging
 import subprocess
-from typing import Dict, Any, List, Optional
 from pathlib import Path
-import tempfile
-import json
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +43,7 @@ class PandocConverterTool(BaseTool):
     
     The Swiss Army knife of document conversion - handles 40+ formats!
     """
-    
+
     # Supported formats
     SUPPORTED_FORMATS = {
         # Input and output
@@ -69,17 +67,17 @@ class PandocConverterTool(BaseTool):
         "pptx": ["pptx"],  # PowerPoint
         "xlsx": ["xlsx"],  # Excel (limited support)
     }
-    
+
     def __init__(self):
         super().__init__()
-        
+
         # Template directory
         self.template_dir = Path.home() / ".telegram_agent" / "pandoc_templates"
         self.template_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Default templates
         self._install_default_templates()
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="pandoc_convert",
@@ -147,10 +145,10 @@ class PandocConverterTool(BaseTool):
                 )
             ]
         )
-    
+
     def _install_default_templates(self):
         """Install default Pandoc templates"""
-        
+
         # Simple HTML template
         html_template = """<!DOCTYPE html>
 <html>
@@ -193,21 +191,21 @@ $body$
 </body>
 </html>
 """
-        
+
         html_template_path = self.template_dir / "default.html"
         if not html_template_path.exists():
             html_template_path.write_text(html_template)
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute document conversion"""
-        
+
         if not PANDOC_AVAILABLE:
             return self._error_response(
                 "Pandoc not installed. Install:\n"
                 "macOS: brew install pandoc\n"
                 "Linux: sudo apt install pandoc"
             )
-        
+
         input_file = Path(parameters.get("input_file", "")).expanduser()
         output_file = Path(parameters.get("output_file", "")).expanduser()
         from_format = parameters.get("from_format")
@@ -217,22 +215,22 @@ $body$
         toc = parameters.get("toc", False)
         standalone = parameters.get("standalone", True)
         pdf_engine = parameters.get("pdf_engine", "pdflatex")
-        
+
         # Validate input
         if not input_file.exists():
             return self._error_response(f"Input file not found: {input_file}")
-        
+
         # Auto-detect formats from extensions
         if not from_format:
             from_format = self._detect_format(input_file.suffix[1:])
         if not to_format:
             to_format = self._detect_format(output_file.suffix[1:])
-        
+
         if not from_format or not to_format:
             return self._error_response(
-                f"Could not determine format. Specify from_format and to_format explicitly."
+                "Could not determine format. Specify from_format and to_format explicitly."
             )
-        
+
         # Build Pandoc command
         try:
             cmd = await self._build_pandoc_command(
@@ -246,29 +244,29 @@ $body$
                 standalone=standalone,
                 pdf_engine=pdf_engine
             )
-            
+
             # Execute conversion
             logger.info(f"Converting {input_file} ({from_format}) → {output_file} ({to_format})")
             logger.debug(f"Command: {' '.join(cmd)}")
-            
+
             result = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            
+
             stdout, stderr = await result.communicate()
-            
+
             if result.returncode != 0:
                 error_msg = stderr.decode('utf-8', errors='replace')
                 return self._error_response(f"Pandoc conversion failed:\n{error_msg}")
-            
+
             # Verify output
             if not output_file.exists():
                 return self._error_response("Conversion completed but output file not found")
-            
+
             output_size = output_file.stat().st_size
-            
+
             return self._success_response(
                 result={
                     "output_file": str(output_file),
@@ -282,66 +280,66 @@ $body$
                     "toc_included": toc
                 }
             )
-        
+
         except Exception as e:
             logger.error(f"Pandoc conversion error: {e}")
             return self._error_response(f"Conversion error: {e}")
-    
+
     async def _build_pandoc_command(
         self,
         input_file: Path,
         output_file: Path,
         from_format: str,
         to_format: str,
-        template: Optional[str],
-        metadata: Dict[str, str],
+        template: str | None,
+        metadata: dict[str, str],
         toc: bool,
         standalone: bool,
         pdf_engine: str
-    ) -> List[str]:
+    ) -> list[str]:
         """Build Pandoc command with all options"""
-        
+
         cmd = ["pandoc"]
-        
+
         # Input/output
         cmd.extend([str(input_file), "-o", str(output_file)])
-        
+
         # Formats
         cmd.extend(["-f", from_format, "-t", to_format])
-        
+
         # Standalone document
         if standalone:
             cmd.append("--standalone")
-        
+
         # Table of contents
         if toc:
             cmd.append("--toc")
-        
+
         # Template
         if template:
             template_path = self.template_dir / f"{template}.{to_format}"
             if template_path.exists():
                 cmd.extend(["--template", str(template_path)])
-        
+
         # Metadata
         for key, value in metadata.items():
             cmd.extend(["-M", f"{key}={value}"])
-        
+
         # PDF-specific options
         if to_format == "pdf":
             cmd.extend(["--pdf-engine", pdf_engine])
-        
+
         return cmd
-    
-    def _detect_format(self, extension: str) -> Optional[str]:
+
+    def _detect_format(self, extension: str) -> str | None:
         """Detect Pandoc format from file extension"""
-        
+
         extension = extension.lower().lstrip('.')
-        
+
         for format_name, extensions in self.SUPPORTED_FORMATS.items():
             if extension in extensions:
                 return format_name
-        
+
         return None
 
 
@@ -351,13 +349,13 @@ $body$
 
 async def example_conversions():
     """Example document conversions"""
-    
+
     tool = PandocConverterTool()
-    
+
     print("=" * 60)
     print("Pandoc Document Converter - Examples")
     print("=" * 60)
-    
+
     # Example 1: Markdown to PDF
     print("\n1. Markdown → PDF")
     result = await tool.execute({
@@ -372,7 +370,7 @@ async def example_conversions():
         "pdf_engine": "pdflatex"
     })
     print(f"Result: {result}")
-    
+
     # Example 2: Markdown to DOCX
     print("\n2. Markdown → Word")
     result = await tool.execute({
@@ -381,7 +379,7 @@ async def example_conversions():
         "toc": True
     })
     print(f"Result: {result}")
-    
+
     # Example 3: HTML to Markdown
     print("\n3. HTML → Markdown")
     result = await tool.execute({
@@ -389,7 +387,7 @@ async def example_conversions():
         "output_file": "page.md"
     })
     print(f"Result: {result}")
-    
+
     # Example 4: Jupyter Notebook to HTML
     print("\n4. Jupyter Notebook → HTML")
     result = await tool.execute({

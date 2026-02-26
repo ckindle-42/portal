@@ -27,17 +27,16 @@ Performance:
 """
 
 import asyncio
-import json
 import logging
+import sys
 import tempfile
 import uuid
-from pathlib import Path
-from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
-import sys
+from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from base_tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from base_tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -53,32 +52,32 @@ except ImportError:
 @dataclass
 class SandboxConfig:
     """Configuration for sandbox execution"""
-    
+
     # Resource limits
     memory_limit: str = "256m"  # Memory limit
     cpu_quota: int = 50000  # CPU quota (50% of one core)
     timeout_seconds: int = 30  # Execution timeout
-    
+
     # Network
     network_disabled: bool = True  # Disable network access
-    
+
     # Filesystem
     read_only: bool = False  # Make filesystem read-only
     tmpfs_size: str = "100m"  # Size of /tmp
-    
+
     # Security
-    drop_capabilities: List[str] = None  # Capabilities to drop
+    drop_capabilities: list[str] = None  # Capabilities to drop
     no_new_privileges: bool = True  # Prevent privilege escalation
-    
+
     # Python environment
     python_version: str = "3.11"  # Python version
-    packages: List[str] = None  # Pre-installed packages
-    
+    packages: list[str] = None  # Pre-installed packages
+
     def __post_init__(self):
         if self.drop_capabilities is None:
             # Drop all capabilities for maximum security
             self.drop_capabilities = ["ALL"]
-        
+
         if self.packages is None:
             # Default packages
             self.packages = [
@@ -95,17 +94,17 @@ class DockerPythonSandbox:
     
     Creates ephemeral containers that execute code and are destroyed immediately.
     """
-    
-    def __init__(self, config: Optional[SandboxConfig] = None):
+
+    def __init__(self, config: SandboxConfig | None = None):
         """Initialize sandbox"""
-        
+
         if not DOCKER_AVAILABLE:
             raise RuntimeError("Docker package not installed: pip install docker")
-        
+
         self.config = config or SandboxConfig()
         self.docker_client = None
         self.image_name = f"python-sandbox:{self.config.python_version}"
-        
+
         # Initialize Docker client
         try:
             self.docker_client = docker.from_env()
@@ -113,25 +112,25 @@ class DockerPythonSandbox:
         except Exception as e:
             logger.error(f"Failed to initialize Docker client: {e}")
             raise RuntimeError(f"Docker not available: {e}")
-        
+
         # Check/build sandbox image
         self._ensure_image()
-    
+
     def _ensure_image(self):
         """Ensure sandbox Docker image exists"""
-        
+
         try:
             # Check if image exists
             self.docker_client.images.get(self.image_name)
             logger.info(f"✅ Sandbox image exists: {self.image_name}")
-        
+
         except docker.errors.ImageNotFound:
             logger.info(f"🔨 Building sandbox image: {self.image_name}")
             self._build_image()
-    
+
     def _build_image(self):
         """Build sandbox Docker image"""
-        
+
         # Create Dockerfile
         dockerfile_content = f"""
 FROM python:{self.config.python_version}-slim
@@ -153,13 +152,13 @@ USER sandbox
 # Default command
 CMD ["python3"]
 """
-        
+
         # Build image
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
                 dockerfile_path = Path(tmpdir) / "Dockerfile"
                 dockerfile_path.write_text(dockerfile_content)
-                
+
                 logger.info("Building Docker image...")
                 self.docker_client.images.build(
                     path=str(tmpdir),
@@ -168,16 +167,16 @@ CMD ["python3"]
                     forcerm=True
                 )
                 logger.info(f"✅ Image built: {self.image_name}")
-        
+
         except Exception as e:
             logger.error(f"Failed to build image: {e}")
             raise
-    
+
     async def execute_code(
         self,
         code: str,
-        timeout: Optional[int] = None
-    ) -> Dict[str, Any]:
+        timeout: int | None = None
+    ) -> dict[str, Any]:
         """
         Execute Python code in sandbox
         
@@ -195,14 +194,14 @@ CMD ["python3"]
                 'container_id': str
             }
         """
-        
+
         import time
         start_time = time.time()
-        
+
         timeout = timeout or self.config.timeout_seconds
         container_id = str(uuid.uuid4())[:8]
         container = None
-        
+
         try:
             # Create container config
             container_config = {
@@ -211,27 +210,27 @@ CMD ["python3"]
                 'name': f'sandbox_{container_id}',
                 'detach': True,
                 'auto_remove': True,  # Auto-cleanup
-                
+
                 # Resource limits
                 'mem_limit': self.config.memory_limit,
                 'cpu_quota': self.config.cpu_quota,
-                
+
                 # Security options
                 'security_opt': ['no-new-privileges'] if self.config.no_new_privileges else [],
                 'cap_drop': self.config.drop_capabilities,
                 'read_only': self.config.read_only,
-                
+
                 # Filesystem
                 'tmpfs': {'/tmp': f'size={self.config.tmpfs_size}'},
             }
-            
+
             # Disable network if configured
             if self.config.network_disabled:
                 container_config['network_mode'] = 'none'
-            
+
             # Create and start container
             container = self.docker_client.containers.run(**container_config)
-            
+
             # Wait for completion with timeout
             try:
                 result = container.wait(timeout=timeout)
@@ -241,17 +240,17 @@ CMD ["python3"]
                 logger.warning(f"Container execution timeout or error: {e}")
                 container.kill()
                 exit_code = -1
-            
+
             # Get logs
             logs = container.logs()
             output = logs.decode('utf-8', errors='replace')
-            
+
             # Split stdout/stderr (simplified)
             stdout = output
             stderr = ""
-            
+
             execution_time = time.time() - start_time
-            
+
             return {
                 'success': exit_code == 0,
                 'stdout': stdout,
@@ -260,7 +259,7 @@ CMD ["python3"]
                 'execution_time': execution_time,
                 'container_id': container_id
             }
-        
+
         except Exception as e:
             logger.error(f"Sandbox execution error: {e}")
             return {
@@ -271,7 +270,7 @@ CMD ["python3"]
                 'execution_time': time.time() - start_time,
                 'container_id': container_id
             }
-        
+
         finally:
             # Cleanup (container auto-removes, but be safe)
             if container:
@@ -279,14 +278,14 @@ CMD ["python3"]
                     container.remove(force=True)
                 except Exception:
                     pass
-    
+
     async def execute_script(
         self,
         script_path: str,
-        timeout: Optional[int] = None
-    ) -> Dict[str, Any]:
+        timeout: int | None = None
+    ) -> dict[str, Any]:
         """Execute Python script from file"""
-        
+
         try:
             script_content = Path(script_path).read_text()
             return await self.execute_code(script_content, timeout)
@@ -299,7 +298,7 @@ CMD ["python3"]
                 'execution_time': 0,
                 'container_id': 'N/A'
             }
-    
+
     def cleanup(self):
         """Cleanup resources"""
         if self.docker_client:
@@ -316,23 +315,23 @@ class DockerPythonExecutionTool(BaseTool):
     
     Replaces direct subprocess execution with secure Docker container.
     """
-    
-    _sandbox: Optional[DockerPythonSandbox] = None
-    
+
+    _sandbox: DockerPythonSandbox | None = None
+
     def __init__(self):
         super().__init__()
-        
+
         # Initialize sandbox (shared across tool instances)
         if DockerPythonExecutionTool._sandbox is None:
             if not DOCKER_AVAILABLE:
                 logger.error("Docker not available - install with: pip install docker")
                 return
-            
+
             try:
                 DockerPythonExecutionTool._sandbox = DockerPythonSandbox()
             except Exception as e:
                 logger.error(f"Failed to initialize sandbox: {e}")
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="python_sandbox",
@@ -356,27 +355,27 @@ class DockerPythonExecutionTool(BaseTool):
                 )
             ]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute code in sandbox"""
-        
+
         if not DOCKER_AVAILABLE or not DockerPythonExecutionTool._sandbox:
             return self._error_response(
                 "Docker sandbox not available. Install: pip install docker"
             )
-        
+
         code = parameters.get("code")
         timeout = parameters.get("timeout", 30)
-        
+
         if not code:
             return self._error_response("No code provided")
-        
+
         # Execute in sandbox
         result = await DockerPythonExecutionTool._sandbox.execute_code(
             code=code,
             timeout=timeout
         )
-        
+
         if result['success']:
             return self._success_response(
                 result={
@@ -405,7 +404,7 @@ class DockerPythonExecutionTool(BaseTool):
 
 class DockerfileGenerator:
     """Generate custom Dockerfiles for different use cases"""
-    
+
     @staticmethod
     def generate_minimal() -> str:
         """Minimal Python sandbox"""
@@ -416,7 +415,7 @@ USER sandbox
 WORKDIR /sandbox
 CMD ["python3"]
 """
-    
+
     @staticmethod
     def generate_data_science() -> str:
         """Data science environment"""
@@ -428,7 +427,7 @@ USER sandbox
 WORKDIR /sandbox
 CMD ["python3"]
 """
-    
+
     @staticmethod
     def generate_web() -> str:
         """Web scraping/API environment"""
@@ -440,7 +439,7 @@ USER sandbox
 WORKDIR /sandbox
 CMD ["python3"]
 """
-    
+
     @staticmethod
     def save_dockerfile(content: str, path: str):
         """Save Dockerfile to disk"""
@@ -453,25 +452,25 @@ CMD ["python3"]
 
 async def example_usage():
     """Example usage of Docker sandbox"""
-    
+
     print("=" * 60)
     print("Docker Python Sandbox - Examples")
     print("=" * 60)
-    
+
     # Initialize sandbox
     sandbox = DockerPythonSandbox()
-    
+
     # Example 1: Simple calculation
     print("\n1. Simple Calculation:")
     result = await sandbox.execute_code("""
 print("Hello from Docker!")
 print(f"2 + 2 = {2 + 2}")
 """)
-    
+
     print(f"Success: {result['success']}")
     print(f"Output: {result['stdout']}")
     print(f"Time: {result['execution_time']:.2f}s")
-    
+
     # Example 2: Using numpy
     print("\n2. Using NumPy:")
     result = await sandbox.execute_code("""
@@ -480,10 +479,10 @@ arr = np.array([1, 2, 3, 4, 5])
 print(f"Mean: {arr.mean()}")
 print(f"Sum: {arr.sum()}")
 """)
-    
+
     print(f"Success: {result['success']}")
     print(f"Output: {result['stdout']}")
-    
+
     # Example 3: Network test (should fail)
     print("\n3. Network Test (should fail):")
     result = await sandbox.execute_code("""
@@ -494,9 +493,9 @@ try:
 except Exception as e:
     print(f"Network access: DISABLED ({e})")
 """)
-    
+
     print(f"Output: {result['stdout']}")
-    
+
     # Example 4: Filesystem test
     print("\n4. Filesystem Test:")
     result = await sandbox.execute_code("""
@@ -505,9 +504,9 @@ print(f"Current dir: {os.getcwd()}")
 print(f"Can write to /tmp: {os.access('/tmp', os.W_OK)}")
 print(f"Can write to /: {os.access('/', os.W_OK)}")
 """)
-    
+
     print(f"Output: {result['stdout']}")
-    
+
     # Cleanup
     sandbox.cleanup()
     print("\n✅ Examples complete!")
@@ -546,6 +545,6 @@ if __name__ == "__main__":
         print("✅ Docker package available")
         print("\nRun examples:")
         print("  python docker_sandbox.py")
-        
+
         # Run examples
         asyncio.run(example_usage())

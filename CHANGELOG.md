@@ -24,6 +24,82 @@ To cut a release:
 
 ---
 
+## [1.1.0] - 2026-02-26
+
+### Phase 7 — Modernisation: security hardening, structural cleanup, and resilience
+
+This release completes a comprehensive 7-phase modernisation of the portal
+codebase, bringing it to production-grade quality.
+
+#### Security
+
+- **Timing-attack fix** — API key comparison in `WebInterface` now uses
+  `hmac.compare_digest` to prevent key enumeration via response-time analysis.
+- **Guarded Redis import** in `HITLApprovalMiddleware` — missing `redis`
+  package raises `RuntimeError` with install instructions instead of crashing
+  at import time.
+- **WebSocket API-key guard** also uses `hmac.compare_digest`.
+
+#### Architecture
+
+- **`CentralDispatcher`** — new `src/portal/agent/dispatcher.py` provides a
+  dictionary-based interface registry (`@CentralDispatcher.register("web")`).
+  `WebInterface`, `TelegramInterface`, and `SlackInterface` are registered at
+  import time.  `CentralDispatcher.get(name)` raises `UnknownInterfaceError`
+  for unknown names.
+- **`BaseHTTPBackend`** extracted to `src/portal/routing/model_backends.py` —
+  `OllamaBackend` and `LMStudioBackend` now inherit shared session management
+  (`_get_session`, `close`), eliminating duplication.
+- **`portal.core` canonical API** — `src/portal/core/__init__.py` now exports
+  all public symbols (`AgentCore`, `EventBus`, exception types, message types,
+  …) from a single import path.
+- **`AgentCore._resolve_preflight_tools()`** — preflight MCP tool loop
+  extracted from `stream_response` into its own method for clarity and
+  testability.
+
+#### Resilience
+
+- **MCPRegistry retry transport** — `httpx.AsyncHTTPTransport(retries=3)` with
+  exponential backoff (`_RETRY_DELAYS = (1.0, 2.0, 4.0)`) for all MCP HTTP
+  requests.
+- **Dynamic Ollama model discovery** — `ModelRegistry.discover_from_ollama()`
+  queries `/api/tags` and auto-registers new models with sensible defaults.
+- **ConfigWatcher** started as an asyncio task during lifecycle startup.
+- **Async lifespan** on `WebInterface` — FastAPI now uses an
+  `asynccontextmanager` lifespan so startup is non-blocking; `/health` returns
+  `{"status": "warming_up"}` until the warmup task completes.
+
+#### Dead code removed (~3 000 lines)
+
+`secrets.py`, `validator.py`, `response_formatter.py`, `cost_tracker.py`,
+`sqlite_rate_limiter.py`, `resource_resolver.py`, `settings_schema.py`,
+`src/portal/utils/` stub directory, `src/portal/core/registries/` duplicate
+hierarchy, three dummy methods from `WebInterface`, and the now-obsolete
+`tests/tests/e2e/test_mcp_protocol.py`.
+
+#### Test structure
+
+- `tests/tests/` nested hierarchy flattened to `tests/unit/`, `tests/e2e/`,
+  `tests/integration/`, `tests/unit/tools/`.
+- Registered `e2e` and `integration` pytest markers; both are excluded from
+  the default `pytest tests/` run (require external services).
+- New unit tests: `test_hitl_import_guard`, `test_dynamic_model_registry`,
+  `test_core_init_exports`, `test_mcp_registry`, plus `CentralDispatcher` /
+  `UnknownInterfaceError` cases in `test_router`.
+- Fixed broken imports and async/sync mismatches in `test_data_integrity`.
+
+#### Documentation & environment
+
+- `docs/ARCHITECTURE.md` updated to v1.1.0 with new sections for
+  `CentralDispatcher`, `BaseHTTPBackend`, `discover_from_ollama`, retry
+  transport, HITLApprovalMiddleware, and the updated startup sequence.
+- `.env.example` sets `SANDBOX_ENABLED=false`, documents `MCP_API_KEY`, and
+  adds `PORTAL_BOOTSTRAP_API_KEY` with generation instructions.
+- `KNOWN_ISSUES.md` section 3 documents M4 Mac memory pressure for MLX models
+  above q8_0 quantisation.
+
+---
+
 ## [1.0.3] - 2026-02-25
 
 ### Phase 2 — MCP tool dispatch, security hardening, CI, docs

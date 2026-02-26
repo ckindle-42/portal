@@ -1,11 +1,12 @@
 """
 Portal CLI — portal up | down | doctor | logs
 """
-import click
 import socket
 import subprocess
 import sys
 from pathlib import Path
+
+import click
 
 
 def _check_ports_available(ports: list[tuple[int, str]]) -> list[str]:
@@ -96,6 +97,7 @@ def down():
 def doctor():
     """Health check all Portal components."""
     import asyncio
+
     from portal.observability.health import run_health_check
     asyncio.run(run_health_check())
 

@@ -1,17 +1,17 @@
 """File Compressor Tool - Archive handling"""
 
 import os
-import zipfile
 import tarfile
+import zipfile
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 
 class FileCompressorTool(BaseTool):
     """Compress and decompress files/archives"""
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="file_compressor",
@@ -48,32 +48,32 @@ class FileCompressorTool(BaseTool):
             ],
             examples=["Compress files to backup.zip"]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Compress or extract files"""
         try:
             action = parameters.get("action", "").lower()
             archive_path = parameters.get("archive_path", "")
             fmt = parameters.get("format", "zip").lower()
-            
+
             if action == "compress":
                 files = parameters.get("files", [])
                 if not files:
                     return self._error_response("No files to compress")
                 return await self._compress(files, archive_path, fmt)
-            
+
             elif action == "extract":
                 if not os.path.exists(archive_path):
                     return self._error_response(f"Archive not found: {archive_path}")
                 return await self._extract(archive_path)
-            
+
             else:
                 return self._error_response(f"Unknown action: {action}")
-        
+
         except Exception as e:
             return self._error_response(str(e))
-    
-    async def _compress(self, files: List[str], archive_path: str, fmt: str) -> Dict[str, Any]:
+
+    async def _compress(self, files: list[str], archive_path: str, fmt: str) -> dict[str, Any]:
         """Compress files"""
         if fmt == "zip":
             with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -88,21 +88,21 @@ class FileCompressorTool(BaseTool):
                         tf.add(file_path, arcname=os.path.basename(file_path))
         else:
             return self._error_response(f"Unsupported format: {fmt}")
-        
+
         size = os.path.getsize(archive_path)
         return self._success_response({
             "message": f"Created archive: {archive_path}",
             "size_bytes": size,
             "files_added": len(files)
         })
-    
-    async def _extract(self, archive_path: str) -> Dict[str, Any]:
+
+    async def _extract(self, archive_path: str) -> dict[str, Any]:
         """Extract archive"""
         output_dir = Path(archive_path).stem + "_extracted"
         os.makedirs(output_dir, exist_ok=True)
-        
+
         extracted = []
-        
+
         if archive_path.endswith('.zip'):
             with zipfile.ZipFile(archive_path, 'r') as zf:
                 zf.extractall(output_dir)
@@ -113,7 +113,7 @@ class FileCompressorTool(BaseTool):
                 extracted = tf.getnames()
         else:
             return self._error_response("Unsupported archive format")
-        
+
         return self._success_response({
             "message": f"Extracted to: {output_dir}",
             "files_extracted": len(extracted),

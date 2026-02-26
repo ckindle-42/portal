@@ -2,18 +2,16 @@
 Git Log Tool - View commit history
 """
 
-import asyncio
 import logging
-from typing import Dict, Any
-from pathlib import Path
 from datetime import datetime
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolCategory, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
 try:
-    from git import Repo, GitCommandError, InvalidGitRepositoryError
+    from git import GitCommandError, InvalidGitRepositoryError, Repo
     GIT_AVAILABLE = True
 except ImportError:
     GIT_AVAILABLE = False
@@ -62,7 +60,7 @@ class GitLogTool(BaseTool):
             ]
         )
 
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute git log"""
 
         if not GIT_AVAILABLE:

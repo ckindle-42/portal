@@ -21,10 +21,11 @@ Features:
 import asyncio
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, Callable, Awaitable
 from enum import Enum
+from typing import Any
 
 from portal.core.event_bus import EventBus, EventType
 
@@ -45,13 +46,13 @@ class ConfirmationRequest:
     """Represents a pending tool execution confirmation request"""
     confirmation_id: str
     tool_name: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     chat_id: str
-    user_id: Optional[str]
+    user_id: str | None
     status: ConfirmationStatus
     requested_at: datetime
     timeout_seconds: int
-    trace_id: Optional[str] = None
+    trace_id: str | None = None
 
     # Async primitives for waiting
     response_event: asyncio.Event = None
@@ -65,7 +66,7 @@ class ConfirmationRequest:
         expiry_time = self.requested_at + timedelta(seconds=self.timeout_seconds)
         return datetime.now() > expiry_time
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             'confirmation_id': self.confirmation_id,
@@ -130,7 +131,7 @@ class ToolConfirmationMiddleware:
         self.cleanup_interval = cleanup_interval
 
         # Pending confirmations
-        self._pending: Dict[str, ConfirmationRequest] = {}
+        self._pending: dict[str, ConfirmationRequest] = {}
 
         # Cleanup task
         self._cleanup_task = None
@@ -176,11 +177,11 @@ class ToolConfirmationMiddleware:
     async def request_confirmation(
         self,
         tool_name: str,
-        parameters: Dict[str, Any],
+        parameters: dict[str, Any],
         chat_id: str,
-        user_id: Optional[str] = None,
-        timeout: Optional[int] = None,
-        trace_id: Optional[str] = None
+        user_id: str | None = None,
+        timeout: int | None = None,
+        trace_id: str | None = None
     ) -> bool:
         """
         Request confirmation for tool execution
@@ -261,7 +262,7 @@ class ToolConfirmationMiddleware:
                 request.response_event.wait(),
                 timeout=timeout
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 f"Confirmation timeout for tool: {tool_name}",
                 extra={'confirmation_id': confirmation_id}
@@ -283,7 +284,7 @@ class ToolConfirmationMiddleware:
 
         return approved
 
-    def approve(self, confirmation_id: str, approver_id: Optional[str] = None) -> bool:
+    def approve(self, confirmation_id: str, approver_id: str | None = None) -> bool:
         """
         Approve a pending confirmation request
 
@@ -322,7 +323,7 @@ class ToolConfirmationMiddleware:
         request.response_event.set()
         return True
 
-    def deny(self, confirmation_id: str, denier_id: Optional[str] = None) -> bool:
+    def deny(self, confirmation_id: str, denier_id: str | None = None) -> bool:
         """
         Deny a pending confirmation request
 
@@ -355,7 +356,7 @@ class ToolConfirmationMiddleware:
         request.response_event.set()
         return True
 
-    def get_pending_confirmations(self, chat_id: Optional[str] = None) -> list[ConfirmationRequest]:
+    def get_pending_confirmations(self, chat_id: str | None = None) -> list[ConfirmationRequest]:
         """
         Get all pending confirmation requests
 
@@ -407,7 +408,7 @@ class ToolConfirmationMiddleware:
         if expired:
             logger.info(f"Cleaned up {len(expired)} expired confirmations")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get middleware statistics"""
         pending_count = sum(
             1 for r in self._pending.values()

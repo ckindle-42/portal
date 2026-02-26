@@ -7,9 +7,8 @@ Supports composable prompt templates.
 """
 
 import logging
-from pathlib import Path
-from typing import Dict, Optional, List
 from datetime import datetime
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ class PromptManager:
     - Cacheable: Reduce file I/O with smart caching
     """
 
-    def __init__(self, prompts_dir: Optional[Path] = None, cache_ttl_seconds: int = 300):
+    def __init__(self, prompts_dir: Path | None = None, cache_ttl_seconds: int = 300):
         """
         Initialize prompt manager
 
@@ -42,7 +41,7 @@ class PromptManager:
         self.cache_ttl_seconds = cache_ttl_seconds
 
         # Cache: {template_name: (timestamp, content)}
-        self._cache: Dict[str, tuple[float, str]] = {}
+        self._cache: dict[str, tuple[float, str]] = {}
 
         logger.info(f"PromptManager initialized: {self.prompts_dir}")
 
@@ -70,7 +69,7 @@ class PromptManager:
         template_path = self.prompts_dir / f"{template_name}.md"
 
         try:
-            with open(template_path, 'r', encoding='utf-8') as f:
+            with open(template_path, encoding='utf-8') as f:
                 content = f.read()
 
             # Update cache
@@ -89,7 +88,7 @@ class PromptManager:
     def build_system_prompt(
         self,
         interface: str = "unknown",
-        user_preferences: Optional[Dict] = None
+        user_preferences: dict | None = None
     ) -> str:
         """
         Build a complete system prompt
@@ -148,7 +147,7 @@ class PromptManager:
         """
         return self.load_template(template_name, use_cache=False)
 
-    def list_templates(self) -> List[str]:
+    def list_templates(self) -> list[str]:
         """List all available templates"""
         if not self.prompts_dir.exists():
             return []
@@ -162,7 +161,7 @@ class PromptManager:
 
         return sorted(templates)
 
-    def get_cache_stats(self) -> Dict[str, int]:
+    def get_cache_stats(self) -> dict[str, int]:
         """Get cache statistics"""
         current_time = datetime.now().timestamp()
         valid_entries = sum(
@@ -182,7 +181,7 @@ class PromptManager:
 # =============================================================================
 
 # Singleton instance for easy access
-_prompt_manager: Optional[PromptManager] = None
+_prompt_manager: PromptManager | None = None
 
 
 def get_prompt_manager() -> PromptManager:

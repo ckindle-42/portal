@@ -11,7 +11,6 @@ Supports two transports:
 
 import asyncio
 import logging
-from typing import Optional
 
 import httpx
 
@@ -56,7 +55,7 @@ class MCPRegistry:
         name: str,
         url: str,
         transport: str = "openapi",  # openapi | streamable-http
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
     ) -> None:
         """Register an MCP server endpoint."""
         self._servers[name] = {

@@ -8,7 +8,8 @@ decorator, eliminating hard-coded switch statements.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, Type
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +33,13 @@ class CentralDispatcher:
         interface = iface_cls(agent_core, config)
     """
 
-    _registry: Dict[str, Type[Any]] = {}
+    _registry: dict[str, type[Any]] = {}
 
     @classmethod
-    def register(cls, name: str) -> Callable[[Type[Any]], Type[Any]]:
+    def register(cls, name: str) -> Callable[[type[Any]], type[Any]]:
         """Decorator: register *interface_cls* under *name*."""
 
-        def decorator(interface_cls: Type[Any]) -> Type[Any]:
+        def decorator(interface_cls: type[Any]) -> type[Any]:
             cls._registry[name] = interface_cls
             logger.debug("Registered interface %r → %s", name, interface_cls.__qualname__)
             return interface_cls
@@ -46,7 +47,7 @@ class CentralDispatcher:
         return decorator
 
     @classmethod
-    def get(cls, name: str) -> Type[Any]:
+    def get(cls, name: str) -> type[Any]:
         """Return the interface class registered under *name*.
 
         Raises:

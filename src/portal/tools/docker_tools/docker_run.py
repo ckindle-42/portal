@@ -4,10 +4,9 @@ Docker Run Tool - Run containers
 
 import asyncio
 import logging
-from typing import Dict, Any
-from pathlib import Path
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolCategory, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +76,7 @@ class DockerRunTool(BaseTool):
             ]
         )
 
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Run a container"""
 
         if not DOCKER_AVAILABLE:

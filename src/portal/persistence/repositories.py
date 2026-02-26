@@ -7,9 +7,9 @@ Implementations can use any backend (SQLite, PostgreSQL, Redis, etc.).
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 
 @dataclass
@@ -17,18 +17,18 @@ class Message:
     """Represents a conversation message"""
     role: str
     content: str
-    timestamp: Optional[datetime] = None
-    metadata: Optional[Dict[str, Any]] = None
+    timestamp: datetime | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
 class Conversation:
     """Represents a conversation thread"""
     chat_id: str
-    messages: List[Message]
+    messages: list[Message]
     created_at: datetime
     updated_at: datetime
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -36,9 +36,9 @@ class Document:
     """Represents a knowledge base document"""
     id: str
     content: str
-    embedding: Optional[List[float]] = None
-    metadata: Optional[Dict[str, Any]] = None
-    created_at: Optional[datetime] = None
+    embedding: list[float] | None = None
+    metadata: dict[str, Any] | None = None
+    created_at: datetime | None = None
 
 
 class ConversationRepository(ABC):
@@ -52,7 +52,7 @@ class ConversationRepository(ABC):
     """
 
     @abstractmethod
-    async def create_conversation(self, chat_id: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    async def create_conversation(self, chat_id: str, metadata: dict[str, Any] | None = None) -> None:
         """Create a new conversation"""
         pass
 
@@ -62,7 +62,7 @@ class ConversationRepository(ABC):
         chat_id: str,
         role: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ) -> None:
         """Add a message to a conversation"""
         pass
@@ -71,14 +71,14 @@ class ConversationRepository(ABC):
     async def get_messages(
         self,
         chat_id: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0
-    ) -> List[Message]:
+    ) -> list[Message]:
         """Retrieve messages from a conversation"""
         pass
 
     @abstractmethod
-    async def get_conversation(self, chat_id: str) -> Optional[Conversation]:
+    async def get_conversation(self, chat_id: str) -> Conversation | None:
         """Get full conversation details"""
         pass
 
@@ -90,9 +90,9 @@ class ConversationRepository(ABC):
     @abstractmethod
     async def list_conversations(
         self,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0
-    ) -> List[Conversation]:
+    ) -> list[Conversation]:
         """List all conversations"""
         pass
 
@@ -100,14 +100,14 @@ class ConversationRepository(ABC):
     async def search_messages(
         self,
         query: str,
-        chat_id: Optional[str] = None,
+        chat_id: str | None = None,
         limit: int = 10
-    ) -> List[Message]:
+    ) -> list[Message]:
         """Search messages by content"""
         pass
 
     @abstractmethod
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get repository statistics"""
         pass
 
@@ -127,8 +127,8 @@ class KnowledgeRepository(ABC):
     async def add_document(
         self,
         content: str,
-        embedding: Optional[List[float]] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        embedding: list[float] | None = None,
+        metadata: dict[str, Any] | None = None
     ) -> str:
         """
         Add a document to knowledge base.
@@ -139,8 +139,8 @@ class KnowledgeRepository(ABC):
     @abstractmethod
     async def add_documents_batch(
         self,
-        documents: List[Dict[str, Any]],
-    ) -> List[str]:
+        documents: list[dict[str, Any]],
+    ) -> list[str]:
         """
         Add multiple documents in batch.
         Returns list of document IDs.
@@ -152,8 +152,8 @@ class KnowledgeRepository(ABC):
         self,
         query: str,
         limit: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Document]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[Document]:
         """
         Search documents by semantic similarity and/or full-text search.
         """
@@ -162,17 +162,17 @@ class KnowledgeRepository(ABC):
     @abstractmethod
     async def search_by_embedding(
         self,
-        embedding: List[float],
+        embedding: list[float],
         limit: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Document]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[Document]:
         """
         Search documents by vector similarity.
         """
         pass
 
     @abstractmethod
-    async def get_document(self, document_id: str) -> Optional[Document]:
+    async def get_document(self, document_id: str) -> Document | None:
         """Retrieve a specific document by ID"""
         pass
 
@@ -180,9 +180,9 @@ class KnowledgeRepository(ABC):
     async def update_document(
         self,
         document_id: str,
-        content: Optional[str] = None,
-        embedding: Optional[List[float]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        content: str | None = None,
+        embedding: list[float] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Update an existing document"""
         pass
@@ -198,22 +198,22 @@ class KnowledgeRepository(ABC):
         pass
 
     @abstractmethod
-    async def count_documents(self, filters: Optional[Dict[str, Any]] = None) -> int:
+    async def count_documents(self, filters: dict[str, Any] | None = None) -> int:
         """Count documents, optionally filtered"""
         pass
 
     @abstractmethod
     async def list_documents(
         self,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Document]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[Document]:
         """List documents with pagination"""
         pass
 
     @abstractmethod
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get repository statistics"""
         pass
 
@@ -246,19 +246,19 @@ class Job:
     """Represents an async job"""
     id: str
     job_type: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     status: str = JobStatus.PENDING
     priority: int = JobPriority.NORMAL
-    created_at: Optional[datetime] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    result: Optional[Any] = None
-    error: Optional[str] = None
+    created_at: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    result: Any | None = None
+    error: str | None = None
     retry_count: int = 0
     max_retries: int = 3
-    metadata: Optional[Dict[str, Any]] = None
-    chat_id: Optional[str] = None  # For event bus notifications
-    trace_id: Optional[str] = None  # For distributed tracing
+    metadata: dict[str, Any] | None = None
+    chat_id: str | None = None  # For event bus notifications
+    trace_id: str | None = None  # For distributed tracing
 
 
 class JobRepository(ABC):
@@ -281,7 +281,7 @@ class JobRepository(ABC):
         pass
 
     @abstractmethod
-    async def dequeue(self, worker_id: str) -> Optional[Job]:
+    async def dequeue(self, worker_id: str) -> Job | None:
         """
         Get the next job from queue (highest priority, oldest first).
         Marks job as RUNNING and assigns to worker.
@@ -290,7 +290,7 @@ class JobRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_job(self, job_id: str) -> Optional[Job]:
+    async def get_job(self, job_id: str) -> Job | None:
         """Get job by ID"""
         pass
 
@@ -299,8 +299,8 @@ class JobRepository(ABC):
         self,
         job_id: str,
         status: str,
-        result: Optional[Any] = None,
-        error: Optional[str] = None
+        result: Any | None = None,
+        error: str | None = None
     ) -> bool:
         """Update job status and result"""
         pass
@@ -313,19 +313,19 @@ class JobRepository(ABC):
     @abstractmethod
     async def list_jobs(
         self,
-        status: Optional[str] = None,
-        job_type: Optional[str] = None,
-        limit: Optional[int] = None,
+        status: str | None = None,
+        job_type: str | None = None,
+        limit: int | None = None,
         offset: int = 0
-    ) -> List[Job]:
+    ) -> list[Job]:
         """List jobs with optional filtering"""
         pass
 
     @abstractmethod
     async def count_jobs(
         self,
-        status: Optional[str] = None,
-        job_type: Optional[str] = None
+        status: str | None = None,
+        job_type: str | None = None
     ) -> int:
         """Count jobs with optional filtering"""
         pass
@@ -349,12 +349,12 @@ class JobRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get queue statistics"""
         pass
 
     @abstractmethod
-    async def get_worker_jobs(self, worker_id: str) -> List[Job]:
+    async def get_worker_jobs(self, worker_id: str) -> list[Job]:
         """Get all jobs assigned to a specific worker"""
         pass
 

@@ -26,11 +26,11 @@ await watcher.start()
 """
 
 import asyncio
-import logging
-from typing import Dict, Any, Callable, List, Optional
-from pathlib import Path
-from datetime import datetime
 import hashlib
+import logging
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class ConfigWatcher:
         self,
         config_file: Path,
         check_interval: float = 5.0,
-        validator: Optional[Callable[[Dict[str, Any]], bool]] = None
+        validator: Callable[[dict[str, Any]], bool] | None = None
     ):
         """
         Initialize config watcher.
@@ -61,15 +61,15 @@ class ConfigWatcher:
         self.check_interval = check_interval
         self.validator = validator
 
-        self._callbacks: List[Callable[[Dict[str, Any]], None]] = []
+        self._callbacks: list[Callable[[dict[str, Any]], None]] = []
         self._running = False
-        self._task: Optional[asyncio.Task] = None
-        self._last_hash: Optional[str] = None
-        self._current_config: Optional[Dict[str, Any]] = None
+        self._task: asyncio.Task | None = None
+        self._last_hash: str | None = None
+        self._current_config: dict[str, Any] | None = None
 
         logger.info(f"ConfigWatcher initialized for: {config_file}")
 
-    def add_callback(self, callback: Callable[[Dict[str, Any]], None]):
+    def add_callback(self, callback: Callable[[dict[str, Any]], None]):
         """
         Add a callback to be called when config changes.
 
@@ -197,7 +197,7 @@ class ConfigWatcher:
         except Exception as e:
             logger.exception(f"Failed to reload config: {e}")
 
-    def _read_config_file(self, file_path: Path) -> Dict[str, Any]:
+    def _read_config_file(self, file_path: Path) -> dict[str, Any]:
         """
         Read config file.
 
@@ -234,7 +234,7 @@ class ConfigWatcher:
         content = file_path.read_bytes()
         return hashlib.sha256(content).hexdigest()
 
-    def get_current_config(self) -> Optional[Dict[str, Any]]:
+    def get_current_config(self) -> dict[str, Any] | None:
         """Get current configuration"""
         return self._current_config
 
@@ -246,8 +246,8 @@ class ConfigWatcher:
 
 async def watch_config(
     config_file: Path,
-    on_change: Callable[[Dict[str, Any]], None],
-    validator: Optional[Callable[[Dict[str, Any]], bool]] = None,
+    on_change: Callable[[dict[str, Any]], None],
+    validator: Callable[[dict[str, Any]], bool] | None = None,
     check_interval: float = 5.0
 ) -> ConfigWatcher:
     """

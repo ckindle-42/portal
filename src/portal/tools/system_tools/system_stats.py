@@ -2,12 +2,10 @@
 System Stats Tool - Monitor system resources
 """
 
-import asyncio
 import logging
-from typing import Dict, Any
-from pathlib import Path
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolCategory, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,7 @@ except ImportError:
 
 class SystemStatsTool(BaseTool):
     """Monitor system resources"""
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="system_stats",
@@ -36,7 +34,7 @@ class SystemStatsTool(BaseTool):
             ]
         )
 
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Get system stats"""
 
         if not PSUTIL_AVAILABLE:
@@ -48,13 +46,13 @@ class SystemStatsTool(BaseTool):
             # CPU
             cpu_percent = psutil.cpu_percent(interval=1)
             cpu_count = psutil.cpu_count()
-            
+
             # Memory
             mem = psutil.virtual_memory()
-            
+
             # Disk
             disk = psutil.disk_usage('/')
-            
+
             result = {
                 "cpu": {
                     "percent": cpu_percent,
@@ -73,7 +71,7 @@ class SystemStatsTool(BaseTool):
                     "percent": disk.percent
                 }
             }
-            
+
             if detailed:
                 result["cpu"]["per_core"] = psutil.cpu_percent(interval=1, percpu=True)
                 result["disk"]["partitions"] = [
@@ -84,8 +82,8 @@ class SystemStatsTool(BaseTool):
                     }
                     for p in psutil.disk_partitions()
                 ]
-            
+
             return self._success_response(result=result)
-        
+
         except Exception as e:
             return self._error_response(f"Failed to get system stats: {str(e)}")

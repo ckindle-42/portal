@@ -1,14 +1,14 @@
 """HTTP REST Client Tool - Make HTTP requests"""
 
 import json
-from typing import Dict, Any, Optional
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 
 class HTTPClientTool(BaseTool):
     """Make HTTP requests to REST APIs"""
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="http_client",
@@ -52,21 +52,21 @@ class HTTPClientTool(BaseTool):
             ],
             examples=["GET https://api.example.com/data"]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute HTTP request"""
         try:
             import aiohttp
-            
+
             url = parameters.get("url", "")
             method = parameters.get("method", "GET").upper()
             headers_str = parameters.get("headers")
             body_str = parameters.get("body")
             timeout = parameters.get("timeout", 30)
-            
+
             if not url:
                 return self._error_response("URL is required")
-            
+
             # Parse headers
             headers = {}
             if headers_str:
@@ -74,7 +74,7 @@ class HTTPClientTool(BaseTool):
                     headers = json.loads(headers_str)
                 except json.JSONDecodeError:
                     return self._error_response("Invalid headers JSON")
-            
+
             # Parse body
             body = None
             if body_str and method in ["POST", "PUT", "PATCH"]:
@@ -82,7 +82,7 @@ class HTTPClientTool(BaseTool):
                     body = json.loads(body_str)
                 except json.JSONDecodeError:
                     body = body_str  # Use as raw string
-            
+
             # Make request
             async with aiohttp.ClientSession() as session:
                 request_kwargs = {
@@ -90,29 +90,29 @@ class HTTPClientTool(BaseTool):
                     "headers": headers,
                     "timeout": aiohttp.ClientTimeout(total=timeout)
                 }
-                
+
                 if body:
                     if isinstance(body, dict):
                         request_kwargs["json"] = body
                     else:
                         request_kwargs["data"] = body
-                
+
                 async with session.request(method, **request_kwargs) as response:
                     status = response.status
                     response_headers = dict(response.headers)
-                    
+
                     # Try to get response body
                     try:
                         response_body = await response.json()
                     except Exception:
                         response_body = await response.text()
-                    
+
                     return self._success_response({
                         "status": status,
                         "headers": {k: v for k, v in list(response_headers.items())[:10]},
                         "body": response_body if len(str(response_body)) < 5000 else str(response_body)[:5000] + "..."
                     })
-        
+
         except ImportError:
             return self._error_response("aiohttp not installed. Run: pip install aiohttp")
         except Exception as e:

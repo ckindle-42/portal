@@ -18,11 +18,11 @@ Benefits:
 """
 
 from .protocol import (
-    ApprovalRequest,
     ApprovalDecision,
-    ApprovalStatus,
     ApprovalProtocol,
-    create_approval_protocol
+    ApprovalRequest,
+    ApprovalStatus,
+    create_approval_protocol,
 )
 
 __all__ = [

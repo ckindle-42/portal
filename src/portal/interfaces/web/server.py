@@ -7,14 +7,24 @@ import hmac
 import json
 import logging
 import os
-import secrets
 import time
 import uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Optional
+from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Header,
+    HTTPException,
+    Request,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
@@ -23,7 +33,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from portal.agent.dispatcher import CentralDispatcher
-from portal.core.exceptions import PortalError, ModelNotAvailableError, RateLimitError, ValidationError
+from portal.core.exceptions import (
+    ModelNotAvailableError,
+    PortalError,
+    RateLimitError,
+    ValidationError,
+)
 from portal.core.types import IncomingMessage, InterfaceType, ProcessingResult
 from portal.interfaces.base import BaseInterface
 from portal.observability.runtime_metrics import (
@@ -99,7 +114,7 @@ class WebInterface(BaseInterface):
             or "anonymous"
         )
 
-    async def _auth_context(self, request: Request, authorization: Optional[str] = Header(None)) -> dict[str, str]:
+    async def _auth_context(self, request: Request, authorization: str | None = Header(None)) -> dict[str, str]:
         user_id = self._extract_user_id(request)
         token = None
         if authorization and authorization.startswith("Bearer "):
@@ -352,21 +367,29 @@ class WebInterface(BaseInterface):
 
         @app.get("/health")
         async def health():
+            import sys
+
+            import portal as _portal
+
+            body: dict = {
+                "status": "ok",
+                "version": getattr(_portal, "__version__", "unknown"),
+                "build": {
+                    "python_version": sys.version.split()[0],
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                },
+                "interface": "web",
+            }
             if not _agent_ready.is_set():
-                return JSONResponse(
-                    {"status": "warming_up", "interface": "web"},
-                    status_code=200,
-                )
+                body["status"] = "warming_up"
+                body["agent_core"] = "warming_up"
+                return JSONResponse(body, status_code=200)
             try:
                 healthy = await self.agent_core.health_check()
             except Exception:
                 healthy = False
-            status = "ready" if healthy else "degraded"
-            code = 200 if healthy else 503
-            return JSONResponse(
-                {"status": status, "interface": "web"},
-                status_code=code,
-            )
+            body["agent_core"] = "ok" if healthy else "degraded"
+            return JSONResponse(body, status_code=200)
 
         return app
 
@@ -413,6 +436,14 @@ class WebInterface(BaseInterface):
                 "total_tokens": (result.prompt_tokens or 0) + (result.completion_tokens or 0),
             },
         }
+
+    async def handle_message(self, message):  # type: ignore[override]
+        """Not used by WebInterface; HTTP handlers process messages via FastAPI routes."""
+        raise NotImplementedError("WebInterface processes messages via HTTP — call the FastAPI app directly.")
+
+    async def send_message(self, user_id: str, response) -> bool:  # type: ignore[override]
+        """Not used by WebInterface; responses are delivered via HTTP streaming."""
+        return False
 
     async def start(self) -> None:
         import uvicorn

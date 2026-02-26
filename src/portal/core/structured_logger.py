@@ -7,15 +7,15 @@ Makes it easy to debug complex failures by following a request through
 the entire system.
 """
 
-import logging
 import json
+import logging
 import uuid
-from typing import Dict, Any, Optional
-from datetime import datetime
 from contextvars import ContextVar
+from datetime import datetime
+from typing import Any
 
 # Context variable to store trace_id for current request
-_trace_id_var: ContextVar[Optional[str]] = ContextVar('trace_id', default=None)
+_trace_id_var: ContextVar[str | None] = ContextVar('trace_id', default=None)
 
 
 class StructuredLogger:
@@ -35,7 +35,7 @@ class StructuredLogger:
     }
     """
 
-    def __init__(self, component: str, logger: Optional[logging.Logger] = None):
+    def __init__(self, component: str, logger: logging.Logger | None = None):
         """
         Initialize structured logger
 
@@ -111,7 +111,7 @@ class TraceContext:
             logger.info("Processing request")
     """
 
-    def __init__(self, trace_id: Optional[str] = None):
+    def __init__(self, trace_id: str | None = None):
         """
         Initialize trace context
 
@@ -136,7 +136,7 @@ class TraceContext:
         return str(uuid.uuid4())[:8]  # Short UUID
 
     @staticmethod
-    def get_current_trace_id() -> Optional[str]:
+    def get_current_trace_id() -> str | None:
         """Get current trace ID from context"""
         return _trace_id_var.get()
 
@@ -168,7 +168,7 @@ def set_trace_id(trace_id: str):
     _trace_id_var.set(trace_id)
 
 
-def get_trace_id() -> Optional[str]:
+def get_trace_id() -> str | None:
     """Get current trace ID"""
     return _trace_id_var.get()
 
@@ -185,7 +185,7 @@ class LogParser:
     """
 
     @staticmethod
-    def parse_log_file(file_path: str) -> list[Dict[str, Any]]:
+    def parse_log_file(file_path: str) -> list[dict[str, Any]]:
         """
         Parse a log file containing JSON logs
 
@@ -197,7 +197,7 @@ class LogParser:
         """
         entries = []
 
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -214,7 +214,7 @@ class LogParser:
         return entries
 
     @staticmethod
-    def filter_by_trace_id(entries: list[Dict[str, Any]], trace_id: str) -> list[Dict[str, Any]]:
+    def filter_by_trace_id(entries: list[dict[str, Any]], trace_id: str) -> list[dict[str, Any]]:
         """
         Filter log entries by trace_id
 
@@ -228,7 +228,7 @@ class LogParser:
         return [e for e in entries if e.get('trace_id') == trace_id]
 
     @staticmethod
-    def filter_by_component(entries: list[Dict[str, Any]], component: str) -> list[Dict[str, Any]]:
+    def filter_by_component(entries: list[dict[str, Any]], component: str) -> list[dict[str, Any]]:
         """
         Filter log entries by component
 
@@ -242,7 +242,7 @@ class LogParser:
         return [e for e in entries if e.get('component') == component]
 
     @staticmethod
-    def get_trace_timeline(entries: list[Dict[str, Any]], trace_id: str) -> str:
+    def get_trace_timeline(entries: list[dict[str, Any]], trace_id: str) -> str:
         """
         Generate a timeline view for a trace_id
 

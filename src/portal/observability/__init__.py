@@ -35,33 +35,22 @@ watcher = await watch_config("config.yaml", on_config_change)
 """
 
 # Tracing
-from .tracer import (
-    setup_telemetry,
-    get_tracer,
-    instrument_fastapi,
-    instrument_aiohttp,
-    trace_operation,
-    add_trace_event,
-    set_trace_attribute,
-    shutdown_telemetry,
-)
-
-# Health checks
-from .health import (
-    HealthCheckSystem,
-    HealthCheckProvider,
-    HealthCheckResult,
-    HealthStatus,
-    DatabaseHealthCheck,
-    JobQueueHealthCheck,
-    WorkerPoolHealthCheck,
-    register_health_endpoints,
-)
-
 # Config watching
 from .config_watcher import (
     ConfigWatcher,
     watch_config,
+)
+
+# Health checks
+from .health import (
+    DatabaseHealthCheck,
+    HealthCheckProvider,
+    HealthCheckResult,
+    HealthCheckSystem,
+    HealthStatus,
+    JobQueueHealthCheck,
+    WorkerPoolHealthCheck,
+    register_health_endpoints,
 )
 
 # Metrics
@@ -69,6 +58,16 @@ from .metrics import (
     MetricsCollector,
     MetricsMiddleware,
     register_metrics_endpoint,
+)
+from .tracer import (
+    add_trace_event,
+    get_tracer,
+    instrument_aiohttp,
+    instrument_fastapi,
+    set_trace_attribute,
+    setup_telemetry,
+    shutdown_telemetry,
+    trace_operation,
 )
 
 __all__ = [

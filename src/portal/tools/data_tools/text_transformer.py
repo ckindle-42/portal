@@ -1,14 +1,14 @@
 """Text Transformer Tool - Format conversion"""
 
 import json
-from typing import Dict, Any
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 
 class TextTransformerTool(BaseTool):
     """Transform text between formats (JSON, YAML, XML, TOML)"""
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="text_transformer",
@@ -38,36 +38,36 @@ class TextTransformerTool(BaseTool):
             ],
             examples=["Convert JSON to YAML: {...}"]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Transform text format"""
         try:
             content = parameters.get("content", "")
             from_fmt = parameters.get("from_format", "").lower()
             to_fmt = parameters.get("to_format", "").lower()
-            
+
             if not content:
                 return self._error_response("No content provided")
-            
+
             # Parse input
             data = self._parse(content, from_fmt)
             if data is None:
                 return self._error_response(f"Failed to parse {from_fmt} input")
-            
+
             # Convert to output
             output = self._serialize(data, to_fmt)
             if output is None:
                 return self._error_response(f"Failed to serialize to {to_fmt}")
-            
+
             return self._success_response({
                 "converted": output,
                 "from": from_fmt,
                 "to": to_fmt
             })
-        
+
         except Exception as e:
             return self._error_response(str(e))
-    
+
     def _parse(self, content: str, fmt: str) -> Any:
         """Parse content from format"""
         try:
@@ -86,7 +86,7 @@ class TextTransformerTool(BaseTool):
                 return None
         except Exception:
             return None
-    
+
     def _serialize(self, data: Any, fmt: str) -> str:
         """Serialize data to format"""
         try:

@@ -1,14 +1,14 @@
 """Audio Transcriber Tool - Local Whisper transcription"""
 
 import os
-from typing import Dict, Any, List
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 
 class AudioTranscribeTool(BaseTool):
     """Transcribe audio files using local Whisper"""
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="audio_transcribe",
@@ -40,23 +40,23 @@ class AudioTranscribeTool(BaseTool):
             ],
             examples=["Transcribe audio.mp3"]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Transcribe audio files"""
         try:
             audio_files = parameters.get("audio_files", [])
             model_size = parameters.get("model_size", "base")
             language = parameters.get("language", "auto")
-            
+
             if not audio_files:
                 return self._error_response("No audio files provided")
-            
+
             # Try to use faster-whisper first
             try:
                 from faster_whisper import WhisperModel
-                
+
                 model = WhisperModel(model_size, device="cpu", compute_type="int8")
-                
+
                 results = []
                 for audio_path in audio_files:
                     if not os.path.exists(audio_path):
@@ -66,15 +66,15 @@ class AudioTranscribeTool(BaseTool):
                             "error": "File not found"
                         })
                         continue
-                    
+
                     segments, info = model.transcribe(
                         audio_path,
                         language=None if language == "auto" else language,
                         beam_size=5
                     )
-                    
+
                     text = " ".join([segment.text for segment in segments])
-                    
+
                     results.append({
                         "file": audio_path,
                         "success": True,
@@ -82,14 +82,14 @@ class AudioTranscribeTool(BaseTool):
                         "language": info.language,
                         "duration": info.duration
                     })
-                
+
                 return self._success_response(results)
-            
+
             except ImportError:
                 # Try MLX Whisper for Apple Silicon
                 try:
                     import mlx_whisper
-                    
+
                     results = []
                     for audio_path in audio_files:
                         if not os.path.exists(audio_path):
@@ -99,24 +99,24 @@ class AudioTranscribeTool(BaseTool):
                                 "error": "File not found"
                             })
                             continue
-                        
+
                         result = mlx_whisper.transcribe(audio_path)
-                        
+
                         results.append({
                             "file": audio_path,
                             "success": True,
                             "text": result.get("text", ""),
                             "language": result.get("language", "unknown")
                         })
-                    
+
                     return self._success_response(results)
-                
+
                 except ImportError:
                     return self._error_response(
                         "No transcription library available. Install either:\n"
                         "- pip install faster-whisper\n"
                         "- pip install mlx-whisper (Apple Silicon)"
                     )
-        
+
         except Exception as e:
             return self._error_response(str(e))

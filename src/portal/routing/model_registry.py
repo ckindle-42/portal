@@ -6,7 +6,6 @@ Optimized for M4 Mac Mini Pro with 128GB RAM
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -39,46 +38,46 @@ class ModelMetadata:
     display_name: str
     parameters: str  # e.g., "7B", "32B"
     quantization: str  # e.g., "Q4_K_M", "4bit"
-    
+
     # Capabilities
-    capabilities: List[ModelCapability] = field(default_factory=list)
-    
+    capabilities: list[ModelCapability] = field(default_factory=list)
+
     # Performance characteristics
     speed_class: SpeedClass = SpeedClass.MEDIUM
     context_window: int = 4096
-    tokens_per_second: Optional[int] = None
-    
+    tokens_per_second: int | None = None
+
     # Resource requirements
     ram_required_gb: int = 8
     vram_required_gb: int = 0
-    
+
     # Quality scores (0.0-1.0)
     general_quality: float = 0.7
     code_quality: float = 0.5
     reasoning_quality: float = 0.5
-    
+
     # Cost factor (0.0-1.0, higher = more expensive)
     cost: float = 0.5
-    
+
     # Availability
     available: bool = True
-    
+
     # Backend-specific settings
-    model_path: Optional[str] = None  # For MLX
-    model_type: Optional[str] = None  # For MLX prompt formatting
-    api_model_name: Optional[str] = None  # For API calls
+    model_path: str | None = None  # For MLX
+    model_type: str | None = None  # For MLX prompt formatting
+    api_model_name: str | None = None  # For API calls
 
 
 class ModelRegistry:
     """Registry of available models with metadata"""
-    
+
     def __init__(self):
-        self.models: Dict[str, ModelMetadata] = {}
+        self.models: dict[str, ModelMetadata] = {}
         self._register_default_models()
-    
+
     def _register_default_models(self):
         """Register default model catalog - M4 optimized"""
-        
+
         # Ultra-fast model for simple queries (0.5B)
         self.register(ModelMetadata(
             model_id="ollama_qwen25_05b",
@@ -97,7 +96,7 @@ class ModelRegistry:
             cost=0.05,
             api_model_name="qwen2.5:0.5b-instruct-q4_K_M"
         ))
-        
+
         # Fast small model (1.5B)
         self.register(ModelMetadata(
             model_id="ollama_qwen25_1.5b",
@@ -116,7 +115,7 @@ class ModelRegistry:
             cost=0.1,
             api_model_name="qwen2.5:1.5b-instruct-q4_K_M"
         ))
-        
+
         # Fast general-purpose model (7B)
         self.register(ModelMetadata(
             model_id="ollama_qwen25_7b",
@@ -135,7 +134,7 @@ class ModelRegistry:
             cost=0.3,
             api_model_name="qwen2.5:7b-instruct-q4_K_M"
         ))
-        
+
         # Powerful reasoning model (14B)
         self.register(ModelMetadata(
             model_id="ollama_qwen25_14b",
@@ -143,7 +142,7 @@ class ModelRegistry:
             display_name="Qwen2.5 14B",
             parameters="14B",
             quantization="Q4_K_M",
-            capabilities=[ModelCapability.GENERAL, ModelCapability.CODE, 
+            capabilities=[ModelCapability.GENERAL, ModelCapability.CODE,
                          ModelCapability.MATH, ModelCapability.REASONING],
             speed_class=SpeedClass.MEDIUM,
             context_window=32768,
@@ -155,7 +154,7 @@ class ModelRegistry:
             cost=0.5,
             api_model_name="qwen2.5:14b-instruct-q4_K_M"
         ))
-        
+
         # High-quality model (32B)
         self.register(ModelMetadata(
             model_id="ollama_qwen25_32b",
@@ -175,7 +174,7 @@ class ModelRegistry:
             cost=0.7,
             api_model_name="qwen2.5:32b-instruct-q4_K_M"
         ))
-        
+
         # Code specialist (7B)
         self.register(ModelMetadata(
             model_id="ollama_qwen25_coder",
@@ -194,7 +193,7 @@ class ModelRegistry:
             cost=0.3,
             api_model_name="qwen2.5-coder:7b-instruct-q4_K_M"
         ))
-        
+
         # DeepSeek Coder (16B) - Excellent for coding
         self.register(ModelMetadata(
             model_id="ollama_deepseek_coder",
@@ -213,7 +212,7 @@ class ModelRegistry:
             cost=0.5,
             api_model_name="deepseek-coder:16b-instruct-q4_K_M"
         ))
-        
+
         # Vision model - LLaVA
         self.register(ModelMetadata(
             model_id="ollama_llava",
@@ -232,7 +231,7 @@ class ModelRegistry:
             cost=0.4,
             api_model_name="llava:7b"
         ))
-        
+
         # Llama 3.2 3B - Fast and capable
         self.register(ModelMetadata(
             model_id="ollama_llama32_3b",
@@ -251,33 +250,33 @@ class ModelRegistry:
             cost=0.15,
             api_model_name="llama3.2:3b-instruct-q4_K_M"
         ))
-    
+
     def register(self, model: ModelMetadata):
         """Register a model"""
         self.models[model.model_id] = model
-    
-    def get_model(self, model_id: str) -> Optional[ModelMetadata]:
+
+    def get_model(self, model_id: str) -> ModelMetadata | None:
         """Get model by ID"""
         return self.models.get(model_id)
-    
-    def get_models_by_backend(self, backend: str) -> List[ModelMetadata]:
+
+    def get_models_by_backend(self, backend: str) -> list[ModelMetadata]:
         """Get all models for a backend"""
         return [m for m in self.models.values() if m.backend == backend]
-    
-    def get_models_by_capability(self, capability: ModelCapability) -> List[ModelMetadata]:
+
+    def get_models_by_capability(self, capability: ModelCapability) -> list[ModelMetadata]:
         """Get models with specific capability"""
         return [m for m in self.models.values() if capability in m.capabilities]
-    
-    def get_fastest_model(self, capability: Optional[ModelCapability] = None) -> Optional[ModelMetadata]:
+
+    def get_fastest_model(self, capability: ModelCapability | None = None) -> ModelMetadata | None:
         """Get fastest available model"""
         candidates = [m for m in self.models.values() if m.available]
-        
+
         if capability:
             candidates = [m for m in candidates if capability in m.capabilities]
-        
+
         if not candidates:
             return None
-        
+
         # Sort by speed class, then tokens per second
         speed_order = {
             SpeedClass.ULTRA_FAST: 0,
@@ -286,35 +285,35 @@ class ModelRegistry:
             SpeedClass.SLOW: 3,
             SpeedClass.VERY_SLOW: 4
         }
-        
-        return min(candidates, key=lambda m: (speed_order[m.speed_class], 
+
+        return min(candidates, key=lambda m: (speed_order[m.speed_class],
                                               -(m.tokens_per_second or 0)))
-    
-    def get_best_quality_model(self, capability: ModelCapability, 
-                               max_cost: float = 1.0) -> Optional[ModelMetadata]:
+
+    def get_best_quality_model(self, capability: ModelCapability,
+                               max_cost: float = 1.0) -> ModelMetadata | None:
         """Get highest quality model within cost constraint"""
         candidates = [
             m for m in self.models.values()
             if capability in m.capabilities and m.available and m.cost <= max_cost
         ]
-        
+
         if not candidates:
             return None
-        
+
         # Select based on quality score
         quality_map = {
             ModelCapability.GENERAL: lambda m: m.general_quality,
             ModelCapability.CODE: lambda m: m.code_quality,
             ModelCapability.REASONING: lambda m: m.reasoning_quality,
         }
-        
+
         quality_fn = quality_map.get(capability, lambda m: m.general_quality)
         return max(candidates, key=quality_fn)
-    
-    def get_all_models(self) -> List[ModelMetadata]:
+
+    def get_all_models(self) -> list[ModelMetadata]:
         """Get all registered models"""
         return list(self.models.values())
-    
+
     def update_availability(self, model_id: str, available: bool):
         """Update model availability"""
         if model_id in self.models:
@@ -324,7 +323,7 @@ class ModelRegistry:
         self,
         base_url: str = "http://localhost:11434",
         mark_others_unavailable: bool = False,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Query Ollama and register any models not already in the catalog.
 

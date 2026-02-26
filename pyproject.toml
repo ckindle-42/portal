@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "portal"
-version = "1.0.3"
+version = "1.1.0"
 description = "Local-first AI platform. Web-primary. Multi-interface. Hardware-agnostic."
 readme = "README.md"
 license = { text = "MIT" }
@@ -90,6 +90,11 @@ where = ["src"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-m 'not e2e and not integration'"
+markers = [
+    "e2e: end-to-end tests that require a fully running portal stack (deselect with '-m not e2e')",
+    "integration: integration tests that may require external services",
+]
 
 [tool.ruff]
 line-length = 100

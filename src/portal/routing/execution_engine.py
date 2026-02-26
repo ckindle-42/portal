@@ -5,14 +5,15 @@ Execution Engine - Handles model execution with fallbacks and retries
 import asyncio
 import logging
 import time
-from typing import Optional, Dict, Any, List, AsyncIterator
-from dataclasses import dataclass
 from collections import defaultdict
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
-from .model_registry import ModelRegistry, ModelMetadata
-from .model_backends import OllamaBackend, LMStudioBackend, MLXBackend, GenerationResult
 from .intelligent_router import IntelligentRouter, RoutingDecision
+from .model_backends import GenerationResult, LMStudioBackend, MLXBackend, OllamaBackend
+from .model_registry import ModelMetadata, ModelRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +52,10 @@ class CircuitBreaker:
         self.half_open_max_calls = half_open_max_calls
 
         # Per-backend state tracking
-        self.failure_counts: Dict[str, int] = defaultdict(int)
-        self.states: Dict[str, CircuitState] = defaultdict(lambda: CircuitState.CLOSED)
-        self.last_failure_times: Dict[str, float] = {}
-        self.half_open_calls: Dict[str, int] = defaultdict(int)
+        self.failure_counts: dict[str, int] = defaultdict(int)
+        self.states: dict[str, CircuitState] = defaultdict(lambda: CircuitState.CLOSED)
+        self.last_failure_times: dict[str, float] = {}
+        self.half_open_calls: dict[str, int] = defaultdict(int)
 
     def should_allow_request(self, backend_id: str) -> tuple[bool, str]:
         """
@@ -150,10 +151,10 @@ class ExecutionResult:
     model_used: str
     execution_time_ms: float
     tokens_generated: int
-    routing_decision: Optional[RoutingDecision] = None
+    routing_decision: RoutingDecision | None = None
     fallbacks_used: int = 0
-    error: Optional[str] = None
-    tool_calls: Optional[List[Dict[str, Any]]] = None  # LLM-requested tool calls (MCP dispatch)
+    error: str | None = None
+    tool_calls: list[dict[str, Any]] | None = None  # LLM-requested tool calls (MCP dispatch)
 
 
 class ExecutionEngine:
@@ -165,7 +166,7 @@ class ExecutionEngine:
     """
 
     def __init__(self, registry: ModelRegistry, router: IntelligentRouter,
-                 config: Optional[Dict[str, Any]] = None):
+                 config: dict[str, Any] | None = None):
         self.registry = registry
         self.router = router
         self.config = config or {}
@@ -196,16 +197,16 @@ class ExecutionEngine:
         ) if self.circuit_breaker_enabled else None
 
         logger.info(
-            f"ExecutionEngine initialized",
+            "ExecutionEngine initialized",
             circuit_breaker_enabled=self.circuit_breaker_enabled,
             max_retries=self.max_retries,
             timeout_seconds=self.timeout_seconds
         )
-    
-    async def execute(self, query: str, system_prompt: Optional[str] = None,
+
+    async def execute(self, query: str, system_prompt: str | None = None,
                      max_tokens: int = 2048, temperature: float = 0.7,
                      max_cost: float = 1.0,
-                     messages: Optional[List[Dict[str, Any]]] = None) -> ExecutionResult:
+                     messages: list[dict[str, Any]] | None = None) -> ExecutionResult:
         """
         Execute query with intelligent routing and fallback
         
@@ -220,16 +221,16 @@ class ExecutionEngine:
             ExecutionResult with response or error
         """
         start_time = time.time()
-        
+
         # Get routing decision
         decision = self.router.route(query, max_cost)
-        
+
         # Build model chain (primary + fallbacks)
         model_chain = [decision.model_id] + decision.fallback_models
-        
+
         fallbacks_used = 0
         last_error = None
-        
+
         # Try each model in chain
         for model_id in model_chain:
             try:
@@ -301,10 +302,10 @@ class ExecutionEngine:
                 last_error = str(e)
                 fallbacks_used += 1
                 logger.error(f"Error with model {model_id}: {e}")
-        
+
         # All models failed
         elapsed = (time.time() - start_time) * 1000
-        
+
         return ExecutionResult(
             success=False,
             response="",
@@ -315,11 +316,11 @@ class ExecutionEngine:
             fallbacks_used=fallbacks_used,
             error=f"All models failed. Last error: {last_error}"
         )
-    
+
     async def _execute_with_timeout(self, backend, model: ModelMetadata,
-                                   query: str, system_prompt: Optional[str],
+                                   query: str, system_prompt: str | None,
                                    max_tokens: int, temperature: float,
-                                   messages: Optional[List[Dict[str, Any]]] = None) -> GenerationResult:
+                                   messages: list[dict[str, Any]] | None = None) -> GenerationResult:
         """Execute with timeout handling"""
 
         try:
@@ -335,8 +336,8 @@ class ExecutionEngine:
                 timeout=self.timeout_seconds
             )
             return result
-        
-        except asyncio.TimeoutError:
+
+        except TimeoutError:
             return GenerationResult(
                 text="",
                 tokens_generated=0,
@@ -345,14 +346,14 @@ class ExecutionEngine:
                 success=False,
                 error=f"Timeout after {self.timeout_seconds}s"
             )
-    
+
     async def generate_stream(
         self,
         query: str,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         max_tokens: int = 2048,
         temperature: float = 0.7,
-        messages: Optional[List[Dict[str, Any]]] = None,
+        messages: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[str]:
         """
         Stream generation token-by-token from the best available backend.
@@ -410,24 +411,24 @@ class ExecutionEngine:
         logger.error("No models available for streaming")
         return
 
-    async def execute_parallel(self, queries: List[str],
-                              system_prompt: Optional[str] = None) -> List[ExecutionResult]:
+    async def execute_parallel(self, queries: list[str],
+                              system_prompt: str | None = None) -> list[ExecutionResult]:
         """Execute multiple queries in parallel"""
-        
+
         tasks = [
             self.execute(query, system_prompt)
             for query in queries
         ]
-        
+
         return await asyncio.gather(*tasks)
-    
+
     async def close(self):
         """Close all backends"""
         for backend in self.backends.values():
             if hasattr(backend, 'close'):
                 await backend.close()
-    
-    async def health_check(self) -> Dict[str, Any]:
+
+    async def health_check(self) -> dict[str, Any]:
         """
         Check health of all backends including circuit breaker status
 
@@ -463,7 +464,7 @@ class ExecutionEngine:
 
         return health
 
-    def get_circuit_breaker_status(self) -> Dict[str, Dict[str, Any]]:
+    def get_circuit_breaker_status(self) -> dict[str, dict[str, Any]]:
         """
         Get detailed circuit breaker status for all backends
 

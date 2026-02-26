@@ -6,14 +6,14 @@ Provides interface-agnostic human approval for sensitive operations.
 """
 
 import asyncio
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, Any, Callable
-import logging
+from typing import Any
 
-from portal.core.event_bus import EventBus, EventType, Event
+from portal.core.event_bus import Event, EventBus, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +36,14 @@ class ApprovalRequest:
     """
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     chat_id: str = ""
-    user_id: Optional[str] = None
+    user_id: str | None = None
     operation: str = ""
     description: str = ""
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
     timeout_seconds: int = 300  # 5 minutes default
     created_at: datetime = field(default_factory=datetime.utcnow)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             'request_id': self.request_id,
@@ -66,11 +66,11 @@ class ApprovalDecision:
     """
     request_id: str
     status: ApprovalStatus
-    user_id: Optional[str] = None
-    reason: Optional[str] = None
+    user_id: str | None = None
+    reason: str | None = None
     decided_at: datetime = field(default_factory=datetime.utcnow)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             'request_id': self.request_id,
@@ -105,7 +105,7 @@ class ApprovalProtocol:
             event_bus: Event bus for publishing/subscribing
         """
         self.event_bus = event_bus
-        self._pending_requests: Dict[str, asyncio.Future] = {}
+        self._pending_requests: dict[str, asyncio.Future] = {}
 
         logger.info("ApprovalProtocol initialized")
 
@@ -114,8 +114,8 @@ class ApprovalProtocol:
         chat_id: str,
         operation: str,
         description: str,
-        user_id: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        user_id: str | None = None,
+        context: dict[str, Any] | None = None,
         timeout_seconds: int = 300
     ) -> ApprovalDecision:
         """
@@ -186,7 +186,7 @@ class ApprovalProtocol:
             )
             return decision
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Timeout - auto-deny
             logger.warning(
                 f"Approval timeout: {operation}",
@@ -252,7 +252,7 @@ class ApprovalProtocol:
             request_id=request_id
         )
 
-    def get_pending_requests(self, chat_id: Optional[str] = None) -> Dict[str, ApprovalRequest]:
+    def get_pending_requests(self, chat_id: str | None = None) -> dict[str, ApprovalRequest]:
         """
         Get pending approval requests
 

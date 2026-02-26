@@ -18,8 +18,7 @@ Portal can use Claude Desktop's tools - full mesh.
 
 import asyncio
 import logging
-from typing import Dict, Any, List, Optional
-from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +26,7 @@ logger = logging.getLogger(__name__)
 try:
     from mcp.server import Server, stdio_server
     from mcp.server.models import InitializationOptions
+
     from mcp import types
     MCP_AVAILABLE = True
 except ImportError:
@@ -42,7 +42,7 @@ class MCPServer:
     allowing other applications to connect and use them.
     """
 
-    def __init__(self, tool_registry: Optional[Any] = None):
+    def __init__(self, tool_registry: Any | None = None):
         """
         Initialize MCP server.
 
@@ -62,7 +62,7 @@ class MCPServer:
         """Setup MCP protocol handlers"""
 
         @self.server.list_tools()
-        async def list_tools() -> List[types.Tool]:
+        async def list_tools() -> list[types.Tool]:
             """List available tools"""
             if self.tool_registry is None:
                 return []
@@ -96,7 +96,7 @@ class MCPServer:
             return tools
 
         @self.server.call_tool()
-        async def call_tool(name: str, arguments: dict) -> List[types.TextContent]:
+        async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             """Call a tool"""
             if self.tool_registry is None:
                 return [types.TextContent(
@@ -133,7 +133,7 @@ class MCPServer:
                 )]
 
         @self.server.list_resources()
-        async def list_resources() -> List[types.Resource]:
+        async def list_resources() -> list[types.Resource]:
             """List available resources"""
             # Could expose conversation history, knowledge base, etc.
             return []
@@ -163,7 +163,7 @@ class MCPServer:
         logger.info("MCP server stopped")
 
 
-async def start_mcp_server(tool_registry: Optional[Any] = None):
+async def start_mcp_server(tool_registry: Any | None = None):
     """
     Start MCP server in stdio mode.
 
