@@ -243,18 +243,14 @@ class SecurityMiddleware:
             )
 
         # Check message length
-        max_message_length = self.max_message_length
-        if len(sec_ctx.sanitized_input) > max_message_length:
+        if len(sec_ctx.sanitized_input) > self.max_message_length:
             raise ValidationError(
-                f"Message exceeds maximum length of {max_message_length} characters",
+                f"Message exceeds maximum length of {self.max_message_length} characters",
                 details={
                     'length': len(sec_ctx.sanitized_input),
-                    'max_length': max_message_length
+                    'max_length': self.max_message_length,
                 }
             )
-
-        # Example: Check for suspicious patterns
-        # (Add your own security policies here)
 
     def get_rate_limit_stats(self, user_id: str) -> dict[str, int]:
         """Get rate limit statistics for a user"""

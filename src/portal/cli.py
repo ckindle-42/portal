@@ -23,6 +23,18 @@ def _check_ports_available(ports: list[tuple[int, str]]) -> list[str]:
     return errors
 
 
+def _resolve_launcher() -> Path:
+    """Return the unified launch.sh path, falling back to per-platform scripts."""
+    repo_root = Path(__file__).parent.parent.parent
+    unified = repo_root / "launch.sh"
+    if unified.exists():
+        return unified
+    hardware_dir = repo_root / "hardware"
+    if sys.platform == "darwin":
+        return hardware_dir / "m4-mac" / "launch.sh"
+    return hardware_dir / "linux-bare" / "launch.sh"
+
+
 @click.group()
 @click.version_option(package_name="portal")
 def cli() -> None:
@@ -58,51 +70,25 @@ def up(minimal: bool, skip_port_check: bool, profile: str | None) -> None:
             click.echo("\nUse --skip-port-check to bypass.", err=True)
             raise SystemExit(1)
 
-    repo_root = Path(__file__).parent.parent.parent.parent
-    unified = repo_root / "launch.sh"
-
-    if unified.exists():
-        args = ["bash", str(unified), "up"]
-        if minimal:
-            args.append("--minimal")
-        if profile:
-            args.extend(["--profile", profile])
-        click.echo("Starting Portal...")
-        subprocess.run(args, check=True)
-    else:
-        # Legacy fallback to per-platform scripts
-        hardware_dir = repo_root / "hardware"
-        if sys.platform == "darwin":
-            launcher = hardware_dir / "m4-mac" / "launch.sh"
-        else:
-            launcher = hardware_dir / "linux-bare" / "launch.sh"
-        args = ["bash", str(launcher), "up"]
-        if minimal:
-            args.append("--minimal")
-        click.echo(f"Starting Portal ({launcher.name})...")
-        subprocess.run(args, check=True)
+    launcher = _resolve_launcher()
+    args = ["bash", str(launcher), "up"]
+    if minimal:
+        args.append("--minimal")
+    if profile:
+        args.extend(["--profile", profile])
+    click.echo("Starting Portal...")
+    subprocess.run(args, check=True)
 
 
 @cli.command()
 def down() -> None:
     """Stop the Portal stack."""
-    repo_root = Path(__file__).parent.parent.parent.parent
-    unified = repo_root / "launch.sh"
-
+    launcher = _resolve_launcher()
     click.echo("Stopping Portal stack...")
-    if unified.exists():
-        result = subprocess.run(["bash", str(unified), "down"], check=False)
-    else:
-        # Legacy fallback to per-platform scripts
-        hardware_dir = repo_root / "hardware"
-        if sys.platform == "darwin":
-            launcher = hardware_dir / "m4-mac" / "launch.sh"
-        else:
-            launcher = hardware_dir / "linux-bare" / "launch.sh"
-        result = subprocess.run(["bash", str(launcher), "down"], check=False)
+    result = subprocess.run(["bash", str(launcher), "down"], check=False)
 
     # Fallback lifecycle cleanup so the command is useful even when launcher scripts fail.
-    compose_file = Path(__file__).parent.parent.parent.parent / "docker-compose.yml"
+    compose_file = Path(__file__).parent.parent.parent / "docker-compose.yml"
     if compose_file.exists():
         subprocess.run(["docker", "compose", "-f", str(compose_file), "down"], check=False)
 
