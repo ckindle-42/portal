@@ -6,6 +6,7 @@ Tests the job queue without full package imports.
 """
 
 import asyncio
+import sys
 
 from portal.persistence.repositories import Job, JobStatus, JobPriority
 from portal.persistence.inmemory_impl import InMemoryJobRepository
