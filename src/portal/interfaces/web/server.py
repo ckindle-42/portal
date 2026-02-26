@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+from portal.core.exceptions import PortalError, ModelNotAvailableError, RateLimitError, ValidationError
 from portal.core.types import IncomingMessage, InterfaceType, ProcessingResult
 from portal.interfaces.base import BaseInterface
 from portal.observability.runtime_metrics import (
@@ -116,6 +117,60 @@ class WebInterface(BaseInterface):
 
     def _build_app(self) -> FastAPI:
         app = FastAPI(title="Portal Web Interface", version="1.1.0")
+
+        @app.exception_handler(RateLimitError)
+        async def rate_limit_handler(request: Request, exc: RateLimitError):
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": {
+                        "message": str(exc),
+                        "type": "rate_limit_error",
+                        "code": "rate_limit_exceeded",
+                    }
+                },
+                headers={"Retry-After": str(getattr(exc, 'retry_after', 60))},
+            )
+
+        @app.exception_handler(ValidationError)
+        async def validation_handler(request: Request, exc: ValidationError):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "message": str(exc),
+                        "type": "invalid_request_error",
+                        "code": "validation_error",
+                    }
+                },
+            )
+
+        @app.exception_handler(ModelNotAvailableError)
+        async def model_unavailable_handler(request: Request, exc: ModelNotAvailableError):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": {
+                        "message": str(exc),
+                        "type": "server_error",
+                        "code": "model_not_available",
+                    }
+                },
+            )
+
+        @app.exception_handler(PortalError)
+        async def portal_error_handler(request: Request, exc: PortalError):
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": {
+                        "message": str(exc),
+                        "type": "server_error",
+                        "code": "internal_error",
+                    }
+                },
+            )
+
         app.add_middleware(SecurityHeadersMiddleware)
         app.add_middleware(CORSMiddleware, allow_origins=_build_cors_origins(), allow_credentials=True, allow_methods=["POST", "GET", "OPTIONS"], allow_headers=["Authorization", "Content-Type", "X-Portal-User-Id", "X-User-Id"])
 
@@ -211,15 +266,37 @@ class WebInterface(BaseInterface):
                     await websocket.close(code=4001, reason="Unauthorized")
                     return
             await websocket.accept()
-            # TODO(security): Add per-connection message rate limiting.
-            # SecurityMiddleware rate limiting currently only applies to HTTP endpoints.
-            # A proper fix would track per-connection message rate and disconnect if exceeded.
+
+            # Per-connection rate limiting: max messages per window
+            ws_rate_limit = int(os.getenv("WS_RATE_LIMIT", "10"))       # messages
+            ws_rate_window = float(os.getenv("WS_RATE_WINDOW", "60"))   # seconds
+            message_timestamps: list[float] = []
+
             try:
                 while True:
                     data = await websocket.receive_json()
-                    incoming = IncomingMessage(id=str(uuid.uuid4()), text=data.get("message", ""), model=data.get("model", "auto"))
-                    async for token in self.agent_core.stream_response(incoming):
-                        await websocket.send_json({"token": token, "done": False})
+
+                    # Enforce rate limit
+                    now = time.time()
+                    message_timestamps = [
+                        ts for ts in message_timestamps
+                        if now - ts < ws_rate_window
+                    ]
+                    if len(message_timestamps) >= ws_rate_limit:
+                        await websocket.send_json({
+                            "error": f"Rate limit exceeded ({ws_rate_limit} messages per {int(ws_rate_window)}s). Please wait.",
+                            "done": True,
+                        })
+                        continue
+                    message_timestamps.append(now)
+
+                    incoming = IncomingMessage(
+                        id=str(uuid.uuid4()),
+                        text=data.get("message", ""),
+                        model=data.get("model", "auto"),
+                    )
+                    async for tok in self.agent_core.stream_response(incoming):
+                        await websocket.send_json({"token": tok, "done": False})
                     await websocket.send_json({"token": "", "done": True})
             except WebSocketDisconnect:
                 return

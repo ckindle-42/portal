@@ -13,6 +13,12 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_SYSTEM_PROMPT = (
+    "You are Portal, a helpful AI assistant running locally on the user's hardware. "
+    "You are honest, precise, and concise. You have access to tools when they are "
+    "available. Always prioritize the user's privacy and data sovereignty."
+)
+
 
 class PromptManager:
     """
@@ -97,8 +103,12 @@ class PromptManager:
         """
         user_preferences = user_preferences or {}
 
-        # Start with base prompt
-        parts = [self.load_template('base_system')]
+        # Start with base prompt — fall back to hardcoded default
+        base = self.load_template('base_system')
+        if not base.strip():
+            logger.warning("Base system prompt template missing or empty, using built-in fallback")
+            base = _DEFAULT_SYSTEM_PROMPT
+        parts = [base]
 
         # Add interface-specific prompt
         interface_template = f"{interface}_interface"
