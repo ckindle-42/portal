@@ -8,10 +8,10 @@ import inspect
 import logging
 import pkgutil
 import sys
-from pathlib import Path
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Try to import importlib.metadata (Python 3.8+)
 try:
@@ -30,7 +30,7 @@ class ToolExecutionStats:
     successful_executions: int = 0
     failed_executions: int = 0
     total_execution_time: float = 0.0
-    last_execution: Optional[datetime] = None
+    last_execution: datetime | None = None
 
     @property
     def success_rate(self) -> float:
@@ -49,8 +49,8 @@ class ToolRegistry:
     """Enhanced registry for discovering and managing tools"""
 
     def __init__(self):
-        self.tools: Dict[str, Any] = {}
-        self.tool_categories: Dict[str, List[str]] = {
+        self.tools: dict[str, Any] = {}
+        self.tool_categories: dict[str, list[str]] = {
             'data': [],
             'system': [],
             'web': [],
@@ -59,8 +59,8 @@ class ToolRegistry:
             'automation': [],
             'knowledge': []
         }
-        self.tool_stats: Dict[str, ToolExecutionStats] = {}
-        self.failed_tools: List[Dict[str, str]] = []
+        self.tool_stats: dict[str, ToolExecutionStats] = {}
+        self.failed_tools: list[dict[str, str]] = []
 
     def discover_and_load(self) -> tuple[int, int]:
         """
@@ -342,20 +342,20 @@ class ToolRegistry:
 
         return loaded, failed
 
-    def get_tool(self, name: str) -> Optional[Any]:
+    def get_tool(self, name: str) -> Any | None:
         """Get tool by name"""
         return self.tools.get(name)
 
-    def get_all_tools(self) -> List[Any]:
+    def get_all_tools(self) -> list[Any]:
         """Get all registered tools"""
         return list(self.tools.values())
 
-    def get_tools_by_category(self, category: str) -> List[Any]:
+    def get_tools_by_category(self, category: str) -> list[Any]:
         """Get tools by category"""
         tool_names = self.tool_categories.get(category, [])
         return [self.tools[name] for name in tool_names if name in self.tools]
 
-    def get_tool_list(self) -> List[Dict[str, Any]]:
+    def get_tool_list(self) -> list[dict[str, Any]]:
         """
         Get list of tool metadata for display purposes.
         Returns structured data about each tool.
@@ -397,19 +397,19 @@ class ToolRegistry:
         else:
             stats.failed_executions += 1
 
-    def get_tool_stats(self, tool_name: str) -> Optional[ToolExecutionStats]:
+    def get_tool_stats(self, tool_name: str) -> ToolExecutionStats | None:
         """Get statistics for a specific tool"""
         return self.tool_stats.get(tool_name)
 
-    def get_all_stats(self) -> Dict[str, ToolExecutionStats]:
+    def get_all_stats(self) -> dict[str, ToolExecutionStats]:
         """Get statistics for all tools"""
         return self.tool_stats.copy()
 
-    def get_failed_tools(self) -> List[Dict[str, str]]:
+    def get_failed_tools(self) -> list[dict[str, str]]:
         """Get list of tools that failed to load"""
         return self.failed_tools.copy()
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """
         Perform health check on all tools.
         Returns health status and any issues found.
@@ -446,7 +446,7 @@ class ToolRegistry:
 
         return health_report
 
-    def validate_tool_parameters(self, tool_name: str, parameters: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+    def validate_tool_parameters(self, tool_name: str, parameters: dict[str, Any]) -> tuple[bool, str | None]:
         """
         Validate parameters before tool execution.
         Returns (is_valid, error_message)

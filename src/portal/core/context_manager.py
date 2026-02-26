@@ -7,13 +7,13 @@ Telegram, Web, Slack, or any other interface.
 """
 
 import asyncio
-import sqlite3
-import logging
 import json
-from typing import List, Dict, Any, Optional
+import logging
+import sqlite3
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from dataclasses import dataclass, asdict
+from typing import Any
 
 from .exceptions import ContextNotFoundError
 
@@ -27,14 +27,14 @@ class Message:
     content: str
     timestamp: str
     interface: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Message':
+    def from_dict(cls, data: dict[str, Any]) -> 'Message':
         """Create from dictionary"""
         return cls(**data)
 
@@ -50,7 +50,7 @@ class ContextManager:
     - Handles context window limits
     """
 
-    def __init__(self, db_path: Optional[Path] = None, max_context_messages: int = 50):
+    def __init__(self, db_path: Path | None = None, max_context_messages: int = 50):
         """
         Initialize context manager
 
@@ -103,7 +103,7 @@ class ContextManager:
         role: str,
         content: str,
         interface: str,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> None:
         timestamp = datetime.now().isoformat()
         with sqlite3.connect(self.db_path) as conn:
@@ -118,7 +118,7 @@ class ContextManager:
         chat_id: str,
         limit: int,
         include_system: bool,
-    ) -> List[Message]:
+    ) -> list[Message]:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
@@ -152,7 +152,7 @@ class ContextManager:
             conn.execute("DELETE FROM conversations WHERE chat_id = ?", (chat_id,))
             conn.commit()
 
-    def _sync_get_conversation_summary(self, chat_id: str) -> Dict[str, Any]:
+    def _sync_get_conversation_summary(self, chat_id: str) -> dict[str, Any]:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute("""
@@ -199,7 +199,7 @@ class ContextManager:
         role: str,
         content: str,
         interface: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ):
         """
         Add a message to conversation history
@@ -218,9 +218,9 @@ class ContextManager:
     async def get_history(
         self,
         chat_id: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         include_system: bool = True
-    ) -> List[Message]:
+    ) -> list[Message]:
         """
         Retrieve conversation history
 
@@ -238,9 +238,9 @@ class ContextManager:
     async def get_formatted_history(
         self,
         chat_id: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         format: str = 'openai'
-    ) -> List[Dict[str, str]]:
+    ) -> list[dict[str, str]]:
         """
         Get history formatted for LLM APIs
 
@@ -275,7 +275,7 @@ class ContextManager:
         await asyncio.to_thread(self._sync_clear_history, chat_id)
         logger.info(f"Cleared history for chat_id: {chat_id}")
 
-    async def get_conversation_summary(self, chat_id: str) -> Dict[str, Any]:
+    async def get_conversation_summary(self, chat_id: str) -> dict[str, Any]:
         """Get summary of a conversation"""
         return await asyncio.to_thread(self._sync_get_conversation_summary, chat_id)
 

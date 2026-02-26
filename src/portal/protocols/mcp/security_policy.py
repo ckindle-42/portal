@@ -14,10 +14,9 @@ Examples:
 This prevents MCP servers from having unrestricted access to the system.
 """
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Set
-from enum import Enum
 import logging
+from dataclasses import dataclass, field
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +33,8 @@ class AccessLevel(Enum):
 class FileSystemPolicy:
     """Filesystem access policy for MCP servers"""
     access_level: AccessLevel = AccessLevel.NONE
-    allowed_paths: List[str] = field(default_factory=list)
-    denied_paths: List[str] = field(default_factory=list)
+    allowed_paths: list[str] = field(default_factory=list)
+    denied_paths: list[str] = field(default_factory=list)
     max_file_size_mb: int = 100
 
     def can_access(self, path: str, write: bool = False) -> bool:
@@ -77,9 +76,9 @@ class FileSystemPolicy:
 class NetworkPolicy:
     """Network access policy for MCP servers"""
     access_level: AccessLevel = AccessLevel.NONE
-    allowed_domains: List[str] = field(default_factory=list)
-    denied_domains: List[str] = field(default_factory=list)
-    allowed_ports: List[int] = field(default_factory=lambda: [80, 443])
+    allowed_domains: list[str] = field(default_factory=list)
+    denied_domains: list[str] = field(default_factory=list)
+    allowed_ports: list[int] = field(default_factory=lambda: [80, 443])
 
     def can_access(self, domain: str, port: int = 443) -> bool:
         """

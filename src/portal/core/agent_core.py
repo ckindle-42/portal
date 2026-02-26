@@ -23,35 +23,26 @@ Architecture:
 
 import asyncio
 import json
-import logging
 import os
 import time
-from typing import AsyncIterator, Dict, Any, Optional, List
+from collections.abc import AsyncIterator
 from datetime import datetime
-from pathlib import Path
+from typing import Any, Optional
+
+from portal.memory import MemoryManager
+from portal.middleware.hitl_approval import HITLApprovalMiddleware
+from portal.observability.runtime_metrics import MCP_TOOL_USAGE
 
 # Import existing routing system
-from portal.routing import (
-    ModelRegistry,
-    IntelligentRouter,
-    ExecutionEngine,
-    RoutingStrategy
-)
+from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry
 
 # Import new unified components
 from .context_manager import ContextManager
-from .event_bus import EventBus, EventType, EventEmitter
+from .event_bus import EventBus, EventEmitter, EventType
+from .exceptions import ModelNotAvailableError, PortalError, ToolExecutionError
 from .prompt_manager import PromptManager
-from .structured_logger import get_logger, TraceContext
-from .types import InterfaceType, IncomingMessage, ProcessingResult
-from .exceptions import (
-    PortalError,
-    ModelNotAvailableError,
-    ToolExecutionError
-)
-from portal.memory import MemoryManager
-from portal.observability.runtime_metrics import MCP_TOOL_USAGE
-from portal.middleware.hitl_approval import HITLApprovalMiddleware
+from .structured_logger import TraceContext, get_logger
+from .types import IncomingMessage, InterfaceType, ProcessingResult
 
 logger = get_logger('AgentCore')
 
@@ -80,10 +71,10 @@ class AgentCore:
         event_bus: EventBus,
         prompt_manager: PromptManager,
         tool_registry: 'ToolRegistry',
-        config: Dict[str, Any],
+        config: dict[str, Any],
         confirmation_middleware: Optional['ToolConfirmationMiddleware'] = None,
-        mcp_registry: Optional[Any] = None,
-        memory_manager: Optional[MemoryManager] = None,
+        mcp_registry: Any | None = None,
+        memory_manager: MemoryManager | None = None,
     ):
         """
         Initialize the unified core with dependency injection
@@ -150,8 +141,8 @@ class AgentCore:
         chat_id: str,
         message: str,
         interface: InterfaceType = InterfaceType.UNKNOWN,
-        user_context: Optional[Dict] = None,
-        files: Optional[List[Any]] = None,
+        user_context: dict | None = None,
+        files: list[Any] | None = None,
     ) -> ProcessingResult:
         """
         Process a message from ANY interface
@@ -376,7 +367,7 @@ class AgentCore:
         )
         logger.debug("Assistant response saved", chat_id=chat_id)
 
-    def _build_system_prompt(self, interface: str, user_context: Optional[Dict]) -> str:
+    def _build_system_prompt(self, interface: str, user_context: dict | None) -> str:
         """
         Build system prompt from external templates
 
@@ -393,10 +384,10 @@ class AgentCore:
         self,
         query: str,
         system_prompt: str,
-        available_tools: List[str],
+        available_tools: list[str],
         chat_id: str,
         trace_id: str,
-        messages: Optional[List[Dict[str, Any]]] = None,
+        messages: list[dict[str, Any]] | None = None,
     ):
         """Execute with intelligent routing"""
         # Get routing decision
@@ -442,7 +433,7 @@ class AgentCore:
 
         return result
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get processing statistics"""
         async with self._stats_lock:
             uptime = (datetime.now() - self.start_time).total_seconds()
@@ -456,9 +447,47 @@ class AgentCore:
             stats['avg_execution_time'] = 0
         return stats
 
-    def get_tool_list(self) -> List[Dict[str, Any]]:
+    def get_tool_list(self) -> list[dict[str, Any]]:
         """Get list of available tools"""
         return self.tool_registry.get_tool_list()
+
+    async def _resolve_preflight_tools(
+        self,
+        query: str,
+        system_prompt: str,
+        messages: list[dict[str, Any]] | None,
+        chat_id: str,
+        trace_id: str,
+        max_rounds: int,
+    ) -> list[dict[str, str]]:
+        """
+        Run the preflight MCP tool loop and return accumulated tool-result messages.
+
+        Executes up to *max_rounds* of model → tool-call → result iterations so
+        that `stream_response` receives a resolved context before it begins
+        token streaming.  Returns an empty list when no MCP registry is attached
+        or when the model produces no tool-call requests.
+        """
+        tool_messages: list[dict[str, str]] = []
+        if not self.mcp_registry:
+            return tool_messages
+
+        for _ in range(max_rounds):
+            loop_messages = messages if not tool_messages else (messages or []) + tool_messages
+            preflight = await self.execution_engine.execute(
+                query=query,
+                system_prompt=system_prompt,
+                messages=loop_messages,
+            )
+            if not preflight.success:
+                break
+            tool_calls = preflight.tool_calls or []
+            if not tool_calls:
+                break
+            results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
+            tool_messages.extend(self._format_tool_results_as_messages(results))
+
+        return tool_messages
 
     async def stream_response(self, incoming: IncomingMessage) -> AsyncIterator[str]:
         """
@@ -476,29 +505,15 @@ class AgentCore:
         query = incoming.text
         max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
         messages = incoming.history if incoming.history else None
-        tool_messages: List[Dict[str, str]] = []
 
-        if self.mcp_registry:
-            for _ in range(max_tool_rounds):
-                loop_messages = messages if not tool_messages else (messages or []) + tool_messages
-                preflight = await self.execution_engine.execute(
-                    query=query,
-                    system_prompt=system_prompt,
-                    messages=loop_messages,
-                )
-                if not preflight.success:
-                    break
-
-                tool_calls = preflight.tool_calls or []
-                if not tool_calls:
-                    break
-
-                tool_results = await self._dispatch_mcp_tools(
-                    tool_calls=tool_calls,
-                    chat_id=incoming.id,
-                    trace_id=f"stream-{incoming.id}",
-                )
-                tool_messages.extend(self._format_tool_results_as_messages(tool_results))
+        tool_messages = await self._resolve_preflight_tools(
+            query=query,
+            system_prompt=system_prompt,
+            messages=messages,
+            chat_id=incoming.id,
+            trace_id=f"stream-{incoming.id}",
+            max_rounds=max_tool_rounds,
+        )
 
         collected_response = []
         final_messages = (messages or []) + tool_messages if tool_messages else messages
@@ -526,14 +541,14 @@ class AgentCore:
         self,
         query: str,
         system_prompt: str,
-        available_tools: List[str],
+        available_tools: list[str],
         chat_id: str,
         trace_id: str,
-        messages: Optional[List[Dict[str, Any]]] = None,
-    ) -> tuple[Any, List[Dict[str, Any]]]:
+        messages: list[dict[str, Any]] | None = None,
+    ) -> tuple[Any, list[dict[str, Any]]]:
         """Execute model calls and iterate tool calls until a final answer is produced."""
         current_query = query
-        collected_tool_results: List[Dict[str, Any]] = []
+        collected_tool_results: list[dict[str, Any]] = []
         max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
         current_messages = messages  # Use caller-provided history on first pass only
 
@@ -566,7 +581,7 @@ class AgentCore:
         )
         return final_result, collected_tool_results
 
-    def _format_tool_results_as_messages(self, tool_results: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    def _format_tool_results_as_messages(self, tool_results: list[dict[str, Any]]) -> list[dict[str, str]]:
         """Format MCP tool outputs as structured messages for the model."""
         messages = []
         for result in tool_results:
@@ -595,10 +610,10 @@ class AgentCore:
 
     async def _dispatch_mcp_tools(
         self,
-        tool_calls: List[Dict[str, Any]],
+        tool_calls: list[dict[str, Any]],
         chat_id: str,
         trace_id: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Dispatch a list of tool-call requests to the MCP registry.
 
@@ -672,11 +687,11 @@ class AgentCore:
     async def execute_tool(
         self,
         tool_name: str,
-        parameters: Dict[str, Any],
-        chat_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        trace_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        parameters: dict[str, Any],
+        chat_id: str | None = None,
+        user_id: str | None = None,
+        trace_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Execute a specific tool directly
 

@@ -4,11 +4,10 @@ Docker Compose Tool - Manage Docker Compose stacks
 
 import asyncio
 import logging
-from typing import Dict, Any
-from pathlib import Path
 import os
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolCategory, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +61,7 @@ class DockerComposeTool(BaseTool):
             ]
         )
 
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute docker-compose command"""
 
         action = parameters.get("action", "").lower()
@@ -122,7 +121,7 @@ class DockerComposeTool(BaseTool):
             # Truncate if too long
             max_length = 3000
             if len(result_text) > max_length:
-                result_text = result_text[-max_length:] + f"\n\n... (truncated)"
+                result_text = result_text[-max_length:] + "\n\n... (truncated)"
 
             if process.returncode != 0:
                 return self._error_response(

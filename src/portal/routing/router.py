@@ -14,18 +14,16 @@ Sits at :8000 and provides:
 Based on M4 AI Stack Setup Guide v6.2 / v4.7.
 """
 
-import asyncio
 import json
 import logging
 import os
 import re
 import time
 from pathlib import Path
-from typing import Any
 
 import httpx
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
 

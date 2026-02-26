@@ -19,19 +19,21 @@ Setup:
 
 import hashlib
 import hmac
-import time
 import logging
-from typing import AsyncIterator
+import time
+from collections.abc import AsyncIterator
 
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from slack_sdk.web.async_client import AsyncWebClient
 
-from portal.interfaces.base import BaseInterface
+from portal.agent.dispatcher import CentralDispatcher
 from portal.core.types import IncomingMessage
+from portal.interfaces.base import BaseInterface
 
 logger = logging.getLogger(__name__)
 
 
+@CentralDispatcher.register("slack")
 class SlackInterface(BaseInterface):
     """
     Slack Events API interface.

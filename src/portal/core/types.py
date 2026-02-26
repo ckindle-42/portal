@@ -12,7 +12,7 @@ response text and the richer metadata that Telegram/debug views surface.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class InterfaceType(str, Enum):
@@ -44,9 +44,9 @@ class IncomingMessage:
     id: str
     text: str
     model: str = "auto"
-    history: List[Dict[str, Any]] = field(default_factory=list)
+    history: list[dict[str, Any]] = field(default_factory=list)
     source: str = "web"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -76,20 +76,20 @@ class ProcessingResult:
     execution_time: float = 0.0
 
     # Tool usage
-    tools_used: List[str] = field(default_factory=list)
-    tool_results: List[Dict[str, Any]] = field(default_factory=list)
+    tools_used: list[str] = field(default_factory=list)
+    tool_results: list[dict[str, Any]] = field(default_factory=list)
 
     # Token accounting (for OpenAI-compat /v1/chat/completions usage block)
-    prompt_tokens: Optional[int] = None
-    completion_tokens: Optional[int] = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
 
     # Warnings and errors
-    warnings: List[str] = field(default_factory=list)
-    error: Optional[str] = None
+    warnings: list[str] = field(default_factory=list)
+    error: str | None = None
 
     # Tracing
-    trace_id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    trace_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 __all__ = ['InterfaceType', 'IncomingMessage', 'ProcessingResult']

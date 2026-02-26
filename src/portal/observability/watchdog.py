@@ -17,14 +17,16 @@ v4.7.0: Initial implementation for production reliability
 
 import asyncio
 import logging
-import psutil
 import time
-from typing import Dict, Any, Optional, Callable, List, Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
+from typing import Any
 
-from .health import HealthCheckSystem, HealthStatus, HealthCheckResult
+import psutil
+
+from .health import HealthCheckResult, HealthCheckSystem, HealthStatus
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +74,9 @@ class ComponentHealth:
     last_check_time: float
     consecutive_failures: int = 0
     restart_count: int = 0
-    last_restart_time: Optional[float] = None
-    last_error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    last_restart_time: float | None = None
+    last_error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class MonitoredComponent:
@@ -90,7 +92,7 @@ class MonitoredComponent:
         self,
         name: str,
         health_check: Callable[[], Awaitable[HealthCheckResult]],
-        restart_func: Optional[Callable[[], Awaitable[None]]] = None,
+        restart_func: Callable[[], Awaitable[None]] | None = None,
         critical: bool = True
     ):
         """
@@ -136,10 +138,10 @@ class Watchdog:
 
     def __init__(
         self,
-        config: Optional[WatchdogConfig] = None,
-        health_system: Optional[HealthCheckSystem] = None,
-        on_component_failed: Optional[Callable[[str, str], None]] = None,
-        on_component_restarted: Optional[Callable[[str], None]] = None
+        config: WatchdogConfig | None = None,
+        health_system: HealthCheckSystem | None = None,
+        on_component_failed: Callable[[str, str], None] | None = None,
+        on_component_restarted: Callable[[str], None] | None = None
     ):
         """
         Initialize watchdog.
@@ -155,9 +157,9 @@ class Watchdog:
         self.on_component_failed = on_component_failed
         self.on_component_restarted = on_component_restarted
 
-        self._components: Dict[str, MonitoredComponent] = {}
+        self._components: dict[str, MonitoredComponent] = {}
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._process = psutil.Process()
 
         logger.info(
@@ -171,7 +173,7 @@ class Watchdog:
         self,
         name: str,
         health_check: Callable[[], Awaitable[HealthCheckResult]],
-        restart_func: Optional[Callable[[], Awaitable[None]]] = None,
+        restart_func: Callable[[], Awaitable[None]] | None = None,
         critical: bool = True
     ):
         """
@@ -219,7 +221,7 @@ class Watchdog:
         self._task = asyncio.create_task(self._monitoring_loop())
 
         logger.info(
-            f"Watchdog started",
+            "Watchdog started",
             components_count=len(self._components),
             check_interval=self.config.check_interval_seconds
         )
@@ -415,7 +417,7 @@ class Watchdog:
         except Exception as e:
             logger.error(f"Error checking system resources: {e}")
 
-    def get_component_status(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_component_status(self, name: str) -> dict[str, Any] | None:
         """
         Get status of a specific component.
 
@@ -440,7 +442,7 @@ class Watchdog:
             'critical': component.critical
         }
 
-    def get_all_status(self) -> Dict[str, Any]:
+    def get_all_status(self) -> dict[str, Any]:
         """
         Get status of all monitored components.
 

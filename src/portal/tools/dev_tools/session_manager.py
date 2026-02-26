@@ -26,11 +26,10 @@ Architecture:
 
 import asyncio
 import logging
-import time
-from dataclasses import dataclass, field
-from typing import Dict, Optional, Any
-from datetime import datetime, timedelta
 import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +48,10 @@ class ExecutionSession:
     chat_id: str
     created_at: datetime = field(default_factory=datetime.utcnow)
     last_used_at: datetime = field(default_factory=datetime.utcnow)
-    container_id: Optional[str] = None
-    kernel_id: Optional[str] = None
+    container_id: str | None = None
+    kernel_id: str | None = None
     execution_count: int = 0
-    variables: Dict[str, Any] = field(default_factory=dict)
+    variables: dict[str, Any] = field(default_factory=dict)
 
     def touch(self):
         """Update last_used_at timestamp"""
@@ -100,8 +99,8 @@ class SessionManager:
         self.max_sessions = max_sessions
         self.backend = backend
 
-        self._sessions: Dict[str, ExecutionSession] = {}
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self._sessions: dict[str, ExecutionSession] = {}
+        self._cleanup_task: asyncio.Task | None = None
         self._shutdown = False
 
         logger.info(
@@ -139,7 +138,7 @@ class SessionManager:
         chat_id: str,
         code: str,
         timeout: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute code in a persistent session
 
@@ -243,7 +242,7 @@ class SessionManager:
         # - docker run -d python:3.11 python -c "import time; time.sleep(86400)"
         # - Store container ID
         # - Use docker exec for code execution
-        logger.debug(f"Initializing Docker session (placeholder)")
+        logger.debug("Initializing Docker session (placeholder)")
         session.container_id = f"placeholder-{session.session_id[:8]}"
 
     async def _init_jupyter_session(self, session: ExecutionSession):
@@ -256,7 +255,7 @@ class SessionManager:
         3. Use jupyter_client to execute code
         """
         # Placeholder for Jupyter implementation
-        logger.debug(f"Initializing Jupyter session (placeholder)")
+        logger.debug("Initializing Jupyter session (placeholder)")
         session.kernel_id = f"placeholder-{session.session_id[:8]}"
 
     async def _execute_docker(
@@ -264,7 +263,7 @@ class SessionManager:
         session: ExecutionSession,
         code: str,
         timeout: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute code in a Docker container
 
@@ -286,7 +285,7 @@ class SessionManager:
         session: ExecutionSession,
         code: str,
         timeout: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute code in a Jupyter kernel
 
@@ -335,11 +334,11 @@ class SessionManager:
         # Cleanup backend resources
         if session.container_id:
             # docker stop/rm container
-            logger.debug(f"Stopping Docker container (placeholder)")
+            logger.debug("Stopping Docker container (placeholder)")
 
         if session.kernel_id:
             # Shutdown Jupyter kernel
-            logger.debug(f"Shutting down Jupyter kernel (placeholder)")
+            logger.debug("Shutting down Jupyter kernel (placeholder)")
 
         # Remove from sessions
         self._sessions.pop(session.chat_id, None)
@@ -355,13 +354,13 @@ class SessionManager:
         )
 
         logger.warning(
-            f"Max sessions reached, cleaning up oldest session",
+            "Max sessions reached, cleaning up oldest session",
             session_id=oldest_session.session_id
         )
 
         await self._cleanup_session(oldest_session)
 
-    async def get_session_info(self, chat_id: str) -> Optional[Dict[str, Any]]:
+    async def get_session_info(self, chat_id: str) -> dict[str, Any] | None:
         """
         Get information about a session
 
@@ -385,7 +384,7 @@ class SessionManager:
             'is_idle': session.is_idle(self.idle_timeout_minutes)
         }
 
-    async def list_sessions(self) -> Dict[str, Dict[str, Any]]:
+    async def list_sessions(self) -> dict[str, dict[str, Any]]:
         """
         List all active sessions
 

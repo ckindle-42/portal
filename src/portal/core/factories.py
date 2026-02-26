@@ -11,18 +11,12 @@ This decouples the creation logic from the core, making it easier to:
 v4.6.1: Extracted from create_agent_core for better separation of concerns
 """
 
-from typing import Dict, Any, Optional, Protocol
-from pathlib import Path
+from typing import Any, Protocol
 
-from portal.routing import (
-    ModelRegistry,
-    IntelligentRouter,
-    ExecutionEngine,
-    RoutingStrategy
-)
+from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry, RoutingStrategy
+
 from .context_manager import ContextManager
 from .event_bus import EventBus
-from .event_broker import EventBroker, create_event_broker
 from .prompt_manager import PromptManager
 from .structured_logger import get_logger
 
@@ -36,7 +30,7 @@ logger = get_logger('Factories')
 class DependencyFactory(Protocol):
     """Protocol for dependency factories"""
 
-    def create(self, config: Dict[str, Any]) -> Any:
+    def create(self, config: dict[str, Any]) -> Any:
         """Create and return a dependency instance"""
         ...
 
@@ -45,7 +39,7 @@ class DependencyFactory(Protocol):
 # MODEL REGISTRY FACTORY
 # =============================================================================
 
-def create_model_registry(config: Dict[str, Any]) -> ModelRegistry:
+def create_model_registry(config: dict[str, Any]) -> ModelRegistry:
     """
     Create ModelRegistry instance.
 
@@ -65,7 +59,7 @@ def create_model_registry(config: Dict[str, Any]) -> ModelRegistry:
 
 def create_router(
     model_registry: ModelRegistry,
-    config: Dict[str, Any]
+    config: dict[str, Any]
 ) -> IntelligentRouter:
     """
     Create IntelligentRouter instance.
@@ -102,7 +96,7 @@ def create_router(
 def create_execution_engine(
     model_registry: ModelRegistry,
     router: IntelligentRouter,
-    config: Dict[str, Any]
+    config: dict[str, Any]
 ) -> ExecutionEngine:
     """
     Create ExecutionEngine instance.
@@ -142,7 +136,7 @@ def create_execution_engine(
 # CONTEXT MANAGER FACTORY
 # =============================================================================
 
-def create_context_manager(config: Dict[str, Any]) -> ContextManager:
+def create_context_manager(config: dict[str, Any]) -> ContextManager:
     """
     Create ContextManager instance.
 
@@ -163,7 +157,7 @@ def create_context_manager(config: Dict[str, Any]) -> ContextManager:
 # EVENT BUS FACTORY
 # =============================================================================
 
-def create_event_bus_instance(config: Dict[str, Any]) -> EventBus:
+def create_event_bus_instance(config: dict[str, Any]) -> EventBus:
     """
     Create EventBus instance.
 
@@ -189,7 +183,7 @@ def create_event_bus_instance(config: Dict[str, Any]) -> EventBus:
 # PROMPT MANAGER FACTORY
 # =============================================================================
 
-def create_prompt_manager(config: Dict[str, Any]) -> PromptManager:
+def create_prompt_manager(config: dict[str, Any]) -> PromptManager:
     """
     Create PromptManager instance.
 
@@ -210,7 +204,7 @@ def create_prompt_manager(config: Dict[str, Any]) -> PromptManager:
 # TOOL REGISTRY FACTORY
 # =============================================================================
 
-def create_tool_registry(config: Dict[str, Any]) -> 'ToolRegistry':
+def create_tool_registry(config: dict[str, Any]) -> 'ToolRegistry':
     """
     Create ToolRegistry instance.
 
@@ -239,7 +233,7 @@ class DependencyContainer:
     This makes it easy to create, configure, and inject dependencies.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize dependency container.
 
@@ -314,7 +308,7 @@ class DependencyContainer:
             deps['mcp_registry'] = mcp_registry
         return AgentCore(**deps)
 
-    def get_all(self) -> Dict[str, Any]:
+    def get_all(self) -> dict[str, Any]:
         """
         Get all dependencies as a dictionary, including mcp_registry.
 
@@ -338,7 +332,7 @@ class DependencyContainer:
 # CONVENIENCE FUNCTION
 # =============================================================================
 
-def create_dependencies(config: Dict[str, Any]) -> DependencyContainer:
+def create_dependencies(config: dict[str, Any]) -> DependencyContainer:
     """
     Create all AgentCore dependencies in a single call.
 

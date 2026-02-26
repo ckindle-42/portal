@@ -6,11 +6,12 @@ Defines the contract that all PocketPortal interfaces must implement.
 This enables the AgentCore to work with any interface uniformly.
 """
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Callable, Awaitable
-from dataclasses import dataclass
 import asyncio
 import logging
+from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +27,9 @@ class Message:
     user_id: str
     content: str
     interface_type: str  # "telegram", "web", "slack", etc.
-    metadata: Dict[str, Any] = None  # Interface-specific metadata
-    chat_id: Optional[str] = None
-    message_id: Optional[str] = None
+    metadata: dict[str, Any] = None  # Interface-specific metadata
+    chat_id: str | None = None
+    message_id: str | None = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -44,8 +45,8 @@ class Response:
     """
     content: str
     message_type: str = "text"  # "text", "image", "file", "code", etc.
-    metadata: Dict[str, Any] = None
-    reply_to_message_id: Optional[str] = None
+    metadata: dict[str, Any] = None
+    reply_to_message_id: str | None = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -66,7 +67,7 @@ class BaseInterface(ABC):
     4. **Lifecycle Management**: Clear start/stop methods for resource management
     """
 
-    def __init__(self, agent_core: Any, config: Dict[str, Any]):
+    def __init__(self, agent_core: Any, config: dict[str, Any]):
         """
         Initialize the interface.
 
@@ -151,7 +152,7 @@ class BaseInterface(ABC):
 
     # Optional methods with default implementations
 
-    async def on_error(self, error: Exception, message: Optional[Message] = None) -> None:
+    async def on_error(self, error: Exception, message: Message | None = None) -> None:
         """
         Handle errors that occur during message processing.
 
@@ -176,7 +177,7 @@ class BaseInterface(ABC):
         """
         return self.is_running
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """
         Get current status information about the interface.
 
@@ -240,7 +241,7 @@ class InterfaceManager:
             agent_core: The agent core to share across interfaces
         """
         self.agent_core = agent_core
-        self.interfaces: Dict[str, BaseInterface] = {}
+        self.interfaces: dict[str, BaseInterface] = {}
         logger.info("InterfaceManager initialized")
 
     def register(self, name: str, interface: BaseInterface) -> None:
@@ -268,7 +269,7 @@ class InterfaceManager:
         await asyncio.gather(*tasks, return_exceptions=True)
         logger.info("All interfaces stopped")
 
-    async def health_check_all(self) -> Dict[str, bool]:
+    async def health_check_all(self) -> dict[str, bool]:
         """
         Check health of all interfaces.
 

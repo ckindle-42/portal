@@ -25,19 +25,19 @@ Architecture:
 """
 
 import asyncio
-import logging
+import os
 import signal
 import sys
-import os
-from typing import Optional, Callable, List, Set
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Optional
 
 from portal.config.settings import Settings, load_settings
-from portal.core import create_agent_core, AgentCore
-from portal.core.event_broker import create_event_broker, EventBroker
-from portal.security import SecurityMiddleware
+from portal.core import AgentCore, create_agent_core
+from portal.core.event_broker import EventBroker, create_event_broker
 from portal.core.structured_logger import get_logger
+from portal.security import SecurityMiddleware
 
 logger = get_logger('Lifecycle')
 
@@ -65,7 +65,7 @@ class ShutdownCallback:
     callback: Callable
     priority: ShutdownPriority
     name: str
-    timeout: Optional[float] = None  # Optional per-callback timeout
+    timeout: float | None = None  # Optional per-callback timeout
 
 
 @dataclass
@@ -81,14 +81,14 @@ class RuntimeContext:
     event_broker: EventBroker
     agent_core: AgentCore
     secure_agent: SecurityMiddleware
-    shutdown_callbacks: List[ShutdownCallback] = field(default_factory=list)
+    shutdown_callbacks: list[ShutdownCallback] = field(default_factory=list)
 
     # v4.7.0: New optional components
     watchdog: Optional['Watchdog'] = None
     log_rotator: Optional['LogRotator'] = None
 
     # v4.7.0: Track in-flight operations
-    active_tasks: Set[asyncio.Task] = field(default_factory=set)
+    active_tasks: set[asyncio.Task] = field(default_factory=set)
     accepting_work: bool = True
 
 
@@ -104,7 +104,7 @@ class Runtime:
 
     def __init__(
         self,
-        config_path: Optional[str] = None,
+        config_path: str | None = None,
         enable_watchdog: bool = False,
         enable_log_rotation: bool = False,
         shutdown_timeout: float = 30.0
@@ -122,7 +122,7 @@ class Runtime:
         self.enable_watchdog = enable_watchdog
         self.enable_log_rotation = enable_log_rotation
         self.shutdown_timeout = shutdown_timeout
-        self.context: Optional[RuntimeContext] = None
+        self.context: RuntimeContext | None = None
         self._shutdown_event = asyncio.Event()
         self._initialized = False
         self._shutdown_in_progress = False
@@ -200,8 +200,8 @@ class Runtime:
         # Step 6: Initialize log rotation (v4.7.0)
         log_rotator = None
         if self.enable_log_rotation:
+
             from portal.observability.log_rotation import LogRotator, RotationConfig
-            from pathlib import Path
             log_file = settings.data_dir / "logs" / "portal.log"
             logger.info(f"Initializing log rotation for {log_file}")
             log_rotator = LogRotator(
@@ -227,6 +227,15 @@ class Runtime:
             await watchdog.start()
         if log_rotator:
             await log_rotator.start()
+
+        # Start config watcher for hot reload if portal.yaml is present
+        from pathlib import Path as _Path
+        _config_watch_path = self.config_path or _Path("portal.yaml")
+        if _config_watch_path.exists():
+            from portal.observability.config_watcher import ConfigWatcher
+            _config_watcher = ConfigWatcher(config_file=_config_watch_path)
+            asyncio.create_task(_config_watcher.start(), name="config-watcher")
+            logger.info("Config watcher started for %s", _config_watch_path)
 
         self._initialized = True
         logger.info(
@@ -297,7 +306,7 @@ class Runtime:
                         timeout=self.shutdown_timeout * 0.5  # Use half timeout for draining
                     )
                     logger.info("All in-flight operations completed")
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning(
                         f"Timeout waiting for tasks to drain, {len(self.context.active_tasks)} tasks still active"
                     )
@@ -357,7 +366,7 @@ class Runtime:
                             timeout=callback_timeout
                         )
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.error(
                         f"Shutdown callback timed out: {callback.name}",
                         timeout=callback_timeout
@@ -431,8 +440,8 @@ class Runtime:
         self,
         callback: Callable,
         priority: ShutdownPriority = ShutdownPriority.NORMAL,
-        name: Optional[str] = None,
-        timeout: Optional[float] = None
+        name: str | None = None,
+        timeout: float | None = None
     ):
         """
         Register a callback to be executed during shutdown
@@ -492,7 +501,7 @@ class Runtime:
 
 async def run_with_lifecycle(
     main_task: Callable[[RuntimeContext], None],
-    config_path: Optional[str] = None
+    config_path: str | None = None
 ):
     """
     Helper function to run an application with proper lifecycle management

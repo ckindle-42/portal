@@ -19,9 +19,7 @@ Architecture:
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Callable, List, Optional
-from dataclasses import dataclass
-from datetime import datetime
+from collections.abc import Callable
 
 from .event_bus import Event, EventType
 
@@ -71,10 +69,10 @@ class EventBroker(ABC):
     @abstractmethod
     async def get_history(
         self,
-        chat_id: Optional[str] = None,
-        event_type: Optional[EventType] = None,
+        chat_id: str | None = None,
+        event_type: EventType | None = None,
         limit: int = 100
-    ) -> List[Event]:
+    ) -> list[Event]:
         """
         Get event history
 
@@ -89,7 +87,7 @@ class EventBroker(ABC):
         pass
 
     @abstractmethod
-    async def clear_history(self, chat_id: Optional[str] = None) -> None:
+    async def clear_history(self, chat_id: str | None = None) -> None:
         """
         Clear event history
 
@@ -114,8 +112,8 @@ class MemoryEventBroker(EventBroker):
         Args:
             max_history: Maximum number of events to keep in history
         """
-        self._subscribers: Dict[EventType, List[Callable]] = {}
-        self._event_history: List[Event] = []
+        self._subscribers: dict[EventType, list[Callable]] = {}
+        self._event_history: list[Event] = []
         self._max_history = max_history
         self._lock = asyncio.Lock()
 
@@ -174,10 +172,10 @@ class MemoryEventBroker(EventBroker):
 
     async def get_history(
         self,
-        chat_id: Optional[str] = None,
-        event_type: Optional[EventType] = None,
+        chat_id: str | None = None,
+        event_type: EventType | None = None,
         limit: int = 100
-    ) -> List[Event]:
+    ) -> list[Event]:
         """Get event history with optional filters"""
         async with self._lock:
             events = self._event_history.copy()
@@ -192,7 +190,7 @@ class MemoryEventBroker(EventBroker):
         # Return most recent events up to limit
         return events[-limit:]
 
-    async def clear_history(self, chat_id: Optional[str] = None) -> None:
+    async def clear_history(self, chat_id: str | None = None) -> None:
         """Clear event history"""
         async with self._lock:
             if chat_id:

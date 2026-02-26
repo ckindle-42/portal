@@ -12,11 +12,11 @@ Tools:
 - Metadata Extractor - Extract document metadata
 """
 
-from .word_processor import WordProcessorTool
-from .excel_processor import ExcelProcessorTool
-from .powerpoint_processor import PowerPointProcessorTool
-from .pandoc_converter import PandocConverterTool
 from .document_metadata_extractor import DocumentMetadataExtractorTool
+from .excel_processor import ExcelProcessorTool
+from .pandoc_converter import PandocConverterTool
+from .powerpoint_processor import PowerPointProcessorTool
+from .word_processor import WordProcessorTool
 
 __all__ = [
     'WordProcessorTool',

@@ -21,13 +21,12 @@ Features:
 Install: pip install PyPDF2 python-docx python-pptx openpyxl Pillow mutagen
 """
 
-import asyncio
 import logging
-from typing import Dict, Any, Optional
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +37,10 @@ class DocumentMetadataExtractorTool(BaseTool):
     
     Works with 15+ file formats!
     """
-    
+
     def __init__(self):
         super().__init__()
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="document_metadata",
@@ -65,20 +64,20 @@ class DocumentMetadataExtractorTool(BaseTool):
                 )
             ]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Extract document metadata"""
-        
+
         file_path = Path(parameters.get("file_path", "")).expanduser()
         detailed = parameters.get("detailed", False)
-        
+
         if not file_path.exists():
             return self._error_response(f"File not found: {file_path}")
-        
+
         try:
             # Determine file type
             suffix = file_path.suffix.lower()
-            
+
             # Extract based on type
             if suffix == ".pdf":
                 metadata = await self._extract_pdf_metadata(file_path, detailed)
@@ -94,7 +93,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                 metadata = await self._extract_audio_metadata(file_path, detailed)
             else:
                 return self._error_response(f"Unsupported file format: {suffix}")
-            
+
             # Add common file properties
             stat = file_path.stat()
             metadata["file_properties"] = {
@@ -104,17 +103,17 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 "format": suffix[1:]
             }
-            
+
             return self._success_response(
                 result=metadata,
                 metadata={"file_type": suffix[1:]}
             )
-        
+
         except Exception as e:
             logger.error(f"Metadata extraction error: {e}")
             return self._error_response(f"Extraction error: {e}")
-    
-    async def _extract_pdf_metadata(self, file_path: Path, detailed: bool) -> Dict:
+
+    async def _extract_pdf_metadata(self, file_path: Path, detailed: bool) -> dict:
         """Extract PDF metadata"""
 
         try:
@@ -125,7 +124,7 @@ class DocumentMetadataExtractorTool(BaseTool):
         try:
             reader = PdfReader(str(file_path))
             info = reader.metadata
-            
+
             metadata = {
                 "type": "PDF Document",
                 "pages": len(reader.pages),
@@ -136,13 +135,13 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "producer": info.get("/Producer", ""),
                 "keywords": info.get("/Keywords", "")
             }
-            
+
             # Creation/modification dates
             if "/CreationDate" in info:
                 metadata["created"] = info.get("/CreationDate")
             if "/ModDate" in info:
                 metadata["modified"] = info.get("/ModDate")
-            
+
             # Detailed info
             if detailed:
                 metadata["encrypted"] = reader.is_encrypted
@@ -154,13 +153,13 @@ class DocumentMetadataExtractorTool(BaseTool):
                     }
                     for i, page in enumerate(reader.pages[:5])  # First 5 pages
                 ]
-            
+
             return metadata
-        
+
         except Exception as e:
             return {"error": f"PDF extraction failed: {e}"}
-    
-    async def _extract_docx_metadata(self, file_path: Path, detailed: bool) -> Dict:
+
+    async def _extract_docx_metadata(self, file_path: Path, detailed: bool) -> dict:
         """Extract DOCX metadata"""
 
         try:
@@ -171,7 +170,7 @@ class DocumentMetadataExtractorTool(BaseTool):
         try:
             doc = Document(str(file_path))
             props = doc.core_properties
-            
+
             metadata = {
                 "type": "Word Document",
                 "title": props.title or "",
@@ -183,7 +182,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "created": props.created.isoformat() if props.created else "",
                 "modified": props.modified.isoformat() if props.modified else ""
             }
-            
+
             # Content statistics
             if detailed:
                 metadata["statistics"] = {
@@ -192,13 +191,13 @@ class DocumentMetadataExtractorTool(BaseTool):
                     "sections": len(doc.sections),
                     "styles": len(doc.styles)
                 }
-            
+
             return metadata
-        
+
         except Exception as e:
             return {"error": f"DOCX extraction failed: {e}"}
-    
-    async def _extract_pptx_metadata(self, file_path: Path, detailed: bool) -> Dict:
+
+    async def _extract_pptx_metadata(self, file_path: Path, detailed: bool) -> dict:
         """Extract PPTX metadata"""
 
         try:
@@ -209,7 +208,7 @@ class DocumentMetadataExtractorTool(BaseTool):
         try:
             prs = Presentation(str(file_path))
             props = prs.core_properties
-            
+
             metadata = {
                 "type": "PowerPoint Presentation",
                 "title": props.title or "",
@@ -221,19 +220,19 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "modified": props.modified.isoformat() if props.modified else "",
                 "slides": len(prs.slides)
             }
-            
+
             if detailed:
                 metadata["slide_dimensions"] = {
                     "width": prs.slide_width,
                     "height": prs.slide_height
                 }
-            
+
             return metadata
-        
+
         except Exception as e:
             return {"error": f"PPTX extraction failed: {e}"}
-    
-    async def _extract_xlsx_metadata(self, file_path: Path, detailed: bool) -> Dict:
+
+    async def _extract_xlsx_metadata(self, file_path: Path, detailed: bool) -> dict:
         """Extract XLSX metadata"""
 
         try:
@@ -244,7 +243,7 @@ class DocumentMetadataExtractorTool(BaseTool):
         try:
             wb = load_workbook(str(file_path), data_only=True)
             props = wb.properties
-            
+
             metadata = {
                 "type": "Excel Spreadsheet",
                 "title": props.title or "",
@@ -255,7 +254,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "modified": props.modified.isoformat() if props.modified else "",
                 "sheets": wb.sheetnames
             }
-            
+
             if detailed:
                 metadata["sheet_details"] = {
                     sheet: {
@@ -264,14 +263,14 @@ class DocumentMetadataExtractorTool(BaseTool):
                     }
                     for sheet, ws in [(name, wb[name]) for name in wb.sheetnames]
                 }
-            
+
             wb.close()
             return metadata
-        
+
         except Exception as e:
             return {"error": f"XLSX extraction failed: {e}"}
-    
-    async def _extract_image_metadata(self, file_path: Path, detailed: bool) -> Dict:
+
+    async def _extract_image_metadata(self, file_path: Path, detailed: bool) -> dict:
         """Extract image EXIF metadata"""
 
         try:
@@ -301,16 +300,16 @@ class DocumentMetadataExtractorTool(BaseTool):
                     if isinstance(value, bytes):
                         continue  # Skip binary data
                     exif[tag] = str(value)
-                
+
                 metadata["exif"] = exif
-            
+
             img.close()
             return metadata
-        
+
         except Exception as e:
             return {"error": f"Image extraction failed: {e}"}
-    
-    async def _extract_audio_metadata(self, file_path: Path, detailed: bool) -> Dict:
+
+    async def _extract_audio_metadata(self, file_path: Path, detailed: bool) -> dict:
         """Extract audio metadata"""
 
         try:
@@ -320,26 +319,26 @@ class DocumentMetadataExtractorTool(BaseTool):
 
         try:
             audio = MutagenFile(str(file_path))
-            
+
             if audio is None:
                 return {"error": "Could not read audio file"}
-            
+
             metadata = {
                 "type": "Audio",
                 "format": audio.mime[0] if audio.mime else "Unknown",
                 "length_seconds": round(audio.info.length, 2) if audio.info else 0,
                 "bitrate": audio.info.bitrate if hasattr(audio.info, 'bitrate') else "Unknown"
             }
-            
+
             # Tags
             if audio.tags and detailed:
                 tags = {}
                 for key, value in audio.tags.items():
                     tags[key] = str(value[0]) if isinstance(value, list) else str(value)
                 metadata["tags"] = tags
-            
+
             return metadata
-        
+
         except Exception as e:
             return {"error": f"Audio extraction failed: {e}"}
 

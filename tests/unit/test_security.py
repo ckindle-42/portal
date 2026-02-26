@@ -89,12 +89,11 @@ class TestRateLimiter:
         assert limiter is not None
 
     @pytest.mark.asyncio
-    async def test_rate_limit_allows_initial_requests(self):
+    async def test_rate_limit_allows_initial_requests(self, tmp_path):
         """Test that initial requests are allowed"""
-        limiter = RateLimiter(max_requests=5, window_seconds=60)
-        user_id = "test_user"
+        limiter = RateLimiter(max_requests=5, window_seconds=60, persist_path=tmp_path / "rl.json")
+        user_id = "test_user_unique"
 
-        # First requests should be allowed
         for i in range(3):
             allowed = await limiter.check_rate_limit(user_id)
             assert allowed, f"Request {i+1} was incorrectly blocked"

@@ -10,21 +10,21 @@ Production-ready SQLite implementations with:
 """
 
 import asyncio
+import json
+import logging
 import sqlite3
 import threading
-import json
-from pathlib import Path
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 import uuid
-import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 from .repositories import (
+    Conversation,
     ConversationRepository,
+    Document,
     KnowledgeRepository,
     Message,
-    Conversation,
-    Document,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class SQLiteConversationRepository(ConversationRepository):
     Compatible with existing ContextManager schema.
     """
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or Path("data") / "conversations.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._pool = _ConnectionPool(self.db_path)
@@ -120,7 +120,7 @@ class SQLiteConversationRepository(ConversationRepository):
     # Private sync helpers (called via asyncio.to_thread)
     # ------------------------------------------------------------------
 
-    def _sync_create_conversation(self, chat_id: str, metadata: Optional[Dict[str, Any]]) -> None:
+    def _sync_create_conversation(self, chat_id: str, metadata: dict[str, Any] | None) -> None:
         conn = self._pool.get()
         conn.execute(
             "INSERT OR IGNORE INTO conversations (chat_id, metadata) VALUES (?, ?)",
@@ -133,7 +133,7 @@ class SQLiteConversationRepository(ConversationRepository):
         chat_id: str,
         role: str,
         content: str,
-        metadata: Optional[Dict[str, Any]],
+        metadata: dict[str, Any] | None,
     ) -> None:
         conn = self._pool.get()
         # Ensure conversation exists
@@ -158,9 +158,9 @@ class SQLiteConversationRepository(ConversationRepository):
         self,
         conn: sqlite3.Connection,
         chat_id: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0,
-    ) -> List[Message]:
+    ) -> list[Message]:
         """Retrieve messages using an existing connection."""
         conn.row_factory = sqlite3.Row
 
@@ -171,7 +171,7 @@ class SQLiteConversationRepository(ConversationRepository):
             ORDER BY timestamp ASC
         """
 
-        params: List[Any] = [chat_id]
+        params: list[Any] = [chat_id]
 
         if limit is not None:
             query += " LIMIT ? OFFSET ?"
@@ -192,13 +192,13 @@ class SQLiteConversationRepository(ConversationRepository):
     def _sync_get_messages_standalone(
         self,
         chat_id: str,
-        limit: Optional[int],
+        limit: int | None,
         offset: int,
-    ) -> List[Message]:
+    ) -> list[Message]:
         conn = self._pool.get()
         return self._sync_get_messages(conn, chat_id, limit, offset)
 
-    def _sync_get_conversation(self, chat_id: str) -> Optional[Conversation]:
+    def _sync_get_conversation(self, chat_id: str) -> Conversation | None:
         conn = self._pool.get()
         conn.row_factory = sqlite3.Row
 
@@ -228,9 +228,9 @@ class SQLiteConversationRepository(ConversationRepository):
 
     def _sync_list_conversations(
         self,
-        limit: Optional[int],
+        limit: int | None,
         offset: int,
-    ) -> List[Conversation]:
+    ) -> list[Conversation]:
         conn = self._pool.get()
         conn.row_factory = sqlite3.Row
 
@@ -239,7 +239,7 @@ class SQLiteConversationRepository(ConversationRepository):
             FROM conversations c
             ORDER BY c.updated_at DESC
         """
-        params: List[Any] = []
+        params: list[Any] = []
 
         if limit is not None:
             query += " LIMIT ? OFFSET ?"
@@ -261,9 +261,9 @@ class SQLiteConversationRepository(ConversationRepository):
     def _sync_search_messages(
         self,
         query: str,
-        chat_id: Optional[str],
+        chat_id: str | None,
         limit: int,
-    ) -> List[Message]:
+    ) -> list[Message]:
         conn = self._pool.get()
         conn.row_factory = sqlite3.Row
 
@@ -274,7 +274,7 @@ class SQLiteConversationRepository(ConversationRepository):
             WHERE messages_fts MATCH ?
         """
 
-        params: List[Any] = [query]
+        params: list[Any] = [query]
 
         if chat_id:
             sql += " AND m.chat_id = ?"
@@ -295,9 +295,9 @@ class SQLiteConversationRepository(ConversationRepository):
             for row in rows
         ]
 
-    def _sync_get_stats(self) -> Dict[str, Any]:
+    def _sync_get_stats(self) -> dict[str, Any]:
         conn = self._pool.get()
-        stats: Dict[str, Any] = {}
+        stats: dict[str, Any] = {}
 
         stats["total_conversations"] = conn.execute(
             "SELECT COUNT(*) FROM conversations"
@@ -322,7 +322,7 @@ class SQLiteConversationRepository(ConversationRepository):
     # Public async API
     # ------------------------------------------------------------------
 
-    async def create_conversation(self, chat_id: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    async def create_conversation(self, chat_id: str, metadata: dict[str, Any] | None = None) -> None:
         """Create a new conversation"""
         await asyncio.to_thread(self._sync_create_conversation, chat_id, metadata)
 
@@ -331,7 +331,7 @@ class SQLiteConversationRepository(ConversationRepository):
         chat_id: str,
         role: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ) -> None:
         """Add a message to a conversation"""
         await asyncio.to_thread(self._sync_add_message, chat_id, role, content, metadata)
@@ -339,13 +339,13 @@ class SQLiteConversationRepository(ConversationRepository):
     async def get_messages(
         self,
         chat_id: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0
-    ) -> List[Message]:
+    ) -> list[Message]:
         """Retrieve messages from a conversation"""
         return await asyncio.to_thread(self._sync_get_messages_standalone, chat_id, limit, offset)
 
-    async def get_conversation(self, chat_id: str) -> Optional[Conversation]:
+    async def get_conversation(self, chat_id: str) -> Conversation | None:
         """Get full conversation details"""
         return await asyncio.to_thread(self._sync_get_conversation, chat_id)
 
@@ -355,22 +355,22 @@ class SQLiteConversationRepository(ConversationRepository):
 
     async def list_conversations(
         self,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0
-    ) -> List[Conversation]:
+    ) -> list[Conversation]:
         """List all conversations"""
         return await asyncio.to_thread(self._sync_list_conversations, limit, offset)
 
     async def search_messages(
         self,
         query: str,
-        chat_id: Optional[str] = None,
+        chat_id: str | None = None,
         limit: int = 10
-    ) -> List[Message]:
+    ) -> list[Message]:
         """Search messages by content using FTS5"""
         return await asyncio.to_thread(self._sync_search_messages, query, chat_id, limit)
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get repository statistics"""
         return await asyncio.to_thread(self._sync_get_stats)
 
@@ -381,7 +381,7 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
     Uses FTS5 for full-text search and numpy for vector similarity.
     """
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or Path("data") / "knowledge.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._pool = _ConnectionPool(self.db_path)
@@ -436,8 +436,8 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
         self,
         doc_id: str,
         content: str,
-        embedding: Optional[List[float]],
-        metadata: Optional[Dict[str, Any]],
+        embedding: list[float] | None,
+        metadata: dict[str, Any] | None,
     ) -> None:
         conn = self._pool.get()
         conn.execute(
@@ -454,7 +454,7 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
         )
         conn.commit()
 
-    def _sync_add_documents_batch(self, documents: List[Dict[str, Any]]) -> List[str]:
+    def _sync_add_documents_batch(self, documents: list[dict[str, Any]]) -> list[str]:
         doc_ids = []
         conn = self._pool.get()
         for doc in documents:
@@ -475,7 +475,7 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
         conn.commit()
         return doc_ids
 
-    def _sync_search(self, query: str, limit: int) -> List[Document]:
+    def _sync_search(self, query: str, limit: int) -> list[Document]:
         conn = self._pool.get()
         conn.row_factory = sqlite3.Row
 
@@ -501,7 +501,7 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
             for row in rows
         ]
 
-    def _sync_search_by_embedding(self, embedding: List[float], limit: int) -> List[Document]:
+    def _sync_search_by_embedding(self, embedding: list[float], limit: int) -> list[Document]:
         import numpy as np
 
         conn = self._pool.get()
@@ -539,7 +539,7 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
             for _, row in top_results
         ]
 
-    def _sync_get_document(self, document_id: str) -> Optional[Document]:
+    def _sync_get_document(self, document_id: str) -> Document | None:
         conn = self._pool.get()
         conn.row_factory = sqlite3.Row
 
@@ -562,12 +562,12 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
     def _sync_update_document(
         self,
         document_id: str,
-        content: Optional[str],
-        embedding: Optional[List[float]],
-        metadata: Optional[Dict[str, Any]],
+        content: str | None,
+        embedding: list[float] | None,
+        metadata: dict[str, Any] | None,
     ) -> bool:
         updates = []
-        params: List[Any] = []
+        params: list[Any] = []
 
         if content is not None:
             updates.append("content = ?")
@@ -610,12 +610,12 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
         conn = self._pool.get()
         return conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
 
-    def _sync_list_documents(self, limit: Optional[int], offset: int) -> List[Document]:
+    def _sync_list_documents(self, limit: int | None, offset: int) -> list[Document]:
         conn = self._pool.get()
         conn.row_factory = sqlite3.Row
 
         query = "SELECT id, content, embedding, metadata, created_at FROM documents ORDER BY created_at DESC"
-        params: List[Any] = []
+        params: list[Any] = []
 
         if limit is not None:
             query += " LIMIT ? OFFSET ?"
@@ -634,9 +634,9 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
             for row in rows
         ]
 
-    def _sync_get_stats(self) -> Dict[str, Any]:
+    def _sync_get_stats(self) -> dict[str, Any]:
         conn = self._pool.get()
-        stats: Dict[str, Any] = {}
+        stats: dict[str, Any] = {}
 
         stats["total_documents"] = conn.execute(
             "SELECT COUNT(*) FROM documents"
@@ -657,15 +657,15 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
     async def add_document(
         self,
         content: str,
-        embedding: Optional[List[float]] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        embedding: list[float] | None = None,
+        metadata: dict[str, Any] | None = None
     ) -> str:
         """Add a document to knowledge base"""
         doc_id = str(uuid.uuid4())
         await asyncio.to_thread(self._sync_add_document, doc_id, content, embedding, metadata)
         return doc_id
 
-    async def add_documents_batch(self, documents: List[Dict[str, Any]]) -> List[str]:
+    async def add_documents_batch(self, documents: list[dict[str, Any]]) -> list[str]:
         """Add multiple documents in batch"""
         return await asyncio.to_thread(self._sync_add_documents_batch, documents)
 
@@ -673,30 +673,30 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
         self,
         query: str,
         limit: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Document]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[Document]:
         """Search documents using FTS5 full-text search"""
         return await asyncio.to_thread(self._sync_search, query, limit)
 
     async def search_by_embedding(
         self,
-        embedding: List[float],
+        embedding: list[float],
         limit: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Document]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[Document]:
         """Search documents by vector similarity (cosine similarity)"""
         return await asyncio.to_thread(self._sync_search_by_embedding, embedding, limit)
 
-    async def get_document(self, document_id: str) -> Optional[Document]:
+    async def get_document(self, document_id: str) -> Document | None:
         """Retrieve a specific document by ID"""
         return await asyncio.to_thread(self._sync_get_document, document_id)
 
     async def update_document(
         self,
         document_id: str,
-        content: Optional[str] = None,
-        embedding: Optional[List[float]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        content: str | None = None,
+        embedding: list[float] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Update an existing document"""
         return await asyncio.to_thread(
@@ -711,19 +711,19 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
         """Clear all documents"""
         return await asyncio.to_thread(self._sync_delete_all)
 
-    async def count_documents(self, filters: Optional[Dict[str, Any]] = None) -> int:
+    async def count_documents(self, filters: dict[str, Any] | None = None) -> int:
         """Count documents"""
         return await asyncio.to_thread(self._sync_count_documents)
 
     async def list_documents(
         self,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Document]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[Document]:
         """List documents with pagination"""
         return await asyncio.to_thread(self._sync_list_documents, limit, offset)
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get repository statistics"""
         return await asyncio.to_thread(self._sync_get_stats)

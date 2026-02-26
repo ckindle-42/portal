@@ -6,14 +6,13 @@ Ensures NO data reaches AgentCore without passing security checks.
 Acts as a protective wrapper around the core.
 """
 
-import logging
 import re
-from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
+from typing import Any
 
-from portal.security.security_module import InputSanitizer, RateLimiter
 from portal.core.exceptions import PolicyViolationError, RateLimitError, ValidationError
 from portal.core.structured_logger import get_logger
+from portal.security.security_module import InputSanitizer, RateLimiter
 
 logger = get_logger('SecurityMiddleware')
 
@@ -21,12 +20,12 @@ logger = get_logger('SecurityMiddleware')
 @dataclass
 class SecurityContext:
     """Security context for a request"""
-    user_id: Optional[str] = None
+    user_id: str | None = None
     chat_id: str = ""
     interface: str = "unknown"
-    ip_address: Optional[str] = None
+    ip_address: str | None = None
     sanitized_input: str = ""
-    warnings: List[str] = None
+    warnings: list[str] = None
 
     def __post_init__(self):
         if self.warnings is None:
@@ -50,8 +49,8 @@ class SecurityMiddleware:
     def __init__(
         self,
         agent_core,
-        rate_limiter: Optional[RateLimiter] = None,
-        input_sanitizer: Optional[InputSanitizer] = None,
+        rate_limiter: RateLimiter | None = None,
+        input_sanitizer: InputSanitizer | None = None,
         enable_rate_limiting: bool = True,
         enable_input_sanitization: bool = True,
         max_message_length: int = 10000,
@@ -84,8 +83,8 @@ class SecurityMiddleware:
         chat_id: str,
         message: str,
         interface: str = "unknown",
-        user_context: Optional[Dict] = None,
-        files: Optional[List[Any]] = None
+        user_context: dict | None = None,
+        files: list[Any] | None = None
     ):
         """
         Process a message through security layer then core
@@ -257,7 +256,7 @@ class SecurityMiddleware:
         # Example: Check for suspicious patterns
         # (Add your own security policies here)
 
-    def get_rate_limit_stats(self, user_id: str) -> Dict[str, int]:
+    def get_rate_limit_stats(self, user_id: str) -> dict[str, int]:
         """Get rate limit statistics for a user"""
         return self.rate_limiter.get_stats(user_id)
 
@@ -269,9 +268,9 @@ class SecurityMiddleware:
     async def execute_tool(
         self,
         tool_name: str,
-        parameters: Dict[str, Any],
-        user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        parameters: dict[str, Any],
+        user_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Execute a tool directly through security layer
 

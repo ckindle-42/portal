@@ -4,9 +4,9 @@ Base Tool - Abstract base class for all tools
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,8 @@ class ToolMetadata:
     category: ToolCategory
     version: str = "1.0.0"
     requires_confirmation: bool = False
-    parameters: List[ToolParameter] = field(default_factory=list)
-    examples: List[str] = field(default_factory=list)
+    parameters: list[ToolParameter] = field(default_factory=list)
+    examples: list[str] = field(default_factory=list)
 
 
 class BaseTool(ABC):
@@ -52,24 +52,24 @@ class BaseTool(ABC):
     - _get_metadata(): Return tool metadata
     - execute(parameters): Execute the tool
     """
-    
+
     def __init__(self):
-        self._metadata: Optional[ToolMetadata] = None
-    
+        self._metadata: ToolMetadata | None = None
+
     @property
     def metadata(self) -> ToolMetadata:
         """Get tool metadata (cached)"""
         if self._metadata is None:
             self._metadata = self._get_metadata()
         return self._metadata
-    
+
     @abstractmethod
     def _get_metadata(self) -> ToolMetadata:
         """Return tool metadata - must be implemented by subclasses"""
         pass
-    
+
     @abstractmethod
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         Execute the tool
         
@@ -80,8 +80,8 @@ class BaseTool(ABC):
             Dictionary with 'success' (bool) and 'result' or 'error'
         """
         pass
-    
-    def validate_parameters(self, parameters: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+
+    def validate_parameters(self, parameters: dict[str, Any]) -> tuple[bool, str | None]:
         """
         Validate parameters against metadata
         
@@ -91,10 +91,10 @@ class BaseTool(ABC):
         for param in self.metadata.parameters:
             if param.required and param.name not in parameters:
                 return False, f"Missing required parameter: {param.name}"
-            
+
             if param.name in parameters:
                 value = parameters[param.name]
-                
+
                 # Type validation
                 if param.param_type == "string" and not isinstance(value, str):
                     return False, f"Parameter {param.name} must be a string"
@@ -106,22 +106,22 @@ class BaseTool(ABC):
                     return False, f"Parameter {param.name} must be a boolean"
                 elif param.param_type == "list" and not isinstance(value, list):
                     return False, f"Parameter {param.name} must be a list"
-        
+
         return True, None
-    
-    def _success_response(self, result: Any = None, **kwargs) -> Dict[str, Any]:
+
+    def _success_response(self, result: Any = None, **kwargs) -> dict[str, Any]:
         """Create success response"""
         response = {"success": True, "result": result}
         response.update(kwargs)
         return response
 
-    def _error_response(self, error: str, **kwargs) -> Dict[str, Any]:
+    def _error_response(self, error: str, **kwargs) -> dict[str, Any]:
         """Create error response"""
         response = {"success": False, "error": error}
         response.update(kwargs)
         return response
-    
-    async def safe_execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def safe_execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         Execute with validation and error handling
         """
@@ -129,12 +129,12 @@ class BaseTool(ABC):
         valid, error = self.validate_parameters(parameters)
         if not valid:
             return self._error_response(error)
-        
+
         # Apply defaults
         for param in self.metadata.parameters:
             if param.name not in parameters and param.default is not None:
                 parameters[param.name] = param.default
-        
+
         # Execute
         try:
             return await self.execute(parameters)

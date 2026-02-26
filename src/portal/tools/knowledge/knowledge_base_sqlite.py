@@ -18,15 +18,16 @@ Performance:
 - SQLite: O(log n) search, fast at 1000+ docs
 """
 
-import sqlite3
 import json
 import logging
-import numpy as np
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+import sqlite3
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+import numpy as np
+
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -50,29 +51,29 @@ class EnhancedKnowledgeTool(BaseTool):
     - ACID transactions
     - Concurrent read access
     """
-    
+
     # Class-level shared resources
-    _db_path: Optional[Path] = None
-    _embeddings_model: Optional[any] = None
-    
+    _db_path: Path | None = None
+    _embeddings_model: Any | None = None
+
     def __init__(self):
         super().__init__()
-        
+
         # Initialize database path
         if EnhancedKnowledgeTool._db_path is None:
             data_dir = Path.home() / ".telegram_agent" / "knowledge_base"
             data_dir.mkdir(parents=True, exist_ok=True)
             EnhancedKnowledgeTool._db_path = data_dir / "knowledge_base.db"
-        
+
         # Initialize database schema
         self._init_database()
-        
+
         # Load embeddings model (lazy load)
         if EMBEDDINGS_AVAILABLE and EnhancedKnowledgeTool._embeddings_model is None:
             logger.info("Loading embeddings model...")
             EnhancedKnowledgeTool._embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
             logger.info("Embeddings model loaded")
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="knowledge_base_enhanced",
@@ -126,13 +127,13 @@ class EnhancedKnowledgeTool(BaseTool):
                 )
             ]
         )
-    
+
     def _init_database(self):
         """Initialize SQLite database with FTS5 and vector storage"""
-        
+
         with sqlite3.connect(EnhancedKnowledgeTool._db_path) as conn:
             cursor = conn.cursor()
-            
+
             # Main documents table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS documents (
@@ -146,7 +147,7 @@ class EnhancedKnowledgeTool(BaseTool):
                     UNIQUE(source)
                 )
             """)
-            
+
             # Full-text search table (FTS5)
             cursor.execute("""
                 CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
@@ -155,43 +156,43 @@ class EnhancedKnowledgeTool(BaseTool):
                     content_rowid=id
                 )
             """)
-            
+
             # Triggers to keep FTS in sync
             cursor.execute("""
                 CREATE TRIGGER IF NOT EXISTS documents_ai AFTER INSERT ON documents BEGIN
                     INSERT INTO documents_fts(rowid, content) VALUES (new.id, new.content);
                 END
             """)
-            
+
             cursor.execute("""
                 CREATE TRIGGER IF NOT EXISTS documents_ad AFTER DELETE ON documents BEGIN
                     DELETE FROM documents_fts WHERE rowid = old.id;
                 END
             """)
-            
+
             cursor.execute("""
                 CREATE TRIGGER IF NOT EXISTS documents_au AFTER UPDATE ON documents BEGIN
                     UPDATE documents_fts SET content = new.content WHERE rowid = new.id;
                 END
             """)
-            
+
             # Indexes for performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_source ON documents(source)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_added_at ON documents(added_at)")
-            
+
             conn.commit()
-    
+
     def _get_connection(self) -> sqlite3.Connection:
         """Get database connection with row factory"""
         conn = sqlite3.connect(EnhancedKnowledgeTool._db_path)
         conn.row_factory = sqlite3.Row
         return conn
-    
-    def _generate_embedding(self, text: str) -> Optional[bytes]:
+
+    def _generate_embedding(self, text: str) -> bytes | None:
         """Generate and serialize embedding"""
         if not EMBEDDINGS_AVAILABLE or not EnhancedKnowledgeTool._embeddings_model:
             return None
-        
+
         try:
             # Generate embedding
             embedding = EnhancedKnowledgeTool._embeddings_model.encode([text[:1000]])[0]
@@ -200,8 +201,8 @@ class EnhancedKnowledgeTool(BaseTool):
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
             return None
-    
-    def _deserialize_embedding(self, blob: bytes) -> Optional[np.ndarray]:
+
+    def _deserialize_embedding(self, blob: bytes) -> np.ndarray | None:
         """Deserialize embedding from blob"""
         try:
             return np.array(json.loads(blob.decode('utf-8') if isinstance(blob, bytes) else blob))
@@ -220,12 +221,12 @@ class EnhancedKnowledgeTool(BaseTool):
         except Exception as e:
             logger.error(f"Embedding deserialization failed: {e}")
             return None
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute knowledge base action"""
-        
+
         action = parameters.get("action", "").lower()
-        
+
         if action == "add":
             return await self._add_document(parameters)
         elif action == "search":
@@ -240,41 +241,41 @@ class EnhancedKnowledgeTool(BaseTool):
             return await self._migrate_from_json(parameters)
         else:
             return self._error_response(f"Unknown action: {action}")
-    
-    async def _add_document(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _add_document(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Add document to knowledge base"""
-        
+
         path = parameters.get("path")
         content = parameters.get("content")
         metadata = parameters.get("metadata", {})
-        
+
         if not path and not content:
             return self._error_response("Either 'path' or 'content' required")
-        
+
         # Read from file if path provided
         if path:
             try:
                 file_path = Path(path).expanduser()
                 if not file_path.exists():
                     return self._error_response(f"File not found: {path}")
-                
+
                 content = file_path.read_text(encoding='utf-8')
                 source = str(file_path)
             except Exception as e:
                 return self._error_response(f"Failed to read file: {e}")
         else:
             source = f"text_{datetime.now().isoformat()}"
-        
+
         # Generate embedding
         embedding_blob = self._generate_embedding(content)
-        
+
         # Insert into database
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                
+
                 now = datetime.now().isoformat()
-                
+
                 cursor.execute("""
                     INSERT OR REPLACE INTO documents
                     (source, content, embedding, metadata, added_at, updated_at)
@@ -287,32 +288,32 @@ class EnhancedKnowledgeTool(BaseTool):
                     now,
                     now
                 ))
-                
+
                 doc_id = cursor.lastrowid
                 conn.commit()
-            
+
             return self._success_response(
                 result={"doc_id": doc_id, "source": source},
                 metadata={"content_length": len(content)}
             )
-        
+
         except Exception as e:
             logger.error(f"Failed to add document: {e}")
             return self._error_response(f"Database error: {e}")
-    
-    async def _search(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _search(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Search knowledge base using FTS5 and vector similarity"""
-        
+
         query = parameters.get("query")
         limit = parameters.get("limit", 5)
-        
+
         if not query:
             return self._error_response("Query required for search")
-        
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                
+
                 # First try full-text search (fast)
                 cursor.execute("""
                     SELECT d.id, d.source, d.content, d.metadata, d.added_at,
@@ -323,21 +324,21 @@ class EnhancedKnowledgeTool(BaseTool):
                     ORDER BY rank
                     LIMIT ?
                 """, (query, limit * 2))  # Get more for reranking
-                
+
                 fts_results = cursor.fetchall()
-                
+
                 # If embeddings available, rerank using similarity
                 if EMBEDDINGS_AVAILABLE and fts_results:
                     query_embedding = self._generate_embedding(query)
                     if query_embedding:
                         query_vec = self._deserialize_embedding(query_embedding)
-                        
+
                         # Calculate similarities
                         results_with_scores = []
                         for row in fts_results:
                             cursor.execute("SELECT embedding FROM documents WHERE id = ?", (row['id'],))
                             embedding_row = cursor.fetchone()
-                            
+
                             if embedding_row and embedding_row['embedding']:
                                 doc_vec = self._deserialize_embedding(embedding_row['embedding'])
                                 if doc_vec is not None:
@@ -346,7 +347,7 @@ class EnhancedKnowledgeTool(BaseTool):
                                         np.linalg.norm(doc_vec) * np.linalg.norm(query_vec)
                                     )
                                     results_with_scores.append((row, similarity))
-                        
+
                         # Sort by similarity and take top results
                         results_with_scores.sort(key=lambda x: x[1], reverse=True)
                         final_results = [row for row, _ in results_with_scores[:limit]]
@@ -354,7 +355,7 @@ class EnhancedKnowledgeTool(BaseTool):
                         final_results = fts_results[:limit]
                 else:
                     final_results = fts_results[:limit]
-                
+
                 # Format results
                 documents = []
                 for row in final_results:
@@ -365,7 +366,7 @@ class EnhancedKnowledgeTool(BaseTool):
                         "metadata": json.loads(row['metadata']) if row['metadata'] else {},
                         "added_at": row['added_at']
                     })
-                
+
                 return self._success_response(
                     result=documents,
                     metadata={
@@ -374,20 +375,20 @@ class EnhancedKnowledgeTool(BaseTool):
                         "method": "fts5_vector" if EMBEDDINGS_AVAILABLE else "fts5"
                     }
                 )
-        
+
         except Exception as e:
             logger.error(f"Search failed: {e}")
             return self._error_response(f"Search error: {e}")
-    
-    async def _list_documents(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _list_documents(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """List all documents"""
-        
+
         limit = parameters.get("limit", 10)
-        
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                
+
                 cursor.execute("""
                     SELECT id, source, 
                            substr(content, 1, 200) as preview,
@@ -396,7 +397,7 @@ class EnhancedKnowledgeTool(BaseTool):
                     ORDER BY added_at DESC
                     LIMIT ?
                 """, (limit,))
-                
+
                 documents = []
                 for row in cursor.fetchall():
                     documents.append({
@@ -406,63 +407,63 @@ class EnhancedKnowledgeTool(BaseTool):
                         "metadata": json.loads(row['metadata']) if row['metadata'] else {},
                         "added_at": row['added_at']
                     })
-                
+
                 return self._success_response(result=documents)
-        
+
         except Exception as e:
             return self._error_response(f"List error: {e}")
-    
-    async def _delete_document(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _delete_document(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Delete document by ID"""
-        
+
         doc_id = parameters.get("doc_id")
-        
+
         if not doc_id:
             return self._error_response("doc_id required")
-        
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                
+
                 cursor.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
-                
+
                 if cursor.rowcount == 0:
                     return self._error_response(f"Document {doc_id} not found")
-                
+
                 conn.commit()
-            
+
             return self._success_response(
                 result={"deleted_id": doc_id}
             )
-        
+
         except Exception as e:
             return self._error_response(f"Delete error: {e}")
-    
-    async def _get_stats(self) -> Dict[str, Any]:
+
+    async def _get_stats(self) -> dict[str, Any]:
         """Get knowledge base statistics"""
-        
+
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                
+
                 # Total documents
                 cursor.execute("SELECT COUNT(*) FROM documents")
                 total_docs = cursor.fetchone()[0]
-                
+
                 # Total size
                 cursor.execute("SELECT SUM(LENGTH(content)) FROM documents")
                 total_size = cursor.fetchone()[0] or 0
-                
+
                 # Database file size
                 db_size = EnhancedKnowledgeTool._db_path.stat().st_size
-                
+
                 # Recent additions
                 cursor.execute("""
                     SELECT COUNT(*) FROM documents
                     WHERE added_at > datetime('now', '-7 days')
                 """)
                 recent_additions = cursor.fetchone()[0]
-                
+
                 return self._success_response(
                     result={
                         "total_documents": total_docs,
@@ -473,29 +474,29 @@ class EnhancedKnowledgeTool(BaseTool):
                         "database_path": str(EnhancedKnowledgeTool._db_path)
                     }
                 )
-        
+
         except Exception as e:
             return self._error_response(f"Stats error: {e}")
-    
-    async def _migrate_from_json(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _migrate_from_json(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Migrate from old JSON-based knowledge base"""
-        
+
         json_path = parameters.get("path", "~/.telegram_agent/knowledge_base/knowledge_base.json")
         json_path = Path(json_path).expanduser()
-        
+
         if not json_path.exists():
             return self._error_response(f"JSON file not found: {json_path}")
-        
+
         try:
             # Load old JSON data
-            with open(json_path, 'r') as f:
+            with open(json_path) as f:
                 data = json.load(f)
-            
+
             documents = data.get('documents', [])
-            
+
             migrated = 0
             failed = 0
-            
+
             for doc in documents:
                 try:
                     # Add to SQLite
@@ -506,16 +507,16 @@ class EnhancedKnowledgeTool(BaseTool):
                             "migrated_from_json": True
                         }
                     })
-                    
+
                     if result['success']:
                         migrated += 1
                     else:
                         failed += 1
-                
+
                 except Exception as e:
                     logger.error(f"Failed to migrate document: {e}")
                     failed += 1
-            
+
             return self._success_response(
                 result={
                     "migrated": migrated,
@@ -523,7 +524,7 @@ class EnhancedKnowledgeTool(BaseTool):
                     "total": len(documents)
                 }
             )
-        
+
         except Exception as e:
             return self._error_response(f"Migration error: {e}")
 
@@ -537,14 +538,14 @@ async def migrate_to_sqlite():
     print("=" * 60)
     print("Knowledge Base Migration: JSON → SQLite")
     print("=" * 60)
-    
+
     tool = EnhancedKnowledgeTool()
-    
+
     result = await tool._migrate_from_json({})
-    
+
     if result['success']:
         stats = result['result']
-        print(f"\n✅ Migration complete!")
+        print("\n✅ Migration complete!")
         print(f"   Migrated: {stats['migrated']} documents")
         print(f"   Failed: {stats['failed']} documents")
         print(f"   Total: {stats['total']} documents")

@@ -5,19 +5,18 @@ Protects against abuse and malicious inputs
 
 import asyncio
 import atexit
-import time
 import html
-import re
 import json
-import os
-from urllib.parse import unquote
-import tempfile
-import shutil
-import shlex
-from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
-from pathlib import Path
 import logging
+import os
+import re
+import shlex
+import shutil
+import tempfile
+import time
+from collections import defaultdict
+from pathlib import Path
+from urllib.parse import unquote
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class RateLimiter:
     """
 
     def __init__(self, max_requests: int = 30, window_seconds: int = 60,
-                 persist_path: Optional[Path] = None):
+                 persist_path: Path | None = None):
         """
         Initialize rate limiter.
 
@@ -47,8 +46,8 @@ class RateLimiter:
         """
         self.max_requests = max_requests
         self.window = window_seconds
-        self.requests: Dict[str, List[float]] = defaultdict(list)
-        self.violations: Dict[str, int] = defaultdict(int)
+        self.requests: dict[str, list[float]] = defaultdict(list)
+        self.violations: dict[str, int] = defaultdict(int)
 
         # Persistent storage to prevent reset-bypass attacks
         self.persist_path = persist_path or Path(
@@ -65,8 +64,8 @@ class RateLimiter:
 
         # Flush on process exit
         atexit.register(self._flush_if_dirty)
-    
-    def _check_limit_sync(self, user_id: str) -> Tuple[bool, Optional[str]]:
+
+    def _check_limit_sync(self, user_id: str) -> tuple[bool, str | None]:
         """Synchronous core of rate limit check (called via asyncio.to_thread)."""
         now = time.time()
         user_requests = self.requests[user_id]
@@ -110,7 +109,7 @@ class RateLimiter:
 
         return True, None
 
-    async def check_limit(self, user_id: str) -> Tuple[bool, Optional[str]]:
+    async def check_limit(self, user_id: str) -> tuple[bool, str | None]:
         """
         Check if user is within rate limit.
 
@@ -121,18 +120,18 @@ class RateLimiter:
             (is_allowed, error_message)
         """
         return await asyncio.to_thread(self._check_limit_sync, user_id)
-    
+
     def get_remaining(self, user_id: str) -> int:
         """Get remaining requests for user"""
         now = time.time()
         user_requests = self.requests[user_id]
-        
+
         # Count requests in current window
         recent_requests = [
-            req for req in user_requests 
+            req for req in user_requests
             if now - req < self.window
         ]
-        
+
         return max(0, self.max_requests - len(recent_requests))
 
     async def check_rate_limit(self, user_id: str) -> bool:
@@ -145,7 +144,7 @@ class RateLimiter:
         """
         allowed, _ = await self.check_limit(user_id)
         return allowed
-    
+
     def reset_user(self, user_id: str):
         """Reset rate limit for specific user"""
         self.requests[user_id] = []
@@ -158,8 +157,8 @@ class RateLimiter:
         if self._dirty:
             self._save_state()
             self._dirty = False
-    
-    def get_stats(self, user_id: str) -> Dict[str, int]:
+
+    def get_stats(self, user_id: str) -> dict[str, int]:
         """Get statistics for a user"""
         now = time.time()
         user_requests = self.requests[user_id]
@@ -196,7 +195,7 @@ class RateLimiter:
             return
 
         try:
-            with open(self.persist_path, 'r', encoding='utf-8') as f:
+            with open(self.persist_path, encoding='utf-8') as f:
                 data = json.load(f)
 
             # Keep string keys (user_ids are stored as strings)
@@ -254,7 +253,7 @@ class RateLimiter:
                 # Atomic rename
                 shutil.move(temp_path, self.persist_path)
 
-            except Exception as e:
+            except Exception:
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
                 raise
@@ -272,7 +271,7 @@ class InputSanitizer:
     Input validation and sanitization.
     Prevents malicious inputs and dangerous operations.
     """
-    
+
     # Dangerous command patterns
     DANGEROUS_PATTERNS = [
         # Destructive commands
@@ -282,25 +281,25 @@ class InputSanitizer:
         (r':\(\)\{.*:\|:&\};:', 'Fork bomb'),
         (r'\bmkfs\.', 'Filesystem format'),
         (r'\bshred\b', 'Secure file deletion'),
-        
+
         # Privilege escalation
         (r'\bsudo\s+rm\s+-rf\s+/', 'Sudo destructive delete'),
         (r'\bsudo\s+chmod\s+777\s+/', 'Sudo permission change'),
-        
+
         # Network dangerous
         (r'\bcurl.*\|\s*(bash|sh)', 'Curl to shell execution'),
         (r'\bwget.*\|\s*(bash|sh)', 'Wget to shell execution'),
         (r'\bnc\s+-[el]', 'Netcat backdoor'),
-        
+
         # Data exfiltration
         (r'>\s*/dev/tcp/', 'Network redirect'),
         (r'\bscp\s+.*@', 'Remote copy'),
-        
+
         # System modification
         (r'>\s*/etc/', 'System config modification'),
         (r'>\s*/boot/', 'Boot config modification'),
     ]
-    
+
     # SQL injection patterns
     SQL_INJECTION_PATTERNS = [
         r"';\s*DROP\s+TABLE",
@@ -309,7 +308,7 @@ class InputSanitizer:
         r"/\*.*\*/",
         r"xp_cmdshell",
     ]
-    
+
     # Path traversal patterns
     PATH_TRAVERSAL_PATTERNS = [
         r'\.\./+',
@@ -317,9 +316,9 @@ class InputSanitizer:
         r'%2e%2e/',
         r'%2e%2e\\',
     ]
-    
+
     @staticmethod
-    def sanitize_command(command: str) -> Tuple[str, List[str]]:
+    def sanitize_command(command: str) -> tuple[str, list[str]]:
         """
         Sanitize shell command and detect dangerous patterns.
         
@@ -330,20 +329,20 @@ class InputSanitizer:
             (sanitized_command, list_of_warnings)
         """
         warnings = []
-        
+
         # Check for dangerous patterns
         for pattern, description in InputSanitizer.DANGEROUS_PATTERNS:
             if re.search(pattern, command, re.IGNORECASE):
                 warnings.append(f"âš ï¸ Dangerous pattern detected: {description}")
                 logger.warning(f"Dangerous command detected: {command[:100]}")
-        
+
         # Basic sanitization (without breaking legitimate use)
         sanitized = command.strip()
-        
+
         return sanitized, warnings
-    
+
     @staticmethod
-    def validate_file_path(path: str) -> Tuple[bool, Optional[str]]:
+    def validate_file_path(path: str) -> tuple[bool, str | None]:
         """
         Validate file path to prevent path traversal attacks.
         
@@ -361,19 +360,19 @@ class InputSanitizer:
         for pattern in InputSanitizer.PATH_TRAVERSAL_PATTERNS:
             if re.search(pattern, decoded_path, re.IGNORECASE):
                 return False, "Path traversal detected"
-        
+
         # Check for absolute paths to sensitive directories
         path_obj = Path(decoded_path).resolve()
         sensitive_dirs = ['/etc', '/boot', '/sys', '/proc', '/dev']
-        
+
         for sensitive_dir in sensitive_dirs:
             if str(path_obj).startswith(sensitive_dir):
                 return False, f"Access to {sensitive_dir} is restricted"
-        
+
         return True, None
-    
+
     @staticmethod
-    def sanitize_sql_query(query: str) -> Tuple[bool, Optional[str]]:
+    def sanitize_sql_query(query: str) -> tuple[bool, str | None]:
         """
         Check SQL query for injection attempts.
         
@@ -387,9 +386,9 @@ class InputSanitizer:
             if re.search(pattern, query, re.IGNORECASE):
                 logger.warning(f"SQL injection attempt detected: {query[:100]}")
                 return False, "Potential SQL injection detected"
-        
+
         return True, None
-    
+
     @staticmethod
     def sanitize_html(text: str) -> str:
         """
@@ -403,9 +402,9 @@ class InputSanitizer:
         """
         # Escape HTML special characters
         return html.escape(text)
-    
+
     @staticmethod
-    def validate_url(url: str) -> Tuple[bool, Optional[str]]:
+    def validate_url(url: str) -> tuple[bool, str | None]:
         """
         Validate URL format and safety.
         
@@ -423,18 +422,18 @@ class InputSanitizer:
             r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # IP
             r'(?::\d+)?'  # optional port
             r'(?:/?|[/?]\S+)$', re.IGNORECASE)
-        
+
         if not url_pattern.match(url):
             return False, "Invalid URL format"
-        
+
         # Check for suspicious URLs
         suspicious_domains = ['bit.ly', 'tinyurl.com']  # Can be expanded
         for domain in suspicious_domains:
             if domain in url.lower():
                 return False, f"Suspicious URL shortener detected: {domain}"
-        
+
         return True, None
-    
+
     @staticmethod
     def sanitize_filename(filename: str) -> str:
         """
@@ -485,7 +484,7 @@ class InputSanitizer:
         return shlex.quote(arg)
 
     @staticmethod
-    def quote_shell_args(args: List[str]) -> List[str]:
+    def quote_shell_args(args: list[str]) -> list[str]:
         """
         Safely quote multiple shell arguments.
 

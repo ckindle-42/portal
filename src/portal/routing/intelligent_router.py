@@ -3,14 +3,25 @@ Intelligent Router - Model selection based on task analysis
 """
 
 import logging
-from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 
-from .model_registry import ModelRegistry, ModelMetadata, ModelCapability, SpeedClass
-from .task_classifier import TaskClassifier, TaskClassification, TaskComplexity, TaskCategory
+from .model_registry import ModelCapability, ModelMetadata, ModelRegistry
+from .task_classifier import TaskCategory, TaskClassification, TaskClassifier, TaskComplexity
 
 logger = logging.getLogger(__name__)
+
+# Default complexity→model-preference mapping.
+# Each tier is intentionally empty so the router falls back to
+# capability-based selection when the caller provides no preferences.
+_DEFAULT_PREFERENCES: dict[str, list[str]] = {
+    "trivial": [],
+    "simple": [],
+    "moderate": [],
+    "complex": [],
+    "expert": [],
+    "code": [],
+}
 
 
 class RoutingStrategy(Enum):
@@ -29,7 +40,7 @@ class RoutingDecision:
     model_metadata: ModelMetadata
     classification: TaskClassification
     strategy_used: RoutingStrategy
-    fallback_models: List[str]
+    fallback_models: list[str]
     reasoning: str
 
 
@@ -40,18 +51,18 @@ class IntelligentRouter:
     Supports multiple strategies and automatic fallback selection
     """
 
-    def __init__(self, registry: ModelRegistry, strategy: RoutingStrategy = RoutingStrategy.AUTO,
-                 model_preferences: Optional[Dict[str, List[str]]] = None):
+    def __init__(
+        self,
+        registry: ModelRegistry,
+        strategy: RoutingStrategy = RoutingStrategy.AUTO,
+        model_preferences: dict[str, list[str]] | None = None,
+    ) -> None:
         self.registry = registry
         self.strategy = strategy
         self.classifier = TaskClassifier()
-
-        # Model preferences from config (or use defaults)
-        self.model_preferences = model_preferences or self._get_default_preferences()
-
-        # Verify model availability on initialization
+        self.model_preferences = model_preferences if model_preferences is not None else dict(_DEFAULT_PREFERENCES)
         self._verify_model_preferences()
-    
+
     def route(self, query: str, max_cost: float = 1.0) -> RoutingDecision:
         """
         Route query to optimal model
@@ -63,10 +74,10 @@ class IntelligentRouter:
         Returns:
             RoutingDecision with selected model and fallbacks
         """
-        
+
         # Classify the task
         classification = self.classifier.classify(query)
-        
+
         # Select model based on strategy
         if self.strategy == RoutingStrategy.AUTO:
             model = self._route_auto(classification, max_cost)
@@ -80,13 +91,13 @@ class IntelligentRouter:
             model = self._route_cost_optimized(classification)
         else:
             model = self._route_auto(classification, max_cost)
-        
+
         # Build fallback chain
         fallbacks = self._build_fallback_chain(model, classification)
-        
+
         # Generate reasoning
         reasoning = self._generate_reasoning(model, classification)
-        
+
         return RoutingDecision(
             model_id=model.model_id,
             model_metadata=model,
@@ -95,28 +106,6 @@ class IntelligentRouter:
             fallback_models=fallbacks,
             reasoning=reasoning
         )
-    
-    def _get_default_preferences(self) -> Dict[str, List[str]]:
-        """
-        Get default model preferences based on available models.
-
-        This method dynamically discovers available models rather than hardcoding names.
-        Preferences can still be overridden via config for specific deployments.
-
-        Returns empty defaults - models should be configured via config file
-        or discovered dynamically from the registry.
-        """
-        # Return empty defaults - rely on capability-based fallback
-        # Users should configure their model preferences in config.yaml
-        logger.info("No model preferences configured. Will use capability-based model selection.")
-        return {
-            'trivial': [],
-            'simple': [],
-            'moderate': [],
-            'complex': [],
-            'expert': [],
-            'code': []
-        }
 
     def _route_auto(self, classification: TaskClassification,
                    max_cost: float) -> ModelMetadata:
@@ -146,28 +135,28 @@ class IntelligentRouter:
         # Fallback to any available model
         logger.warning("No preferred models available, using fallback")
         return self._get_any_available_model()
-    
+
     def _route_speed(self, classification: TaskClassification) -> ModelMetadata:
         """Route for maximum speed"""
-        
+
         # Get capability based on task
         capability = None
         if classification.requires_code:
             capability = ModelCapability.CODE
         elif classification.requires_math:
             capability = ModelCapability.MATH
-        
+
         fastest = self.registry.get_fastest_model(capability)
         if fastest:
             return fastest
-        
+
         # Fallback to any available
         return self._get_any_available_model()
-    
+
     def _route_quality(self, classification: TaskClassification,
                       max_cost: float) -> ModelMetadata:
         """Route for maximum quality"""
-        
+
         # Determine capability
         if classification.requires_code:
             capability = ModelCapability.CODE
@@ -177,103 +166,96 @@ class IntelligentRouter:
             capability = ModelCapability.REASONING
         else:
             capability = ModelCapability.GENERAL
-        
+
         best = self.registry.get_best_quality_model(capability, max_cost)
         if best:
             return best
-        
+
         return self._get_any_available_model()
-    
+
     def _route_balanced(self, classification: TaskClassification,
                        max_cost: float) -> ModelMetadata:
         """Balanced routing - quality vs speed tradeoff"""
-        
+
         # For simple tasks, prioritize speed
         if classification.complexity in [TaskComplexity.TRIVIAL, TaskComplexity.SIMPLE]:
             return self._route_speed(classification)
-        
+
         # For complex tasks, prioritize quality
         if classification.complexity in [TaskComplexity.COMPLEX, TaskComplexity.EXPERT]:
             return self._route_quality(classification, max_cost)
-        
+
         # For moderate, find middle ground
         return self._route_auto(classification, max_cost * 0.7)
-    
+
     def _route_cost_optimized(self, classification: TaskClassification) -> ModelMetadata:
         """Route for minimum resource usage"""
-        
+
         # Always use smallest model that can handle the task
         all_models = self.registry.get_all_models()
         available = [m for m in all_models if m.available]
-        
+
         if not available:
             return self._get_any_available_model()
-        
+
         # Sort by cost
         available.sort(key=lambda m: m.cost)
-        
+
         # For code tasks, need at least moderate capability
         if classification.requires_code:
             code_capable = [m for m in available if ModelCapability.CODE in m.capabilities]
             if code_capable:
                 return code_capable[0]
-        
+
         return available[0]
-    
+
     def _build_fallback_chain(self, primary: ModelMetadata,
-                             classification: TaskClassification) -> List[str]:
+                             classification: TaskClassification) -> list[str]:
         """Build fallback model chain"""
-        
+
         fallbacks = []
         all_models = self.registry.get_all_models()
         available = [m for m in all_models if m.available and m.model_id != primary.model_id]
-        
+
         # Sort by quality (descending)
         available.sort(key=lambda m: m.general_quality, reverse=True)
-        
+
         # Add up to 3 fallbacks
         for model in available[:3]:
             fallbacks.append(model.model_id)
-        
+
         return fallbacks
-    
+
     def _get_any_available_model(self) -> ModelMetadata:
         """Get any available model as last resort"""
         all_models = self.registry.get_all_models()
         available = [m for m in all_models if m.available]
-        
+
         if available:
             return available[0]
-        
+
         # Return first registered model even if marked unavailable
         if all_models:
             return all_models[0]
-        
+
         raise RuntimeError("No models available in registry")
-    
-    def _verify_model_preferences(self):
-        """Verify that preferred models exist in registry and log warnings if not"""
 
-        # Collect all model IDs from preferences
-        preferred_model_ids = set()
-        for models_list in self.model_preferences.values():
-            preferred_model_ids.update(models_list)
-
-        missing_models = []
-        for model_id in preferred_model_ids:
-            model = self.registry.get_model(model_id)
-            if not model:
-                missing_models.append(model_id)
-
-        if missing_models:
+    def _verify_model_preferences(self) -> None:
+        """Warn if any preferred model IDs are absent from the registry."""
+        missing = [
+            m_id
+            for tier in self.model_preferences.values()
+            for m_id in tier
+            if not self.registry.get_model(m_id)
+        ]
+        if missing:
             logger.warning(
-                f"Routing preferences reference {len(missing_models)} unavailable models: "
-                f"{', '.join(missing_models[:3])}{'...' if len(missing_models) > 3 else ''}. "
-                f"Routing will fall back to available models. "
-                f"To customize preferences, edit MODEL_PREF_* in .env"
+                "Routing preferences reference %d missing model(s): %s%s. "
+                "Falling back to capability-based selection.",
+                len(missing),
+                ", ".join(missing[:3]),
+                "..." if len(missing) > 3 else "",
             )
-        else:
-            logger.info("All preferred models found in registry")
 
     def _generate_reasoning(self, model: ModelMetadata,
                            classification: TaskClassification) -> str:

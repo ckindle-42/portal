@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+
 from prometheus_client import Counter, Gauge, Histogram
 
 REQUESTS_PER_MINUTE = Gauge("portal_requests_per_minute", "Rolling requests per minute")

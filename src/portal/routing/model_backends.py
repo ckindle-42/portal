@@ -3,13 +3,15 @@ Model Backends - Adapters for Ollama, LM Studio, and MLX
 """
 
 import asyncio
-import aiohttp
 import json
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, List, AsyncGenerator
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
+from typing import Any
+
+import aiohttp
 
 logger = logging.getLogger(__name__)
 
@@ -22,67 +24,74 @@ class GenerationResult:
     time_ms: float
     model_id: str
     success: bool
-    error: Optional[str] = None
-    tool_calls: Optional[list] = None  # Parsed tool-call entries from the LLM response
+    error: str | None = None
+    tool_calls: list | None = None  # Parsed tool-call entries from the LLM response
 
 
 class ModelBackend(ABC):
     """Abstract base class for model backends"""
-    
+
     @abstractmethod
     async def generate(self, prompt: str, model_name: str,
-                      system_prompt: Optional[str] = None,
+                      system_prompt: str | None = None,
                       max_tokens: int = 2048,
                       temperature: float = 0.7,
-                      messages: Optional[List[Dict[str, Any]]] = None) -> GenerationResult:
+                      messages: list[dict[str, Any]] | None = None) -> GenerationResult:
         """Generate text from model"""
         pass
 
     @abstractmethod
     async def generate_stream(self, prompt: str, model_name: str,
-                             system_prompt: Optional[str] = None,
+                             system_prompt: str | None = None,
                              max_tokens: int = 2048,
                              temperature: float = 0.7,
-                             messages: Optional[List[Dict[str, Any]]] = None) -> AsyncGenerator[str, None]:
+                             messages: list[dict[str, Any]] | None = None) -> AsyncGenerator[str, None]:
         """Stream text generation"""
         pass
-    
+
     @abstractmethod
     async def is_available(self) -> bool:
         """Check if backend is available"""
         pass
-    
+
     @abstractmethod
     async def list_models(self) -> list:
         """List available models"""
         pass
 
 
-class OllamaBackend(ModelBackend):
-    """Ollama backend adapter"""
-    
-    def __init__(self, base_url: str = "http://localhost:11434"):
-        self.base_url = base_url.rstrip('/')
-        self._session: Optional[aiohttp.ClientSession] = None
-    
+class BaseHTTPBackend(ModelBackend):
+    """Shared HTTP session management for HTTP-based model backends."""
+
+    def __init__(self, base_url: str) -> None:
+        self.base_url = base_url.rstrip("/")
+        self._session: aiohttp.ClientSession | None = None
+
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=120)
             )
         return self._session
-    
-    async def close(self):
+
+    async def close(self) -> None:
         if self._session and not self._session.closed:
             await self._session.close()
 
+
+class OllamaBackend(BaseHTTPBackend):
+    """Ollama backend adapter"""
+
+    def __init__(self, base_url: str = "http://localhost:11434"):
+        super().__init__(base_url)
+
     @staticmethod
-    def _normalize_tool_calls(raw_tool_calls: Any) -> Optional[list[Dict[str, Any]]]:
+    def _normalize_tool_calls(raw_tool_calls: Any) -> list[dict[str, Any]] | None:
         """Normalize Ollama/OpenAI-style tool call payloads for MCP dispatch."""
         if not isinstance(raw_tool_calls, list):
             return None
 
-        normalized_calls: list[Dict[str, Any]] = []
+        normalized_calls: list[dict[str, Any]] = []
         for call in raw_tool_calls:
             if not isinstance(call, dict):
                 continue
@@ -102,12 +111,12 @@ class OllamaBackend(ModelBackend):
             normalized_calls.append(call)
 
         return normalized_calls or None
-    
+
     async def generate(self, prompt: str, model_name: str,
-                      system_prompt: Optional[str] = None,
+                      system_prompt: str | None = None,
                       max_tokens: int = 2048,
                       temperature: float = 0.7,
-                      messages: Optional[List[Dict[str, Any]]] = None) -> GenerationResult:
+                      messages: list[dict[str, Any]] | None = None) -> GenerationResult:
         """Generate text using Ollama /api/chat (supports tool calls)."""
         start_time = time.time()
 
@@ -115,7 +124,7 @@ class OllamaBackend(ModelBackend):
             session = await self._get_session()
 
             if messages is not None:
-                chat_messages: list[Dict[str, Any]] = list(messages)
+                chat_messages: list[dict[str, Any]] = list(messages)
                 if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
                     chat_messages.insert(0, {"role": "system", "content": system_prompt})
             else:
@@ -172,18 +181,18 @@ class OllamaBackend(ModelBackend):
                 success=False,
                 error=str(e),
             )
-    
+
     async def generate_stream(self, prompt: str, model_name: str,
-                             system_prompt: Optional[str] = None,
+                             system_prompt: str | None = None,
                              max_tokens: int = 2048,
                              temperature: float = 0.7,
-                             messages: Optional[List[Dict[str, Any]]] = None) -> AsyncGenerator[str, None]:
+                             messages: list[dict[str, Any]] | None = None) -> AsyncGenerator[str, None]:
         """Stream generation from Ollama /api/chat."""
         try:
             session = await self._get_session()
 
             if messages is not None:
-                chat_messages: list[Dict[str, Any]] = list(messages)
+                chat_messages: list[dict[str, Any]] = list(messages)
                 if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
                     chat_messages.insert(0, {"role": "system", "content": system_prompt})
             else:
@@ -228,7 +237,7 @@ class OllamaBackend(ModelBackend):
                 return response.status == 200
         except Exception:
             return False
-    
+
     async def list_models(self) -> list:
         """List available Ollama models"""
         try:
@@ -242,29 +251,17 @@ class OllamaBackend(ModelBackend):
         return []
 
 
-class LMStudioBackend(ModelBackend):
+class LMStudioBackend(BaseHTTPBackend):
     """LM Studio backend adapter (OpenAI-compatible API)"""
-    
+
     def __init__(self, base_url: str = "http://localhost:1234/v1"):
-        self.base_url = base_url.rstrip('/')
-        self._session: Optional[aiohttp.ClientSession] = None
-    
-    async def _get_session(self) -> aiohttp.ClientSession:
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=120)
-            )
-        return self._session
-    
-    async def close(self):
-        if self._session and not self._session.closed:
-            await self._session.close()
-    
+        super().__init__(base_url)
+
     async def generate(self, prompt: str, model_name: str,
-                      system_prompt: Optional[str] = None,
+                      system_prompt: str | None = None,
                       max_tokens: int = 2048,
                       temperature: float = 0.7,
-                      messages: Optional[List[Dict[str, Any]]] = None) -> GenerationResult:
+                      messages: list[dict[str, Any]] | None = None) -> GenerationResult:
         """Generate using OpenAI-compatible API"""
         start_time = time.time()
 
@@ -272,7 +269,7 @@ class LMStudioBackend(ModelBackend):
             session = await self._get_session()
 
             if messages is not None:
-                chat_messages: List[Dict[str, Any]] = list(messages)
+                chat_messages: list[dict[str, Any]] = list(messages)
                 if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
                     chat_messages.insert(0, {"role": "system", "content": system_prompt})
             else:
@@ -288,7 +285,7 @@ class LMStudioBackend(ModelBackend):
                 "temperature": temperature,
                 "stream": False
             }
-            
+
             async with session.post(
                 f"{self.base_url}/chat/completions",
                 json=payload
@@ -296,10 +293,10 @@ class LMStudioBackend(ModelBackend):
                 if response.status == 200:
                     data = await response.json()
                     elapsed = (time.time() - start_time) * 1000
-                    
+
                     content = data["choices"][0]["message"]["content"]
                     tokens = data.get("usage", {}).get("completion_tokens", 0)
-                    
+
                     return GenerationResult(
                         text=content,
                         tokens_generated=tokens,
@@ -317,7 +314,7 @@ class LMStudioBackend(ModelBackend):
                         success=False,
                         error=f"HTTP {response.status}: {error_text}"
                     )
-        
+
         except Exception as e:
             logger.error(f"LM Studio generation error: {e}")
             return GenerationResult(
@@ -328,18 +325,18 @@ class LMStudioBackend(ModelBackend):
                 success=False,
                 error=str(e)
             )
-    
+
     async def generate_stream(self, prompt: str, model_name: str,
-                             system_prompt: Optional[str] = None,
+                             system_prompt: str | None = None,
                              max_tokens: int = 2048,
                              temperature: float = 0.7,
-                             messages: Optional[List[Dict[str, Any]]] = None) -> AsyncGenerator[str, None]:
+                             messages: list[dict[str, Any]] | None = None) -> AsyncGenerator[str, None]:
         """Stream generation from LM Studio"""
         try:
             session = await self._get_session()
 
             if messages is not None:
-                chat_messages: List[Dict[str, Any]] = list(messages)
+                chat_messages: list[dict[str, Any]] = list(messages)
                 if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
                     chat_messages.insert(0, {"role": "system", "content": system_prompt})
             else:
@@ -355,7 +352,7 @@ class LMStudioBackend(ModelBackend):
                 "temperature": temperature,
                 "stream": True
             }
-            
+
             async with session.post(
                 f"{self.base_url}/chat/completions",
                 json=payload
@@ -370,7 +367,7 @@ class LMStudioBackend(ModelBackend):
                                 yield delta["content"]
                         except Exception:
                             continue
-        
+
         except Exception as e:
             logger.error(f"LM Studio stream error: {e}")
             return
@@ -383,7 +380,7 @@ class LMStudioBackend(ModelBackend):
                 return response.status == 200
         except Exception:
             return False
-    
+
     async def list_models(self) -> list:
         """List available LM Studio models"""
         try:
@@ -399,17 +396,17 @@ class LMStudioBackend(ModelBackend):
 
 class MLXBackend(ModelBackend):
     """MLX backend adapter for Apple Silicon"""
-    
-    def __init__(self, model_path: Optional[str] = None):
+
+    def __init__(self, model_path: str | None = None):
         self.model_path = model_path
         self._model = None
         self._tokenizer = None
         self._available = None
-    
+
     async def _load_model(self, model_path: str):
         """Load MLX model"""
         try:
-            from mlx_lm import load, generate
+            from mlx_lm import generate, load
             self._model, self._tokenizer = load(model_path)
             self._available = True
             logger.info(f"Loaded MLX model: {model_path}")
@@ -419,12 +416,12 @@ class MLXBackend(ModelBackend):
         except Exception as e:
             logger.error(f"Failed to load MLX model: {e}")
             self._available = False
-    
+
     async def generate(self, prompt: str, model_name: str,
-                      system_prompt: Optional[str] = None,
+                      system_prompt: str | None = None,
                       max_tokens: int = 2048,
                       temperature: float = 0.7,
-                      messages: Optional[List[Dict[str, Any]]] = None) -> GenerationResult:
+                      messages: list[dict[str, Any]] | None = None) -> GenerationResult:
         """Generate using MLX"""
         start_time = time.time()
 
@@ -461,9 +458,9 @@ class MLXBackend(ModelBackend):
                     temp=temperature
                 )
             )
-            
+
             elapsed = (time.time() - start_time) * 1000
-            
+
             return GenerationResult(
                 text=response,
                 tokens_generated=len(self._tokenizer.encode(response)),
@@ -471,7 +468,7 @@ class MLXBackend(ModelBackend):
                 model_id=model_name,
                 success=True
             )
-        
+
         except Exception as e:
             logger.error(f"MLX generation error: {e}")
             return GenerationResult(
@@ -482,12 +479,12 @@ class MLXBackend(ModelBackend):
                 success=False,
                 error=str(e)
             )
-    
+
     async def generate_stream(self, prompt: str, model_name: str,
-                             system_prompt: Optional[str] = None,
+                             system_prompt: str | None = None,
                              max_tokens: int = 2048,
                              temperature: float = 0.7,
-                             messages: Optional[List[Dict[str, Any]]] = None) -> AsyncGenerator[str, None]:
+                             messages: list[dict[str, Any]] | None = None) -> AsyncGenerator[str, None]:
         """Stream generation from MLX"""
         # MLX doesn't have native streaming, so we generate and yield
         result = await self.generate(prompt, model_name, system_prompt, max_tokens, temperature)
@@ -505,15 +502,15 @@ class MLXBackend(ModelBackend):
         """Check if MLX is available"""
         if self._available is not None:
             return self._available
-        
+
         try:
             import mlx_lm
             self._available = True
         except ImportError:
             self._available = False
-        
+
         return self._available
-    
+
     async def list_models(self) -> list:
         """List available MLX models"""
         # MLX models are loaded from HuggingFace paths

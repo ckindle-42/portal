@@ -225,7 +225,7 @@ async def test_empty_message_validation():
 
     # Make secure_agent raise ValidationError on empty message
     from portal.interfaces.web.server import WebInterface
-    from portal.security.exceptions import ValidationError
+    from portal.core.exceptions import ValidationError
 
     agent = MagicMock()
     agent.stream_response = MagicMock(side_effect=lambda i: aiter(["ok"]))

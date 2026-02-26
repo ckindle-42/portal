@@ -2,12 +2,10 @@
 Process Monitor Tool - Monitor system processes
 """
 
-import asyncio
 import logging
-from typing import Dict, Any
-from pathlib import Path
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolCategory, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +59,7 @@ class ProcessMonitorTool(BaseTool):
             ]
         )
 
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Monitor processes"""
 
         if not PSUTIL_AVAILABLE:
@@ -98,7 +96,7 @@ class ProcessMonitorTool(BaseTool):
         except Exception as e:
             return self._error_response(f"Process monitoring failed: {str(e)}")
 
-    async def _list_processes(self, sort_by: str, limit: int) -> Dict[str, Any]:
+    async def _list_processes(self, sort_by: str, limit: int) -> dict[str, Any]:
         """List top processes"""
         processes = []
 
@@ -142,7 +140,7 @@ class ProcessMonitorTool(BaseTool):
             }
         )
 
-    async def _search_processes(self, query: str, limit: int) -> Dict[str, Any]:
+    async def _search_processes(self, query: str, limit: int) -> dict[str, Any]:
         """Search for processes by name"""
         matches = []
         query_lower = query.lower()
@@ -186,7 +184,7 @@ class ProcessMonitorTool(BaseTool):
             }
         )
 
-    async def _process_info(self, pid: int) -> Dict[str, Any]:
+    async def _process_info(self, pid: int) -> dict[str, Any]:
         """Get detailed info about a process"""
         try:
             proc = psutil.Process(pid)
@@ -242,7 +240,7 @@ class ProcessMonitorTool(BaseTool):
         except psutil.AccessDenied:
             return self._error_response(f"Access denied to process {pid}")
 
-    async def _kill_process(self, pid: int) -> Dict[str, Any]:
+    async def _kill_process(self, pid: int) -> dict[str, Any]:
         """Kill a process"""
         try:
             proc = psutil.Process(pid)

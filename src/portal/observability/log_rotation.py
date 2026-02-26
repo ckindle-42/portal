@@ -14,13 +14,12 @@ v4.7.0: Initial implementation for production log management
 import asyncio
 import gzip
 import logging
-import os
 import time
-from pathlib import Path
-from typing import Optional, Callable, List
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +76,8 @@ class LogRotator:
     def __init__(
         self,
         log_file: Path | str,
-        config: Optional[RotationConfig] = None,
-        on_rotate: Optional[Callable[[str, str], None]] = None
+        config: RotationConfig | None = None,
+        on_rotate: Callable[[str, str], None] | None = None
     ):
         """
         Initialize log rotator.
@@ -93,14 +92,14 @@ class LogRotator:
         self.on_rotate = on_rotate
 
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._last_rotation_time = time.time()
 
         # Ensure log directory exists
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info(
-            f"LogRotator initialized",
+            "LogRotator initialized",
             log_file=str(self.log_file),
             strategy=self.config.strategy.value,
             max_bytes=self.config.max_bytes,
@@ -218,7 +217,7 @@ class LogRotator:
                 except Exception as e:
                     logger.error(f"Error in rotation callback: {e}")
 
-            logger.info(f"Log rotation completed successfully")
+            logger.info("Log rotation completed successfully")
 
         except Exception as e:
             logger.error(f"Failed to rotate log file: {e}", exc_info=True)
@@ -284,7 +283,7 @@ class LogRotator:
         except Exception as e:
             logger.error(f"Error during log cleanup: {e}", exc_info=True)
 
-    def get_rotated_logs(self) -> List[Path]:
+    def get_rotated_logs(self) -> list[Path]:
         """
         Get list of rotated log files.
 
@@ -349,7 +348,7 @@ class RotatingStructuredLogHandler(logging.Handler):
     def __init__(
         self,
         log_file: Path | str,
-        config: Optional[RotationConfig] = None
+        config: RotationConfig | None = None
     ):
         """
         Initialize rotating log handler.
@@ -362,7 +361,7 @@ class RotatingStructuredLogHandler(logging.Handler):
 
         self.log_file = Path(log_file)
         self.config = config or RotationConfig()
-        self.rotator: Optional[LogRotator] = None
+        self.rotator: LogRotator | None = None
 
         # Ensure log directory exists
         self.log_file.parent.mkdir(parents=True, exist_ok=True)

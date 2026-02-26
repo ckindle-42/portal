@@ -23,20 +23,20 @@ with tracer.start_as_current_span("operation_name") as span:
 """
 
 import logging
-from typing import Optional, Any
 from contextlib import contextmanager
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Try to import OpenTelemetry
 try:
     from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.resources import Resource, SERVICE_NAME
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-    from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
 
     OTEL_AVAILABLE = True
 except ImportError:
@@ -48,13 +48,13 @@ except ImportError:
     )
 
 
-_tracer: Optional[Any] = None
-_provider: Optional[Any] = None
+_tracer: Any | None = None
+_provider: Any | None = None
 
 
 def setup_telemetry(
     service_name: str = "portal",
-    otlp_endpoint: Optional[str] = None,
+    otlp_endpoint: str | None = None,
     enable_console: bool = False
 ) -> None:
     """
@@ -101,7 +101,7 @@ def setup_telemetry(
     logger.info(f"OpenTelemetry tracing initialized for service: {service_name}")
 
 
-def get_tracer() -> Optional[Any]:
+def get_tracer() -> Any | None:
     """Get the global tracer instance"""
     return _tracer
 
@@ -140,7 +140,7 @@ def instrument_aiohttp():
 @contextmanager
 def trace_operation(
     operation_name: str,
-    attributes: Optional[dict] = None
+    attributes: dict | None = None
 ):
     """
     Context manager for tracing an operation.
@@ -167,7 +167,7 @@ def trace_operation(
         yield span
 
 
-def add_trace_event(event_name: str, attributes: Optional[dict] = None):
+def add_trace_event(event_name: str, attributes: dict | None = None):
     """
     Add an event to the current span.
 

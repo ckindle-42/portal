@@ -1,14 +1,14 @@
 """CSV Analyzer Tool - Data analysis for CSV files"""
 
 import os
-from typing import Dict, Any
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 
 class CSVAnalyzerTool(BaseTool):
     """Analyze CSV files with statistics and summaries"""
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="csv_analyzer",
@@ -33,43 +33,43 @@ class CSVAnalyzerTool(BaseTool):
             ],
             examples=["Analyze data.csv and show statistics"]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Analyze CSV file"""
         try:
             import pandas as pd
-            
+
             file_path = parameters.get("file_path", "")
             analysis_type = parameters.get("analysis_type", "summary").lower()
-            
+
             if not os.path.exists(file_path):
                 return self._error_response(f"File not found: {file_path}")
-            
+
             # Load CSV
             df = pd.read_csv(file_path)
-            
+
             result = {
                 "file": file_path,
                 "rows": len(df),
                 "columns": len(df.columns),
                 "column_names": list(df.columns)
             }
-            
+
             if analysis_type == "head":
                 result["preview"] = df.head(10).to_string()
-            
+
             elif analysis_type == "statistics":
                 result["statistics"] = df.describe().to_string()
-            
+
             elif analysis_type == "describe":
                 result["dtypes"] = df.dtypes.to_string()
                 result["null_counts"] = df.isnull().sum().to_string()
                 result["statistics"] = df.describe().to_string()
-            
+
             else:  # summary
                 result["dtypes"] = {col: str(dtype) for col, dtype in df.dtypes.items()}
                 result["null_counts"] = df.isnull().sum().to_dict()
-                
+
                 # Basic stats for numeric columns
                 numeric_cols = df.select_dtypes(include=['number']).columns
                 if len(numeric_cols) > 0:
@@ -81,9 +81,9 @@ class CSVAnalyzerTool(BaseTool):
                         }
                         for col in numeric_cols[:5]  # First 5 numeric columns
                     }
-            
+
             return self._success_response(result)
-        
+
         except ImportError:
             return self._error_response("pandas not installed. Run: pip install pandas")
         except Exception as e:

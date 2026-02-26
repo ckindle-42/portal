@@ -7,9 +7,9 @@ requests at various stages of the execution pipeline.
 """
 
 from portal.middleware.tool_confirmation_middleware import (
-    ToolConfirmationMiddleware,
     ConfirmationRequest,
-    ConfirmationStatus
+    ConfirmationStatus,
+    ToolConfirmationMiddleware,
 )
 
 __all__ = [

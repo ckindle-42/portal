@@ -23,12 +23,12 @@ status = await health_system.check_health()
 # Returns: {"status": "healthy", "checks": {...}, "timestamp": "..."}
 """
 
-import asyncio
 import logging
-from typing import Dict, Any, Callable, Awaitable, Optional
-from dataclasses import dataclass, asdict
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +46,9 @@ class HealthCheckResult:
     status: HealthStatus
     message: str
     timestamp: str
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             'status': self.status.value,
@@ -79,8 +79,8 @@ class HealthCheckSystem:
 
     def __init__(self):
         """Initialize health check system"""
-        self._providers: Dict[str, HealthCheckProvider] = {}
-        self._check_functions: Dict[str, Callable[[], Awaitable[HealthCheckResult]]] = {}
+        self._providers: dict[str, HealthCheckProvider] = {}
+        self._check_functions: dict[str, Callable[[], Awaitable[HealthCheckResult]]] = {}
 
         logger.info("HealthCheckSystem initialized")
 
@@ -110,7 +110,7 @@ class HealthCheckSystem:
         self._check_functions[name] = check_func
         logger.info(f"Added health check function: {name}")
 
-    async def check_health(self) -> Dict[str, Any]:
+    async def check_health(self) -> dict[str, Any]:
         """
         Check overall system health.
 
@@ -168,7 +168,7 @@ class HealthCheckSystem:
             'timestamp': datetime.now().isoformat()
         }
 
-    async def check_liveness(self) -> Dict[str, Any]:
+    async def check_liveness(self) -> dict[str, Any]:
         """
         Liveness check - is the service running?
 
@@ -184,7 +184,7 @@ class HealthCheckSystem:
             'timestamp': datetime.now().isoformat()
         }
 
-    async def check_readiness(self) -> Dict[str, Any]:
+    async def check_readiness(self) -> dict[str, Any]:
         """
         Readiness check - is the service ready to accept traffic?
 

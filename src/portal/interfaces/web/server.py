@@ -2,15 +2,29 @@
 
 from __future__ import annotations
 
+import asyncio
+import hmac
 import json
 import logging
 import os
 import time
 import uuid
-from typing import Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Header,
+    HTTPException,
+    Request,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
@@ -18,7 +32,13 @@ from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from portal.core.exceptions import PortalError, ModelNotAvailableError, RateLimitError, ValidationError
+from portal.agent.dispatcher import CentralDispatcher
+from portal.core.exceptions import (
+    ModelNotAvailableError,
+    PortalError,
+    RateLimitError,
+    ValidationError,
+)
 from portal.core.types import IncomingMessage, InterfaceType, ProcessingResult
 from portal.interfaces.base import BaseInterface
 from portal.observability.runtime_metrics import (
@@ -75,6 +95,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+@CentralDispatcher.register("web")
 class WebInterface(BaseInterface):
     def __init__(self, agent_core, config, secure_agent=None):
         self.agent_core = agent_core
@@ -93,7 +114,7 @@ class WebInterface(BaseInterface):
             or "anonymous"
         )
 
-    async def _auth_context(self, request: Request, authorization: Optional[str] = Header(None)) -> dict[str, str]:
+    async def _auth_context(self, request: Request, authorization: str | None = Header(None)) -> dict[str, str]:
         user_id = self._extract_user_id(request)
         token = None
         if authorization and authorization.startswith("Bearer "):
@@ -103,7 +124,8 @@ class WebInterface(BaseInterface):
         require_api_key = _bool_env("REQUIRE_API_KEY", default=bool(static_web_api_key))
 
         if static_web_api_key:
-            if token != static_web_api_key:
+            # Use hmac.compare_digest to prevent timing-attack enumeration of the key
+            if not hmac.compare_digest((token or "").encode(), static_web_api_key.encode()):
                 raise HTTPException(status_code=401, detail="Invalid API key")
             return {"user_id": user_id, "role": "api_key"}
 
@@ -117,7 +139,27 @@ class WebInterface(BaseInterface):
         return {"user_id": ctx.user_id, "role": ctx.role}
 
     def _build_app(self) -> FastAPI:
-        app = FastAPI(title="Portal Web Interface", version="1.1.0")
+        _agent_ready: asyncio.Event = asyncio.Event()
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            """Async lifespan: warm up AgentCore in the background so startup is non-blocking."""
+            async def _warmup():
+                try:
+                    if hasattr(self.agent_core, "health_check"):
+                        await self.agent_core.health_check()
+                except Exception:
+                    pass
+                finally:
+                    _agent_ready.set()
+
+            warmup_task = asyncio.create_task(_warmup(), name="agent-warmup")
+            try:
+                yield
+            finally:
+                warmup_task.cancel()
+
+        app = FastAPI(title="Portal Web Interface", version="1.1.0", lifespan=lifespan)
 
         @app.exception_handler(RateLimitError)
         async def rate_limit_handler(request: Request, exc: RateLimitError):
@@ -267,7 +309,7 @@ class WebInterface(BaseInterface):
             static_key = os.getenv("WEB_API_KEY", "").strip()
             if static_key:
                 token = websocket.query_params.get("api_key", "")
-                if token != static_key:
+                if not hmac.compare_digest(token.encode(), static_key.encode()):
                     await websocket.close(code=4001, reason="Unauthorized")
                     return
             await websocket.accept()
@@ -325,16 +367,29 @@ class WebInterface(BaseInterface):
 
         @app.get("/health")
         async def health():
+            import sys
+
+            import portal as _portal
+
+            body: dict = {
+                "status": "ok",
+                "version": getattr(_portal, "__version__", "unknown"),
+                "build": {
+                    "python_version": sys.version.split()[0],
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                },
+                "interface": "web",
+            }
+            if not _agent_ready.is_set():
+                body["status"] = "warming_up"
+                body["agent_core"] = "warming_up"
+                return JSONResponse(body, status_code=200)
             try:
                 healthy = await self.agent_core.health_check()
             except Exception:
                 healthy = False
-            status = "ok" if healthy else "degraded"
-            code = 200 if healthy else 503
-            return JSONResponse(
-                {"status": status, "interface": "web"},
-                status_code=code,
-            )
+            body["agent_core"] = "ok" if healthy else "degraded"
+            return JSONResponse(body, status_code=200)
 
         return app
 
@@ -382,6 +437,14 @@ class WebInterface(BaseInterface):
             },
         }
 
+    async def handle_message(self, message):  # type: ignore[override]
+        """Not used by WebInterface; HTTP handlers process messages via FastAPI routes."""
+        raise NotImplementedError("WebInterface processes messages via HTTP — call the FastAPI app directly.")
+
+    async def send_message(self, user_id: str, response) -> bool:  # type: ignore[override]
+        """Not used by WebInterface; responses are delivered via HTTP streaming."""
+        return False
+
     async def start(self) -> None:
         import uvicorn
 
@@ -392,15 +455,6 @@ class WebInterface(BaseInterface):
     async def stop(self) -> None:
         if self._server:
             self._server.should_exit = True
-
-    async def send_message(self, chat_id: str, message: str, **kwargs) -> None:
-        return
-
-    async def receive_message(self):
-        return
-
-    async def handle_message(self, message):
-        return
 
 
 def create_app(agent_core=None, config: dict | None = None, secure_agent=None) -> FastAPI:

@@ -13,10 +13,11 @@ Examples:
 
 import asyncio
 import logging
-from typing import Dict, Any, Callable, List, Optional
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +56,10 @@ class Event:
     event_type: EventType
     chat_id: str
     timestamp: str
-    data: Dict[str, Any]
-    trace_id: Optional[str] = None
+    data: dict[str, Any]
+    trace_id: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             'event_type': self.event_type.value,
@@ -94,9 +95,9 @@ class EventBus:
                            For long-running agents, prefer using the persistence layer.
             max_history: Maximum number of events to keep in memory (default: 1000)
         """
-        self._subscribers: Dict[EventType, List[Callable]] = {}
+        self._subscribers: dict[EventType, list[Callable]] = {}
         self._enable_history = enable_history
-        self._event_history: List[Event] = [] if enable_history else []
+        self._event_history: list[Event] = [] if enable_history else []
         self._max_history = max_history
 
         logger.info(f"EventBus initialized (history: {enable_history})")
@@ -129,8 +130,8 @@ class EventBus:
         self,
         event_type: EventType,
         chat_id: str,
-        data: Dict[str, Any],
-        trace_id: Optional[str] = None
+        data: dict[str, Any],
+        trace_id: str | None = None
     ):
         """
         Publish an event
@@ -197,10 +198,10 @@ class EventBus:
 
     def get_event_history(
         self,
-        chat_id: Optional[str] = None,
-        event_type: Optional[EventType] = None,
+        chat_id: str | None = None,
+        event_type: EventType | None = None,
         limit: int = 100
-    ) -> List[Event]:
+    ) -> list[Event]:
         """
         Get event history
 
@@ -229,7 +230,7 @@ class EventBus:
         self._event_history.clear()
         logger.info("Event history cleared")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get event bus statistics"""
         event_counts = {}
         for event in self._event_history:

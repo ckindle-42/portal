@@ -4,7 +4,6 @@ Uses pattern matching for <10ms classification
 """
 
 import re
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -43,7 +42,7 @@ class TaskClassification:
     requires_math: bool
     is_multi_turn: bool
     confidence: float  # 0.0-1.0
-    patterns_matched: List[str] = field(default_factory=list)
+    patterns_matched: list[str] = field(default_factory=list)
 
 
 class TaskClassifier:
@@ -53,7 +52,7 @@ class TaskClassifier:
     Uses pattern matching for instant classification (<10ms)
     No LLM calls needed - pure rule-based for speed
     """
-    
+
     # Greeting patterns
     GREETING_PATTERNS = [
         r'^(hi|hello|hey|yo|sup|greetings|howdy|hiya)\b',
@@ -62,7 +61,7 @@ class TaskClassifier:
         r'^(thanks|thank\s+you|thx|ty|cheers)\b',
         r'^(bye|goodbye|see\s+you|later|cya)\b',
     ]
-    
+
     # Code patterns
     CODE_PATTERNS = [
         r'\b(code|program|script|function|class|method)\b',
@@ -74,7 +73,7 @@ class TaskClassifier:
         r'\b(database|sql|query|select|insert|update|delete)\b',
         r'\b(git|commit|branch|merge|pull|push)\b',
     ]
-    
+
     # Math patterns
     MATH_PATTERNS = [
         r'\b(calculate|compute|solve|evaluate|simplify)\b',
@@ -84,7 +83,7 @@ class TaskClassifier:
         r'\b(algebra|calculus|geometry|statistics|probability)\b',
         r'\b(proof|theorem|lemma|axiom)\b',
     ]
-    
+
     # Analysis patterns
     ANALYSIS_PATTERNS = [
         r'\b(analyze|analysis|examine|evaluate|assess)\b',
@@ -93,7 +92,7 @@ class TaskClassifier:
         r'\b(review|critique|assess|evaluate)\b',
         r'\b(explain|describe|elaborate|detail)\b',
     ]
-    
+
     # Creative patterns
     CREATIVE_PATTERNS = [
         r'\b(write|compose|create|generate)\s+(a\s+)?(story|poem|essay|article)',
@@ -101,7 +100,7 @@ class TaskClassifier:
         r'\b(character|plot|setting|narrative)\b',
         r'\b(brainstorm|ideas|suggest|recommend)\b',
     ]
-    
+
     # Tool use patterns
     TOOL_PATTERNS = [
         r'\b(generate\s+)?(qr\s+code|barcode)\b',
@@ -113,14 +112,14 @@ class TaskClassifier:
         r'\b(plot|graph|chart|visualize)\b',
         r'\b(transcribe|speech|audio|voice)\b',
     ]
-    
+
     # Question patterns
     QUESTION_PATTERNS = [
         r'\?$',  # Ends with question mark
         r'^(what|who|when|where|why|how|which|can|could|would|should|is|are|do|does|did)',
         r'\b(explain|describe|tell\s+me|show\s+me)\b',
     ]
-    
+
     def __init__(self):
         # Compile patterns for efficiency
         self._greeting_re = [re.compile(p, re.IGNORECASE) for p in self.GREETING_PATTERNS]
@@ -130,7 +129,7 @@ class TaskClassifier:
         self._creative_re = [re.compile(p, re.IGNORECASE) for p in self.CREATIVE_PATTERNS]
         self._tool_re = [re.compile(p, re.IGNORECASE) for p in self.TOOL_PATTERNS]
         self._question_re = [re.compile(p, re.IGNORECASE) for p in self.QUESTION_PATTERNS]
-    
+
     def classify(self, query: str) -> TaskClassification:
         """
         Classify a query using heuristics
@@ -141,10 +140,10 @@ class TaskClassifier:
         query_lower = query.lower()
         word_count = len(query.split())
         char_count = len(query)
-        
+
         # Track matched patterns
         patterns_matched = []
-        
+
         # Check for greetings first (highest priority for speed)
         if word_count <= 5:
             for pattern in self._greeting_re:
@@ -161,32 +160,32 @@ class TaskClassifier:
                         confidence=0.95,
                         patterns_matched=patterns_matched
                     )
-        
+
         # Check for code patterns
         code_matches = sum(1 for p in self._code_re if p.search(query))
         if code_matches > 0:
             patterns_matched.append(f"code:{code_matches}")
-        
+
         # Check for math patterns
         math_matches = sum(1 for p in self._math_re if p.search(query))
         if math_matches > 0:
             patterns_matched.append(f"math:{math_matches}")
-        
+
         # Check for analysis patterns
         analysis_matches = sum(1 for p in self._analysis_re if p.search(query))
         if analysis_matches > 0:
             patterns_matched.append(f"analysis:{analysis_matches}")
-        
+
         # Check for creative patterns
         creative_matches = sum(1 for p in self._creative_re if p.search(query))
         if creative_matches > 0:
             patterns_matched.append(f"creative:{creative_matches}")
-        
+
         # Check for tool patterns
         tool_matches = sum(1 for p in self._tool_re if p.search(query))
         if tool_matches > 0:
             patterns_matched.append(f"tool:{tool_matches}")
-        
+
         # Determine primary category
         category = TaskCategory.GENERAL
         if code_matches >= 2:
@@ -201,16 +200,16 @@ class TaskClassifier:
             category = TaskCategory.ANALYSIS
         elif any(p.search(query) for p in self._question_re):
             category = TaskCategory.QUESTION
-        
+
         # Determine complexity based on length and patterns
         complexity = self._estimate_complexity(
-            word_count, char_count, code_matches, math_matches, 
+            word_count, char_count, code_matches, math_matches,
             analysis_matches, creative_matches
         )
-        
+
         # Estimate token output
         estimated_tokens = self._estimate_output_tokens(complexity, category)
-        
+
         return TaskClassification(
             complexity=complexity,
             category=category,
@@ -222,46 +221,46 @@ class TaskClassifier:
             confidence=0.8 if len(patterns_matched) > 0 else 0.5,
             patterns_matched=patterns_matched
         )
-    
+
     def _estimate_complexity(self, word_count: int, char_count: int,
                             code_matches: int, math_matches: int,
                             analysis_matches: int, creative_matches: int) -> TaskComplexity:
         """Estimate task complexity"""
-        
+
         # Very short = trivial
         if word_count <= 3:
             return TaskComplexity.TRIVIAL
-        
+
         # Short simple questions
         if word_count <= 10 and code_matches == 0 and math_matches == 0:
             return TaskComplexity.SIMPLE
-        
+
         # Code generation is complex
         if code_matches >= 3:
             return TaskComplexity.COMPLEX
-        
+
         # Detailed analysis is complex
         if analysis_matches >= 2 and word_count > 20:
             return TaskComplexity.COMPLEX
-        
+
         # Long creative tasks are expert level
         if creative_matches >= 1 and word_count > 30:
             return TaskComplexity.EXPERT
-        
+
         # Medium length with some patterns
         if word_count > 20:
             return TaskComplexity.MODERATE
-        
+
         # Short with patterns
         if code_matches > 0 or math_matches > 0:
             return TaskComplexity.MODERATE
-        
+
         return TaskComplexity.SIMPLE
-    
-    def _estimate_output_tokens(self, complexity: TaskComplexity, 
+
+    def _estimate_output_tokens(self, complexity: TaskComplexity,
                                category: TaskCategory) -> int:
         """Estimate output token count"""
-        
+
         base_tokens = {
             TaskComplexity.TRIVIAL: 20,
             TaskComplexity.SIMPLE: 100,
@@ -269,7 +268,7 @@ class TaskClassifier:
             TaskComplexity.COMPLEX: 800,
             TaskComplexity.EXPERT: 1500
         }
-        
+
         # Category multipliers
         multipliers = {
             TaskCategory.GREETING: 0.5,
@@ -278,8 +277,8 @@ class TaskClassifier:
             TaskCategory.ANALYSIS: 1.3,
             TaskCategory.MATH: 0.8,
         }
-        
+
         base = base_tokens.get(complexity, 200)
         multiplier = multipliers.get(category, 1.0)
-        
+
         return int(base * multiplier)

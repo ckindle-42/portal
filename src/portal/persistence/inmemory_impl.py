@@ -12,19 +12,14 @@ For production multi-node deployments, use:
 """
 
 import asyncio
+import heapq
 import logging
 import uuid
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
 from collections import defaultdict
-import heapq
+from datetime import datetime, timedelta
+from typing import Any
 
-from .repositories import (
-    Job,
-    JobStatus,
-    JobPriority,
-    JobRepository
-)
+from .repositories import Job, JobRepository, JobStatus
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +46,11 @@ class InMemoryJobRepository(JobRepository):
 
     def __init__(self):
         """Initialize in-memory job repository"""
-        self._jobs: Dict[str, Job] = {}
-        self._queue: List[tuple[int, int, str]] = []  # (priority, timestamp, job_id)
+        self._jobs: dict[str, Job] = {}
+        self._queue: list[tuple[int, int, str]] = []  # (priority, timestamp, job_id)
         self._counter = 0  # For stable sorting
         self._lock = asyncio.Lock()
-        self._worker_assignments: Dict[str, str] = {}  # job_id -> worker_id
+        self._worker_assignments: dict[str, str] = {}  # job_id -> worker_id
 
         logger.info("InMemoryJobRepository initialized")
 
@@ -88,7 +83,7 @@ class InMemoryJobRepository(JobRepository):
 
             return job.id
 
-    async def dequeue(self, worker_id: str) -> Optional[Job]:
+    async def dequeue(self, worker_id: str) -> Job | None:
         """Get next job from queue"""
         async with self._lock:
             # Remove completed/cancelled jobs from queue
@@ -125,7 +120,7 @@ class InMemoryJobRepository(JobRepository):
             # Queue is empty
             return None
 
-    async def get_job(self, job_id: str) -> Optional[Job]:
+    async def get_job(self, job_id: str) -> Job | None:
         """Get job by ID"""
         async with self._lock:
             return self._jobs.get(job_id)
@@ -134,8 +129,8 @@ class InMemoryJobRepository(JobRepository):
         self,
         job_id: str,
         status: str,
-        result: Optional[Any] = None,
-        error: Optional[str] = None
+        result: Any | None = None,
+        error: str | None = None
     ) -> bool:
         """Update job status"""
         async with self._lock:
@@ -192,11 +187,11 @@ class InMemoryJobRepository(JobRepository):
 
     async def list_jobs(
         self,
-        status: Optional[str] = None,
-        job_type: Optional[str] = None,
-        limit: Optional[int] = None,
+        status: str | None = None,
+        job_type: str | None = None,
+        limit: int | None = None,
         offset: int = 0
-    ) -> List[Job]:
+    ) -> list[Job]:
         """List jobs with filtering"""
         async with self._lock:
             jobs = list(self._jobs.values())
@@ -222,8 +217,8 @@ class InMemoryJobRepository(JobRepository):
 
     async def count_jobs(
         self,
-        status: Optional[str] = None,
-        job_type: Optional[str] = None
+        status: str | None = None,
+        job_type: str | None = None
     ) -> int:
         """Count jobs with filtering"""
         async with self._lock:
@@ -299,7 +294,7 @@ class InMemoryJobRepository(JobRepository):
 
             return len(to_delete)
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get queue statistics"""
         async with self._lock:
             # Count by status
@@ -333,7 +328,7 @@ class InMemoryJobRepository(JobRepository):
                 'avg_wait_time_seconds': avg_wait_time
             }
 
-    async def get_worker_jobs(self, worker_id: str) -> List[Job]:
+    async def get_worker_jobs(self, worker_id: str) -> list[Job]:
         """Get jobs assigned to a worker"""
         async with self._lock:
             job_ids = [

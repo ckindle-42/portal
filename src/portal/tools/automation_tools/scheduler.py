@@ -1,19 +1,18 @@
 """Job Scheduler Tool - Schedule recurring tasks"""
 
-import asyncio
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 
 class JobSchedulerTool(BaseTool):
     """Schedule and manage recurring tasks"""
-    
+
     # In-memory job storage (for demo - use persistent storage in production)
-    _jobs: Dict[str, Dict[str, Any]] = {}
+    _jobs: dict[str, dict[str, Any]] = {}
     _job_counter: int = 0
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="job_scheduler",
@@ -55,12 +54,12 @@ class JobSchedulerTool(BaseTool):
             ],
             examples=["Schedule backup every hour"]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Manage scheduled jobs"""
         try:
             action = parameters.get("action", "").lower()
-            
+
             if action == "create":
                 return await self._create_job(parameters)
             elif action == "list":
@@ -73,24 +72,24 @@ class JobSchedulerTool(BaseTool):
                 return await self._resume_job(parameters.get("job_id"))
             else:
                 return self._error_response(f"Unknown action: {action}")
-        
+
         except Exception as e:
             return self._error_response(str(e))
-    
-    async def _create_job(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _create_job(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Create a new scheduled job"""
         name = parameters.get("name", "Unnamed Job")
         schedule = parameters.get("schedule", "")
         command = parameters.get("command", "")
-        
+
         if not schedule:
             return self._error_response("Schedule is required")
         if not command:
             return self._error_response("Command is required")
-        
+
         JobSchedulerTool._job_counter += 1
         job_id = f"job_{JobSchedulerTool._job_counter}"
-        
+
         job = {
             "id": job_id,
             "name": name,
@@ -102,55 +101,55 @@ class JobSchedulerTool(BaseTool):
             "next_run": self._calculate_next_run(schedule),
             "run_count": 0
         }
-        
+
         JobSchedulerTool._jobs[job_id] = job
-        
+
         return self._success_response({
             "message": f"Job created: {name}",
             "job": job
         })
-    
-    async def _list_jobs(self) -> Dict[str, Any]:
+
+    async def _list_jobs(self) -> dict[str, Any]:
         """List all jobs"""
         jobs = list(JobSchedulerTool._jobs.values())
         return self._success_response({
             "total": len(jobs),
             "jobs": jobs
         })
-    
-    async def _delete_job(self, job_id: Optional[str]) -> Dict[str, Any]:
+
+    async def _delete_job(self, job_id: str | None) -> dict[str, Any]:
         """Delete a job"""
         if not job_id or job_id not in JobSchedulerTool._jobs:
             return self._error_response(f"Job not found: {job_id}")
-        
+
         job = JobSchedulerTool._jobs.pop(job_id)
         return self._success_response({
             "message": f"Job deleted: {job['name']}",
             "job_id": job_id
         })
-    
-    async def _pause_job(self, job_id: Optional[str]) -> Dict[str, Any]:
+
+    async def _pause_job(self, job_id: str | None) -> dict[str, Any]:
         """Pause a job"""
         if not job_id or job_id not in JobSchedulerTool._jobs:
             return self._error_response(f"Job not found: {job_id}")
-        
+
         JobSchedulerTool._jobs[job_id]["status"] = "paused"
         return self._success_response({
             "message": f"Job paused: {JobSchedulerTool._jobs[job_id]['name']}",
             "job_id": job_id
         })
-    
-    async def _resume_job(self, job_id: Optional[str]) -> Dict[str, Any]:
+
+    async def _resume_job(self, job_id: str | None) -> dict[str, Any]:
         """Resume a paused job"""
         if not job_id or job_id not in JobSchedulerTool._jobs:
             return self._error_response(f"Job not found: {job_id}")
-        
+
         JobSchedulerTool._jobs[job_id]["status"] = "active"
         return self._success_response({
             "message": f"Job resumed: {JobSchedulerTool._jobs[job_id]['name']}",
             "job_id": job_id
         })
-    
+
     def _calculate_next_run(self, schedule: str) -> str:
         """Calculate next run time (simplified)"""
         # In production, use croniter or APScheduler for accurate calculation

@@ -1,6 +1,6 @@
 # Portal Architecture
 
-**Version:** 1.0.3
+**Version:** 1.1.0
 **Last updated:** February 2026
 
 ---
@@ -77,6 +77,34 @@ The central processing engine.  All interfaces funnel requests through here.
 
 ---
 
+### Interface Registry (`src/portal/agent/dispatcher.py`)
+
+Portal 1.1 replaces hard-coded `if interface == "web"` dispatch with a
+dictionary-based `CentralDispatcher`:
+
+```python
+from portal.agent.dispatcher import CentralDispatcher
+
+# Interfaces self-register at class-definition time:
+@CentralDispatcher.register("web")
+class WebInterface(BaseInterface): ...
+
+@CentralDispatcher.register("telegram")
+class TelegramInterface: ...
+
+@CentralDispatcher.register("slack")
+class SlackInterface(BaseInterface): ...
+
+# Lookup at runtime:
+iface_cls = CentralDispatcher.get("web")   # → WebInterface
+# Raises UnknownInterfaceError for unregistered names
+```
+
+`CentralDispatcher.registered_names()` returns a sorted list of all registered
+interface names.
+
+---
+
 ### Interfaces
 
 All concrete interfaces inherit from `BaseInterface`
@@ -118,10 +146,11 @@ http://localhost:8081/v1
 
 | Component | Responsibility |
 |-----------|---------------|
-| `ModelRegistry` | Catalogue of local models with capability tags and speed classes |
+| `ModelRegistry` | Catalogue of local models with capability tags and speed classes; `discover_from_ollama()` for dynamic discovery |
 | `IntelligentRouter` | Classifies query complexity and selects optimal model |
 | `RoutingStrategy` | `AUTO` / `QUALITY` / `SPEED` / `BALANCED` |
 | `ExecutionEngine` | Calls Ollama / LMStudio / MLX; circuit-breaker per backend |
+| `BaseHTTPBackend` | Shared aiohttp session management; base class for `OllamaBackend` and `LMStudioBackend` |
 
 Routing strategies:
 - **AUTO** — automatic complexity-based selection (default)
@@ -149,18 +178,13 @@ PORTAL_SECURITY__SANDBOX_ENABLED=false
 `Settings.to_agent_config()` converts a `Settings` instance into the plain
 dict that `DependencyContainer` and `create_agent_core()` consume.
 
-#### `settings_schema.py` — extended schema for Portal-specific config
-
-Defines `SettingsSchema` with nested objects for hardware profiles, MCP
-transport, and observability.  Used as a reference for future migration of
-`settings.py` to a fully nested Pydantic v2 model (Phase 2+).
-
 #### Hardware profiles
 
-| Profile | Directory |
-|---------|-----------|
-| M4 Mac | `hardware/m4-mac/` |
-| RTX 5090 Linux | `hardware/linux-rtx5090/` |
+| Profile | Directory | COMPUTE_BACKEND |
+|---------|-----------|-----------------|
+| M4 Mac (Mini Pro / Max) | `hardware/m4-mac/` | `mps` |
+| Linux bare-metal (NVIDIA) | `hardware/linux/` | `cuda` |
+| CPU-only / WSL2 | — | `cpu` |
 
 Each profile ships an environment file that sets hardware-specific variables
 (compute backend, Docker host IP, supervisor type, etc.).
@@ -185,6 +209,12 @@ AgentCore._dispatch_mcp_tools()
 - `health_check(name)` — probes the server's OpenAPI or root endpoint
 - `list_tools(server_name)` — discovers tools from OpenAPI spec
 - `call_tool(server_name, tool_name, arguments)` — executes a tool
+
+**Retry transport (v1.1):** All HTTP calls in `MCPRegistry` route through the
+private `_request()` helper which adds up to 3 automatic retries with
+exponential backoff (1 s → 2 s → 4 s) for transient
+`ConnectError / TimeoutException / RemoteProtocolError`.  The underlying
+`httpx.AsyncClient` also uses `AsyncHTTPTransport(retries=3)` at the TCP level.
 
 **QUAL-3 note:** The `openapi` transport endpoint format
 `{server_url}/{tool_name}` needs verification against a live mcpo instance.
@@ -271,6 +301,25 @@ Tool request → middleware.request_confirmation()
 Exported from `portal.middleware` alongside `ConfirmationRequest` and
 `ConfirmationStatus`.
 
+#### `HITLApprovalMiddleware` (`src/portal/middleware/hitl_approval.py`)
+
+Redis-backed approval tokens for blocking tool calls that require explicit
+human approval (e.g. `bash`, `filesystem_write`, `web_fetch`).
+
+```
+AgentCore._dispatch_mcp_tools()
+    └─► hitl_middleware.request(user_id, channel, tool_name, args)
+            → stores "pending" token in Redis (60 s TTL)
+            → notifies operator via DangerNotifier callback
+    └─► hitl_middleware.check_approved(user_id, token)
+            → returns True only if operator set token to "approved"
+```
+
+The `redis` package is a soft dependency; Portal boots cleanly without it.
+When Redis is unavailable, `HITLApprovalMiddleware.redis` raises a
+`RuntimeError` with install instructions rather than an `ImportError` at
+module load time.
+
 ---
 
 ### Persistence (`src/portal/persistence/`)
@@ -327,14 +376,17 @@ Entry point: `portal` (registered in `pyproject.toml`).
 ```
 Runtime.bootstrap()
   1. load_settings()             — YAML + PORTAL_* env vars
-  2. create_event_broker()       — in-memory event history
-  3. create_agent_core(          — DependencyContainer builds all deps
+  2. Guard: MCP_API_KEY ≠ "changeme-mcp-secret"
+  3. Guard: PORTAL_BOOTSTRAP_API_KEY set in production
+  4. create_event_broker()       — in-memory event history
+  5. create_agent_core(          — DependencyContainer builds all deps
        settings.to_agent_config()  — converts Settings → plain dict
      )
-  4. SecurityMiddleware(agent_core)
-  5. Watchdog.start()            — optional; controlled by config
-  6. LogRotator.start()          — optional; controlled by config
-  7. Signal handlers registered  — SIGINT / SIGTERM → graceful shutdown
+  6. SecurityMiddleware(agent_core)
+  7. Watchdog.start()            — optional; controlled by config
+  8. LogRotator.start()          — optional; controlled by config
+  9. ConfigWatcher.start()       — asyncio task if portal.yaml exists
+ 10. Signal handlers registered  — SIGINT / SIGTERM → graceful shutdown
 ```
 
 Shutdown is priority-ordered (CRITICAL → HIGH → NORMAL → LOW → LOWEST)
@@ -347,14 +399,16 @@ with per-callback timeouts and active-task draining.
 ```
 portal/
 ├── src/portal/
-│   ├── __init__.py             version = "1.0.x"
+│   ├── __init__.py             version = "1.1.0"
 │   ├── cli.py
 │   ├── lifecycle.py
+│   ├── agent/
+│   │   ├── __init__.py         re-exports CentralDispatcher, UnknownInterfaceError
+│   │   └── dispatcher.py       CentralDispatcher registry + @register decorator
 │   ├── config/
-│   │   ├── settings.py         BaseSettings (canonical runtime config)
-│   │   └── schemas/
-│   │       └── settings_schema.py  SettingsSchema (extended Portal config)
+│   │   └── settings.py         BaseSettings (canonical runtime config)
 │   ├── core/
+│   │   ├── __init__.py         canonical public API (AgentCore, exceptions, types)
 │   │   ├── agent_core.py       AgentCore + module-level create_agent_core()
 │   │   ├── factories.py        DependencyContainer
 │   │   ├── types.py            IncomingMessage, ProcessingResult, InterfaceType
@@ -365,35 +419,39 @@ portal/
 │   │       └── agent_interface.py   BaseInterface (canonical)
 │   ├── interfaces/
 │   │   ├── base.py             re-export of agent_interface.BaseInterface
-│   │   ├── web/server.py       WebInterface (FastAPI)
-│   │   ├── telegram/interface.py
-│   │   └── slack/interface.py
+│   │   ├── web/server.py       WebInterface (FastAPI, @CentralDispatcher.register("web"))
+│   │   ├── telegram/interface.py  (@CentralDispatcher.register("telegram"))
+│   │   └── slack/interface.py     (@CentralDispatcher.register("slack"))
 │   ├── routing/
-│   │   ├── model_registry.py
+│   │   ├── model_registry.py   ModelRegistry + discover_from_ollama()
 │   │   ├── intelligent_router.py
+│   │   ├── model_backends.py   BaseHTTPBackend, OllamaBackend, LMStudioBackend
 │   │   └── execution_engine.py
 │   ├── protocols/mcp/
-│   │   ├── mcp_registry.py
+│   │   ├── mcp_registry.py     MCPRegistry with retry transport
 │   │   ├── mcp_connector.py
 │   │   └── mcp_server.py
 │   ├── middleware/
 │   │   ├── __init__.py         exports ToolConfirmationMiddleware
+│   │   ├── hitl_approval.py    HITLApprovalMiddleware (Redis-backed)
 │   │   └── tool_confirmation_middleware.py
 │   ├── security/
 │   ├── observability/
 │   ├── persistence/
 │   └── tools/
 ├── tests/
+│   ├── conftest.py             shared fixtures + pytest configuration
 │   ├── unit/
-│   │   ├── test_bootstrap.py   startup smoke tests (QUAL-5)
-│   │   ├── test_slack_hmac.py  HMAC verification tests (CRIT-5)
+│   │   ├── test_bootstrap.py   startup smoke tests
+│   │   ├── test_slack_hmac.py  HMAC verification tests
+│   │   ├── tools/              per-tool unit tests
 │   │   └── ...
-│   └── integration/
+│   ├── integration/
+│   └── e2e/
 ├── docs/
 │   └── ARCHITECTURE.md         this file
 ├── hardware/
-│   ├── m4-mac/
-│   └── linux-rtx5090/
+│   └── m4-mac/
 ├── mcp/                        MCP server definitions
 ├── deploy/                     docker-compose stacks
 ├── Dockerfile

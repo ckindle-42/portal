@@ -17,12 +17,11 @@ Features:
 Install: pip install openpyxl xlsxwriter pandas
 """
 
-import asyncio
 import logging
-from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
+from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +32,10 @@ class ExcelProcessorTool(BaseTool):
     
     Create, read, analyze, and format Excel spreadsheets.
     """
-    
+
     def __init__(self):
         super().__init__()
-    
+
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="excel_processor",
@@ -102,8 +101,8 @@ class ExcelProcessorTool(BaseTool):
                 )
             ]
         )
-    
-    async def execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute Excel operation"""
 
         # Lazy import - only load when actually executing
@@ -128,8 +127,8 @@ class ExcelProcessorTool(BaseTool):
             return await self._add_chart(parameters)
         else:
             return self._error_response(f"Unknown action: {action}")
-    
-    async def _read_excel(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _read_excel(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Read Excel file"""
 
         import openpyxl
@@ -144,19 +143,19 @@ class ExcelProcessorTool(BaseTool):
         try:
             # Load workbook
             wb = openpyxl.load_workbook(file_path, data_only=True)
-            
+
             # Get sheet
             if sheet_name not in wb.sheetnames:
                 return self._error_response(f"Sheet '{sheet_name}' not found")
-            
+
             ws = wb[sheet_name]
-            
+
             # Read data
             if cell_range:
                 data = [[cell.value for cell in row] for row in ws[cell_range]]
             else:
                 data = [[cell.value for cell in row] for row in ws.iter_rows()]
-            
+
             # Get sheet info
             metadata = {
                 "sheets": wb.sheetnames,
@@ -169,19 +168,19 @@ class ExcelProcessorTool(BaseTool):
                     for cell in row
                 )
             }
-            
+
             wb.close()
-            
+
             return self._success_response(
                 result={"data": data},
                 metadata=metadata
             )
-        
+
         except Exception as e:
             logger.error(f"Excel read error: {e}")
             return self._error_response(f"Read error: {e}")
-    
-    async def _write_excel(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _write_excel(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Write Excel file"""
 
         import openpyxl
@@ -212,26 +211,26 @@ class ExcelProcessorTool(BaseTool):
                     cell.font = Font(bold=True)
                     cell.fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
                 start_row = 2
-            
+
             # Write data
             if isinstance(data, dict):
                 # Convert dict to rows
                 data = list(data.values())
-            
+
             for row_idx, row_data in enumerate(data, start=start_row):
                 if isinstance(row_data, dict):
                     row_data = list(row_data.values())
-                
+
                 for col_idx, value in enumerate(row_data, start=1):
                     ws.cell(row=row_idx, column=col_idx, value=value)
-            
+
             # Add formulas
             for formula_spec in formulas:
                 cell_ref = formula_spec.get("cell")
                 formula = formula_spec.get("formula")
                 if cell_ref and formula:
                     ws[cell_ref] = formula
-            
+
             # Auto-adjust column widths
             for column in ws.columns:
                 max_length = 0
@@ -241,12 +240,12 @@ class ExcelProcessorTool(BaseTool):
                         max_length = max(max_length, len(str(cell.value)))
                 adjusted_width = min(max_length + 2, 50)
                 ws.column_dimensions[column_letter].width = adjusted_width
-            
+
             # Save
             file_path.parent.mkdir(parents=True, exist_ok=True)
             wb.save(file_path)
             wb.close()
-            
+
             return self._success_response(
                 result={"file_path": str(file_path)},
                 metadata={
@@ -255,12 +254,12 @@ class ExcelProcessorTool(BaseTool):
                     "formulas_added": len(formulas)
                 }
             )
-        
+
         except Exception as e:
             logger.error(f"Excel write error: {e}")
             return self._error_response(f"Write error: {e}")
-    
-    async def _analyze_excel(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _analyze_excel(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Analyze Excel data"""
 
         try:
@@ -277,7 +276,7 @@ class ExcelProcessorTool(BaseTool):
         try:
             # Load with pandas
             df = pd.read_excel(file_path, sheet_name=sheet_name)
-            
+
             # Compute statistics
             analysis = {
                 "shape": {"rows": len(df), "columns": len(df.columns)},
@@ -286,7 +285,7 @@ class ExcelProcessorTool(BaseTool):
                 "missing_values": df.isnull().sum().to_dict(),
                 "numeric_stats": {}
             }
-            
+
             # Numeric column statistics
             numeric_cols = df.select_dtypes(include=['number']).columns
             for col in numeric_cols:
@@ -297,20 +296,20 @@ class ExcelProcessorTool(BaseTool):
                     "min": float(df[col].min()),
                     "max": float(df[col].max())
                 }
-            
+
             # Sample data
             analysis["sample_rows"] = df.head(5).to_dict(orient='records')
-            
+
             return self._success_response(
                 result=analysis,
                 metadata={"analyzed_with": "pandas"}
             )
-        
+
         except Exception as e:
             logger.error(f"Excel analysis error: {e}")
             return self._error_response(f"Analysis error: {e}")
-    
-    async def _format_excel(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _format_excel(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Format Excel cells"""
 
         import openpyxl
@@ -326,12 +325,12 @@ class ExcelProcessorTool(BaseTool):
         try:
             # Load workbook
             wb = openpyxl.load_workbook(file_path)
-            
+
             if sheet_name not in wb.sheetnames:
                 return self._error_response(f"Sheet '{sheet_name}' not found")
-            
+
             ws = wb[sheet_name]
-            
+
             # Apply formatting
             for cell in ws[cell_range]:
                 if isinstance(cell, tuple):
@@ -339,24 +338,24 @@ class ExcelProcessorTool(BaseTool):
                         self._apply_cell_formatting(c, formatting)
                 else:
                     self._apply_cell_formatting(cell, formatting)
-            
+
             # Save
             wb.save(file_path)
             wb.close()
-            
+
             return self._success_response(
                 result={"formatted_range": cell_range},
                 metadata={"formatting_applied": list(formatting.keys())}
             )
-        
+
         except Exception as e:
             logger.error(f"Excel formatting error: {e}")
             return self._error_response(f"Formatting error: {e}")
-    
-    def _apply_cell_formatting(self, cell, formatting: Dict):
+
+    def _apply_cell_formatting(self, cell, formatting: dict):
         """Apply formatting to a cell"""
 
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
         # Font
         if "font" in formatting:
@@ -397,8 +396,8 @@ class ExcelProcessorTool(BaseTool):
                 top=Side(style=side_style),
                 bottom=Side(style=side_style)
             )
-    
-    async def _add_chart(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _add_chart(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Add chart to Excel file"""
 
         import openpyxl
@@ -434,19 +433,19 @@ class ExcelProcessorTool(BaseTool):
             # Set data
             data = Reference(ws, range_string=data_range)
             chart.add_data(data, titles_from_data=True)
-            
+
             # Add chart to sheet
             ws.add_chart(chart, "E5")
-            
+
             # Save
             wb.save(file_path)
             wb.close()
-            
+
             return self._success_response(
                 result={"chart_added": chart_type},
                 metadata={"data_range": data_range}
             )
-        
+
         except Exception as e:
             logger.error(f"Excel chart error: {e}")
             return self._error_response(f"Chart error: {e}")
@@ -458,13 +457,13 @@ class ExcelProcessorTool(BaseTool):
 
 async def example_excel_operations():
     """Example Excel operations"""
-    
+
     tool = ExcelProcessorTool()
-    
+
     print("=" * 60)
     print("Excel Processor - Examples")
     print("=" * 60)
-    
+
     # Example 1: Create Excel with data
     print("\n1. Create Excel File")
     result = await tool.execute({
@@ -482,7 +481,7 @@ async def example_excel_operations():
         ]
     })
     print(f"Result: {result}")
-    
+
     # Example 2: Read and analyze
     print("\n2. Analyze Excel File")
     result = await tool.execute({
@@ -491,7 +490,7 @@ async def example_excel_operations():
         "sheet_name": "Q4 Sales"
     })
     print(f"Analysis: {result}")
-    
+
     # Example 3: Format cells
     print("\n3. Format Cells")
     result = await tool.execute({
