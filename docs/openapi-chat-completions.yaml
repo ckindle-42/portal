@@ -1,0 +1,39 @@
+openapi: 3.1.0
+info:
+  title: Portal OpenAI-Compatible API
+  version: 1.1.0
+paths:
+  /v1/chat/completions:
+    post:
+      summary: OpenAI-compatible chat completions
+      parameters:
+        - in: header
+          name: Authorization
+          schema: { type: string }
+        - in: header
+          name: x-portal-user-id
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: { type: string }
+                stream: { type: boolean }
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role: { type: string }
+                      content: {}
+      responses:
+        "200":
+          description: Completion response
+  /v1/models:
+    get:
+      summary: List available models
+      responses:
+        "200": { description: Model list }

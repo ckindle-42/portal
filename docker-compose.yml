@@ -1,0 +1,122 @@
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: portal-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: portal-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:v1.11.0
+    container_name: portal-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:6333/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  portal-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-api
+    ports:
+      - "8081:8081"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - PORTAL_MEMORY_PROVIDER=${PORTAL_MEMORY_PROVIDER:-sqlite}
+      - PORTAL_MEMORY_DB=/app/data/memory.db
+      - PORTAL_AUTH_DB=/app/data/auth.db
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_URL=http://qdrant:6333
+      - WEB_PORT=8081
+    volumes:
+      - ./data:/app/data
+      - ./mcp:/app/mcp
+    depends_on:
+      ollama:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    command: ["uvicorn", "portal.interfaces.web.server:app", "--host", "0.0.0.0", "--port", "8081"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: portal-open-webui
+    ports:
+      - "3000:8080"
+    environment:
+      - OPENAI_API_BASE_URL=http://portal-api:8081/v1
+      - OPENAI_API_KEY=dummy
+    volumes:
+      - openwebui_data:/app/backend/data
+    depends_on:
+      portal-api:
+        condition: service_healthy
+
+  whisper:
+    image: ghcr.io/fedirz/faster-whisper-server:latest
+    container_name: portal-whisper
+    ports:
+      - "10300:10300"
+
+  mcp-filesystem:
+    image: node:20-alpine
+    container_name: portal-mcp-filesystem
+    working_dir: /srv
+    command: ["sh", "-c", "npm i -g @modelcontextprotocol/server-filesystem && mcp-server-filesystem /portal/data"]
+    volumes:
+      - ./data:/portal/data
+
+  mcp-shell:
+    image: python:3.11-slim
+    container_name: portal-mcp-shell
+    working_dir: /app
+    command: ["python", "scripts/mcp/bash_mcp_server.py"]
+    volumes:
+      - ./:/app
+
+  mcp-web:
+    image: python:3.11-slim
+    container_name: portal-mcp-web
+    working_dir: /app
+    command: ["python", "scripts/mcp/web_scrape_mcp_server.py"]
+    volumes:
+      - ./:/app
+
+volumes:
+  ollama_data:
+  qdrant_data:
+  openwebui_data:

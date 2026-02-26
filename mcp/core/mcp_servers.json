@@ -1,34 +1,19 @@
 {
-  "mcpServers": {
+  "servers": {
     "filesystem": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/Users/Shared",
-        "${HOME}/Projects",
-        "${HOME}/Documents"
-      ]
+      "transport": "http",
+      "url": "http://mcp-filesystem:3000",
+      "description": "Safe local filesystem access under /portal/data/user_{user_id}/"
     },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    "bash": {
+      "transport": "http",
+      "url": "http://mcp-shell:8000",
+      "description": "Sandboxed CLI execution with HITL approval"
     },
-    "sqlite": {
-      "command": "uvx",
-      "args": ["mcp-server-sqlite", "--db-path", "${HOME}/.portal/data/portal.db"]
-    },
-    "git": {
-      "command": "uvx",
-      "args": ["mcp-server-git", "--repository", "${HOME}/Projects"]
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-    },
-    "time": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-time"]
+    "web": {
+      "transport": "http",
+      "url": "http://mcp-web:8000",
+      "description": "Web search and scraping service"
     }
   }
 }
