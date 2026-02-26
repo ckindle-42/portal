@@ -24,6 +24,7 @@ Architecture:
 import asyncio
 import json
 import logging
+import os
 import time
 from typing import AsyncIterator, Dict, Any, Optional, List
 from datetime import datetime
@@ -112,7 +113,12 @@ class AgentCore:
         self.confirmation_middleware = confirmation_middleware
         self.mcp_registry = mcp_registry
         self.memory_manager = memory_manager or MemoryManager()
-        self.hitl_middleware = HITLApprovalMiddleware()
+        self.hitl_middleware = None
+        if config.get('redis_url') or os.getenv('REDIS_URL'):
+            try:
+                self.hitl_middleware = HITLApprovalMiddleware()
+            except Exception:
+                logger.warning("HITL approval middleware unavailable (Redis not reachable)")
 
         # Event emitter helper
         self.events = EventEmitter(self.event_bus)
@@ -603,7 +609,7 @@ class AgentCore:
                 chat_id=chat_id,
             )
 
-            if tool_name in {"bash", "filesystem_write", "web_fetch"}:
+            if self.hitl_middleware and tool_name in {"bash", "filesystem_write", "web_fetch"}:
                 user_id = str(arguments.get("user_id", chat_id))
                 approval_token = str(arguments.get("approval_token", "")).strip()
                 if not approval_token:
