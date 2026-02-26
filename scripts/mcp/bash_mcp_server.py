@@ -1,6 +1,7 @@
 """Minimal bash MCP server with Redis-backed approval token."""
 
 import os
+import shlex
 import subprocess
 import time
 from typing import Any
@@ -11,6 +12,13 @@ from pydantic import BaseModel
 
 app = FastAPI(title="portal-mcp-bash")
 r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+
+_ALLOWED_BINARIES = frozenset({
+    "ls", "cat", "head", "tail", "wc", "grep", "find", "echo", "date",
+    "pwd", "whoami", "uname", "df", "du", "free", "uptime", "env", "printenv",
+})
+_MAX_CMD_LENGTH = 2000
+_MAX_ARGS = 50
 
 
 class BashRequest(BaseModel):
@@ -26,7 +34,23 @@ def execute(req: BashRequest) -> dict[str, Any]:
     if value != b"approved":
         raise HTTPException(status_code=403, detail="Command not approved")
     r.delete(key)
-    completed = subprocess.run(req.command, shell=True, capture_output=True, text=True, timeout=20)
+
+    if len(req.command) > _MAX_CMD_LENGTH:
+        raise HTTPException(status_code=400, detail="Command exceeds maximum length")
+
+    try:
+        args = shlex.split(req.command)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Malformed command: {exc}")
+
+    if not args:
+        raise HTTPException(status_code=400, detail="Empty command")
+    if len(args) > _MAX_ARGS:
+        raise HTTPException(status_code=400, detail="Too many arguments")
+    if args[0] not in _ALLOWED_BINARIES:
+        raise HTTPException(status_code=403, detail=f"Binary not allowed: {args[0]}")
+
+    completed = subprocess.run(args, capture_output=True, text=True, timeout=20)
     return {"stdout": completed.stdout, "stderr": completed.stderr, "returncode": completed.returncode}
 
 
