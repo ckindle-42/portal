@@ -51,10 +51,34 @@ jobs:
           # Write to a temp file to preserve newlines
           echo "$notes" > /tmp/release_notes.md
 
+      - name: Build release archive
+        id: archive
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          archive="portal-v${version}.zip"
+
+          # Bundle the source files end users need to run Portal locally.
+          # Tests, CI config, and archived docs are excluded.
+          zip -r "${archive}" \
+            src/portal \
+            hardware \
+            mcp \
+            deploy \
+            pyproject.toml \
+            .env.example \
+            Dockerfile \
+            README.md \
+            CHANGELOG.md \
+            LICENSE
+
+          echo "archive=${archive}" >> "$GITHUB_OUTPUT"
+          echo "Built ${archive} ($(du -sh ${archive} | cut -f1))"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" \
             --title "Portal ${{ github.ref_name }}" \
-            --notes-file /tmp/release_notes.md
+            --notes-file /tmp/release_notes.md \
+            "${{ steps.archive.outputs.archive }}"
