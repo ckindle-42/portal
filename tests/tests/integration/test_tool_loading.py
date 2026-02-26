@@ -11,12 +11,12 @@ class TestToolLoading:
     """Test tool discovery and loading"""
 
     def test_tool_registry_loads_all_tools(self):
-        """Test that all 33 tools are loaded successfully"""
+        """Test that all tools are loaded successfully"""
         registry = ToolRegistry()
         loaded, failed = registry.discover_and_load()
 
-        assert loaded == 33, \
-            f"Expected 33 tools loaded, got {loaded}"
+        assert loaded == 35, \
+            f"Expected 35 tools loaded, got {loaded}"
         assert failed == 0, \
             f"Expected 0 failures, got {failed}"
 

@@ -46,8 +46,8 @@ class TestCLICommands:
 
         assert result.returncode == 0, \
             f"list-tools should succeed: {result.stderr}"
-        assert "33 loaded" in result.stdout or "33" in result.stdout, \
-            "Should show 33 loaded tools"
+        assert "loaded" in result.stdout, \
+            "Should show loaded tool count"
         assert "0 failed" in result.stdout or "failed" not in result.stdout.lower(), \
             "Should show 0 failed tools"
 

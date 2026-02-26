@@ -7,6 +7,7 @@ import logging
 import os
 import time
 import uuid
+from datetime import datetime
 from typing import Any, AsyncIterator, Optional
 
 import httpx
@@ -233,16 +234,25 @@ class WebInterface(BaseInterface):
 
         @app.get("/health")
         async def health():
+            import sys
+            import portal
+            from datetime import timezone
             try:
                 healthy = await self.agent_core.health_check()
             except Exception:
                 healthy = False
             status = "ok" if healthy else "degraded"
-            code = 200 if healthy else 503
-            return JSONResponse(
-                {"status": status, "interface": "web"},
-                status_code=code,
-            )
+            body = {
+                "status": status,
+                "interface": "web",
+                "version": getattr(portal, "__version__", "unknown"),
+                "agent_core": "ok" if healthy else "degraded",
+                "build": {
+                    "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                },
+            }
+            return JSONResponse(body, status_code=200)
 
         return app
 

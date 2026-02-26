@@ -42,17 +42,10 @@ class TestGitStatusTool:
         """Test git status fails on non-git directory"""
         tool = GitStatusTool()
 
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=128,
-                stdout="",
-                stderr="not a git repository"
-            )
+        result = await tool.execute({"repo_path": str(temp_dir)})
 
-            result = await tool.execute({"path": str(temp_dir)})
-
-            assert result["success"] is False
-            assert "error" in result
+        assert result["success"] is False
+        assert "error" in result
 
 
 @pytest.mark.unit

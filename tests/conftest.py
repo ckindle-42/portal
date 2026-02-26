@@ -114,23 +114,17 @@ LEGACY_API_TESTS = {
     "tests/tests/unit/tools/test_document_tools.py::TestWordProcessorTool::test_read_document",
     "tests/tests/unit/tools/test_document_tools.py::TestPDFOCRTool::test_extract_text_from_pdf",
 
-    # Tool tests - git tools (require git binary in PATH for success path)
+    # Tool tests - git tools (require git binary in PATH for push/pull/merge/clone)
+    # Note: git_status, git_branch, git_commit, git_log now pass (GitPython installed)
     "tests/tests/unit/tools/test_git_tools.py::TestGitStatusTool::test_git_status_success",
-    "tests/tests/unit/tools/test_git_tools.py::TestGitBranchTool::test_git_branch_list",
-    "tests/tests/unit/tools/test_git_tools.py::TestGitBranchTool::test_git_branch_create",
-    "tests/tests/unit/tools/test_git_tools.py::TestGitCommitTool::test_git_commit_success",
     "tests/tests/unit/tools/test_git_tools.py::TestGitDiffTool::test_git_diff_success",
-    "tests/tests/unit/tools/test_git_tools.py::TestGitLogTool::test_git_log_success",
     "tests/tests/unit/tools/test_git_tools.py::TestGitPushTool::test_git_push_success",
     "tests/tests/unit/tools/test_git_tools.py::TestGitPullTool::test_git_pull_success",
     "tests/tests/unit/tools/test_git_tools.py::TestGitMergeTool::test_git_merge_success",
     "tests/tests/unit/tools/test_git_tools.py::TestGitCloneTool::test_git_clone_success",
 
-    # Tool tests - system tools (require psutil or system-specific binaries)
-    "tests/tests/unit/tools/test_system_tools.py::TestProcessMonitorTool::test_list_processes",
-    "tests/tests/unit/tools/test_system_tools.py::TestProcessMonitorTool::test_kill_process",
+    # Tool tests - system tools (require system-specific binaries; stats/process now pass with psutil)
     "tests/tests/unit/tools/test_system_tools.py::TestSystemStatsTool::test_get_system_stats",
-    "tests/tests/unit/tools/test_system_tools.py::TestSystemStatsTool::test_system_stats_detailed",
 
     # Tool tests - web and media (require aiohttp session mocking or whisper)
     "tests/tests/unit/tools/test_web_and_media_tools.py::TestHTTPClientTool::test_http_get_request",
