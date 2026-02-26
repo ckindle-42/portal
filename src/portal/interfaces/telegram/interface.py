@@ -15,8 +15,6 @@ All dependencies are injected via the constructor.
 
 import asyncio
 import logging
-import sys
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
