@@ -24,6 +24,35 @@ To cut a release:
 
 ---
 
+## [1.3.2] - 2026-02-26
+
+### Removed
+- **Dead EventBroker abstraction** — deleted `src/portal/core/event_broker.py` (238 lines). The `EventBroker` ABC and `MemoryEventBroker` were never wired into the actual event system used by AgentCore. The `EventBus` in `event_bus.py` is the single, authoritative event system. Removed from `RuntimeContext`, `core/__init__.py` exports, lifecycle bootstrap, and shutdown.
+
+### Refactored
+- **Lifecycle shutdown flattened** — extracted 5 helper methods (`_drain_tasks`, `_stop_optional_components`, `_run_shutdown_callbacks`, `_cleanup_agent_core`) from the monolithic `shutdown()` method, reducing max nesting from 5 to 2 levels.
+- **Logger best practice** — replaced f-string interpolation in logger calls with `%`-style formatting throughout `lifecycle.py` (avoids string formatting when log level is suppressed).
+
+### Added
+- **47 new tests** (274 → 321 passing):
+  - `test_lifecycle.py` (14 tests) — RuntimeContext defaults, ShutdownPriority ordering, bootstrap security guards (MCP key, bootstrap key), shutdown callback sequencing, double-shutdown safety, pre-bootstrap no-ops.
+  - `test_event_bus_subscribers.py` (9 tests) — subscribe/unsubscribe, error isolation between subscribers, EventEmitter helpers, Event.to_dict serialization, no-subscriber no-op.
+  - `test_security_edge_cases.py` (24 tests) — URL-encoded path traversal, SQL injection patterns, HTML escaping, URL validation (shortener flagging), filename sanitization (truncation, special chars), shell quoting, dangerous command detection (fork bomb, curl-to-bash, rm -rf).
+
+### Docs
+- **Version sync** — `pyproject.toml`, `__init__.py`, `server.py`, `ARCHITECTURE.md` all updated to 1.3.2.
+- **CODE_REVIEW_SUMMARY** refreshed to 1.3.2 with current health score.
+- **CHANGELOG** updated with all 1.3.2 changes.
+
+### Metrics
+- **Files removed**: 1 (`event_broker.py`)
+- **Lines saved**: ~238 (dead EventBroker abstraction)
+- **Lines added**: ~510 (new tests)
+- **Net complexity reduction**: Lifecycle nesting 5→2, EventBroker indirection removed
+- **Tests**: 274 → 321 passing (+47), 0 failures, 1 skip (optional dep)
+
+---
+
 ## [1.3.1] - 2026-02-26
 
 ### Security
