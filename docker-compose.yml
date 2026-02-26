@@ -114,7 +114,9 @@ services:
     ports:
       - "8091:8091"
     volumes:
-      - ./:/app
+      - ./data:/app/data
+      - ./scripts/mcp:/app/scripts/mcp
+      - ./src:/app/src:ro
     depends_on:
       redis:
         condition: service_healthy
