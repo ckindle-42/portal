@@ -99,7 +99,7 @@ class GitPushTool(BaseTool):
                 push_kwargs["set_upstream"] = True
 
             # Execute push asynchronously
-            logger.info(f"Pushing {branch} to {remote_name}")
+            logger.info("Pushing %s to %s", branch, remote_name)
 
             # Run in executor to avoid blocking
             loop = asyncio.get_event_loop()

@@ -27,7 +27,7 @@ class SecurityContext:
     sanitized_input: str = ""
     warnings: list[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.warnings is None:
             self.warnings = []
 
@@ -155,7 +155,7 @@ class SecurityMiddleware:
 
         return result
 
-    async def _check_rate_limit(self, user_id: str, sec_ctx: SecurityContext):
+    async def _check_rate_limit(self, user_id: str, sec_ctx: SecurityContext) -> None:
         """
         Check rate limiting
 
@@ -189,7 +189,7 @@ class SecurityMiddleware:
                 }
             )
 
-    async def _sanitize_input(self, message: str, sec_ctx: SecurityContext):
+    async def _sanitize_input(self, message: str, sec_ctx: SecurityContext) -> None:
         """
         Sanitize input message
 
@@ -225,7 +225,7 @@ class SecurityMiddleware:
                         }
                     )
 
-    async def _validate_security_policies(self, sec_ctx: SecurityContext):
+    async def _validate_security_policies(self, sec_ctx: SecurityContext) -> None:
         """
         Additional security policy validations
 
@@ -260,7 +260,7 @@ class SecurityMiddleware:
         """Get rate limit statistics for a user"""
         return self.rate_limiter.get_stats(user_id)
 
-    def reset_rate_limit(self, user_id: str):
+    def reset_rate_limit(self, user_id: str) -> None:
         """Reset rate limit for a user (admin function)"""
         self.rate_limiter.reset_user(user_id)
         logger.info("Rate limit reset", user_id=user_id)
@@ -290,6 +290,6 @@ class SecurityMiddleware:
         # Forward to core
         return await self.agent_core.execute_tool(tool_name, parameters)
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Cleanup resources"""
         await self.agent_core.cleanup()

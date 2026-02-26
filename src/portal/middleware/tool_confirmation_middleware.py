@@ -114,7 +114,7 @@ class ToolConfirmationMiddleware:
         confirmation_sender: Callable[[ConfirmationRequest], Awaitable[None]],
         default_timeout: int = 300,  # 5 minutes
         cleanup_interval: int = 60,  # 1 minute
-    ):
+    ) -> None:
         """
         Initialize confirmation middleware
 
@@ -142,7 +142,7 @@ class ToolConfirmationMiddleware:
             extra={'default_timeout': default_timeout}
         )
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the middleware and background tasks"""
         if self._running:
             return
@@ -151,7 +151,7 @@ class ToolConfirmationMiddleware:
         self._cleanup_task = asyncio.create_task(self._cleanup_loop())
         logger.info("ToolConfirmationMiddleware started")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the middleware and cleanup"""
         if not self._running:
             return
@@ -223,7 +223,8 @@ class ToolConfirmationMiddleware:
         self._pending[confirmation_id] = request
 
         logger.info(
-            f"Confirmation requested for tool: {tool_name}",
+            "Confirmation requested for tool: %s",
+            tool_name,
             extra={
                 'confirmation_id': confirmation_id,
                 'chat_id': chat_id,
@@ -249,7 +250,8 @@ class ToolConfirmationMiddleware:
             await self.confirmation_sender(request)
         except Exception as e:
             logger.error(
-                f"Failed to send confirmation request: {e}",
+                "Failed to send confirmation request: %s",
+                e,
                 exc_info=True
             )
             # Clean up and deny
@@ -264,7 +266,8 @@ class ToolConfirmationMiddleware:
             )
         except TimeoutError:
             logger.warning(
-                f"Confirmation timeout for tool: {tool_name}",
+                "Confirmation timeout for tool: %s",
+                tool_name,
                 extra={'confirmation_id': confirmation_id}
             )
             request.status = ConfirmationStatus.TIMEOUT
@@ -275,7 +278,9 @@ class ToolConfirmationMiddleware:
         approved = request.status == ConfirmationStatus.APPROVED
 
         logger.info(
-            f"Confirmation {'approved' if approved else 'denied'} for tool: {tool_name}",
+            "Confirmation %s for tool: %s",
+            "approved" if approved else "denied",
+            tool_name,
             extra={'confirmation_id': confirmation_id}
         )
 
@@ -298,24 +303,26 @@ class ToolConfirmationMiddleware:
         request = self._pending.get(confirmation_id)
 
         if not request:
-            logger.warning(f"Confirmation not found: {confirmation_id}")
+            logger.warning("Confirmation not found: %s", confirmation_id)
             return False
 
         if request.status != ConfirmationStatus.PENDING:
             logger.warning(
-                f"Confirmation already processed: {confirmation_id}",
+                "Confirmation already processed: %s",
+                confirmation_id,
                 extra={'status': request.status.value}
             )
             return False
 
         if request.is_expired():
-            logger.warning(f"Confirmation expired: {confirmation_id}")
+            logger.warning("Confirmation expired: %s", confirmation_id)
             request.status = ConfirmationStatus.TIMEOUT
             request.response_event.set()
             return False
 
         logger.info(
-            f"Confirmation approved: {confirmation_id}",
+            "Confirmation approved: %s",
+            confirmation_id,
             extra={'approver_id': approver_id}
         )
 
@@ -337,18 +344,20 @@ class ToolConfirmationMiddleware:
         request = self._pending.get(confirmation_id)
 
         if not request:
-            logger.warning(f"Confirmation not found: {confirmation_id}")
+            logger.warning("Confirmation not found: %s", confirmation_id)
             return False
 
         if request.status != ConfirmationStatus.PENDING:
             logger.warning(
-                f"Confirmation already processed: {confirmation_id}",
+                "Confirmation already processed: %s",
+                confirmation_id,
                 extra={'status': request.status.value}
             )
             return False
 
         logger.info(
-            f"Confirmation denied: {confirmation_id}",
+            "Confirmation denied: %s",
+            confirmation_id,
             extra={'denier_id': denier_id}
         )
 
@@ -376,7 +385,7 @@ class ToolConfirmationMiddleware:
 
         return requests
 
-    async def _cleanup_loop(self):
+    async def _cleanup_loop(self) -> None:
         """Background task to cleanup expired confirmations"""
         while self._running:
             try:
@@ -385,9 +394,9 @@ class ToolConfirmationMiddleware:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in cleanup loop: {e}", exc_info=True)
+                logger.error("Error in cleanup loop: %s", e, exc_info=True)
 
-    async def _cleanup_expired(self):
+    async def _cleanup_expired(self) -> None:
         """Clean up expired confirmation requests"""
         expired = []
 
@@ -399,14 +408,15 @@ class ToolConfirmationMiddleware:
             request = self._pending.pop(confirmation_id, None)
             if request:
                 logger.info(
-                    f"Cleaned up expired confirmation: {confirmation_id}",
+                    "Cleaned up expired confirmation: %s",
+                    confirmation_id,
                     extra={'tool_name': request.tool_name}
                 )
                 request.status = ConfirmationStatus.TIMEOUT
                 request.response_event.set()
 
         if expired:
-            logger.info(f"Cleaned up {len(expired)} expired confirmations")
+            logger.info("Cleaned up %s expired confirmations", len(expired))
 
     def get_stats(self) -> dict[str, Any]:
         """Get middleware statistics"""

@@ -40,7 +40,7 @@ class ExcelProcessorTool(BaseTool):
     Create, read, analyze, and format Excel spreadsheets.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def _get_metadata(self) -> ToolMetadata:
@@ -184,7 +184,7 @@ class ExcelProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Excel read error: {e}")
+            logger.error("Excel read error: %s", e)
             return self._error_response(f"Read error: {e}")
 
     async def _write_excel(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -263,7 +263,7 @@ class ExcelProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Excel write error: {e}")
+            logger.error("Excel write error: %s", e)
             return self._error_response(f"Write error: {e}")
 
     async def _analyze_excel(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -313,7 +313,7 @@ class ExcelProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Excel analysis error: {e}")
+            logger.error("Excel analysis error: %s", e)
             return self._error_response(f"Analysis error: {e}")
 
     async def _format_excel(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -356,10 +356,10 @@ class ExcelProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Excel formatting error: {e}")
+            logger.error("Excel formatting error: %s", e)
             return self._error_response(f"Formatting error: {e}")
 
-    def _apply_cell_formatting(self, cell, formatting: dict):
+    def _apply_cell_formatting(self, cell, formatting: dict) -> None:
         """Apply formatting to a cell"""
 
         from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -454,5 +454,5 @@ class ExcelProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Excel chart error: {e}")
+            logger.error("Excel chart error: %s", e)
             return self._error_response(f"Chart error: {e}")

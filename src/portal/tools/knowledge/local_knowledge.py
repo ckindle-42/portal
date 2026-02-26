@@ -28,7 +28,7 @@ class LocalKnowledgeTool(BaseTool):
     # Use config from environment or fallback to default
     DB_PATH = Path(os.getenv('KNOWLEDGE_BASE_DIR', 'data')) / "knowledge_base.json"
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # Load database only once
         if not LocalKnowledgeTool._db_loaded:
@@ -298,7 +298,7 @@ class LocalKnowledgeTool(BaseTool):
             "message": f"Cleared {count} documents"
         })
 
-    def _load_db(self):
+    def _load_db(self) -> None:
         """Load knowledge base from disk"""
         if self.DB_PATH.exists():
             try:
@@ -308,7 +308,7 @@ class LocalKnowledgeTool(BaseTool):
             except Exception as e:
                 print(f"Error loading knowledge base: {e}")
 
-    def _save_db(self):
+    def _save_db(self) -> None:
         """
         Save knowledge base to disk with atomic write protection.
 

@@ -19,7 +19,7 @@ except ImportError:
 class DockerStopTool(BaseTool):
     """Stop Docker containers"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.client = None
 
@@ -80,7 +80,7 @@ class DockerStopTool(BaseTool):
                     container = self.client.containers.get(container_id)
 
                     # Stop container
-                    logger.info(f"Stopping container: {container.name}")
+                    logger.info("Stopping container: %s", container.name)
                     container.stop(timeout=timeout)
 
                     # Remove if requested

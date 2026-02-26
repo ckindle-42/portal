@@ -228,7 +228,7 @@ class DependencyContainer:
     This makes it easy to create, configure, and inject dependencies.
     """
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         """
         Initialize dependency container.
 

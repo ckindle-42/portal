@@ -77,14 +77,14 @@ class HealthCheckSystem:
     Aggregates results from multiple providers.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize health check system"""
         self._providers: dict[str, HealthCheckProvider] = {}
         self._check_functions: dict[str, Callable[[], Awaitable[HealthCheckResult]]] = {}
 
         logger.info("HealthCheckSystem initialized")
 
-    def add_provider(self, name: str, provider: HealthCheckProvider):
+    def add_provider(self, name: str, provider: HealthCheckProvider) -> None:
         """
         Add a health check provider.
 
@@ -93,13 +93,13 @@ class HealthCheckSystem:
             provider: Provider instance
         """
         self._providers[name] = provider
-        logger.info(f"Added health check provider: {name}")
+        logger.info("Added health check provider: %s", name)
 
     def add_check(
         self,
         name: str,
         check_func: Callable[[], Awaitable[HealthCheckResult]]
-    ):
+    ) -> None:
         """
         Add a health check function.
 
@@ -108,7 +108,7 @@ class HealthCheckSystem:
             check_func: Async function that returns HealthCheckResult
         """
         self._check_functions[name] = check_func
-        logger.info(f"Added health check function: {name}")
+        logger.info("Added health check function: %s", name)
 
     async def check_health(self) -> dict[str, Any]:
         """
@@ -133,7 +133,7 @@ class HealthCheckSystem:
                     overall_status = HealthStatus.DEGRADED
 
             except Exception as e:
-                logger.exception(f"Health check failed for {name}: {e}")
+                logger.exception("Health check failed for %s: %s", name, e)
                 checks[name] = {
                     'status': HealthStatus.UNHEALTHY.value,
                     'message': f"Check failed: {e}",
@@ -154,7 +154,7 @@ class HealthCheckSystem:
                     overall_status = HealthStatus.DEGRADED
 
             except Exception as e:
-                logger.exception(f"Health check failed for {name}: {e}")
+                logger.exception("Health check failed for %s: %s", name, e)
                 checks[name] = {
                     'status': HealthStatus.UNHEALTHY.value,
                     'message': f"Check failed: {e}",
@@ -215,7 +215,7 @@ class HealthCheckSystem:
 class DatabaseHealthCheck(HealthCheckProvider):
     """Health check for database connection"""
 
-    def __init__(self, repository: Any):
+    def __init__(self, repository: Any) -> None:
         """
         Initialize database health check.
 
@@ -248,7 +248,7 @@ class DatabaseHealthCheck(HealthCheckProvider):
 class JobQueueHealthCheck(HealthCheckProvider):
     """Health check for job queue"""
 
-    def __init__(self, job_repository: Any, max_pending: int = 1000):
+    def __init__(self, job_repository: Any, max_pending: int = 1000) -> None:
         """
         Initialize job queue health check.
 
@@ -291,7 +291,7 @@ class JobQueueHealthCheck(HealthCheckProvider):
 class WorkerPoolHealthCheck(HealthCheckProvider):
     """Health check for worker pool"""
 
-    def __init__(self, worker_pool: Any):
+    def __init__(self, worker_pool: Any) -> None:
         """
         Initialize worker pool health check.
 
@@ -342,7 +342,7 @@ class WorkerPoolHealthCheck(HealthCheckProvider):
 # =============================================================================
 
 
-def register_health_endpoints(app, health_system: HealthCheckSystem):
+def register_health_endpoints(app, health_system: HealthCheckSystem) -> None:
     """
     Register health check endpoints with FastAPI app.
 
@@ -357,17 +357,17 @@ def register_health_endpoints(app, health_system: HealthCheckSystem):
     """
 
     @app.get("/health/live")
-    async def liveness_probe():
+    async def liveness_probe() -> dict[str, Any]:
         """Liveness probe - is the service running?"""
         return await health_system.check_liveness()
 
     @app.get("/health/ready")
-    async def readiness_probe():
+    async def readiness_probe() -> dict[str, Any]:
         """Readiness probe - is the service ready to accept traffic?"""
         return await health_system.check_readiness()
 
     @app.get("/health")
-    async def health_check():
+    async def health_check() -> dict[str, Any]:
         """Full health check with all providers"""
         return await health_system.check_health()
 

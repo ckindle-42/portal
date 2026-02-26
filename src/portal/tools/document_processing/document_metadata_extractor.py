@@ -38,7 +38,7 @@ class DocumentMetadataExtractorTool(BaseTool):
     Works with 15+ file formats!
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def _get_metadata(self) -> ToolMetadata:
@@ -110,7 +110,7 @@ class DocumentMetadataExtractorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Metadata extraction error: {e}")
+            logger.error("Metadata extraction error: %s", e)
             return self._error_response(f"Extraction error: {e}")
 
     async def _extract_pdf_metadata(self, file_path: Path, detailed: bool) -> dict:
@@ -341,11 +341,3 @@ class DocumentMetadataExtractorTool(BaseTool):
 
         except Exception as e:
             return {"error": f"Audio extraction failed: {e}"}
-
-
-if __name__ == "__main__":
-    print("✅ Document Metadata Extractor")
-    print("\nSupported formats:")
-    print("  - Documents: PDF, DOCX, PPTX, XLSX")
-    print("  - Images: JPG, PNG, GIF, BMP")
-    print("  - Audio: MP3, M4A, FLAC, OGG, WAV")

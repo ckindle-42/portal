@@ -45,7 +45,7 @@ class StructuredLogger:
     }
     """
 
-    def __init__(self, component: str, logger: logging.Logger | None = None):
+    def __init__(self, component: str, logger: logging.Logger | None = None) -> None:
         """
         Initialize structured logger
 
@@ -56,7 +56,7 @@ class StructuredLogger:
         self.component = component
         self.logger = logger or logging.getLogger(component)
 
-    def _log(self, level: str, message: str, **kwargs):
+    def _log(self, level: str, message: str, **kwargs) -> None:
         """
         Internal logging method
 
@@ -91,23 +91,23 @@ class StructuredLogger:
         log_method = getattr(self.logger, level.lower())
         log_method(json_log)
 
-    def debug(self, message: str, **kwargs):
+    def debug(self, message: str, **kwargs) -> None:
         """Log debug message"""
         self._log('DEBUG', message, **kwargs)
 
-    def info(self, message: str, **kwargs):
+    def info(self, message: str, **kwargs) -> None:
         """Log info message"""
         self._log('INFO', message, **kwargs)
 
-    def warning(self, message: str, **kwargs):
+    def warning(self, message: str, **kwargs) -> None:
         """Log warning message"""
         self._log('WARNING', message, **kwargs)
 
-    def error(self, message: str, **kwargs):
+    def error(self, message: str, **kwargs) -> None:
         """Log error message"""
         self._log('ERROR', message, **kwargs)
 
-    def critical(self, message: str, **kwargs):
+    def critical(self, message: str, **kwargs) -> None:
         """Log critical message"""
         self._log('CRITICAL', message, **kwargs)
 
@@ -122,7 +122,7 @@ class TraceContext:
             logger.info("Processing request")
     """
 
-    def __init__(self, trace_id: str | None = None):
+    def __init__(self, trace_id: str | None = None) -> None:
         """
         Initialize trace context
 
@@ -137,7 +137,7 @@ class TraceContext:
         self.token = _trace_id_var.set(self.trace_id)
         return self.trace_id
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit trace context"""
         _trace_id_var.reset(self.token)
 
@@ -169,7 +169,7 @@ def get_logger(component: str) -> StructuredLogger:
     return StructuredLogger(component)
 
 
-def set_trace_id(trace_id: str):
+def set_trace_id(trace_id: str) -> None:
     """
     Manually set trace_id for current context
 

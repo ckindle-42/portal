@@ -201,7 +201,7 @@ async def list_tags() -> dict:
             resp = await client.get(f"{OLLAMA_HOST}/api/tags")
             data = resp.json()
     except Exception as e:
-        logger.warning(f"Could not fetch Ollama tags: {e}")
+        logger.warning("Could not fetch Ollama tags: %s", e)
         data = {"models": []}
 
     real_models = data.get("models", [])
@@ -272,7 +272,7 @@ async def proxy(request: Request, path: str) -> Response:
             payload["model"] = resolved_model
             body = json.dumps(payload).encode()
             headers["content-length"] = str(len(body))
-            logger.debug(f"Routing {requested!r} → {resolved_model!r} ({reason})")
+            logger.debug("Routing %r → %r (%s)", requested, resolved_model, reason)
         except (json.JSONDecodeError, KeyError, TypeError):
             pass
 

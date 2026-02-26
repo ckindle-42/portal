@@ -16,7 +16,7 @@ from pathlib import Path
 class _ConnectionPool:
     """Thread-local SQLite connection cache."""
 
-    def __init__(self, db_path: Path):
+    def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
         self._local = threading.local()
 
@@ -29,7 +29,7 @@ class _ConnectionPool:
             self._local.conn = conn
         return conn
 
-    def close_all(self):
+    def close_all(self) -> None:
         conn = getattr(self._local, 'conn', None)
         if conn:
             conn.close()

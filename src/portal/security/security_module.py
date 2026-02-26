@@ -134,25 +134,14 @@ class RateLimiter:
 
         return max(0, self.max_requests - len(recent_requests))
 
-    async def check_rate_limit(self, user_id: str) -> bool:
-        """
-        Backward-compatible boolean-only rate limit check.
-
-        Some call sites and tests use the old API shape that returned only a
-        boolean. Keep this wrapper so older integrations continue to work while
-        new code can consume `check_limit`'s detailed tuple.
-        """
-        allowed, _ = await self.check_limit(user_id)
-        return allowed
-
-    def reset_user(self, user_id: str):
+    def reset_user(self, user_id: str) -> None:
         """Reset rate limit for specific user"""
         self.requests[user_id] = []
         self.violations[user_id] = 0
         self._flush_if_dirty()
         self._save_state()
 
-    def _flush_if_dirty(self):
+    def _flush_if_dirty(self) -> None:
         """Flush state to disk if there are pending changes."""
         if self._dirty:
             self._save_state()
@@ -175,7 +164,7 @@ class RateLimiter:
             'violations': self.violations[user_id]
         }
 
-    def _evict_expired_users(self):
+    def _evict_expired_users(self) -> None:
         """Remove users whose last request is older than the window to bound map size."""
         now = time.time()
         for user_id in list(self.requests.keys()):
@@ -186,7 +175,7 @@ class RateLimiter:
             if not self.requests[user_id]:
                 del self.requests[user_id]
 
-    def _load_state(self):
+    def _load_state(self) -> None:
         """
         Load rate limit state from disk.
         Prevents malicious users from bypassing limits via restart.
@@ -209,20 +198,20 @@ class RateLimiter:
             # Clean up old requests outside the window
             self._evict_expired_users()
 
-            logger.info(f"Loaded rate limit state for {len(self.requests)} users")
+            logger.info("Loaded rate limit state for %s users", len(self.requests))
 
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode rate limit state (corrupt file): {e}")
+            logger.error("Failed to decode rate limit state (corrupt file): %s", e)
             bak_path = self.persist_path.with_suffix('.json.bak')
             try:
                 self.persist_path.rename(bak_path)
-                logger.warning(f"Renamed corrupt rate_limits.json to {bak_path} for inspection")
+                logger.warning("Renamed corrupt rate_limits.json to %s for inspection", bak_path)
             except OSError as rename_err:
-                logger.error(f"Could not rename corrupt file: {rename_err}")
+                logger.error("Could not rename corrupt file: %s", rename_err)
         except Exception as e:
-            logger.error(f"Failed to load rate limit state: {e}")
+            logger.error("Failed to load rate limit state: %s", e)
 
-    def _save_state(self):
+    def _save_state(self) -> None:
         """
         Save rate limit state to disk with atomic write.
         Prevents data loss and ensures persistence across restarts.
@@ -259,7 +248,7 @@ class RateLimiter:
                 raise
 
         except Exception as e:
-            logger.error(f"Failed to save rate limit state: {e}")
+            logger.error("Failed to save rate limit state: %s", e)
 
 
 # =============================================================================
@@ -334,7 +323,7 @@ class InputSanitizer:
         for pattern, description in InputSanitizer.DANGEROUS_PATTERNS:
             if re.search(pattern, command, re.IGNORECASE):
                 warnings.append(f"âš ï¸ Dangerous pattern detected: {description}")
-                logger.warning(f"Dangerous command detected: {command[:100]}")
+                logger.warning("Dangerous command detected: %s", command[:100])
 
         # Basic sanitization (without breaking legitimate use)
         sanitized = command.strip()
@@ -387,7 +376,7 @@ class InputSanitizer:
         """
         for pattern in InputSanitizer.SQL_INJECTION_PATTERNS:
             if re.search(pattern, query, re.IGNORECASE):
-                logger.warning(f"SQL injection attempt detected: {query[:100]}")
+                logger.warning("SQL injection attempt detected: %s", query[:100])
                 return False, "Potential SQL injection detected"
 
         return True, None

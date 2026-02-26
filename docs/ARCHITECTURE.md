@@ -1,6 +1,6 @@
 # Portal Architecture
 
-**Version:** 1.3.2
+**Version:** 1.3.3
 **Last updated:** February 2026
 
 ---
@@ -433,7 +433,7 @@ with per-callback timeouts and active-task draining.
 ```
 portal/
 ├── src/portal/
-│   ├── __init__.py             version = "1.3.0"
+│   ├── __init__.py             version = "1.3.3"
 │   ├── cli.py
 │   ├── lifecycle.py
 │   ├── agent/
@@ -507,6 +507,14 @@ portal/
 | ComfyUI / Whisper MCP integration tests | Phase 3 |
 | LaunchAgent plist for M4 autostart | Phase 3 |
 | `portal doctor` structured output | Phase 3 |
+
+### v1.3.3 Code Health Drive (Feb 2026)
+- Massive test coverage explosion: 49% → 70%+ (372 → 1089+ tests)
+- Refactored agent_core.py: extracted 7 helpers from 3 oversized methods
+- Added return type hints to 230+ functions across entire codebase
+- Converted 171 f-string logging calls to lazy % formatting
+- Removed dead code: `__name__` blocks, backward-compat wrappers, example functions
+- Documentation version sync (ARCHITECTURE.md, CHANGELOG.md)
 
 ### v1.2.2 Code Quality Pass (Feb 2026)
 - Python 3.11+ modernization: removed `importlib_metadata` fallback

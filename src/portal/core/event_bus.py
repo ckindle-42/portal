@@ -87,7 +87,7 @@ class EventBus:
     - For production auditing, use the persistence layer instead of in-memory storage
     """
 
-    def __init__(self, enable_history: bool = False, max_history: int = 1000):
+    def __init__(self, enable_history: bool = False, max_history: int = 1000) -> None:
         """
         Initialize event bus
 
@@ -101,9 +101,9 @@ class EventBus:
         self._event_history: deque[Event] = deque(maxlen=max_history) if enable_history else deque()
         self._max_history = max_history
 
-        logger.info(f"EventBus initialized (history: {enable_history})")
+        logger.info("EventBus initialized (history: %s)", enable_history)
 
-    def subscribe(self, event_type: EventType, callback: Callable):
+    def subscribe(self, event_type: EventType, callback: Callable) -> None:
         """
         Subscribe to an event type
 
@@ -116,16 +116,16 @@ class EventBus:
             self._subscribers[event_type] = []
 
         self._subscribers[event_type].append(callback)
-        logger.debug(f"Subscribed to {event_type.value}")
+        logger.debug("Subscribed to %s", event_type.value)
 
-    def unsubscribe(self, event_type: EventType, callback: Callable):
+    def unsubscribe(self, event_type: EventType, callback: Callable) -> None:
         """Unsubscribe from an event type"""
         if event_type in self._subscribers:
             try:
                 self._subscribers[event_type].remove(callback)
-                logger.debug(f"Unsubscribed from {event_type.value}")
+                logger.debug("Unsubscribed from %s", event_type.value)
             except ValueError:
-                logger.warning(f"Callback not found in {event_type.value} subscribers")
+                logger.warning("Callback not found in %s subscribers", event_type.value)
 
     async def publish(
         self,
@@ -133,7 +133,7 @@ class EventBus:
         chat_id: str,
         data: dict[str, Any],
         trace_id: str | None = None
-    ):
+    ) -> None:
         """
         Publish an event
 
@@ -160,7 +160,7 @@ class EventBus:
         subscribers = self._subscribers.get(event_type, [])
 
         if not subscribers:
-            logger.debug(f"No subscribers for {event_type.value}")
+            logger.debug("No subscribers for %s", event_type.value)
             return
 
         # Notify all subscribers (non-blocking, error-isolated)
@@ -182,7 +182,7 @@ class EventBus:
                         exc_info=result
                     )
 
-    async def _notify_subscriber(self, callback: Callable, event: Event):
+    async def _notify_subscriber(self, callback: Callable, event: Event) -> None:
         """
         Notify a single subscriber with error handling
 
@@ -208,10 +208,10 @@ class EventEmitter:
     Can be mixed into AgentCore or other components
     """
 
-    def __init__(self, event_bus: EventBus):
+    def __init__(self, event_bus: EventBus) -> None:
         self.event_bus = event_bus
 
-    async def emit_processing_started(self, chat_id: str, message: str, trace_id: str):
+    async def emit_processing_started(self, chat_id: str, message: str, trace_id: str) -> None:
         """Emit processing started event"""
         await self.event_bus.publish(
             EventType.PROCESSING_STARTED,
@@ -220,7 +220,7 @@ class EventEmitter:
             trace_id
         )
 
-    async def emit_model_selected(self, chat_id: str, model_name: str, reasoning: str, trace_id: str):
+    async def emit_model_selected(self, chat_id: str, model_name: str, reasoning: str, trace_id: str) -> None:
         """Emit model selection event"""
         await self.event_bus.publish(
             EventType.MODEL_SELECTED,
@@ -229,7 +229,7 @@ class EventEmitter:
             trace_id
         )
 
-    async def emit_tool_started(self, chat_id: str, tool_name: str, trace_id: str):
+    async def emit_tool_started(self, chat_id: str, tool_name: str, trace_id: str) -> None:
         """Emit tool execution started event"""
         await self.event_bus.publish(
             EventType.TOOL_STARTED,
@@ -238,7 +238,7 @@ class EventEmitter:
             trace_id
         )
 
-    async def emit_tool_completed(self, chat_id: str, tool_name: str, result: str, trace_id: str):
+    async def emit_tool_completed(self, chat_id: str, tool_name: str, result: str, trace_id: str) -> None:
         """Emit tool execution completed event"""
         await self.event_bus.publish(
             EventType.TOOL_COMPLETED,
@@ -247,7 +247,7 @@ class EventEmitter:
             trace_id
         )
 
-    async def emit_security_warning(self, chat_id: str, warning: str, trace_id: str):
+    async def emit_security_warning(self, chat_id: str, warning: str, trace_id: str) -> None:
         """Emit security warning event"""
         await self.event_bus.publish(
             EventType.SECURITY_WARNING,

@@ -41,7 +41,7 @@ class ToolExecutionStats:
 class ToolRegistry:
     """Enhanced registry for discovering and managing tools"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.tools: dict[str, Any] = {}
         self.tool_categories: dict[str, list[str]] = {
             'utility': [],
@@ -67,7 +67,7 @@ class ToolRegistry:
         loaded = 0
         failed = 0
 
-        logger.info(f"Scanning for tools in {tools_dir}")
+        logger.info("Scanning for tools in %s", tools_dir)
 
         # 1. Discover internal tools using pkgutil
         internal_loaded, internal_failed = self._discover_internal_tools(tools_dir)
@@ -80,10 +80,10 @@ class ToolRegistry:
         failed += plugin_failed
 
         # Log summary
-        logger.info(f"Tool registry: {loaded} loaded ({internal_loaded} internal, {plugin_loaded} plugins), {failed} failed")
+        logger.info("Tool registry: %s loaded (%s internal, %s plugins), %s failed", loaded, internal_loaded, plugin_loaded, failed)
 
         if failed > 0:
-            logger.warning(f"Failed tools: {[t['module'] for t in self.failed_tools]}")
+            logger.warning("Failed tools: %s", [t['module'] for t in self.failed_tools])
 
         return loaded, failed
 
@@ -138,7 +138,7 @@ class ToolRegistry:
                     except Exception as e:
                         failed += 1
                         error_msg = f"Failed to instantiate {class_name} from {module_path}: {str(e)}"
-                        logger.error(f"Error: {error_msg}")
+                        logger.error("Error: %s", error_msg)
                         self.failed_tools.append({
                             'module': module_path,
                             'class': class_name,
@@ -149,7 +149,7 @@ class ToolRegistry:
             except ImportError as e:
                 failed += 1
                 error_msg = f"Import failed for {module_path}: {str(e)}"
-                logger.error(f"Import error: {error_msg}")
+                logger.error("Import error: %s", error_msg)
                 self.failed_tools.append({
                     'module': module_path,
                     'class': 'unknown',
@@ -160,7 +160,7 @@ class ToolRegistry:
             except Exception as e:
                 failed += 1
                 error_msg = f"Unexpected error loading {module_path}: {str(e)}"
-                logger.error(f"Unexpected error: {error_msg}")
+                logger.error("Unexpected error: %s", error_msg)
                 self.failed_tools.append({
                     'module': module_path,
                     'class': 'unknown',
@@ -201,7 +201,7 @@ class ToolRegistry:
         else:
             self.tool_categories[category] = [tool_name]
 
-        logger.info(f"Loaded tool: {tool_name} ({category}) from {source}")
+        logger.info("Loaded tool: %s (%s) from %s", tool_name, category, source)
 
     def _validate_tool_metadata(self, tool_instance: Any, class_name: str, module_path: str) -> None:
         """
@@ -271,7 +271,7 @@ class ToolRegistry:
                 logger.debug("No plugin tools found via entry_points")
                 return 0, 0
 
-            logger.info(f"Found {len(plugin_entry_points)} plugin tool(s) via entry_points")
+            logger.info("Found %s plugin tool(s) via entry_points", len(plugin_entry_points))
 
             # Load each plugin tool
             from portal.core.interfaces.tool import BaseTool
@@ -291,7 +291,7 @@ class ToolRegistry:
                 except Exception as e:
                     failed += 1
                     error_msg = f"Failed to load plugin {entry_point.name}: {str(e)}"
-                    logger.error(f"Plugin error: {error_msg}")
+                    logger.error("Plugin error: %s", error_msg)
                     self.failed_tools.append({
                         'module': f'plugin:{entry_point.value}',
                         'class': entry_point.name,
@@ -300,7 +300,7 @@ class ToolRegistry:
                     })
 
         except Exception as e:
-            logger.error(f"Error discovering entry_points: {e}")
+            logger.error("Error discovering entry_points: %s", e)
             # Don't fail the entire discovery process
             return 0, 0
 
@@ -346,7 +346,7 @@ class ToolRegistry:
 
         return tool_list
 
-    def record_execution(self, tool_name: str, success: bool, execution_time: float):
+    def record_execution(self, tool_name: str, success: bool, execution_time: float) -> None:
         """Record tool execution statistics"""
         if tool_name not in self.tool_stats:
             self.tool_stats[tool_name] = ToolExecutionStats()

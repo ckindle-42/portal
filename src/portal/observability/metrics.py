@@ -63,7 +63,7 @@ class MetricsCollector:
     custom metric registration.
     """
 
-    def __init__(self, service_name: str = "portal"):
+    def __init__(self, service_name: str = "portal") -> None:
         """
         Initialize metrics collector.
 
@@ -82,7 +82,7 @@ class MetricsCollector:
 
         logger.info("MetricsCollector initialized")
 
-    def _init_standard_metrics(self):
+    def _init_standard_metrics(self) -> None:
         """Initialize standard metrics"""
         if not PROMETHEUS_AVAILABLE:
             return
@@ -189,7 +189,7 @@ class MetricsCollector:
         endpoint: str,
         status: int,
         duration: float
-    ):
+    ) -> None:
         """
         Record HTTP request metrics.
 
@@ -213,7 +213,7 @@ class MetricsCollector:
             endpoint=endpoint
         ).observe(duration)
 
-    def record_job_enqueued(self, job_type: str):
+    def record_job_enqueued(self, job_type: str) -> None:
         """Record job enqueued"""
         if not PROMETHEUS_AVAILABLE:
             return
@@ -227,7 +227,7 @@ class MetricsCollector:
         job_type: str,
         status: str,
         duration: float
-    ):
+    ) -> None:
         """
         Record job completion.
 
@@ -248,7 +248,7 @@ class MetricsCollector:
             job_type=job_type
         ).observe(duration)
 
-    def update_job_queue_stats(self, pending: int, running: int):
+    def update_job_queue_stats(self, pending: int, running: int) -> None:
         """
         Update job queue gauges.
 
@@ -262,7 +262,7 @@ class MetricsCollector:
         self._metrics['jobs_pending'].set(pending)
         self._metrics['jobs_running'].set(running)
 
-    def update_worker_stats(self, total: int, busy: int):
+    def update_worker_stats(self, total: int, busy: int) -> None:
         """
         Update worker pool gauges.
 
@@ -282,7 +282,7 @@ class MetricsCollector:
         duration: float,
         input_tokens: int,
         output_tokens: int
-    ):
+    ) -> None:
         """
         Record LLM request metrics.
 
@@ -313,7 +313,7 @@ class MetricsCollector:
             type='output'
         ).inc(output_tokens)
 
-    def record_error(self, error_type: str, component: str):
+    def record_error(self, error_type: str, component: str) -> None:
         """
         Record error.
 
@@ -337,7 +337,7 @@ class MetricsCollector:
             FastAPI route handler
         """
         if not PROMETHEUS_AVAILABLE:
-            async def metrics_unavailable():
+            async def metrics_unavailable() -> dict[str, str]:
                 return {"error": "Prometheus client not installed"}
 
             return metrics_unavailable
@@ -370,7 +370,7 @@ class MetricsMiddleware:
     - Response status
     """
 
-    def __init__(self, app, metrics: MetricsCollector):
+    def __init__(self, app, metrics: MetricsCollector) -> None:
         """
         Initialize middleware.
 
@@ -381,7 +381,7 @@ class MetricsMiddleware:
         self.app = app
         self.metrics = metrics
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope, receive, send) -> None:
         """Process request"""
         if scope['type'] != 'http':
             await self.app(scope, receive, send)
@@ -397,7 +397,7 @@ class MetricsMiddleware:
         # Process request
         status_code = None
 
-        async def send_wrapper(message):
+        async def send_wrapper(message) -> None:
             nonlocal status_code
 
             if message['type'] == 'http.response.start':
@@ -421,7 +421,7 @@ class MetricsMiddleware:
                 )
 
 
-def register_metrics_endpoint(app, metrics: MetricsCollector):
+def register_metrics_endpoint(app, metrics: MetricsCollector) -> None:
     """
     Register /metrics endpoint with FastAPI app.
 

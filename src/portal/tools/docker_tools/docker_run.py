@@ -20,7 +20,7 @@ except ImportError:
 class DockerRunTool(BaseTool):
     """Run a Docker container"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.client = None
 
@@ -113,7 +113,7 @@ class DockerRunTool(BaseTool):
                 kwargs["volumes"] = volumes
 
             # Run container asynchronously
-            logger.info(f"Running container from image: {image}")
+            logger.info("Running container from image: %s", image)
 
             loop = asyncio.get_event_loop()
             container = await loop.run_in_executor(

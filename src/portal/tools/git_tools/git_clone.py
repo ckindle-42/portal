@@ -73,7 +73,7 @@ class GitCloneTool(BaseTool):
                 kwargs["depth"] = depth
 
             # Clone repository
-            logger.info(f"Cloning {url}")
+            logger.info("Cloning %s", url)
             repo = Repo.clone_from(url, destination or None, **kwargs)
 
             return self._success_response(

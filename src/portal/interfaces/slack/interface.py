@@ -42,7 +42,7 @@ class SlackInterface(BaseInterface):
     Registers /slack/events on Portal's existing FastAPI app.
     """
 
-    def __init__(self, agent_core, config, web_app):
+    def __init__(self, agent_core, config, web_app) -> None:
         """
         Args:
             agent_core: Portal AgentCore instance (shared)
@@ -81,7 +81,7 @@ class SlackInterface(BaseInterface):
         )
         return hmac.compare_digest(my_signature, signature)
 
-    def _register_routes(self):
+    def _register_routes(self) -> None:
         """Register Slack webhook endpoints on the shared FastAPI app."""
 
         @self.web_app.post("/slack/events")
@@ -110,7 +110,7 @@ class SlackInterface(BaseInterface):
 
             return {"ok": True}
 
-    async def _handle_message(self, event: dict):
+    async def _handle_message(self, event: dict) -> None:
         """Process incoming Slack message through AgentCore."""
         channel = event.get("channel", "")
         user = event.get("user", "")
@@ -122,7 +122,7 @@ class SlackInterface(BaseInterface):
             self.slack_config.channel_whitelist
             and channel not in self.slack_config.channel_whitelist
         ):
-            logger.debug(f"Ignoring message from non-whitelisted channel {channel}")
+            logger.debug("Ignoring message from non-whitelisted channel %s", channel)
             return
 
         # Remove bot mention from text (@Portal message text)
@@ -153,7 +153,7 @@ class SlackInterface(BaseInterface):
                 text=response_text,
             )
         except Exception as e:
-            logger.error(f"Slack response failed: {e}")
+            logger.error("Slack response failed: %s", e)
             await self.client.chat_postMessage(
                 channel=channel,
                 thread_ts=thread_ts,

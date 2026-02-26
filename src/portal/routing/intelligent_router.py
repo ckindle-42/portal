@@ -129,7 +129,7 @@ class IntelligentRouter:
         if classification.requires_code:
             capability_fallback = self.registry.get_fastest_model(ModelCapability.CODE)
             if capability_fallback and capability_fallback.available:
-                logger.info(f"Using capability-based fallback: {capability_fallback.model_id}")
+                logger.info("Using capability-based fallback: %s", capability_fallback.model_id)
                 return capability_fallback
 
         # Fallback to any available model

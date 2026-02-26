@@ -103,7 +103,7 @@ class AgentCore:
         self.config = config
         self.start_time = datetime.now(tz=UTC)
 
-        # Injected dependencies (makes testing easy!)
+        # Injected dependencies
         self.model_registry = model_registry
         self.router = router
         self.execution_engine = execution_engine
@@ -115,27 +115,11 @@ class AgentCore:
         self.mcp_registry = mcp_registry
         self.memory_manager = memory_manager or MemoryManager()
         self._stats_lock = asyncio.Lock()
-        self.hitl_middleware = None
-        if config.get('redis_url') or os.getenv('REDIS_URL'):
-            try:
-                self.hitl_middleware = HITLApprovalMiddleware()
-            except Exception:
-                logger.warning("HITL approval middleware unavailable (Redis not reachable)")
-
-        # Event emitter helper
+        self.hitl_middleware = self._init_hitl_middleware(config)
         self.events = EventEmitter(self.event_bus)
 
-        # Load tools from registry
         loaded, failed = self.tool_registry.discover_and_load()
-
-        # Statistics tracking
-        self.stats = {
-            'messages_processed': 0,
-            'total_execution_time': 0.0,
-            'tools_executed': 0,
-            'by_interface': {},
-            'errors': 0
-        }
+        self.stats = self._initial_stats()
 
         logger.info(
             "AgentCore initialized successfully",
@@ -145,6 +129,27 @@ class AgentCore:
             models_available=len(model_registry.models),
             confirmation_middleware_enabled=confirmation_middleware is not None
         )
+
+    @staticmethod
+    def _init_hitl_middleware(config: dict[str, Any]) -> HITLApprovalMiddleware | None:
+        """Try to initialize HITL approval middleware if Redis is configured."""
+        if not (config.get('redis_url') or os.getenv('REDIS_URL')):
+            return None
+        try:
+            return HITLApprovalMiddleware()
+        except Exception:
+            logger.warning("HITL approval middleware unavailable (Redis not reachable)")
+            return None
+
+    @staticmethod
+    def _initial_stats() -> dict[str, Any]:
+        return {
+            'messages_processed': 0,
+            'total_execution_time': 0.0,
+            'tools_executed': 0,
+            'by_interface': {},
+            'errors': 0,
+        }
 
     async def process_message(
         self,
@@ -314,7 +319,7 @@ class AgentCore:
 
         await self.event_bus.publish(EventType.PROCESSING_FAILED, chat_id, error_payload, trace_id)
 
-    async def _load_context(self, chat_id: str, trace_id: str):
+    async def _load_context(self, chat_id: str, trace_id: str) -> None:
         """Load conversation context"""
         history = await self.context_manager.get_history(chat_id, limit=10)
 
@@ -327,7 +332,7 @@ class AgentCore:
 
         logger.debug("Context loaded", chat_id=chat_id, message_count=len(history))
 
-    async def _save_user_message(self, chat_id: str, message: str, interface: str):
+    async def _save_user_message(self, chat_id: str, message: str, interface: str) -> None:
         """
         Save user message to context immediately upon receipt
 
@@ -341,7 +346,7 @@ class AgentCore:
         )
         logger.debug("User message saved", chat_id=chat_id)
 
-    async def _save_assistant_response(self, chat_id: str, response: str, interface: str):
+    async def _save_assistant_response(self, chat_id: str, response: str, interface: str) -> None:
         """
         Save assistant response to context after generation
 
@@ -602,75 +607,67 @@ class AgentCore:
         chat_id: str,
         trace_id: str,
     ) -> list[dict[str, Any]]:
-        """
-        Dispatch a list of tool-call requests to the MCP registry.
-
-        Called from process_message after the LLM returns tool_call entries.
-        Returns a list of tool results that can be fed back into the context.
-
-        ARCH-3 NOTE: Full tool-use loop requires ExecutionEngine to surface
-        tool_call entries from the LLM response.  This method is wired and
-        ready; the ExecutionEngine integration is Phase 2 work.
-        """
+        """Dispatch tool-call requests to MCP registry, with HITL gating for high-risk tools."""
         if not self.mcp_registry:
             return []
 
         results = []
         for call in tool_calls:
-            server_name = call.get('server', 'core')
             tool_name = call.get('tool') or call.get('name', '')
-            arguments = call.get('arguments', {})
-
             if not tool_name:
                 continue
-
-            logger.info(
-                "Dispatching MCP tool",
-                server=server_name,
-                tool=tool_name,
-                chat_id=chat_id,
-            )
-
-            if self.hitl_middleware and tool_name in HIGH_RISK_TOOLS:
-                user_id = str(arguments.get("user_id", chat_id))
-                approval_token = str(arguments.get("approval_token", "")).strip()
-                if not approval_token:
-                    approval_token = await self.hitl_middleware.request(
-                        user_id=user_id,
-                        channel="telegram",
-                        tool_name=tool_name,
-                        args=arguments,
-                    )
-                    results.append(
-                        {
-                            'tool': tool_name,
-                            'result': {
-                                'status': 'pending_approval',
-                                'approval_token': approval_token,
-                                'message': 'Tool execution deferred until approval token is granted.',
-                            },
-                        }
-                    )
-                    continue
-
-                if not self.hitl_middleware.check_approved(user_id=user_id, token=approval_token):
-                    results.append(
-                        {
-                            'tool': tool_name,
-                            'result': {
-                                'status': 'pending_approval',
-                                'approval_token': approval_token,
-                                'message': 'Approval token is still pending or denied.',
-                            },
-                        }
-                    )
-                    continue
-
-            result = await self.mcp_registry.call_tool(server_name, tool_name, arguments)
-            MCP_TOOL_USAGE.labels(tool_name=tool_name).inc()
-            results.append({'tool': tool_name, 'result': result})
-
+            result = await self._dispatch_single_mcp_tool(call, tool_name, chat_id, trace_id)
+            results.append(result)
         return results
+
+    async def _dispatch_single_mcp_tool(
+        self, call: dict[str, Any], tool_name: str, chat_id: str, trace_id: str,
+    ) -> dict[str, Any]:
+        """Dispatch one MCP tool call, applying HITL gating if needed."""
+        server_name = call.get('server', 'core')
+        arguments = call.get('arguments', {})
+
+        logger.info("Dispatching MCP tool", server=server_name, tool=tool_name, chat_id=chat_id)
+
+        hitl_result = await self._check_hitl_approval(tool_name, arguments, chat_id)
+        if hitl_result is not None:
+            return hitl_result
+
+        result = await self.mcp_registry.call_tool(server_name, tool_name, arguments)
+        MCP_TOOL_USAGE.labels(tool_name=tool_name).inc()
+        return {'tool': tool_name, 'result': result}
+
+    async def _check_hitl_approval(
+        self, tool_name: str, arguments: dict[str, Any], chat_id: str,
+    ) -> dict[str, Any] | None:
+        """Return a pending-approval result if HITL blocks the tool, else None."""
+        if not (self.hitl_middleware and tool_name in HIGH_RISK_TOOLS):
+            return None
+
+        user_id = str(arguments.get("user_id", chat_id))
+        approval_token = str(arguments.get("approval_token", "")).strip()
+
+        if not approval_token:
+            approval_token = await self.hitl_middleware.request(
+                user_id=user_id, channel="telegram", tool_name=tool_name, args=arguments,
+            )
+            return self._hitl_pending_result(tool_name, approval_token, "deferred until approval token is granted")
+
+        if not self.hitl_middleware.check_approved(user_id=user_id, token=approval_token):
+            return self._hitl_pending_result(tool_name, approval_token, "still pending or denied")
+
+        return None
+
+    @staticmethod
+    def _hitl_pending_result(tool_name: str, token: str, reason: str) -> dict[str, Any]:
+        return {
+            'tool': tool_name,
+            'result': {
+                'status': 'pending_approval',
+                'approval_token': token,
+                'message': f'Approval token is {reason}.',
+            },
+        }
 
     async def execute_tool(
         self,
@@ -680,83 +677,42 @@ class AgentCore:
         user_id: str | None = None,
         trace_id: str | None = None
     ) -> dict[str, Any]:
-        """
-        Execute a specific tool directly
-
-        This is useful for direct tool execution without LLM reasoning.
-        If the tool requires confirmation and confirmation middleware is enabled,
-        this method will request approval before executing.
-
-        Args:
-            tool_name: Name of the tool to execute
-            parameters: Tool parameters
-            chat_id: Optional chat ID for confirmation context
-            user_id: Optional user ID for confirmation context
-            trace_id: Optional trace ID for logging
-
-        Returns:
-            Tool execution result
-
-        Raises:
-            ToolExecutionError: If tool not found, confirmation denied, or execution fails
-        """
+        """Execute a specific tool directly, with optional confirmation gate."""
         tool = self.tool_registry.get_tool(tool_name)
-
         if not tool:
-            raise ToolExecutionError(
-                tool_name,
-                f'Tool not found: {tool_name}'
-            )
+            raise ToolExecutionError(tool_name, f'Tool not found: {tool_name}')
 
-        # Check if tool requires confirmation
-        requires_confirmation = getattr(tool.metadata, 'requires_confirmation', False)
-
-        if requires_confirmation and self.confirmation_middleware:
-            logger.info(
-                "Tool requires confirmation, requesting approval",
-                tool=tool_name,
-                chat_id=chat_id
-            )
-
-            # Request confirmation (this will block until approved/denied/timeout)
-            approved = await self.confirmation_middleware.request_confirmation(
-                tool_name=tool_name,
-                parameters=parameters,
-                chat_id=chat_id or "unknown",
-                user_id=user_id,
-                trace_id=trace_id
-            )
-
-            if not approved:
-                logger.warning(
-                    "Tool execution denied",
-                    tool=tool_name,
-                    chat_id=chat_id
-                )
-                raise ToolExecutionError(
-                    tool_name,
-                    "Tool execution denied by administrator",
-                    details={'parameters': parameters, 'requires_confirmation': True}
-                )
-
-            logger.info(
-                "Tool execution approved",
-                tool=tool_name,
-                chat_id=chat_id
-            )
+        await self._gate_tool_confirmation(tool, tool_name, parameters, chat_id, user_id, trace_id)
 
         try:
-            result = await tool.execute(parameters)
-            return result
+            return await tool.execute(parameters)
         except Exception as e:
             logger.error("Tool execution error", tool=tool_name, error=str(e))
-            raise ToolExecutionError(
-                tool_name,
-                str(e),
-                details={'parameters': parameters}
-            )
+            raise ToolExecutionError(tool_name, str(e), details={'parameters': parameters})
 
-    async def cleanup(self):
+    async def _gate_tool_confirmation(
+        self, tool: Any, tool_name: str, parameters: dict[str, Any],
+        chat_id: str | None, user_id: str | None, trace_id: str | None,
+    ) -> None:
+        """Request human-in-the-loop confirmation if needed. Raises on denial."""
+        requires_confirmation = getattr(tool.metadata, 'requires_confirmation', False)
+        if not (requires_confirmation and self.confirmation_middleware):
+            return
+
+        logger.info("Tool requires confirmation", tool=tool_name, chat_id=chat_id)
+        approved = await self.confirmation_middleware.request_confirmation(
+            tool_name=tool_name, parameters=parameters,
+            chat_id=chat_id or "unknown", user_id=user_id, trace_id=trace_id,
+        )
+        if not approved:
+            logger.warning("Tool execution denied", tool=tool_name, chat_id=chat_id)
+            raise ToolExecutionError(
+                tool_name, "Tool execution denied by administrator",
+                details={'parameters': parameters, 'requires_confirmation': True},
+            )
+        logger.info("Tool execution approved", tool=tool_name, chat_id=chat_id)
+
+    async def cleanup(self) -> None:
         """Cleanup resources"""
         logger.info("Cleaning up AgentCore...")
         if self.mcp_registry and hasattr(self.mcp_registry, 'close'):

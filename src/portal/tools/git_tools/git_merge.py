@@ -96,7 +96,7 @@ class GitMergeTool(BaseTool):
                 merge_args.extend(['-m', message])
 
             # Execute merge
-            logger.info(f"Merging {branch_name} into {current_branch}")
+            logger.info("Merging %s into %s", branch_name, current_branch)
 
             try:
                 repo.git.merge(*merge_args)

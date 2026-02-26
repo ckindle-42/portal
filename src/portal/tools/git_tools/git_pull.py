@@ -94,7 +94,7 @@ class GitPullTool(BaseTool):
             old_commit = repo.head.commit.hexsha[:8]
 
             # Execute pull asynchronously
-            logger.info(f"Pulling {branch} from {remote_name}")
+            logger.info("Pulling %s from %s", branch, remote_name)
 
             # Run in executor to avoid blocking
             loop = asyncio.get_event_loop()
