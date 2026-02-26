@@ -6,10 +6,8 @@ Defines the contract that all Portal interfaces must implement.
 This enables the AgentCore to work with any interface uniformly.
 """
 
-import asyncio
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -78,7 +76,6 @@ class BaseInterface(ABC):
         self.agent_core = agent_core
         self.config = config
         self.is_running = False
-        self._shutdown_event = asyncio.Event()
         logger.info("Initialized %s", self.__class__.__name__)
 
     @abstractmethod
@@ -180,51 +177,12 @@ class BaseInterface(ABC):
         return self.is_running
 
     async def get_status(self) -> dict[str, Any]:
-        """
-        Get current status information about the interface.
-
-        Returns:
-            Dictionary with status information
-        """
+        """Return current status information about the interface."""
         return {
             "interface": self.__class__.__name__,
             "is_running": self.is_running,
             "config_keys": list(self.config.keys()) if self.config else []
         }
-
-    def register_event_handler(self, event_type: str, handler: Callable[[Any], Awaitable[None]]) -> None:
-        """
-        Register a handler for interface-specific events.
-
-        This allows the core to subscribe to events like:
-        - User joined
-        - User left
-        - Typing indicator
-        - File uploaded
-
-        Args:
-            event_type: Type of event to handle
-            handler: Async function to call when event occurs
-        """
-        # Default implementation does nothing
-        # Override in subclasses that support events
-        pass
-
-    async def wait_until_stopped(self) -> None:
-        """
-        Wait until the interface is stopped.
-
-        Useful for keeping the main process alive.
-        """
-        await self._shutdown_event.wait()
-
-    def _signal_shutdown(self) -> None:
-        """
-        Signal that the interface has been stopped.
-
-        Call this from your stop() implementation.
-        """
-        self._shutdown_event.set()
 
 
 __all__ = [

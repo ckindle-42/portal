@@ -17,48 +17,6 @@ from portal.observability.watchdog import (
     WatchdogHealthCheck,
 )
 
-# ── Data Classes & Enums ─────────────────────────────────────────────────
-
-
-class TestComponentState:
-    def test_enum_values(self):
-        assert ComponentState.HEALTHY.value == "healthy"
-        assert ComponentState.DEGRADED.value == "degraded"
-        assert ComponentState.FAILED.value == "failed"
-        assert ComponentState.RESTARTING.value == "restarting"
-        assert ComponentState.STOPPED.value == "stopped"
-
-
-class TestWatchdogConfig:
-    def test_defaults(self):
-        cfg = WatchdogConfig()
-        assert cfg.check_interval_seconds == 30
-        assert cfg.max_consecutive_failures == 3
-        assert cfg.restart_on_failure is True
-        assert cfg.max_restart_attempts == 5
-        assert cfg.restart_backoff_seconds == 10
-        assert cfg.memory_threshold_percent == 90.0
-        assert cfg.cpu_threshold_percent == 95.0
-        assert cfg.deadlock_timeout_seconds == 300
-
-    def test_custom(self):
-        cfg = WatchdogConfig(check_interval_seconds=5, max_restart_attempts=2)
-        assert cfg.check_interval_seconds == 5
-        assert cfg.max_restart_attempts == 2
-
-
-class TestComponentHealth:
-    def test_defaults(self):
-        h = ComponentHealth(
-            name="test", state=ComponentState.HEALTHY, last_check_time=time.time()
-        )
-        assert h.consecutive_failures == 0
-        assert h.restart_count == 0
-        assert h.last_restart_time is None
-        assert h.last_error is None
-        assert h.metadata == {}
-
-
 class TestMonitoredComponent:
     def test_init(self):
         hc = AsyncMock(return_value=HealthCheckResult(

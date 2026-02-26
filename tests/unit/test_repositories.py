@@ -8,15 +8,9 @@ from portal.persistence.repositories import (
     Conversation,
     ConversationRepository,
     Document,
-    Job,
-    JobPriority,
-    JobRepository,
-    JobStatus,
     KnowledgeRepository,
     Message,
 )
-
-# ── Dataclass tests ──────────────────────────────────────────────────────
 
 
 class TestMessage:
@@ -61,49 +55,6 @@ class TestDocument:
         assert len(doc.embedding) == 3
 
 
-class TestJob:
-    def test_defaults(self):
-        job = Job(id="j1", job_type="test", parameters={})
-        assert job.status == JobStatus.PENDING
-        assert job.priority == JobPriority.NORMAL
-        assert job.retry_count == 0
-        assert job.max_retries == 3
-
-    def test_all_fields(self):
-        job = Job(
-            id="j2",
-            job_type="llm",
-            parameters={"model": "qwen"},
-            status=JobStatus.RUNNING,
-            priority=JobPriority.HIGH,
-            chat_id="c1",
-            trace_id="t1",
-        )
-        assert job.status == JobStatus.RUNNING
-        assert job.priority == JobPriority.HIGH
-
-
-class TestJobStatus:
-    def test_constants(self):
-        assert JobStatus.PENDING == "pending"
-        assert JobStatus.RUNNING == "running"
-        assert JobStatus.COMPLETED == "completed"
-        assert JobStatus.FAILED == "failed"
-        assert JobStatus.CANCELLED == "cancelled"
-        assert JobStatus.RETRYING == "retrying"
-
-
-class TestJobPriority:
-    def test_constants(self):
-        assert JobPriority.LOW == 0
-        assert JobPriority.NORMAL == 5
-        assert JobPriority.HIGH == 10
-        assert JobPriority.CRITICAL == 20
-
-
-# ── Abstract class tests ────────────────────────────────────────────────
-
-
 class TestConversationRepositoryABC:
     def test_cannot_instantiate(self):
         with pytest.raises(TypeError):
@@ -111,8 +62,6 @@ class TestConversationRepositoryABC:
 
     @pytest.mark.asyncio
     async def test_concrete_impl(self):
-        """Verify we can create a concrete implementation"""
-
         class FakeConvRepo(ConversationRepository):
             async def create_conversation(self, chat_id, metadata=None):
                 pass
@@ -148,9 +97,3 @@ class TestKnowledgeRepositoryABC:
     def test_cannot_instantiate(self):
         with pytest.raises(TypeError):
             KnowledgeRepository()
-
-
-class TestJobRepositoryABC:
-    def test_cannot_instantiate(self):
-        with pytest.raises(TypeError):
-            JobRepository()

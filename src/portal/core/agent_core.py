@@ -137,7 +137,7 @@ class AgentCore:
                     trace_id=trace_id,
                     messages=context_history or None,
                 )
-                await self._save_assistant_response(chat_id, result.response, interface.value)
+                await self._save_message(chat_id, 'assistant', result.response, interface.value)
                 return await self._finalize_result(
                     result, tool_results, chat_id, interface, start_time, trace_id
                 )
@@ -184,7 +184,7 @@ class AgentCore:
     ) -> str:
         """Load context, persist user message, enrich with memory. Returns enriched message."""
         await self._load_context(chat_id, trace_id)
-        await self._save_user_message(chat_id, message, interface.value)
+        await self._save_message(chat_id, 'user', message, interface.value)
 
         user_id = str(user_context.get("user_id") or chat_id)
         await self.memory_manager.add_message(user_id=user_id, content=message)
@@ -275,25 +275,12 @@ class AgentCore:
 
         logger.debug("Context loaded", chat_id=chat_id, message_count=len(history))
 
-    async def _save_user_message(self, chat_id: str, message: str, interface: str) -> None:
-        """Save user message to context immediately (preserves message if processing crashes)."""
+    async def _save_message(self, chat_id: str, role: str, content: str, interface: str) -> None:
+        """Save a message to conversation context."""
         await self.context_manager.add_message(
-            chat_id=chat_id,
-            role='user',
-            content=message,
-            interface=interface
+            chat_id=chat_id, role=role, content=content, interface=interface
         )
-        logger.debug("User message saved", chat_id=chat_id)
-
-    async def _save_assistant_response(self, chat_id: str, response: str, interface: str) -> None:
-        """Save assistant response to context after successful generation."""
-        await self.context_manager.add_message(
-            chat_id=chat_id,
-            role='assistant',
-            content=response,
-            interface=interface
-        )
-        logger.debug("Assistant response saved", chat_id=chat_id)
+        logger.debug("Message saved", chat_id=chat_id, role=role)
 
     def _build_system_prompt(self, interface: str, user_context: dict | None) -> str:
         """Build system prompt from external templates."""
@@ -416,8 +403,8 @@ class AgentCore:
         full_response = "".join(collected_response)
         if full_response and incoming.id:
             try:
-                await self._save_assistant_response(
-                    incoming.id, full_response, incoming.source or "web"
+                await self._save_message(
+                    incoming.id, 'assistant', full_response, incoming.source or "web"
                 )
             except Exception as e:
                 logger.warning("Failed to save streamed response to context: %s", e)

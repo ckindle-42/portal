@@ -140,6 +140,20 @@ class ExecutionEngine:
             self.timeout_seconds,
         )
 
+    async def _backend_ready(self, backend, backend_id: str) -> bool:
+        """Return True if the backend passes circuit-breaker and availability checks."""
+        if self.circuit_breaker:
+            allowed, reason = self.circuit_breaker.should_allow_request(backend_id)
+            if not allowed:
+                logger.info("Circuit breaker blocked %s: %s", backend_id, reason)
+                return False
+        if not await backend.is_available():
+            logger.warning("Backend %s not available", backend_id)
+            if self.circuit_breaker:
+                self.circuit_breaker.record_failure(backend_id)
+            return False
+        return True
+
     async def execute(self, query: str, system_prompt: str | None = None,
                      max_tokens: int = 2048, temperature: float = 0.7,
                      max_cost: float = 1.0,
@@ -160,16 +174,8 @@ class ExecutionEngine:
                 if not backend:
                     logger.warning("No backend for %s", model.backend)
                     continue
-                if self.circuit_breaker:
-                    allowed, reason = self.circuit_breaker.should_allow_request(model.backend)
-                    if not allowed:
-                        logger.info("Circuit breaker blocked %s: %s", model.backend, reason)
-                        fallbacks_used += 1
-                        continue
-                if not await backend.is_available():
-                    logger.warning("Backend %s not available", model.backend)
-                    if self.circuit_breaker:
-                        self.circuit_breaker.record_failure(model.backend)
+                if not await self._backend_ready(backend, model.backend):
+                    fallbacks_used += 1
                     continue
                 result = await self._execute_with_timeout(
                     backend=backend, model=model, query=query,
@@ -265,16 +271,7 @@ class ExecutionEngine:
                 logger.warning("No backend for %s", model.backend)
                 continue
 
-            if self.circuit_breaker:
-                allowed, reason = self.circuit_breaker.should_allow_request(model.backend)
-                if not allowed:
-                    logger.info("Circuit breaker blocked %s: %s", model.backend, reason)
-                    continue
-
-            if not await backend.is_available():
-                logger.warning("Backend %s not available for streaming", model.backend)
-                if self.circuit_breaker:
-                    self.circuit_breaker.record_failure(model.backend)
+            if not await self._backend_ready(backend, model.backend):
                 continue
 
             try:

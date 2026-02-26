@@ -31,10 +31,6 @@ class Message:
         """Convert to dictionary"""
         return asdict(self)
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'Message':
-        """Create from dictionary"""
-        return cls(**data)
 
 
 class ContextManager:

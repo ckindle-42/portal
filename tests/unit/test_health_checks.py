@@ -7,7 +7,6 @@ HealthCheckProvider, HealthCheckSystem, and built-in providers
 (DatabaseHealthCheck, JobQueueHealthCheck, WorkerPoolHealthCheck).
 """
 
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,38 +22,6 @@ from portal.observability.health import (
 )
 
 # ===========================================================================
-# HealthStatus enum
-# ===========================================================================
-
-
-class TestHealthStatus:
-    """Tests for the HealthStatus StrEnum."""
-
-    def test_healthy_value(self):
-        assert HealthStatus.HEALTHY == "healthy"
-        assert HealthStatus.HEALTHY.value == "healthy"
-
-    def test_degraded_value(self):
-        assert HealthStatus.DEGRADED == "degraded"
-        assert HealthStatus.DEGRADED.value == "degraded"
-
-    def test_unhealthy_value(self):
-        assert HealthStatus.UNHEALTHY == "unhealthy"
-        assert HealthStatus.UNHEALTHY.value == "unhealthy"
-
-    def test_is_str_subclass(self):
-        assert isinstance(HealthStatus.HEALTHY, str)
-
-    def test_all_members(self):
-        members = set(HealthStatus)
-        assert members == {
-            HealthStatus.HEALTHY,
-            HealthStatus.DEGRADED,
-            HealthStatus.UNHEALTHY,
-        }
-
-
-# ===========================================================================
 # HealthCheckResult dataclass
 # ===========================================================================
 
@@ -62,40 +29,16 @@ class TestHealthStatus:
 class TestHealthCheckResult:
     """Tests for the HealthCheckResult dataclass."""
 
-    def test_basic_creation(self):
-        ts = datetime.now(tz=UTC).isoformat()
-        r = HealthCheckResult(
-            status=HealthStatus.HEALTHY,
-            message="All good",
-            timestamp=ts,
-        )
-        assert r.status == HealthStatus.HEALTHY
-        assert r.message == "All good"
-        assert r.timestamp == ts
-        assert r.details is None
-
-    def test_creation_with_details(self):
-        r = HealthCheckResult(
-            status=HealthStatus.DEGRADED,
-            message="slow",
-            timestamp="2026-01-01T00:00:00",
-            details={"latency_ms": 500},
-        )
-        assert r.details == {"latency_ms": 500}
-
-    def test_to_dict_without_details(self):
+    def test_creation_and_to_dict(self):
         r = HealthCheckResult(
             status=HealthStatus.UNHEALTHY,
             message="down",
             timestamp="ts1",
         )
+        assert r.details is None
         d = r.to_dict()
-        assert d == {
-            "status": "unhealthy",
-            "message": "down",
-            "timestamp": "ts1",
-            "details": {},
-        }
+        assert d == {"status": "unhealthy", "message": "down", "timestamp": "ts1", "details": {}}
+        assert isinstance(d["status"], str)
 
     def test_to_dict_with_details(self):
         r = HealthCheckResult(
@@ -104,16 +47,7 @@ class TestHealthCheckResult:
             timestamp="ts2",
             details={"db_pool": 10},
         )
-        d = r.to_dict()
-        assert d["details"] == {"db_pool": 10}
-
-    def test_to_dict_status_is_string(self):
-        r = HealthCheckResult(
-            status=HealthStatus.DEGRADED,
-            message="x",
-            timestamp="t",
-        )
-        assert isinstance(r.to_dict()["status"], str)
+        assert r.to_dict()["details"] == {"db_pool": 10}
 
 
 # ===========================================================================

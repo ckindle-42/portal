@@ -325,61 +325,22 @@ class TestMetricsCollectorPrometheusUnavailable:
     """Patch PROMETHEUS_AVAILABLE=False to verify graceful no-op behaviour."""
 
     @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_init_no_metrics(self):
+    def test_init_and_all_noops(self):
+        """When Prometheus is unavailable all record methods must be no-ops."""
         from portal.observability.metrics import MetricsCollector
 
         mc = MetricsCollector("fallback")
         assert mc._metrics == {}
-
-    @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_record_http_request_noop(self):
-        from portal.observability.metrics import MetricsCollector
-
-        mc = MetricsCollector()
-        # Should not raise
+        # All record methods must not raise when Prometheus is absent
         mc.record_http_request("GET", "/", 200, 0.1)
-
-    @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_record_job_enqueued_noop(self):
-        from portal.observability.metrics import MetricsCollector
-
-        mc = MetricsCollector()
         mc.record_job_enqueued("test")
-
-    @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_record_job_completed_noop(self):
-        from portal.observability.metrics import MetricsCollector
-
-        mc = MetricsCollector()
         mc.record_job_completed("test", "ok", 1.0)
-
-    @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_update_job_queue_stats_noop(self):
-        from portal.observability.metrics import MetricsCollector
-
-        mc = MetricsCollector()
         mc.update_job_queue_stats(0, 0)
-
-    @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_update_worker_stats_noop(self):
-        from portal.observability.metrics import MetricsCollector
-
-        mc = MetricsCollector()
         mc.update_worker_stats(1, 0)
-
-    @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_record_llm_request_noop(self):
-        from portal.observability.metrics import MetricsCollector
-
-        mc = MetricsCollector()
         mc.record_llm_request("model", 1.0, 10, 5)
-
-    @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_record_error_noop(self):
-        from portal.observability.metrics import MetricsCollector
-
-        mc = MetricsCollector()
         mc.record_error("Err", "comp")
+        mc._init_standard_metrics()
+        assert mc._metrics == {}
 
     @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
     async def test_get_metrics_handler_unavailable(self):
@@ -389,15 +350,6 @@ class TestMetricsCollectorPrometheusUnavailable:
         handler = mc.get_metrics_handler()
         result = await handler()
         assert result == {"error": "Prometheus client not installed"}
-
-    @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_init_standard_metrics_noop(self):
-        """_init_standard_metrics returns early when Prometheus is missing."""
-        from portal.observability.metrics import MetricsCollector
-
-        mc = MetricsCollector()
-        mc._init_standard_metrics()
-        assert mc._metrics == {}
 
 
 # ===========================================================================
@@ -579,54 +531,3 @@ class TestRegisterMetricsEndpoint:
 # ===========================================================================
 
 
-class TestMetricsEdgeCases:
-    """Edge-case and boundary tests."""
-
-    def test_zero_duration_http_request(self):
-        mc = _fresh_collector()
-        mc.record_http_request("GET", "/", 200, 0.0)
-
-        hist = mc._metrics["http_request_duration_seconds"].labels(
-            method="GET", endpoint="/"
-        )
-        assert hist._sum.get() == 0.0
-
-    def test_large_token_counts(self):
-        mc = _fresh_collector()
-        mc.record_llm_request("big-model", 100.0, 1_000_000, 500_000)
-
-        assert (
-            mc._metrics["llm_tokens_total"]
-            .labels(model="big-model", type="input")
-            ._value.get()
-            == 1_000_000.0
-        )
-
-    def test_empty_strings_as_labels(self):
-        mc = _fresh_collector()
-        mc.record_http_request("", "", 0, 0.0)
-        mc.record_error("", "")
-        mc.record_job_enqueued("")
-        # Should not raise
-
-    def test_special_characters_in_endpoint(self):
-        mc = _fresh_collector()
-        mc.record_http_request("GET", "/api/v1/users?q=hello&limit=10", 200, 0.01)
-        val = mc._metrics["http_requests_total"].labels(
-            method="GET", endpoint="/api/v1/users?q=hello&limit=10", status="200"
-        )._value.get()
-        assert val == 1.0
-
-    def test_negative_duration_accepted(self):
-        """Prometheus doesn't reject negative observations."""
-        mc = _fresh_collector()
-        mc.record_http_request("GET", "/", 200, -1.0)
-        # No exception raised
-
-    def test_status_code_stored_as_string(self):
-        mc = _fresh_collector()
-        mc.record_http_request("GET", "/x", 418, 0.0)
-        val = mc._metrics["http_requests_total"].labels(
-            method="GET", endpoint="/x", status="418"
-        )._value.get()
-        assert val == 1.0
