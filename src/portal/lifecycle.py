@@ -28,6 +28,7 @@ import asyncio
 import logging
 import signal
 import sys
+import os
 from typing import Optional, Callable, List, Set
 from dataclasses import dataclass, field
 from enum import Enum
@@ -145,6 +146,17 @@ class Runtime:
             settings = load_settings(self.config_path)
         else:
             settings = load_settings()
+
+
+        # Critical guard: refuse to start with default MCP secret.
+        raw_mcp_api_key = (settings.security.mcp_api_key or '').strip()
+        env_mcp_api_key = os.getenv("MCP_API_KEY", "").strip()
+        effective_mcp_api_key = env_mcp_api_key or raw_mcp_api_key
+        if effective_mcp_api_key == "changeme-mcp-secret":
+            raise RuntimeError(
+                "Refusing to start: MCP_API_KEY is still set to the insecure default "
+                "'changeme-mcp-secret'. Set a strong secret before booting Portal."
+            )
 
         # Step 2: Initialize event broker
         logger.info("Initializing event broker")

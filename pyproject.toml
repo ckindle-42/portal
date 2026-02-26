@@ -44,7 +44,7 @@ dependencies = [
 
 [project.optional-dependencies]
 telegram = [
-    "python-telegram-bot>=20.7,<21.0",
+    "python-telegram-bot>=21.0,<22.0",
 ]
 slack = [
     "slack-sdk>=3.29.0",
@@ -61,7 +61,7 @@ dev = [
     "ruff>=0.4.0",
     "mypy>=1.10.0",
 ]
-all = ["portal[telegram,slack,generation]"]
+all = ["python-telegram-bot>=21.0,<22.0", "slack-sdk>=3.29.0", "faster-whisper>=1.0.0", "pillow>=10.3.0"]
 
 [project.scripts]
 portal = "portal.cli:cli"

@@ -44,8 +44,18 @@ def down():
 
     click.echo("Stopping Portal stack...")
     result = subprocess.run([str(launcher), "down"], check=False)
+
+    # Fallback lifecycle cleanup so the command is useful even when launcher scripts fail.
+    compose_file = Path(__file__).parent.parent.parent.parent / "docker-compose.yml"
+    if compose_file.exists():
+        subprocess.run(["docker", "compose", "-f", str(compose_file), "down"], check=False)
+
+    subprocess.run(["pkill", "-f", "uvicorn.*portal.interfaces.web.server"], check=False)
+    subprocess.run(["pkill", "-f", "uvicorn.*portal.routing.router"], check=False)
+    subprocess.run(["pkill", "-f", "mcpo"], check=False)
+
     if result.returncode != 0:
-        click.echo("Warning: shutdown script returned non-zero exit code", err=True)
+        click.echo("Warning: launcher shutdown returned non-zero exit code; fallback cleanup executed.", err=True)
         sys.exit(result.returncode)
 
 
