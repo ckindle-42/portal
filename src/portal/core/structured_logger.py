@@ -9,12 +9,23 @@ the entire system.
 
 import json
 import logging
+import re
 import uuid
 from contextvars import ContextVar
 from datetime import datetime
 
 # Context variable to store trace_id for current request
 _trace_id_var: ContextVar[str | None] = ContextVar('trace_id', default=None)
+
+_SECRET_PATTERNS = re.compile(
+    r"(xoxb-[A-Za-z0-9-]+|sk-[A-Za-z0-9]+|bot\d+:[A-Za-z0-9_-]+|"
+    r"ghp_[A-Za-z0-9]+|Bearer\s+[A-Za-z0-9._~+/=-]+)",
+    re.IGNORECASE,
+)
+
+
+def _redact_secrets(text: str) -> str:
+    return _SECRET_PATTERNS.sub("[REDACTED]", text)
 
 
 class StructuredLogger:
@@ -62,18 +73,19 @@ class StructuredLogger:
             'timestamp': datetime.now().isoformat(),
             'level': level,
             'component': self.component,
-            'message': message,
+            'message': _redact_secrets(message),
         }
 
         # Add trace_id if available
         if trace_id:
             log_entry['trace_id'] = trace_id
 
-        # Add additional fields
-        log_entry.update(kwargs)
+        # Add additional fields, redacting string values
+        for k, v in kwargs.items():
+            log_entry[k] = _redact_secrets(str(v)) if isinstance(v, str) else v
 
         # Convert to JSON
-        json_log = json.dumps(log_entry)
+        json_log = _redact_secrets(json.dumps(log_entry))
 
         # Log at appropriate level
         log_method = getattr(self.logger, level.lower())
