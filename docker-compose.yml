@@ -55,6 +55,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - QDRANT_URL=http://qdrant:6333
       - WEB_PORT=8081
+      - PORTAL_BOOTSTRAP_API_KEY=${PORTAL_BOOTSTRAP_API_KEY:-portal-dev-key}
+      - PORTAL_BOOTSTRAP_USER_ID=${PORTAL_BOOTSTRAP_USER_ID:-open-webui}
     volumes:
       - ./data:/app/data
       - ./mcp:/app/mcp
@@ -79,7 +81,7 @@ services:
       - "3000:8080"
     environment:
       - OPENAI_API_BASE_URL=http://portal-api:8081/v1
-      - OPENAI_API_KEY=dummy
+      - OPENAI_API_KEY=${PORTAL_BOOTSTRAP_API_KEY:-portal-dev-key}
     volumes:
       - openwebui_data:/app/backend/data
     depends_on:
@@ -101,18 +103,31 @@ services:
       - ./data:/portal/data
 
   mcp-shell:
-    image: python:3.11-slim
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: portal-mcp-shell
     working_dir: /app
-    command: ["python", "scripts/mcp/bash_mcp_server.py"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    command: ["uvicorn", "scripts.mcp.bash_mcp_server:app", "--host", "0.0.0.0", "--port", "8091"]
+    ports:
+      - "8091:8091"
     volumes:
       - ./:/app
+    depends_on:
+      redis:
+        condition: service_healthy
 
   mcp-web:
-    image: python:3.11-slim
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: portal-mcp-web
     working_dir: /app
-    command: ["python", "scripts/mcp/web_scrape_mcp_server.py"]
+    command: ["uvicorn", "scripts.mcp.web_scrape_mcp_server:app", "--host", "0.0.0.0", "--port", "8092"]
+    ports:
+      - "8092:8092"
     volumes:
       - ./:/app
 
