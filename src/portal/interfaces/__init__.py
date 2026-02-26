@@ -10,7 +10,6 @@ Modularized interface packages for better organization:
 
 from portal.core.interfaces.agent_interface import (
     BaseInterface,
-    InterfaceManager,
     Message,
     Response,
 )
@@ -18,7 +17,6 @@ from portal.interfaces.web import WebInterface
 
 __all__ = [
     'BaseInterface',
-    'InterfaceManager',
     'Message',
     'Response',
     'WebInterface',

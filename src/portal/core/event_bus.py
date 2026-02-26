@@ -196,56 +196,6 @@ class EventBus:
                 exc_info=True
             )
 
-    def get_event_history(
-        self,
-        chat_id: str | None = None,
-        event_type: EventType | None = None,
-        limit: int = 100
-    ) -> list[Event]:
-        """
-        Get event history
-
-        Args:
-            chat_id: Filter by chat ID
-            event_type: Filter by event type
-            limit: Maximum number of events to return
-
-        Returns:
-            List of events (most recent first)
-        """
-        events = self._event_history.copy()
-
-        # Apply filters
-        if chat_id:
-            events = [e for e in events if e.chat_id == chat_id]
-
-        if event_type:
-            events = [e for e in events if e.event_type == event_type]
-
-        # Return most recent first
-        return list(reversed(events[-limit:]))
-
-    def clear_history(self):
-        """Clear event history"""
-        self._event_history.clear()
-        logger.info("Event history cleared")
-
-    def get_stats(self) -> dict[str, Any]:
-        """Get event bus statistics"""
-        event_counts = {}
-        for event in self._event_history:
-            event_type = event.event_type.value
-            event_counts[event_type] = event_counts.get(event_type, 0) + 1
-
-        return {
-            'total_events': len(self._event_history),
-            'event_counts': event_counts,
-            'subscriber_counts': {
-                event_type.value: len(callbacks)
-                for event_type, callbacks in self._subscribers.items()
-            }
-        }
-
 
 # =============================================================================
 # HELPER FUNCTIONS FOR COMMON EVENT PATTERNS

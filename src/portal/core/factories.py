@@ -11,7 +11,7 @@ This decouples the creation logic from the core, making it easier to:
 v4.6.1: Extracted from create_agent_core for better separation of concerns
 """
 
-from typing import Any, Protocol
+from typing import Any
 
 from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry, RoutingStrategy
 
@@ -21,18 +21,6 @@ from .prompt_manager import PromptManager
 from .structured_logger import get_logger
 
 logger = get_logger('Factories')
-
-
-# =============================================================================
-# FACTORY PROTOCOLS
-# =============================================================================
-
-class DependencyFactory(Protocol):
-    """Protocol for dependency factories"""
-
-    def create(self, config: dict[str, Any]) -> Any:
-        """Create and return a dependency instance"""
-        ...
 
 
 # =============================================================================

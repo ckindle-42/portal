@@ -225,70 +225,8 @@ class BaseInterface(ABC):
         self._shutdown_event.set()
 
 
-class InterfaceManager:
-    """
-    Manages multiple interfaces simultaneously.
-
-    Allows running Telegram, Web, and other interfaces concurrently
-    with a single agent core instance.
-    """
-
-    def __init__(self, agent_core: Any):
-        """
-        Initialize the interface manager.
-
-        Args:
-            agent_core: The agent core to share across interfaces
-        """
-        self.agent_core = agent_core
-        self.interfaces: dict[str, BaseInterface] = {}
-        logger.info("InterfaceManager initialized")
-
-    def register(self, name: str, interface: BaseInterface) -> None:
-        """
-        Register an interface.
-
-        Args:
-            name: Unique name for the interface
-            interface: The interface instance
-        """
-        self.interfaces[name] = interface
-        logger.info(f"Registered interface: {name}")
-
-    async def start_all(self) -> None:
-        """Start all registered interfaces concurrently."""
-        logger.info(f"Starting {len(self.interfaces)} interfaces...")
-        tasks = [interface.start() for interface in self.interfaces.values()]
-        await asyncio.gather(*tasks, return_exceptions=True)
-        logger.info("All interfaces started")
-
-    async def stop_all(self) -> None:
-        """Stop all registered interfaces gracefully."""
-        logger.info(f"Stopping {len(self.interfaces)} interfaces...")
-        tasks = [interface.stop() for interface in self.interfaces.values()]
-        await asyncio.gather(*tasks, return_exceptions=True)
-        logger.info("All interfaces stopped")
-
-    async def health_check_all(self) -> dict[str, bool]:
-        """
-        Check health of all interfaces.
-
-        Returns:
-            Dictionary mapping interface names to health status
-        """
-        results = {}
-        for name, interface in self.interfaces.items():
-            try:
-                results[name] = await interface.health_check()
-            except Exception as e:
-                logger.error(f"Health check failed for {name}: {e}")
-                results[name] = False
-        return results
-
-
 __all__ = [
     'BaseInterface',
-    'InterfaceManager',
     'Message',
     'Response',
 ]
