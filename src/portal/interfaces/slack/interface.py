@@ -155,7 +155,7 @@ class SlackInterface(BaseInterface):
             await self.client.chat_postMessage(
                 channel=channel,
                 thread_ts=thread_ts,
-                text=f"Error processing request: {str(e)}",
+                text="Sorry, I encountered an error processing your request. Please try again.",
             )
 
     async def start(self) -> None:

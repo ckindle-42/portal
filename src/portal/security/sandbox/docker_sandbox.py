@@ -277,7 +277,7 @@ CMD ["python3"]
             if container:
                 try:
                     container.remove(force=True)
-                except:
+                except Exception:
                     pass
     
     async def execute_script(

@@ -84,7 +84,7 @@ class TextTransformerTool(BaseTool):
                 return toml.loads(content)
             else:
                 return None
-        except:
+        except Exception:
             return None
     
     def _serialize(self, data: Any, fmt: str) -> str:
@@ -103,5 +103,5 @@ class TextTransformerTool(BaseTool):
                 return toml.dumps(data)
             else:
                 return None
-        except:
+        except Exception:
             return None

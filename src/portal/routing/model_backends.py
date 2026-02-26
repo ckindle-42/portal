@@ -4,7 +4,9 @@ Model Backends - Adapters for Ollama, LM Studio, and MLX
 
 import asyncio
 import aiohttp
+import json
 import logging
+import time
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, AsyncGenerator
 from dataclasses import dataclass
@@ -104,7 +106,6 @@ class OllamaBackend(ModelBackend):
                       max_tokens: int = 2048,
                       temperature: float = 0.7) -> GenerationResult:
         """Generate text using Ollama /api/chat (supports tool calls)."""
-        import time
         start_time = time.time()
 
         try:
@@ -194,7 +195,6 @@ class OllamaBackend(ModelBackend):
                 async for line in response.content:
                     if line:
                         try:
-                            import json
                             data = json.loads(line.decode("utf-8"))
                             content = data.get("message", {}).get("content", "")
                             if content:
@@ -212,7 +212,7 @@ class OllamaBackend(ModelBackend):
             session = await self._get_session()
             async with session.get(f"{self.base_url}/api/tags") as response:
                 return response.status == 200
-        except:
+        except Exception:
             return False
     
     async def list_models(self) -> list:
@@ -251,7 +251,6 @@ class LMStudioBackend(ModelBackend):
                       max_tokens: int = 2048,
                       temperature: float = 0.7) -> GenerationResult:
         """Generate using OpenAI-compatible API"""
-        import time
         start_time = time.time()
         
         try:
@@ -339,12 +338,11 @@ class LMStudioBackend(ModelBackend):
                     line = line.decode('utf-8').strip()
                     if line.startswith('data: ') and line != 'data: [DONE]':
                         try:
-                            import json
                             data = json.loads(line[6:])
                             delta = data["choices"][0].get("delta", {})
                             if "content" in delta:
                                 yield delta["content"]
-                        except:
+                        except Exception:
                             continue
         
         except Exception as e:
@@ -357,7 +355,7 @@ class LMStudioBackend(ModelBackend):
             session = await self._get_session()
             async with session.get(f"{self.base_url}/models") as response:
                 return response.status == 200
-        except:
+        except Exception:
             return False
     
     async def list_models(self) -> list:
@@ -401,7 +399,6 @@ class MLXBackend(ModelBackend):
                       max_tokens: int = 2048,
                       temperature: float = 0.7) -> GenerationResult:
         """Generate using MLX"""
-        import time
         start_time = time.time()
         
         try:

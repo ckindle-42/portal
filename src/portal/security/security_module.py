@@ -56,25 +56,17 @@ class RateLimiter:
         # Load existing rate limit data
         self._load_state()
     
-    def check_limit(self, user_id: int) -> Tuple[bool, Optional[str]]:
-        """
-        Check if user is within rate limit.
-        
-        Args:
-            user_id: Telegram user ID
-            
-        Returns:
-            (is_allowed, error_message)
-        """
+    def _check_limit_sync(self, user_id: int) -> Tuple[bool, Optional[str]]:
+        """Synchronous core of rate limit check (called via asyncio.to_thread)."""
         now = time.time()
         user_requests = self.requests[user_id]
-        
+
         # Remove requests outside the window
         user_requests = [
-            req_time for req_time in user_requests 
+            req_time for req_time in user_requests
             if now - req_time < self.window
         ]
-        
+
         # Check limit
         if len(user_requests) >= self.max_requests:
             self.violations[user_id] += 1
@@ -84,20 +76,36 @@ class RateLimiter:
                 f"Rate limit exceeded for user {user_id} "
                 f"({len(user_requests)}/{self.max_requests} requests)"
             )
-            
-            # Persist violation immediately
+
+            # Persist violation immediately (blocking I/O, safe inside to_thread)
             self._save_state()
 
-            return False, f"â±ï¸ Rate limit exceeded. Please wait {wait_time} seconds."
-        
+            return False, f"⏱️ Rate limit exceeded. Please wait {wait_time} seconds."
+
         # Add current request
         user_requests.append(now)
         self.requests[user_id] = user_requests[-self.max_requests:]
+
+        # Evict expired users to prevent unbounded memory growth
+        self._evict_expired_users()
 
         # Persist state after each check (prevent bypass via restart)
         self._save_state()
 
         return True, None
+
+    async def check_limit(self, user_id: int) -> Tuple[bool, Optional[str]]:
+        """
+        Check if user is within rate limit.
+
+        Args:
+            user_id: Telegram user ID
+
+        Returns:
+            (is_allowed, error_message)
+        """
+        import asyncio as _asyncio
+        return await _asyncio.to_thread(self._check_limit_sync, user_id)
     
     def get_remaining(self, user_id: int) -> int:
         """Get remaining requests for user"""
@@ -112,7 +120,7 @@ class RateLimiter:
         
         return max(0, self.max_requests - len(recent_requests))
 
-    def check_rate_limit(self, user_id: int) -> bool:
+    async def check_rate_limit(self, user_id: int) -> bool:
         """
         Backward-compatible boolean-only rate limit check.
 
@@ -120,7 +128,7 @@ class RateLimiter:
         boolean. Keep this wrapper so older integrations continue to work while
         new code can consume `check_limit`'s detailed tuple.
         """
-        allowed, _ = self.check_limit(user_id)
+        allowed, _ = await self.check_limit(user_id)
         return allowed
     
     def reset_user(self, user_id: int):
@@ -146,6 +154,17 @@ class RateLimiter:
             'violations': self.violations[user_id]
         }
 
+    def _evict_expired_users(self):
+        """Remove users whose last request is older than the window to bound map size."""
+        now = time.time()
+        for user_id in list(self.requests.keys()):
+            self.requests[user_id] = [
+                req for req in self.requests[user_id]
+                if now - req < self.window
+            ]
+            if not self.requests[user_id]:
+                del self.requests[user_id]
+
     def _load_state(self):
         """
         Load rate limit state from disk.
@@ -167,17 +186,18 @@ class RateLimiter:
             })
 
             # Clean up old requests outside the window
-            now = time.time()
-            for user_id in list(self.requests.keys()):
-                self.requests[user_id] = [
-                    req for req in self.requests[user_id]
-                    if now - req < self.window
-                ]
-                if not self.requests[user_id]:
-                    del self.requests[user_id]
+            self._evict_expired_users()
 
             logger.info(f"Loaded rate limit state for {len(self.requests)} users")
 
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to decode rate limit state (corrupt file): {e}")
+            bak_path = self.persist_path.with_suffix('.json.bak')
+            try:
+                self.persist_path.rename(bak_path)
+                logger.warning(f"Renamed corrupt rate_limits.json to {bak_path} for inspection")
+            except OSError as rename_err:
+                logger.error(f"Could not rename corrupt file: {rename_err}")
         except Exception as e:
             logger.error(f"Failed to load rate limit state: {e}")
 

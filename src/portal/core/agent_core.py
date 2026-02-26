@@ -319,7 +319,7 @@ class AgentCore:
 
     async def _load_context(self, chat_id: str, trace_id: str):
         """Load conversation context"""
-        history = self.context_manager.get_history(chat_id, limit=10)
+        history = await self.context_manager.get_history(chat_id, limit=10)
 
         await self.event_bus.publish(
             EventType.CONTEXT_LOADED,
@@ -336,7 +336,7 @@ class AgentCore:
 
         This ensures we don't lose the user's message if processing crashes.
         """
-        self.context_manager.add_message(
+        await self.context_manager.add_message(
             chat_id=chat_id,
             role='user',
             content=message,
@@ -350,7 +350,7 @@ class AgentCore:
 
         Called after successful response generation.
         """
-        self.context_manager.add_message(
+        await self.context_manager.add_message(
             chat_id=chat_id,
             role='assistant',
             content=response,

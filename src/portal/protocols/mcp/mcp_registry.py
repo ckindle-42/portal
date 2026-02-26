@@ -25,6 +25,11 @@ class MCPRegistry:
 
     def __init__(self):
         self._servers: dict[str, dict] = {}
+        self._client = httpx.AsyncClient(timeout=60.0)
+
+    async def close(self) -> None:
+        """Close the shared HTTP client. Call during application shutdown."""
+        await self._client.aclose()
 
     async def register(
         self,
@@ -49,12 +54,15 @@ class MCPRegistry:
 
         headers = self._auth_headers(server)
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                if server["transport"] == "openapi":
-                    resp = await client.get(f"{server['url']}/openapi.json", headers=headers)
-                else:
-                    resp = await client.get(f"{server['url']}", headers=headers)
-                return resp.status_code < 500
+            if server["transport"] == "openapi":
+                resp = await self._client.get(
+                    f"{server['url']}/openapi.json", headers=headers, timeout=5.0
+                )
+            else:
+                resp = await self._client.get(
+                    f"{server['url']}", headers=headers, timeout=5.0
+                )
+            return resp.status_code < 500
         except Exception as e:
             logger.debug(f"Health check failed for '{name}': {e}")
             return False
@@ -74,28 +82,31 @@ class MCPRegistry:
 
         headers = self._auth_headers(server)
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                if server["transport"] == "openapi":
-                    resp = await client.get(f"{server['url']}/openapi.json", headers=headers)
-                    resp.raise_for_status()
-                    spec = resp.json()
-                    tools = []
-                    for path, methods in spec.get("paths", {}).items():
-                        for method, details in methods.items():
-                            if method in ("get", "post"):
-                                tools.append({
-                                    "name": details.get("operationId", path.strip("/")),
-                                    "description": details.get("summary", ""),
-                                    "path": path,
-                                    "method": method,
-                                })
-                    return tools
-                else:
-                    # streamable-http: query /tools endpoint
-                    resp = await client.get(f"{server['url']}/tools", headers=headers)
-                    if resp.status_code == 200:
-                        return resp.json().get("tools", [])
-                    return []
+            if server["transport"] == "openapi":
+                resp = await self._client.get(
+                    f"{server['url']}/openapi.json", headers=headers, timeout=10.0
+                )
+                resp.raise_for_status()
+                spec = resp.json()
+                tools = []
+                for path, methods in spec.get("paths", {}).items():
+                    for method, details in methods.items():
+                        if method in ("get", "post"):
+                            tools.append({
+                                "name": details.get("operationId", path.strip("/")),
+                                "description": details.get("summary", ""),
+                                "path": path,
+                                "method": method,
+                            })
+                return tools
+            else:
+                # streamable-http: query /tools endpoint
+                resp = await self._client.get(
+                    f"{server['url']}/tools", headers=headers, timeout=10.0
+                )
+                if resp.status_code == 200:
+                    return resp.json().get("tools", [])
+                return []
         except Exception as e:
             logger.warning(f"list_tools failed for '{server_name}': {e}")
             return []
@@ -129,21 +140,20 @@ class MCPRegistry:
         headers["Content-Type"] = "application/json"
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                if server["transport"] == "openapi":
-                    resp = await client.post(
-                        f"{server['url']}/{tool_name}",
-                        headers=headers,
-                        json=arguments,
-                    )
-                else:
-                    resp = await client.post(
-                        f"{server['url']}/call",
-                        headers=headers,
-                        json={"tool": tool_name, "arguments": arguments},
-                    )
-                resp.raise_for_status()
-                return resp.json()
+            if server["transport"] == "openapi":
+                resp = await self._client.post(
+                    f"{server['url']}/{tool_name}",
+                    headers=headers,
+                    json=arguments,
+                )
+            else:
+                resp = await self._client.post(
+                    f"{server['url']}/call",
+                    headers=headers,
+                    json={"tool": tool_name, "arguments": arguments},
+                )
+            resp.raise_for_status()
+            return resp.json()
         except Exception as e:
             logger.error(f"call_tool '{tool_name}' on '{server_name}' failed: {e}")
             return {"error": str(e)}

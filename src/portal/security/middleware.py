@@ -164,7 +164,7 @@ class SecurityMiddleware:
         Raises:
             RateLimitError: If rate limit exceeded
         """
-        allowed, error_msg = self.rate_limiter.check_limit(user_id)
+        allowed, error_msg = await self.rate_limiter.check_limit(user_id)
 
         if not allowed:
             logger.warning(
