@@ -16,7 +16,7 @@ test:
 ## test-unit: Run unit tests only (fast)
 test-unit:
 	@$(PYTHON) -c "import portal" 2>/dev/null || (echo "Portal not installed. Run 'make install' first." && exit 1)
-	$(PYTHON) -m pytest tests/unit/ tests/tests/unit/ -v --tb=short
+	$(PYTHON) -m pytest tests/unit/ -v --tb=short
 
 ## test-cov: Run tests with coverage report
 test-cov:

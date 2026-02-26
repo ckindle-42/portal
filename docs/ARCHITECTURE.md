@@ -1,6 +1,6 @@
 # Portal Architecture
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Last updated:** February 2026
 
 ---
@@ -77,34 +77,6 @@ The central processing engine.  All interfaces funnel requests through here.
 
 ---
 
-### Interface Registry (`src/portal/agent/dispatcher.py`)
-
-Portal 1.1 replaces hard-coded `if interface == "web"` dispatch with a
-dictionary-based `CentralDispatcher`:
-
-```python
-from portal.agent.dispatcher import CentralDispatcher
-
-# Interfaces self-register at class-definition time:
-@CentralDispatcher.register("web")
-class WebInterface(BaseInterface): ...
-
-@CentralDispatcher.register("telegram")
-class TelegramInterface: ...
-
-@CentralDispatcher.register("slack")
-class SlackInterface(BaseInterface): ...
-
-# Lookup at runtime:
-iface_cls = CentralDispatcher.get("web")   # → WebInterface
-# Raises UnknownInterfaceError for unregistered names
-```
-
-`CentralDispatcher.registered_names()` returns a sorted list of all registered
-interface names.
-
----
-
 ### Interfaces
 
 All concrete interfaces inherit from `BaseInterface`
@@ -158,6 +130,46 @@ Routing strategies:
 - **SPEED** — always use the fastest available model
 - **BALANCED** — weighted composite of quality and speed scores
 
+#### Dynamic Ollama Discovery
+
+`ModelRegistry.discover_from_ollama()` queries the Ollama `/api/tags` endpoint
+at startup (and on demand) and auto-registers every locally-pulled model with
+inferred capability tags and speed class.  No manual model list is required —
+pulling a new model into Ollama makes it immediately available to the router.
+
+#### BaseHTTPBackend
+
+`OllamaBackend` and `LMStudioBackend` both inherit from `BaseHTTPBackend`
+(`src/portal/routing/model_backends.py`), which manages a shared `aiohttp`
+`ClientSession` with connection pooling, configurable timeouts, and
+circuit-breaker state.  `MLXBackend` is a separate in-process backend for
+Apple Silicon.
+
+---
+
+### Interface Registry (`src/portal/agent/dispatcher.py`)
+
+Portal uses a dictionary-based `CentralDispatcher` registry instead of
+hard-coded `if interface == "web"` dispatch:
+
+```python
+from portal.agent.dispatcher import CentralDispatcher
+
+# Interfaces self-register at class-definition time:
+@CentralDispatcher.register("web")
+class WebInterface(BaseInterface): ...
+
+@CentralDispatcher.register("telegram")
+class TelegramInterface: ...
+
+# Lookup at runtime:
+iface_cls = CentralDispatcher.get("web")   # → WebInterface
+# Raises UnknownInterfaceError for unregistered names
+```
+
+`CentralDispatcher.registered_names()` returns a sorted list of all registered
+interface names.
+
 ---
 
 ### Configuration (`src/portal/config/`)
@@ -183,7 +195,7 @@ dict that `DependencyContainer` and `create_agent_core()` consume.
 | Profile | Directory | COMPUTE_BACKEND |
 |---------|-----------|-----------------|
 | M4 Mac (Mini Pro / Max) | `hardware/m4-mac/` | `mps` |
-| Linux bare-metal (NVIDIA) | `hardware/linux/` | `cuda` |
+| Linux bare-metal (NVIDIA) | `hardware/linux-bare/` | `cuda` |
 | CPU-only / WSL2 | — | `cpu` |
 
 Each profile ships an environment file that sets hardware-specific variables
@@ -241,7 +253,7 @@ entries from the LLM response (Phase 2 work).
 
 | Component | Purpose |
 |-----------|---------|
-| `WatchdogMonitor` | Health-checks registered components; auto-restarts on failure |
+| `Watchdog` | Health-checks registered components; auto-restarts on failure |
 | `LogRotator` | Time- and size-based log rotation with optional gzip compression |
 | `metrics.py` | Prometheus metrics endpoint (`:9090/metrics`) |
 | `tracer.py` | OpenTelemetry tracing (optional; configure OTLP endpoint) |
@@ -256,7 +268,7 @@ entries from the LLM response (Phase 2 work).
 | `SecurityMiddleware` | Wraps AgentCore; applies rate limiting and input sanitisation |
 | `SecurityModule` | Prompt injection detection, PII scrubbing, output sanitisation |
 | `RateLimiter` | SQLite-backed per-user request throttling |
-| `DockerSandbox` | Runs untrusted code in an isolated container |
+| `DockerPythonSandbox` | Runs untrusted code in an isolated container |
 
 #### Security Hardening
 
@@ -337,11 +349,10 @@ Entry point: `portal` (registered in `pyproject.toml`).
 
 | Command | Description |
 |---------|-------------|
-| `portal up` | Bootstrap and start all configured interfaces |
+| `portal up [--minimal] [--skip-port-check]` | Bootstrap and start all configured interfaces |
 | `portal down` | Graceful shutdown |
 | `portal doctor` | Health-check each component and print structured status |
-| `portal status` | Show current runtime stats |
-| `portal config` | Display resolved configuration |
+| `portal logs [SERVICE]` | Tail Portal logs; optionally specify a service name (follows `~/.portal/logs/{service}.log`) |
 
 ---
 
