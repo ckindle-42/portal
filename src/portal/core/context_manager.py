@@ -15,8 +15,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .exceptions import ContextNotFoundError
-
 logger = logging.getLogger(__name__)
 
 
@@ -152,43 +150,6 @@ class ContextManager:
             conn.execute("DELETE FROM conversations WHERE chat_id = ?", (chat_id,))
             conn.commit()
 
-    def _sync_get_conversation_summary(self, chat_id: str) -> dict[str, Any]:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute("""
-                SELECT
-                    COUNT(*) as message_count,
-                    MIN(timestamp) as first_message,
-                    MAX(timestamp) as last_message,
-                    interface
-                FROM conversations
-                WHERE chat_id = ?
-                GROUP BY interface
-            """, (chat_id,))
-            rows = cursor.fetchall()
-
-        if not rows:
-            raise ContextNotFoundError(f"No conversation found for chat_id: {chat_id}")
-
-        return {
-            'chat_id': chat_id,
-            'total_messages': sum(row['message_count'] for row in rows),
-            'first_message': min(row['first_message'] for row in rows),
-            'last_message': max(row['last_message'] for row in rows),
-            'interfaces': [row['interface'] for row in rows]
-        }
-
-    def _sync_cleanup_old_conversations(self, days_to_keep: int) -> int:
-        cutoff_date = datetime.now().timestamp() - (days_to_keep * 86400)
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("""
-                DELETE FROM conversations
-                WHERE created_at < datetime(?, 'unixepoch')
-            """, (cutoff_date,))
-            deleted = cursor.rowcount
-            conn.commit()
-        return deleted
-
     # ------------------------------------------------------------------
     # Public async API
     # ------------------------------------------------------------------
@@ -275,12 +236,3 @@ class ContextManager:
         await asyncio.to_thread(self._sync_clear_history, chat_id)
         logger.info(f"Cleared history for chat_id: {chat_id}")
 
-    async def get_conversation_summary(self, chat_id: str) -> dict[str, Any]:
-        """Get summary of a conversation"""
-        return await asyncio.to_thread(self._sync_get_conversation_summary, chat_id)
-
-    async def cleanup_old_conversations(self, days_to_keep: int = 30):
-        """Remove conversations older than specified days"""
-        deleted = await asyncio.to_thread(self._sync_cleanup_old_conversations, days_to_keep)
-        logger.info(f"Cleaned up {deleted} old conversation messages")
-        return deleted

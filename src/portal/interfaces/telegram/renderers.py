@@ -609,33 +609,3 @@ async def handle_message(self, update, context):
         await update.message.reply_text(response)
 """
 
-
-# ============================================================================
-# USAGE EXAMPLES
-# ============================================================================
-
-async def example_usage():
-    """Example of how to use inline keyboards"""
-
-    # Example 1: Confirmation for dangerous operation
-    keyboard = InlineKeyboardHelper.confirmation_keyboard(
-        action="confirm_delete",
-        data="doc_123"
-    )
-    # Send with: reply_markup=keyboard
-
-    # Example 2: Tool selection menu
-    tools = [
-        {"name": "qr_generator", "requires_confirmation": False},
-        {"name": "shell_execute", "requires_confirmation": True},
-    ]
-    keyboard = InlineKeyboardHelper.tool_selection_keyboard(tools)
-
-    # Example 3: Settings menu
-    settings = {"verbose_routing": True, "notifications": False}
-    keyboard = InlineKeyboardHelper.settings_keyboard(settings)
-
-
-if __name__ == "__main__":
-    print("Enhanced Telegram UI Module")
-    print("Import this module in your telegram_interface.py")

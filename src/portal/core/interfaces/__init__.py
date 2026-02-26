@@ -8,7 +8,6 @@ how different components of the system interact.
 
 from .agent_interface import (
     BaseInterface,
-    InterfaceManager,
     Message,
     Response,
 )
@@ -25,7 +24,6 @@ __all__ = [
     'ToolParameter',
     'ToolCategory',
     'BaseInterface',
-    'InterfaceManager',
     'Message',
     'Response',
 ]

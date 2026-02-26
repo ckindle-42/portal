@@ -23,6 +23,13 @@ from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
+try:
+    import openpyxl
+    from openpyxl.utils import get_column_letter
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 

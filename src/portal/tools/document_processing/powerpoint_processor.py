@@ -27,19 +27,12 @@ logger = logging.getLogger(__name__)
 try:
     from pptx import Presentation
     from pptx.chart.data import CategoryChartData
-    from pptx.dml.color import RGBColor
     from pptx.enum.chart import XL_CHART_TYPE
-    from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-    from pptx.util import Inches, Pt
+    from pptx.util import Inches
     PPTX_AVAILABLE = True
 except ImportError:
     PPTX_AVAILABLE = False
 
-try:
-    from PIL import Image
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
 
 
 class PowerPointProcessorTool(BaseTool):

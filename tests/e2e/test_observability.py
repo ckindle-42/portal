@@ -6,6 +6,7 @@ Tests the observability features.
 """
 
 import asyncio
+import sys
 from pathlib import Path
 import tempfile
 import json
