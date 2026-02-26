@@ -53,7 +53,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - QDRANT_URL=http://qdrant:6333
       - WEB_PORT=8081
-      - PORTAL_BOOTSTRAP_API_KEY=${PORTAL_BOOTSTRAP_API_KEY:-portal-dev-key}
+      - PORTAL_BOOTSTRAP_API_KEY=${PORTAL_BOOTSTRAP_API_KEY:?Set PORTAL_BOOTSTRAP_API_KEY in .env}
       - PORTAL_BOOTSTRAP_USER_ID=${PORTAL_BOOTSTRAP_USER_ID:-open-webui}
     volumes:
       - ./data:/app/data
@@ -79,7 +79,7 @@ services:
       - "3000:8080"
     environment:
       - OPENAI_API_BASE_URL=http://portal-api:8081/v1
-      - OPENAI_API_KEY=${PORTAL_BOOTSTRAP_API_KEY:-portal-dev-key}
+      - OPENAI_API_KEY=${PORTAL_BOOTSTRAP_API_KEY:?Set PORTAL_BOOTSTRAP_API_KEY in .env}
     volumes:
       - openwebui_data:/app/backend/data
     depends_on:

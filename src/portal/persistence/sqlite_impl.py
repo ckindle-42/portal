@@ -11,6 +11,7 @@ Production-ready SQLite implementations with:
 
 import asyncio
 import sqlite3
+import threading
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -29,6 +30,29 @@ from .repositories import (
 logger = logging.getLogger(__name__)
 
 
+class _ConnectionPool:
+    """Thread-local SQLite connection cache."""
+
+    def __init__(self, db_path: Path):
+        self._db_path = db_path
+        self._local = threading.local()
+
+    def get(self) -> sqlite3.Connection:
+        conn = getattr(self._local, 'conn', None)
+        if conn is None:
+            conn = sqlite3.connect(self._db_path)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
+            self._local.conn = conn
+        return conn
+
+    def close_all(self):
+        conn = getattr(self._local, 'conn', None)
+        if conn:
+            conn.close()
+            self._local.conn = None
+
+
 class SQLiteConversationRepository(ConversationRepository):
     """
     SQLite implementation of ConversationRepository.
@@ -38,77 +62,71 @@ class SQLiteConversationRepository(ConversationRepository):
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or Path("data") / "conversations.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._pool = _ConnectionPool(self.db_path)
         self._init_db()
 
     def _init_db(self):
         """Initialize database schema"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS conversations (
-                    chat_id TEXT PRIMARY KEY,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    metadata TEXT
-                )
-            """)
-
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS messages (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    chat_id TEXT NOT NULL,
-                    role TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    metadata TEXT,
-                    FOREIGN KEY (chat_id) REFERENCES conversations(chat_id) ON DELETE CASCADE
-                )
-            """)
-
-            # Create indices for performance
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)")
-
-            # Enable full-text search on message content
-            conn.execute("""
-                CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
-                    content,
-                    content=messages,
-                    content_rowid=id
-                )
-            """)
-
-            # Triggers to keep FTS in sync
-            conn.execute("""
-                CREATE TRIGGER IF NOT EXISTS messages_fts_insert AFTER INSERT ON messages BEGIN
-                    INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
-                END
-            """)
-
-            conn.execute("""
-                CREATE TRIGGER IF NOT EXISTS messages_fts_delete AFTER DELETE ON messages BEGIN
-                    DELETE FROM messages_fts WHERE rowid = old.id;
-                END
-            """)
-
-            conn.execute("""
-                CREATE TRIGGER IF NOT EXISTS messages_fts_update AFTER UPDATE ON messages BEGIN
-                    UPDATE messages_fts SET content = new.content WHERE rowid = new.id;
-                END
-            """)
-
-            conn.commit()
+        conn = self._pool.get()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS conversations (
+                chat_id TEXT PRIMARY KEY,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                metadata TEXT
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                metadata TEXT,
+                FOREIGN KEY (chat_id) REFERENCES conversations(chat_id) ON DELETE CASCADE
+            )
+        """)
+        # Create indices for performance
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)")
+        # Enable full-text search on message content
+        conn.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
+                content,
+                content=messages,
+                content_rowid=id
+            )
+        """)
+        # Triggers to keep FTS in sync
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS messages_fts_insert AFTER INSERT ON messages BEGIN
+                INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
+            END
+        """)
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS messages_fts_delete AFTER DELETE ON messages BEGIN
+                DELETE FROM messages_fts WHERE rowid = old.id;
+            END
+        """)
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS messages_fts_update AFTER UPDATE ON messages BEGIN
+                UPDATE messages_fts SET content = new.content WHERE rowid = new.id;
+            END
+        """)
+        conn.commit()
 
     # ------------------------------------------------------------------
     # Private sync helpers (called via asyncio.to_thread)
     # ------------------------------------------------------------------
 
     def _sync_create_conversation(self, chat_id: str, metadata: Optional[Dict[str, Any]]) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT OR IGNORE INTO conversations (chat_id, metadata) VALUES (?, ?)",
-                (chat_id, json.dumps(metadata) if metadata else None)
-            )
-            conn.commit()
+        conn = self._pool.get()
+        conn.execute(
+            "INSERT OR IGNORE INTO conversations (chat_id, metadata) VALUES (?, ?)",
+            (chat_id, json.dumps(metadata) if metadata else None)
+        )
+        conn.commit()
 
     def _sync_add_message(
         self,
@@ -117,24 +135,24 @@ class SQLiteConversationRepository(ConversationRepository):
         content: str,
         metadata: Optional[Dict[str, Any]],
     ) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            # Ensure conversation exists
-            conn.execute(
-                "INSERT OR IGNORE INTO conversations (chat_id, metadata) VALUES (?, ?)",
-                (chat_id, None)
-            )
-            conn.execute(
-                """
-                INSERT INTO messages (chat_id, role, content, metadata)
-                VALUES (?, ?, ?, ?)
-                """,
-                (chat_id, role, content, json.dumps(metadata) if metadata else None)
-            )
-            conn.execute(
-                "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE chat_id = ?",
-                (chat_id,)
-            )
-            conn.commit()
+        conn = self._pool.get()
+        # Ensure conversation exists
+        conn.execute(
+            "INSERT OR IGNORE INTO conversations (chat_id, metadata) VALUES (?, ?)",
+            (chat_id, None)
+        )
+        conn.execute(
+            """
+            INSERT INTO messages (chat_id, role, content, metadata)
+            VALUES (?, ?, ?, ?)
+            """,
+            (chat_id, role, content, json.dumps(metadata) if metadata else None)
+        )
+        conn.execute(
+            "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE chat_id = ?",
+            (chat_id,)
+        )
+        conn.commit()
 
     def _sync_get_messages(
         self,
@@ -177,68 +195,68 @@ class SQLiteConversationRepository(ConversationRepository):
         limit: Optional[int],
         offset: int,
     ) -> List[Message]:
-        with sqlite3.connect(self.db_path) as conn:
-            return self._sync_get_messages(conn, chat_id, limit, offset)
+        conn = self._pool.get()
+        return self._sync_get_messages(conn, chat_id, limit, offset)
 
     def _sync_get_conversation(self, chat_id: str) -> Optional[Conversation]:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
+        conn = self._pool.get()
+        conn.row_factory = sqlite3.Row
 
-            row = conn.execute(
-                "SELECT created_at, updated_at, metadata FROM conversations WHERE chat_id = ?",
-                (chat_id,)
-            ).fetchone()
+        row = conn.execute(
+            "SELECT created_at, updated_at, metadata FROM conversations WHERE chat_id = ?",
+            (chat_id,)
+        ).fetchone()
 
-            if not row:
-                return None
+        if not row:
+            return None
 
-            messages = self._sync_get_messages(conn, chat_id)
+        messages = self._sync_get_messages(conn, chat_id)
 
-            return Conversation(
-                chat_id=chat_id,
-                messages=messages,
-                created_at=datetime.fromisoformat(row["created_at"]),
-                updated_at=datetime.fromisoformat(row["updated_at"]),
-                metadata=json.loads(row["metadata"]) if row["metadata"] else None
-            )
+        return Conversation(
+            chat_id=chat_id,
+            messages=messages,
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+            metadata=json.loads(row["metadata"]) if row["metadata"] else None
+        )
 
     def _sync_delete_conversation(self, chat_id: str) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("DELETE FROM conversations WHERE chat_id = ?", (chat_id,))
-            conn.commit()
-            return cursor.rowcount > 0
+        conn = self._pool.get()
+        cursor = conn.execute("DELETE FROM conversations WHERE chat_id = ?", (chat_id,))
+        conn.commit()
+        return cursor.rowcount > 0
 
     def _sync_list_conversations(
         self,
         limit: Optional[int],
         offset: int,
     ) -> List[Conversation]:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
+        conn = self._pool.get()
+        conn.row_factory = sqlite3.Row
 
-            query = """
-                SELECT c.chat_id, c.created_at, c.updated_at, c.metadata
-                FROM conversations c
-                ORDER BY c.updated_at DESC
-            """
-            params: List[Any] = []
+        query = """
+            SELECT c.chat_id, c.created_at, c.updated_at, c.metadata
+            FROM conversations c
+            ORDER BY c.updated_at DESC
+        """
+        params: List[Any] = []
 
-            if limit is not None:
-                query += " LIMIT ? OFFSET ?"
-                params.extend([limit, offset])
+        if limit is not None:
+            query += " LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
 
-            rows = conn.execute(query, params).fetchall()
-            results = []
-            for row in rows:
-                messages = self._sync_get_messages(conn, row["chat_id"])
-                results.append(Conversation(
-                    chat_id=row["chat_id"],
-                    messages=messages,
-                    created_at=datetime.fromisoformat(row["created_at"]),
-                    updated_at=datetime.fromisoformat(row["updated_at"]),
-                    metadata=json.loads(row["metadata"]) if row["metadata"] else None,
-                ))
-            return results
+        rows = conn.execute(query, params).fetchall()
+        results = []
+        for row in rows:
+            messages = self._sync_get_messages(conn, row["chat_id"])
+            results.append(Conversation(
+                chat_id=row["chat_id"],
+                messages=messages,
+                created_at=datetime.fromisoformat(row["created_at"]),
+                updated_at=datetime.fromisoformat(row["updated_at"]),
+                metadata=json.loads(row["metadata"]) if row["metadata"] else None,
+            ))
+        return results
 
     def _sync_search_messages(
         self,
@@ -246,59 +264,59 @@ class SQLiteConversationRepository(ConversationRepository):
         chat_id: Optional[str],
         limit: int,
     ) -> List[Message]:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
+        conn = self._pool.get()
+        conn.row_factory = sqlite3.Row
 
-            sql = """
-                SELECT m.role, m.content, m.timestamp, m.metadata
-                FROM messages m
-                JOIN messages_fts fts ON m.id = fts.rowid
-                WHERE messages_fts MATCH ?
-            """
+        sql = """
+            SELECT m.role, m.content, m.timestamp, m.metadata
+            FROM messages m
+            JOIN messages_fts fts ON m.id = fts.rowid
+            WHERE messages_fts MATCH ?
+        """
 
-            params: List[Any] = [query]
+        params: List[Any] = [query]
 
-            if chat_id:
-                sql += " AND m.chat_id = ?"
-                params.append(chat_id)
+        if chat_id:
+            sql += " AND m.chat_id = ?"
+            params.append(chat_id)
 
-            sql += " ORDER BY rank LIMIT ?"
-            params.append(limit)
+        sql += " ORDER BY rank LIMIT ?"
+        params.append(limit)
 
-            rows = conn.execute(sql, params).fetchall()
+        rows = conn.execute(sql, params).fetchall()
 
-            return [
-                Message(
-                    role=row["role"],
-                    content=row["content"],
-                    timestamp=datetime.fromisoformat(row["timestamp"]) if row["timestamp"] else None,
-                    metadata=json.loads(row["metadata"]) if row["metadata"] else None
-                )
-                for row in rows
-            ]
+        return [
+            Message(
+                role=row["role"],
+                content=row["content"],
+                timestamp=datetime.fromisoformat(row["timestamp"]) if row["timestamp"] else None,
+                metadata=json.loads(row["metadata"]) if row["metadata"] else None
+            )
+            for row in rows
+        ]
 
     def _sync_get_stats(self) -> Dict[str, Any]:
-        with sqlite3.connect(self.db_path) as conn:
-            stats: Dict[str, Any] = {}
+        conn = self._pool.get()
+        stats: Dict[str, Any] = {}
 
-            stats["total_conversations"] = conn.execute(
-                "SELECT COUNT(*) FROM conversations"
-            ).fetchone()[0]
+        stats["total_conversations"] = conn.execute(
+            "SELECT COUNT(*) FROM conversations"
+        ).fetchone()[0]
 
-            stats["total_messages"] = conn.execute(
-                "SELECT COUNT(*) FROM messages"
-            ).fetchone()[0]
+        stats["total_messages"] = conn.execute(
+            "SELECT COUNT(*) FROM messages"
+        ).fetchone()[0]
 
-            if stats["total_conversations"] > 0:
-                stats["avg_messages_per_conversation"] = round(
-                    stats["total_messages"] / stats["total_conversations"], 2
-                )
-            else:
-                stats["avg_messages_per_conversation"] = 0
+        if stats["total_conversations"] > 0:
+            stats["avg_messages_per_conversation"] = round(
+                stats["total_messages"] / stats["total_conversations"], 2
+            )
+        else:
+            stats["avg_messages_per_conversation"] = 0
 
-            stats["db_size_bytes"] = self.db_path.stat().st_size
+        stats["db_size_bytes"] = self.db_path.stat().st_size
 
-            return stats
+        return stats
 
     # ------------------------------------------------------------------
     # Public async API
@@ -366,54 +384,49 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or Path("data") / "knowledge.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._pool = _ConnectionPool(self.db_path)
         self._init_db()
 
     def _init_db(self):
         """Initialize database schema"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS documents (
-                    id TEXT PRIMARY KEY,
-                    content TEXT NOT NULL,
-                    embedding BLOB,
-                    metadata TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            # FTS5 for full-text search
-            conn.execute("""
-                CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
-                    content,
-                    content=documents,
-                    content_rowid=rowid,
-                    tokenize='porter unicode61'
-                )
-            """)
-
-            # Triggers to keep FTS in sync
-            conn.execute("""
-                CREATE TRIGGER IF NOT EXISTS documents_fts_insert AFTER INSERT ON documents BEGIN
-                    INSERT INTO documents_fts(rowid, content) VALUES (new.rowid, new.content);
-                END
-            """)
-
-            conn.execute("""
-                CREATE TRIGGER IF NOT EXISTS documents_fts_delete AFTER DELETE ON documents BEGIN
-                    DELETE FROM documents_fts WHERE rowid = old.rowid;
-                END
-            """)
-
-            conn.execute("""
-                CREATE TRIGGER IF NOT EXISTS documents_fts_update AFTER UPDATE ON documents BEGIN
-                    UPDATE documents_fts SET content = new.content WHERE rowid = new.rowid;
-                END
-            """)
-
-            # Index for metadata filtering
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at)")
-
-            conn.commit()
+        conn = self._pool.get()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS documents (
+                id TEXT PRIMARY KEY,
+                content TEXT NOT NULL,
+                embedding BLOB,
+                metadata TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # FTS5 for full-text search
+        conn.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
+                content,
+                content=documents,
+                content_rowid=rowid,
+                tokenize='porter unicode61'
+            )
+        """)
+        # Triggers to keep FTS in sync
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS documents_fts_insert AFTER INSERT ON documents BEGIN
+                INSERT INTO documents_fts(rowid, content) VALUES (new.rowid, new.content);
+            END
+        """)
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS documents_fts_delete AFTER DELETE ON documents BEGIN
+                DELETE FROM documents_fts WHERE rowid = old.rowid;
+            END
+        """)
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS documents_fts_update AFTER UPDATE ON documents BEGIN
+                UPDATE documents_fts SET content = new.content WHERE rowid = new.rowid;
+            END
+        """)
+        # Index for metadata filtering
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at)")
+        conn.commit()
 
     # ------------------------------------------------------------------
     # Private sync helpers (called via asyncio.to_thread)
@@ -426,7 +439,27 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
         embedding: Optional[List[float]],
         metadata: Optional[Dict[str, Any]],
     ) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        conn = self._pool.get()
+        conn.execute(
+            """
+            INSERT INTO documents (id, content, embedding, metadata)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                doc_id,
+                content,
+                json.dumps(embedding) if embedding is not None else None,
+                json.dumps(metadata) if metadata else None
+            )
+        )
+        conn.commit()
+
+    def _sync_add_documents_batch(self, documents: List[Dict[str, Any]]) -> List[str]:
+        doc_ids = []
+        conn = self._pool.get()
+        for doc in documents:
+            doc_id = str(uuid.uuid4())
+            doc_ids.append(doc_id)
             conn.execute(
                 """
                 INSERT INTO documents (id, content, embedding, metadata)
@@ -434,121 +467,97 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
                 """,
                 (
                     doc_id,
-                    content,
-                    json.dumps(embedding) if embedding is not None else None,
-                    json.dumps(metadata) if metadata else None
+                    doc["content"],
+                    json.dumps(doc["embedding"]) if doc.get("embedding") is not None else None,
+                    json.dumps(doc["metadata"]) if doc.get("metadata") else None
                 )
             )
-            conn.commit()
-
-    def _sync_add_documents_batch(self, documents: List[Dict[str, Any]]) -> List[str]:
-        doc_ids = []
-
-        with sqlite3.connect(self.db_path) as conn:
-            for doc in documents:
-                doc_id = str(uuid.uuid4())
-                doc_ids.append(doc_id)
-
-                conn.execute(
-                    """
-                    INSERT INTO documents (id, content, embedding, metadata)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (
-                        doc_id,
-                        doc["content"],
-                        json.dumps(doc["embedding"]) if doc.get("embedding") is not None else None,
-                        json.dumps(doc["metadata"]) if doc.get("metadata") else None
-                    )
-                )
-
-            conn.commit()
-
+        conn.commit()
         return doc_ids
 
     def _sync_search(self, query: str, limit: int) -> List[Document]:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
+        conn = self._pool.get()
+        conn.row_factory = sqlite3.Row
 
-            sql = """
-                SELECT d.id, d.content, d.embedding, d.metadata, d.created_at
-                FROM documents d
-                JOIN documents_fts fts ON d.rowid = fts.rowid
-                WHERE documents_fts MATCH ?
-                ORDER BY rank
-                LIMIT ?
-            """
+        sql = """
+            SELECT d.id, d.content, d.embedding, d.metadata, d.created_at
+            FROM documents d
+            JOIN documents_fts fts ON d.rowid = fts.rowid
+            WHERE documents_fts MATCH ?
+            ORDER BY rank
+            LIMIT ?
+        """
 
-            rows = conn.execute(sql, [query, limit]).fetchall()
+        rows = conn.execute(sql, [query, limit]).fetchall()
 
-            return [
-                Document(
-                    id=row["id"],
-                    content=row["content"],
-                    embedding=json.loads(row["embedding"]) if row["embedding"] else None,
-                    metadata=json.loads(row["metadata"]) if row["metadata"] else None,
-                    created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
-                )
-                for row in rows
-            ]
-
-    def _sync_search_by_embedding(self, embedding: List[float], limit: int) -> List[Document]:
-        import numpy as np
-
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-
-            cursor = conn.execute(
-                "SELECT id, content, embedding, metadata, created_at FROM documents WHERE embedding IS NOT NULL"
-            )
-            rows = cursor.fetchall()
-
-            query_vec = np.array(embedding)
-            similarities = []
-
-            for row in rows:
-                doc_embedding = json.loads(row["embedding"])
-                doc_vec = np.array(doc_embedding)
-
-                similarity = np.dot(query_vec, doc_vec) / (
-                    np.linalg.norm(query_vec) * np.linalg.norm(doc_vec)
-                )
-
-                similarities.append((similarity, row))
-
-            similarities.sort(reverse=True, key=lambda x: x[0])
-            top_results = similarities[:limit]
-
-            return [
-                Document(
-                    id=row["id"],
-                    content=row["content"],
-                    embedding=json.loads(row["embedding"]) if row["embedding"] else None,
-                    metadata=json.loads(row["metadata"]) if row["metadata"] else None,
-                    created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
-                )
-                for _, row in top_results
-            ]
-
-    def _sync_get_document(self, document_id: str) -> Optional[Document]:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-
-            row = conn.execute(
-                "SELECT id, content, embedding, metadata, created_at FROM documents WHERE id = ?",
-                (document_id,)
-            ).fetchone()
-
-            if not row:
-                return None
-
-            return Document(
+        return [
+            Document(
                 id=row["id"],
                 content=row["content"],
                 embedding=json.loads(row["embedding"]) if row["embedding"] else None,
                 metadata=json.loads(row["metadata"]) if row["metadata"] else None,
                 created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
             )
+            for row in rows
+        ]
+
+    def _sync_search_by_embedding(self, embedding: List[float], limit: int) -> List[Document]:
+        import numpy as np
+
+        conn = self._pool.get()
+        conn.row_factory = sqlite3.Row
+
+        cursor = conn.execute(
+            "SELECT id, content, embedding, metadata, created_at FROM documents WHERE embedding IS NOT NULL"
+        )
+        rows = cursor.fetchall()
+
+        query_vec = np.array(embedding)
+        similarities = []
+
+        for row in rows:
+            doc_embedding = json.loads(row["embedding"])
+            doc_vec = np.array(doc_embedding)
+
+            similarity = np.dot(query_vec, doc_vec) / (
+                np.linalg.norm(query_vec) * np.linalg.norm(doc_vec)
+            )
+
+            similarities.append((similarity, row))
+
+        similarities.sort(reverse=True, key=lambda x: x[0])
+        top_results = similarities[:limit]
+
+        return [
+            Document(
+                id=row["id"],
+                content=row["content"],
+                embedding=json.loads(row["embedding"]) if row["embedding"] else None,
+                metadata=json.loads(row["metadata"]) if row["metadata"] else None,
+                created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
+            )
+            for _, row in top_results
+        ]
+
+    def _sync_get_document(self, document_id: str) -> Optional[Document]:
+        conn = self._pool.get()
+        conn.row_factory = sqlite3.Row
+
+        row = conn.execute(
+            "SELECT id, content, embedding, metadata, created_at FROM documents WHERE id = ?",
+            (document_id,)
+        ).fetchone()
+
+        if not row:
+            return None
+
+        return Document(
+            id=row["id"],
+            content=row["content"],
+            embedding=json.loads(row["embedding"]) if row["embedding"] else None,
+            metadata=json.loads(row["metadata"]) if row["metadata"] else None,
+            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
+        )
 
     def _sync_update_document(
         self,
@@ -577,69 +586,69 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
 
         params.append(document_id)
 
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                f"UPDATE documents SET {', '.join(updates)} WHERE id = ?",
-                params
-            )
-            conn.commit()
-            return cursor.rowcount > 0
+        conn = self._pool.get()
+        cursor = conn.execute(
+            f"UPDATE documents SET {', '.join(updates)} WHERE id = ?",
+            params
+        )
+        conn.commit()
+        return cursor.rowcount > 0
 
     def _sync_delete_document(self, document_id: str) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("DELETE FROM documents WHERE id = ?", (document_id,))
-            conn.commit()
-            return cursor.rowcount > 0
+        conn = self._pool.get()
+        cursor = conn.execute("DELETE FROM documents WHERE id = ?", (document_id,))
+        conn.commit()
+        return cursor.rowcount > 0
 
     def _sync_delete_all(self) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("DELETE FROM documents")
-            conn.commit()
-            return True
+        conn = self._pool.get()
+        conn.execute("DELETE FROM documents")
+        conn.commit()
+        return True
 
     def _sync_count_documents(self) -> int:
-        with sqlite3.connect(self.db_path) as conn:
-            return conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        conn = self._pool.get()
+        return conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
 
     def _sync_list_documents(self, limit: Optional[int], offset: int) -> List[Document]:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
+        conn = self._pool.get()
+        conn.row_factory = sqlite3.Row
 
-            query = "SELECT id, content, embedding, metadata, created_at FROM documents ORDER BY created_at DESC"
-            params: List[Any] = []
+        query = "SELECT id, content, embedding, metadata, created_at FROM documents ORDER BY created_at DESC"
+        params: List[Any] = []
 
-            if limit is not None:
-                query += " LIMIT ? OFFSET ?"
-                params.extend([limit, offset])
+        if limit is not None:
+            query += " LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
 
-            rows = conn.execute(query, params).fetchall()
+        rows = conn.execute(query, params).fetchall()
 
-            return [
-                Document(
-                    id=row["id"],
-                    content=row["content"],
-                    embedding=json.loads(row["embedding"]) if row["embedding"] else None,
-                    metadata=json.loads(row["metadata"]) if row["metadata"] else None,
-                    created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
-                )
-                for row in rows
-            ]
+        return [
+            Document(
+                id=row["id"],
+                content=row["content"],
+                embedding=json.loads(row["embedding"]) if row["embedding"] else None,
+                metadata=json.loads(row["metadata"]) if row["metadata"] else None,
+                created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
+            )
+            for row in rows
+        ]
 
     def _sync_get_stats(self) -> Dict[str, Any]:
-        with sqlite3.connect(self.db_path) as conn:
-            stats: Dict[str, Any] = {}
+        conn = self._pool.get()
+        stats: Dict[str, Any] = {}
 
-            stats["total_documents"] = conn.execute(
-                "SELECT COUNT(*) FROM documents"
-            ).fetchone()[0]
+        stats["total_documents"] = conn.execute(
+            "SELECT COUNT(*) FROM documents"
+        ).fetchone()[0]
 
-            stats["documents_with_embeddings"] = conn.execute(
-                "SELECT COUNT(*) FROM documents WHERE embedding IS NOT NULL"
-            ).fetchone()[0]
+        stats["documents_with_embeddings"] = conn.execute(
+            "SELECT COUNT(*) FROM documents WHERE embedding IS NOT NULL"
+        ).fetchone()[0]
 
-            stats["db_size_bytes"] = self.db_path.stat().st_size
+        stats["db_size_bytes"] = self.db_path.stat().st_size
 
-            return stats
+        return stats
 
     # ------------------------------------------------------------------
     # Public async API

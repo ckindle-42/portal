@@ -76,8 +76,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class WebInterface(BaseInterface):
-    def __init__(self, agent_core, config):
+    def __init__(self, agent_core, config, secure_agent=None):
         self.agent_core = agent_core
+        self.secure_agent = secure_agent  # SecurityMiddleware wrapping agent_core
         self.config = config
         self.user_store = UserStore()
         self._server = None
@@ -202,7 +203,8 @@ class WebInterface(BaseInterface):
                 )
 
             start = time.perf_counter()
-            result = await self.agent_core.process_message(
+            processor = self.secure_agent if self.secure_agent is not None else self.agent_core
+            result = await processor.process_message(
                 chat_id=incoming.id,
                 message=incoming.text,
                 interface=InterfaceType.WEB,
@@ -258,6 +260,9 @@ class WebInterface(BaseInterface):
 
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
+            from portal.security.security_module import InputSanitizer
+            sanitizer = InputSanitizer()
+
             # Verify API key from query params before accepting connection
             static_key = os.getenv("WEB_API_KEY", "").strip()
             if static_key:
@@ -290,9 +295,19 @@ class WebInterface(BaseInterface):
                         continue
                     message_timestamps.append(now)
 
+                    # Input sanitization
+                    raw_text = data.get("message", "")
+                    sanitized_text, warnings = sanitizer.sanitize_command(raw_text)
+                    if any("Dangerous pattern detected" in w for w in warnings):
+                        await websocket.send_json({"error": "Message blocked by security policy", "done": True})
+                        continue
+                    if len(sanitized_text) > 10000:
+                        await websocket.send_json({"error": "Message exceeds maximum length", "done": True})
+                        continue
+
                     incoming = IncomingMessage(
                         id=str(uuid.uuid4()),
-                        text=data.get("message", ""),
+                        text=sanitized_text,
                         model=data.get("model", "auto"),
                     )
                     async for tok in self.agent_core.stream_response(incoming):
@@ -388,7 +403,7 @@ class WebInterface(BaseInterface):
         return
 
 
-def create_app(agent_core=None, config: dict | None = None) -> FastAPI:
+def create_app(agent_core=None, config: dict | None = None, secure_agent=None) -> FastAPI:
     if agent_core is None:
         from portal.core.agent_core import create_agent_core as _create
 
@@ -400,6 +415,14 @@ def create_app(agent_core=None, config: dict | None = None) -> FastAPI:
         agent_core = _create(cfg)
         config = cfg
 
-    return WebInterface(agent_core, config or {}).app
+    if secure_agent is None:
+        from portal.security import SecurityMiddleware
+        secure_agent = SecurityMiddleware(
+            agent_core,
+            enable_rate_limiting=True,
+            enable_input_sanitization=True,
+        )
+
+    return WebInterface(agent_core, config or {}, secure_agent=secure_agent).app
 
 
