@@ -204,7 +204,8 @@ class ExecutionEngine:
     
     async def execute(self, query: str, system_prompt: Optional[str] = None,
                      max_tokens: int = 2048, temperature: float = 0.7,
-                     max_cost: float = 1.0) -> ExecutionResult:
+                     max_cost: float = 1.0,
+                     messages: Optional[List[Dict[str, Any]]] = None) -> ExecutionResult:
         """
         Execute query with intelligent routing and fallback
         
@@ -264,7 +265,8 @@ class ExecutionEngine:
                     query=query,
                     system_prompt=system_prompt,
                     max_tokens=max_tokens,
-                    temperature=temperature
+                    temperature=temperature,
+                    messages=messages,
                 )
 
                 if result.success:
@@ -316,9 +318,10 @@ class ExecutionEngine:
     
     async def _execute_with_timeout(self, backend, model: ModelMetadata,
                                    query: str, system_prompt: Optional[str],
-                                   max_tokens: int, temperature: float) -> GenerationResult:
+                                   max_tokens: int, temperature: float,
+                                   messages: Optional[List[Dict[str, Any]]] = None) -> GenerationResult:
         """Execute with timeout handling"""
-        
+
         try:
             result = await asyncio.wait_for(
                 backend.generate(
@@ -326,7 +329,8 @@ class ExecutionEngine:
                     model_name=model.api_model_name or model.model_id,
                     system_prompt=system_prompt,
                     max_tokens=max_tokens,
-                    temperature=temperature
+                    temperature=temperature,
+                    messages=messages,
                 ),
                 timeout=self.timeout_seconds
             )
@@ -348,6 +352,7 @@ class ExecutionEngine:
         system_prompt: Optional[str] = None,
         max_tokens: int = 2048,
         temperature: float = 0.7,
+        messages: Optional[List[Dict[str, Any]]] = None,
     ) -> AsyncIterator[str]:
         """
         Stream generation token-by-token from the best available backend.
@@ -389,6 +394,7 @@ class ExecutionEngine:
                     system_prompt=system_prompt,
                     max_tokens=max_tokens,
                     temperature=temperature,
+                    messages=messages,
                 ):
                     yielded = True
                     yield token
