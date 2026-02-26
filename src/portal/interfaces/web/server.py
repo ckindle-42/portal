@@ -101,7 +101,7 @@ class WebInterface(BaseInterface):
             raise HTTPException(status_code=401, detail="Missing API key")
 
         try:
-            ctx = self.user_store.authenticate(token=token, fallback_user=user_id)
+            ctx = await self.user_store.authenticate(token=token, fallback_user=user_id)
         except ValueError as exc:
             raise HTTPException(status_code=401, detail=str(exc)) from exc
         return {"user_id": ctx.user_id, "role": ctx.role}
@@ -148,7 +148,7 @@ class WebInterface(BaseInterface):
             elapsed = time.perf_counter() - start
             tokens = (result.completion_tokens or max(len(result.response.split()), 1))
             TOKENS_PER_SECOND.observe(tokens / max(elapsed, 0.001))
-            self.user_store.add_tokens(user_id=user_id, tokens=(result.prompt_tokens or 0) + (result.completion_tokens or 0))
+            await self.user_store.add_tokens(user_id=user_id, tokens=(result.prompt_tokens or 0) + (result.completion_tokens or 0))
             return JSONResponse(self._format_completion(result, selected_model))
 
 
@@ -244,7 +244,7 @@ class WebInterface(BaseInterface):
 
         elapsed = time.perf_counter() - started
         TOKENS_PER_SECOND.observe(token_count / max(elapsed, 0.001))
-        self.user_store.add_tokens(user_id=user_id, tokens=token_count)
+        await self.user_store.add_tokens(user_id=user_id, tokens=token_count)
 
         final = {"id": chunk_id, "object": "chat.completion.chunk", "created": created, "model": model, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
         yield f"data: {json.dumps(final)}\n\n"
