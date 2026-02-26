@@ -32,7 +32,7 @@ Adding a 4th interface is ~50 lines of Python.
 git clone https://github.com/ckindle-42/portal
 cd portal
 cp .env.example .env          # edit with your real values (see comments inside)
-python3.11 -m venv .venv && source .venv/bin/activate
+bash scripts/bootstrap_python.sh
 pip install -e ".[all]"
 ```
 
@@ -109,7 +109,7 @@ bash hardware/m4-mac/launch.sh down
 
 | Setting | What to do |
 |---------|-----------|
-| `MCP_API_KEY` | Replace `changeme-mcp-secret` in `.env` before enabling MCP |
+| `MCP_API_KEY` | **Required**: must not be `changeme-mcp-secret` (runtime now refuses to start if unchanged) |
 | `WEB_API_KEY` | Set to a strong random string before exposing `:8081` outside localhost |
 | `ALLOWED_ORIGINS` | Already defaults to `localhost:8080`; extend only when needed |
 

@@ -44,7 +44,15 @@ class ChatCompletionRequest(BaseModel):
 
 def _build_cors_origins() -> list[str]:
     raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
-    return [o.strip() for o in raw.split(",") if o.strip()]
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    return origins or ["http://localhost:8080"]
+
+
+def _bool_env(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -53,6 +61,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'; base-uri 'self'"
         return response
 
 
@@ -78,6 +88,18 @@ class WebInterface(BaseInterface):
         token = None
         if authorization and authorization.startswith("Bearer "):
             token = authorization.removeprefix("Bearer ").strip()
+
+        static_web_api_key = os.getenv("WEB_API_KEY", "").strip()
+        require_api_key = _bool_env("REQUIRE_API_KEY", default=bool(static_web_api_key))
+
+        if static_web_api_key:
+            if token != static_web_api_key:
+                raise HTTPException(status_code=401, detail="Invalid API key")
+            return {"user_id": user_id, "role": "api_key"}
+
+        if require_api_key and not token:
+            raise HTTPException(status_code=401, detail="Missing API key")
+
         try:
             ctx = self.user_store.authenticate(token=token, fallback_user=user_id)
         except ValueError as exc:
@@ -87,7 +109,7 @@ class WebInterface(BaseInterface):
     def _build_app(self) -> FastAPI:
         app = FastAPI(title="Portal Web Interface", version="1.1.0")
         app.add_middleware(SecurityHeadersMiddleware)
-        app.add_middleware(CORSMiddleware, allow_origins=_build_cors_origins(), allow_methods=["*"], allow_headers=["*"])
+        app.add_middleware(CORSMiddleware, allow_origins=_build_cors_origins(), allow_credentials=True, allow_methods=["POST", "GET", "OPTIONS"], allow_headers=["Authorization", "Content-Type", "X-Portal-User-Id", "X-User-Id"])
 
         @app.post("/v1/chat/completions")
         async def chat_completions(payload: ChatCompletionRequest, request: Request, auth=Depends(self._auth_context)):
@@ -131,7 +153,7 @@ class WebInterface(BaseInterface):
 
 
         @app.post("/v1/audio/transcriptions")
-        async def audio_transcriptions(file: UploadFile = File(...)):
+        async def audio_transcriptions(file: UploadFile = File(...), auth=Depends(self._auth_context)):
             data = await file.read()
             async with httpx.AsyncClient(timeout=60.0) as client:
                 files = {"audio_file": (file.filename or "audio.wav", data, file.content_type or "application/octet-stream")}
@@ -140,7 +162,7 @@ class WebInterface(BaseInterface):
             return {"text": out.get("text", "")}
 
         @app.get("/v1/models")
-        async def list_models():
+        async def list_models(auth=Depends(self._auth_context)):
             try:
                 async with httpx.AsyncClient(timeout=3.0) as client:
                     resp = await client.get(f"{os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/tags")

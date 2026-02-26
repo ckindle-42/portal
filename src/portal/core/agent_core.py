@@ -22,6 +22,7 @@ Architecture:
 """
 
 import asyncio
+import json
 import logging
 import time
 from typing import AsyncIterator, Dict, Any, Optional, List
@@ -214,13 +215,13 @@ class AgentCore:
                 # Step 4: Get available tools
                 available_tools = [t.metadata.name for t in self.tool_registry.get_all_tools()]
 
-                # Step 5: Route and execute with LLM
-                result = await self._execute_with_routing(
+                # Step 5: Route, execute, and complete MCP tool loop when requested.
+                result, tool_results = await self._run_execution_with_mcp_loop(
                     query=message,
                     system_prompt=system_prompt,
                     available_tools=available_tools,
                     chat_id=chat_id,
-                    trace_id=trace_id
+                    trace_id=trace_id,
                 )
 
                 # Step 6: Save assistant response (after successful generation)
@@ -229,14 +230,6 @@ class AgentCore:
                 # Track execution time
                 execution_time = time.perf_counter() - start_time
                 self.stats['total_execution_time'] += execution_time
-
-                # MCP tool loop: dispatch any tool calls returned by the LLM.
-                # ExecutionEngine now surfaces tool_calls from the Ollama /api/chat
-                # response so this loop executes whenever the model requests tools.
-                tool_calls = result.tool_calls or []
-                if tool_calls and self.mcp_registry:
-                    mcp_results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
-                    logger.info("MCP tools dispatched", count=len(mcp_results))
 
                 tools_used = getattr(result, 'tools_used', [])
                 self.stats['tools_executed'] += len(tools_used)
@@ -275,6 +268,7 @@ class AgentCore:
                             self.router.strategy.value
                             if hasattr(self.router, 'strategy') else 'auto'
                         ),
+                        'tool_results': tool_results,
                     },
                     trace_id=trace_id,
                 )
@@ -452,8 +446,8 @@ class AgentCore:
         """
         Yield response tokens for streaming interfaces (WebInterface, SlackInterface).
 
-        Uses ExecutionEngine.generate_stream() to produce real token-by-token output
-        from the Ollama backend rather than buffering the full response.
+        If the model requests MCP tools, run the full tool loop first and then
+        stream the final answer token-by-token.
         """
         try:
             interface = InterfaceType(incoming.source) if incoming.source else InterfaceType.WEB
@@ -461,12 +455,84 @@ class AgentCore:
             interface = InterfaceType.WEB
 
         system_prompt = self._build_system_prompt(interface.value, {})
+        query = incoming.text
+        max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
+
+        if self.mcp_registry:
+            for _ in range(max_tool_rounds):
+                preflight = await self.execution_engine.execute(
+                    query=query,
+                    system_prompt=system_prompt,
+                )
+                if not preflight.success:
+                    break
+
+                tool_calls = preflight.tool_calls or []
+                if not tool_calls:
+                    break
+
+                tool_results = await self._dispatch_mcp_tools(
+                    tool_calls=tool_calls,
+                    chat_id=incoming.id,
+                    trace_id=f"stream-{incoming.id}",
+                )
+                query = self._augment_query_with_tool_results(query, tool_results)
 
         async for token in self.execution_engine.generate_stream(
-            query=incoming.text,
+            query=query,
             system_prompt=system_prompt,
         ):
             yield token
+
+
+    async def _run_execution_with_mcp_loop(
+        self,
+        query: str,
+        system_prompt: str,
+        available_tools: List[str],
+        chat_id: str,
+        trace_id: str,
+    ) -> tuple[Any, List[Dict[str, Any]]]:
+        """Execute model calls and iterate tool calls until a final answer is produced."""
+        current_query = query
+        collected_tool_results: List[Dict[str, Any]] = []
+        max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
+
+        for _ in range(max_tool_rounds):
+            result = await self._execute_with_routing(
+                query=current_query,
+                system_prompt=system_prompt,
+                available_tools=available_tools,
+                chat_id=chat_id,
+                trace_id=trace_id,
+            )
+
+            tool_calls = result.tool_calls or []
+            if not (tool_calls and self.mcp_registry):
+                return result, collected_tool_results
+
+            mcp_results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
+            collected_tool_results.extend(mcp_results)
+            current_query = self._augment_query_with_tool_results(current_query, mcp_results)
+
+        final_result = await self._execute_with_routing(
+            query=current_query,
+            system_prompt=system_prompt,
+            available_tools=available_tools,
+            chat_id=chat_id,
+            trace_id=trace_id,
+        )
+        return final_result, collected_tool_results
+
+    def _augment_query_with_tool_results(self, query: str, tool_results: List[Dict[str, Any]]) -> str:
+        """Append MCP tool outputs so the model can integrate them in a follow-up pass."""
+        payload = json.dumps(tool_results, ensure_ascii=False, default=str)
+        return (
+            f"{query}\n\n"
+            "Tool execution results (JSON):\n"
+            f"{payload}\n\n"
+            "Use these tool results to answer the user request directly."
+        )
 
     async def health_check(self) -> bool:
         """
