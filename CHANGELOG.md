@@ -31,14 +31,26 @@ To cut a release:
 - **`os.path` → `pathlib`** — replaced `os.path.exists()` in `security_module.py` with `Path().exists()` per project guidelines.
 - **ToolCategory alignment** — `ToolRegistry` pre-initialized categories and `ToolsConfig.enabled_categories` now use actual `ToolCategory` enum values (`utility`/`dev`) instead of phantom `system`/`git`.
 
+### Security
+- **numexpr bypass removed** — `MathVisualizerTool` no longer tries `numexpr.evaluate()` before `_safe_eval()`. Previously, if numexpr was installed, it bypassed the AST-walking security restrictions entirely.
+- **Whisper MCP non-blocking** — `whisper_mcp.py` wraps blocking `model.transcribe()` in `asyncio.to_thread()` to avoid freezing the event loop.
+
 ### Fixed
 - **TelegramInterface async/sync mismatch** — `_check_rate_limit()` now properly `await`s the async `RateLimiter.check_limit()` method. Previously returned a coroutine instead of a tuple, which would crash at runtime.
 - **Path traversal false positives** — `InputSanitizer.validate_file_path()` now uses `Path.relative_to()` instead of `str.startswith()` to check sensitive directories. Prevents false rejections of paths like `/etc-safe/` that merely prefix-match `/etc`.
 - **Log rotation in sync context** — `RotatingStructuredLogHandler._rotate_sync()` gracefully handles missing asyncio event loop by falling back to synchronous gzip compression instead of raising `RuntimeError`.
 - **Hardcoded version in Prometheus metrics** — `MetricsCollector` now reads version from `importlib.metadata` instead of hardcoded `"4.3.0"`.
+- **ExecutionEngine logger kwargs** — `logger.info()` calls with keyword args (silently dropped by stdlib) replaced with positional format args.
+- **MLX artificial latency** — removed unnecessary `asyncio.sleep(0.01)` in `MLXBackend.generate_stream()`.
 
 ### Added
 - **`ToolMetadata.async_capable`** field — new `bool` field (default `True`) on the `ToolMetadata` dataclass, preventing `AttributeError` when `ToolRegistry.get_tool_list()` accesses it.
+- **`docs/CODE_REVIEW_SUMMARY.md`** — full code review report with health score, findings, and roadmap.
+- **`docs/ACTION_PROMPT_FOR_CODING_AGENT.md`** — prioritized implementation task list for next session.
+
+### Removed
+- Dead `.env.example` entries: `MUSIC_API_URL`, `VOICE_API_URL`, `DOCGEN_API_URL` (referenced services don't exist).
+- Unused `import tempfile` in `whisper_mcp.py`.
 
 ---
 
