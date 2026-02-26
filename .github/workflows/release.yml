@@ -16,49 +16,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Extract version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Verify tag matches pyproject.toml
-        run: |
-          pyproject_version=$(python - <<'EOF'
-          import tomllib
-          with open("pyproject.toml", "rb") as f:
-              print(tomllib.load(f)["project"]["version"])
-          EOF
-          )
-          tag_version="${{ steps.version.outputs.version }}"
-          if [ "$pyproject_version" != "$tag_version" ]; then
-            echo "ERROR: Tag $tag_version does not match pyproject.toml version $pyproject_version"
-            exit 1
-          fi
-          echo "Version check passed: $tag_version"
-
-      - name: Extract changelog section
-        id: changelog
-        run: |
-          version="${{ steps.version.outputs.version }}"
-          # Pull the section between the matching ## [x.y.z] header and the next ---
-          notes=$(awk "/^## \[$version\]/{found=1; next} found && /^---/{exit} found{print}" CHANGELOG.md)
-          if [ -z "$notes" ]; then
-            echo "WARNING: No changelog section found for $version"
-            notes="See CHANGELOG.md for details."
-          fi
-          # Write to a temp file to preserve newlines
-          echo "$notes" > /tmp/release_notes.md
 
       - name: Build release archive
         id: archive
         run: |
-          version="${{ steps.version.outputs.version }}"
-          archive="portal-v${version}.zip"
+          version="${GITHUB_REF_NAME#v}"
+          archive="portal-${GITHUB_REF_NAME}.zip"
 
-          # Bundle the source files end users need to run Portal locally.
-          # Tests, CI config, and archived docs are excluded.
           zip -r "${archive}" \
             src/portal \
             hardware \
@@ -72,7 +36,6 @@ jobs:
             LICENSE
 
           echo "archive=${archive}" >> "$GITHUB_OUTPUT"
-          echo "Built ${archive} ($(du -sh ${archive} | cut -f1))"
 
       - name: Create GitHub Release
         env:
@@ -80,5 +43,5 @@ jobs:
         run: |
           gh release create "${{ github.ref_name }}" \
             --title "Portal ${{ github.ref_name }}" \
-            --notes-file /tmp/release_notes.md \
+            --generate-notes \
             "${{ steps.archive.outputs.archive }}"
