@@ -30,6 +30,8 @@ logs/
 
 # Generated output
 AI_Output/
+qr_*.png
+plot_*.png
 
 # IDE
 .vscode/

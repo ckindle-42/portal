@@ -18,12 +18,12 @@ class TestCSVAnalyzerTool:
 
     @pytest.mark.asyncio
     async def test_csv_analyze_success(self, sample_csv_file):
-        """Test analyzing a CSV file"""
+        """Test analyzing a CSV file — uses real pandas"""
         tool = CSVAnalyzerTool()
 
         result = await tool.execute({
             "file_path": str(sample_csv_file),
-            "operation": "summary"
+            "analysis_type": "summary",
         })
 
         assert result["success"] is True
@@ -36,7 +36,7 @@ class TestCSVAnalyzerTool:
 
         result = await tool.execute({
             "file_path": "/nonexistent/file.csv",
-            "operation": "summary"
+            "operation": "summary",
         })
 
         assert result["success"] is False
@@ -86,19 +86,16 @@ class TestMathVisualizerTool:
 
     @pytest.mark.asyncio
     async def test_plot_function(self, temp_dir):
-        """Test plotting a mathematical function"""
+        """Test plotting a mathematical function — uses real matplotlib"""
         tool = MathVisualizerTool()
 
-        output_path = temp_dir / "plot.png"
-
-        with patch("matplotlib.pyplot.savefig"), patch("matplotlib.pyplot.clf"):
+        with patch("matplotlib.pyplot.savefig"), patch("matplotlib.pyplot.close"):
             result = await tool.execute({
-                "function": "x**2",
+                "expression": "x**2",
                 "x_range": [-10, 10],
-                "output_file": str(output_path)
             })
 
-            assert result["success"] is True or "error" in result
+        assert result["success"] is True or "error" in result
 
     @pytest.mark.asyncio
     async def test_invalid_function(self, temp_dir):
@@ -106,9 +103,8 @@ class TestMathVisualizerTool:
         tool = MathVisualizerTool()
 
         result = await tool.execute({
-            "function": "invalid_func(x)",
+            "expression": "invalid_func(x)",
             "x_range": [0, 10],
-            "output_file": str(temp_dir / "plot.png")
         })
 
         assert result["success"] is False
@@ -121,18 +117,14 @@ class TestQRGeneratorTool:
 
     @pytest.mark.asyncio
     async def test_generate_qr_code(self, temp_dir):
-        """Test generating a QR code"""
+        """Test generating a QR code — uses real qrcode library"""
         tool = QRGeneratorTool()
 
-        output_path = temp_dir / "qr.png"
-
         result = await tool.execute({
-            "data": "https://example.com",
-            "output_file": str(output_path)
+            "content": "https://example.com",
         })
 
         assert result["success"] is True
-        # File should be created (if tool implementation saves it)
 
     @pytest.mark.asyncio
     async def test_generate_qr_with_options(self, temp_dir):
@@ -140,10 +132,8 @@ class TestQRGeneratorTool:
         tool = QRGeneratorTool()
 
         result = await tool.execute({
-            "data": "Test QR Code",
-            "output_file": str(temp_dir / "qr_custom.png"),
-            "size": 10,
-            "border": 2
+            "content": "Test QR Code",
+            "size": 8,
         })
 
         assert result["success"] is True
@@ -159,8 +149,9 @@ class TestTextTransformerTool:
         tool = TextTransformerTool()
 
         result = await tool.execute({
-            "operation": "json_to_yaml",
-            "input": '{"key": "value", "number": 123}'
+            "content": '{"key": "value", "number": 123}',
+            "from_format": "json",
+            "to_format": "yaml",
         })
 
         assert result["success"] is True
@@ -172,8 +163,9 @@ class TestTextTransformerTool:
         tool = TextTransformerTool()
 
         result = await tool.execute({
-            "operation": "yaml_to_json",
-            "input": "key: value\nnumber: 123"
+            "content": "key: value\nnumber: 123",
+            "from_format": "yaml",
+            "to_format": "json",
         })
 
         assert result["success"] is True
@@ -184,8 +176,9 @@ class TestTextTransformerTool:
         tool = TextTransformerTool()
 
         result = await tool.execute({
-            "operation": "json_to_yaml",
-            "input": "{invalid json"
+            "content": "{invalid json",
+            "from_format": "json",
+            "to_format": "yaml",
         })
 
         assert result["success"] is False

@@ -23,15 +23,14 @@ class TestDocumentMetadataExtractorTool:
         tool = DocumentMetadataExtractorTool()
 
         test_file = temp_dir / "test.pdf"
-        test_file.write_text("dummy pdf content")
+        test_file.write_bytes(b"%PDF-1.4 dummy")
 
-        with patch("portal.tools.document_processing.document_metadata_extractor.PyPDF2"):
-            result = await tool.execute({
-                "file_path": str(test_file)
-            })
+        # With PyPDF2 installed, tool may fail gracefully on invalid PDF bytes — that's OK
+        result = await tool.execute({
+            "file_path": str(test_file)
+        })
 
-            # May succeed or fail depending on implementation
-            assert "success" in result
+        assert "success" in result
 
 
 @pytest.mark.unit
@@ -45,35 +44,38 @@ class TestExcelProcessorTool:
 
         output_file = temp_dir / "test.xlsx"
 
-        with patch("openpyxl.Workbook"):
-            result = await tool.execute({
-                "operation": "create",
-                "output_file": str(output_file),
-                "data": [
-                    ["Name", "Age"],
-                    ["Alice", 30],
-                    ["Bob", 25]
-                ]
-            })
+        result = await tool.execute({
+            "action": "write",
+            "file_path": str(output_file),
+            "data": [
+                ["Name", "Age"],
+                ["Alice", 30],
+                ["Bob", 25]
+            ]
+        })
 
-            assert result["success"] is True or "error" in result
+        assert result["success"] is True or "error" in result
 
     @pytest.mark.asyncio
     async def test_read_excel(self, temp_dir):
         """Test reading an Excel file"""
         tool = ExcelProcessorTool()
 
+        # Create a real Excel file using openpyxl so the tool can read it
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Name", "Age"])
+        ws.append(["Alice", 30])
         excel_file = temp_dir / "test.xlsx"
-        excel_file.write_text("dummy excel")
+        wb.save(str(excel_file))
 
-        with patch("openpyxl.load_workbook"):
-            result = await tool.execute({
-                "operation": "read",
-                "file_path": str(excel_file)
-            })
+        result = await tool.execute({
+            "action": "read",
+            "file_path": str(excel_file)
+        })
 
-            # May succeed or fail
-            assert "success" in result
+        assert "success" in result
 
 
 @pytest.mark.unit
@@ -129,17 +131,13 @@ class TestPowerPointProcessorTool:
 
         output_file = temp_dir / "presentation.pptx"
 
-        with patch("pptx.Presentation"):
-            result = await tool.execute({
-                "operation": "create",
-                "output_file": str(output_file),
-                "slides": [
-                    {"title": "Slide 1", "content": "Content 1"},
-                    {"title": "Slide 2", "content": "Content 2"}
-                ]
-            })
+        result = await tool.execute({
+            "action": "create",
+            "file_path": str(output_file),
+            "title": "Test Presentation",
+        })
 
-            assert result["success"] is True or "error" in result
+        assert result["success"] is True or "error" in result
 
 
 @pytest.mark.unit
@@ -153,30 +151,32 @@ class TestWordProcessorTool:
 
         output_file = temp_dir / "document.docx"
 
-        with patch("docx.Document"):
-            result = await tool.execute({
-                "operation": "create",
-                "output_file": str(output_file),
-                "content": "This is a test document."
-            })
+        result = await tool.execute({
+            "action": "create",
+            "file_path": str(output_file),
+            "title": "Test Document",
+        })
 
-            assert result["success"] is True or "error" in result
+        assert result["success"] is True or "error" in result
 
     @pytest.mark.asyncio
     async def test_read_document(self, temp_dir):
         """Test reading a Word document"""
         tool = WordProcessorTool()
 
+        # Create a real docx file using python-docx
+        from docx import Document
+        doc = Document()
+        doc.add_paragraph("Test content")
         doc_file = temp_dir / "test.docx"
-        doc_file.write_text("dummy docx")
+        doc.save(str(doc_file))
 
-        with patch("docx.Document"):
-            result = await tool.execute({
-                "operation": "read",
-                "file_path": str(doc_file)
-            })
+        result = await tool.execute({
+            "action": "read",
+            "file_path": str(doc_file)
+        })
 
-            assert "success" in result
+        assert "success" in result
 
 
 @pytest.mark.unit
@@ -185,16 +185,23 @@ class TestPDFOCRTool:
 
     @pytest.mark.asyncio
     async def test_extract_text_from_pdf(self, temp_dir):
-        """Test extracting text from PDF"""
+        """Test extracting text from PDF — requires Tesseract OCR binary and pdf2image/poppler"""
+        try:
+            import pytesseract
+            import pdf2image
+            pytesseract.get_tesseract_version()
+        except Exception:
+            pytest.skip(
+                "Tesseract OCR not available (requires: apt install tesseract-ocr poppler-utils "
+                "&& pip install pytesseract pdf2image)"
+            )
+
         tool = PDFOCRTool()
-
         pdf_file = temp_dir / "test.pdf"
-        pdf_file.write_text("dummy pdf")
+        pdf_file.write_bytes(b"%PDF-1.4 dummy")
 
-        with patch("PyPDF2.PdfReader"):
-            result = await tool.execute({
-                "file_path": str(pdf_file),
-                "use_ocr": False
-            })
+        result = await tool.execute({
+            "pdf_path": str(pdf_file),
+        })
 
-            assert "success" in result
+        assert "success" in result
