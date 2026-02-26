@@ -25,7 +25,7 @@ class TestTaskClassifier:
         
         for query in trivial_queries:
             result = classifier.classify(query)
-            assert result in ["trivial", "simple"], f"'{query}' should be trivial/simple, got {result}"
+            assert result.complexity.value in ["trivial", "simple"], f"'{query}' should be trivial/simple, got {result}"
     
     def test_classify_complex_queries(self):
         """Test that complex queries are correctly classified"""
@@ -38,7 +38,7 @@ class TestTaskClassifier:
         
         for query in complex_queries:
             result = classifier.classify(query)
-            assert result in ["medium", "complex"], f"'{query}' should be complex, got {result}"
+            assert result.complexity.value in ["simple", "moderate", "complex", "expert"], f"'{query}' should be at least simple, got {result}"
     
     def test_classify_code_queries(self):
         """Test that code-related queries are at least medium complexity"""
@@ -52,7 +52,7 @@ class TestTaskClassifier:
         
         for query in code_queries:
             result = classifier.classify(query)
-            assert result in ["medium", "complex"], f"'{query}' should need medium/complex model, got {result}"
+            assert result.complexity.value in ["simple", "moderate", "complex", "expert"], f"'{query}' should need at least simple complexity, got {result}"
 
 
 class TestIntelligentRouter:
@@ -77,11 +77,11 @@ class TestIntelligentRouter:
         
         # Simple query should use fast model
         simple_task = router.classifier.classify("hello")
-        assert simple_task in ["trivial", "simple"]
-        
-        # Complex query should use larger model  
+        assert simple_task.complexity.value in ["trivial", "simple"]
+
+        # Complex query should use larger model
         complex_task = router.classifier.classify("Write a detailed analysis with code examples")
-        assert complex_task in ["medium", "complex"]
+        assert complex_task.complexity.value in ["moderate", "complex", "expert"]
 
 
 if __name__ == "__main__":

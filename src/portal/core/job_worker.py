@@ -26,14 +26,8 @@ from typing import Dict, Any, Optional, Callable, Awaitable
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-import sys
-from pathlib import Path
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from persistence.repositories import Job, JobStatus, JobRepository
-from core.event_bus import EventBus, EventType
+from portal.persistence.repositories import Job, JobStatus, JobRepository
+from portal.core.event_bus import EventBus, EventType
 
 logger = logging.getLogger(__name__)
 

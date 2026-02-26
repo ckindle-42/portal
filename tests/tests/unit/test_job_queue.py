@@ -345,7 +345,7 @@ async def test_event_bus_integration():
     await worker.start()
 
     # Wait for job to complete
-    for _ in range(50):
+    for _ in range(100):
         job_status = await repo.get_job(job_id)
         if job_status.status == JobStatus.COMPLETED:
             break

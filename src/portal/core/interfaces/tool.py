@@ -109,13 +109,17 @@ class BaseTool(ABC):
         
         return True, None
     
-    def _success_response(self, result: Any) -> Dict[str, Any]:
+    def _success_response(self, result: Any = None, **kwargs) -> Dict[str, Any]:
         """Create success response"""
-        return {"success": True, "result": result}
-    
-    def _error_response(self, error: str) -> Dict[str, Any]:
+        response = {"success": True, "result": result}
+        response.update(kwargs)
+        return response
+
+    def _error_response(self, error: str, **kwargs) -> Dict[str, Any]:
         """Create error response"""
-        return {"success": False, "error": error}
+        response = {"success": False, "error": error}
+        response.update(kwargs)
+        return response
     
     async def safe_execute(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
