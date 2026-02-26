@@ -211,6 +211,9 @@ class WebInterface(BaseInterface):
                     await websocket.close(code=4001, reason="Unauthorized")
                     return
             await websocket.accept()
+            # TODO(security): Add per-connection message rate limiting.
+            # SecurityMiddleware rate limiting currently only applies to HTTP endpoints.
+            # A proper fix would track per-connection message rate and disconnect if exceeded.
             try:
                 while True:
                     data = await websocket.receive_json()

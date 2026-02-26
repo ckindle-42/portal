@@ -33,7 +33,7 @@ class TestJobSchedulerTool:
         tool = JobSchedulerTool()
 
         result = await tool.execute({
-            "operation": "list"
+            "action": "list"
         })
 
         assert result["success"] is True

@@ -154,7 +154,7 @@ class SecurityMiddleware:
 
         return result
 
-    async def _check_rate_limit(self, user_id: int, sec_ctx: SecurityContext):
+    async def _check_rate_limit(self, user_id: str, sec_ctx: SecurityContext):
         """
         Check rate limiting
 
@@ -248,11 +248,11 @@ class SecurityMiddleware:
         # Example: Check for suspicious patterns
         # (Add your own security policies here)
 
-    def get_rate_limit_stats(self, user_id: int) -> Dict[str, int]:
+    def get_rate_limit_stats(self, user_id: str) -> Dict[str, int]:
         """Get rate limit statistics for a user"""
         return self.rate_limiter.get_stats(user_id)
 
-    def reset_rate_limit(self, user_id: int):
+    def reset_rate_limit(self, user_id: str):
         """Reset rate limit for a user (admin function)"""
         self.rate_limiter.reset_user(user_id)
         logger.info("Rate limit reset", user_id=user_id)
@@ -261,7 +261,7 @@ class SecurityMiddleware:
         self,
         tool_name: str,
         parameters: Dict[str, Any],
-        user_id: Optional[int] = None
+        user_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Execute a tool directly through security layer

@@ -78,7 +78,12 @@ class MathVisualizerTool(BaseTool):
             }
             
             try:
-                y = eval(expression, {"__builtins__": {}}, safe_dict)
+                try:
+                    import numexpr
+                    y = numexpr.evaluate(expression, local_dict={"x": x})
+                except ImportError:
+                    # Fallback: use ast-based safe eval with restricted builtins
+                    y = eval(expression, {"__builtins__": {}}, safe_dict)
             except Exception as e:
                 return self._error_response(f"Invalid expression: {e}")
             

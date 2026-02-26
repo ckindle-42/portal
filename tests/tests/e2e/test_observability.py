@@ -219,7 +219,7 @@ async def test_observability_module_structure():
     """Test 5: Observability module structure"""
     print("\n📚 Test 5: Observability Module Structure")
 
-    obs_dir = Path("pocketportal/observability")
+    obs_dir = Path("src/portal/observability")
 
     # Check directory exists
     assert obs_dir.exists()
@@ -232,6 +232,8 @@ async def test_observability_module_structure():
         "health.py",
         "config_watcher.py",
         "metrics.py",
+        "watchdog.py",
+        "log_rotation.py",
     ]
 
     for file_name in files:

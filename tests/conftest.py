@@ -74,34 +74,22 @@ def pytest_configure(config):
     )
 
 
-# Known failing tests due to legacy API mismatches
+# Known failing tests due to missing optional dependencies (pandas, Docker SDK, etc.)
 # These tests are preserved for future modernization but marked as expected failures
 # to maintain clean CI signal. See KNOWN_ISSUES.md section 3 for details.
+#
+# Resolved (removed from this set):
+#   - test_base_tool.py::test_tool_execution (fixed: BaseTool._success_response accepts **kwargs)
+#   - test_data_integrity.py atomic/concurrent tests (fixed: LocalKnowledgeTool._save_db works)
+#   - test_job_queue.py::test_event_bus_integration (fixed: EventType module identity mismatch)
+#   - test_router.py classifier/router tests (fixed: use result.complexity.value)
+#   - test_security.py::test_path_traversal_detected (already passing)
+#   - test_security.py::test_rate_limit_allows_initial_requests (fixed: async/await)
+#   - test_automation_tools.py::test_list_jobs (fixed: use 'action' param)
+#   - test_mcp_protocol.py::test_protocol_directory_structure (fixed: path updated)
+#   - test_observability.py::test_observability_module_structure (fixed: path updated)
 LEGACY_API_TESTS = {
-    # BaseTool API changes (old _success_response signature)
-    "tests/tests/unit/test_base_tool.py::TestBaseTool::test_tool_execution",
-
-    # Data integrity tests (implementation differences)
-    "tests/tests/unit/test_data_integrity.py::TestAtomicWrites::test_atomic_write_creates_backup",
-    "tests/tests/unit/test_data_integrity.py::TestAtomicWrites::test_atomic_write_survives_crash",
-    "tests/tests/unit/test_data_integrity.py::TestAtomicWrites::test_atomic_write_no_partial_data",
-    "tests/tests/unit/test_data_integrity.py::TestDataIntegrityIntegration::test_concurrent_writes_knowledge_base",
-
-    # Job queue and router tests (API mismatches)
-    "tests/tests/unit/test_job_queue.py::test_event_bus_integration",
-    "tests/tests/unit/test_router.py::TestTaskClassifier::test_classify_trivial_queries",
-    "tests/tests/unit/test_router.py::TestTaskClassifier::test_classify_complex_queries",
-    "tests/tests/unit/test_router.py::TestTaskClassifier::test_classify_code_queries",
-    "tests/tests/unit/test_router.py::TestIntelligentRouter::test_route_selection",
-
-    # Security tests (implementation differences)
-    "tests/tests/unit/test_security.py::TestInputSanitizer::test_path_traversal_detected",
-    "tests/tests/unit/test_security.py::TestRateLimiter::test_rate_limit_allows_initial_requests",
-
-    # Tool tests - automation
-    "tests/tests/unit/tools/test_automation_tools.py::TestJobSchedulerTool::test_list_jobs",
-
-    # Tool tests - data tools
+    # Tool tests - data tools (require pandas, matplotlib, qrcode, yaml)
     "tests/tests/unit/tools/test_data_tools.py::TestCSVAnalyzerTool::test_csv_analyze_success",
     "tests/tests/unit/tools/test_data_tools.py::TestMathVisualizerTool::test_plot_function",
     "tests/tests/unit/tools/test_data_tools.py::TestQRGeneratorTool::test_generate_qr_code",
@@ -109,7 +97,7 @@ LEGACY_API_TESTS = {
     "tests/tests/unit/tools/test_data_tools.py::TestTextTransformerTool::test_json_to_yaml",
     "tests/tests/unit/tools/test_data_tools.py::TestTextTransformerTool::test_yaml_to_json",
 
-    # Tool tests - docker tools
+    # Tool tests - docker tools (require Docker SDK)
     "tests/tests/unit/tools/test_docker_tools.py::TestDockerPSTool::test_docker_ps_success",
     "tests/tests/unit/tools/test_docker_tools.py::TestDockerRunTool::test_docker_run_success",
     "tests/tests/unit/tools/test_docker_tools.py::TestDockerStopTool::test_docker_stop_success",
@@ -117,7 +105,7 @@ LEGACY_API_TESTS = {
     "tests/tests/unit/tools/test_docker_tools.py::TestDockerComposeTool::test_docker_compose_up",
     "tests/tests/unit/tools/test_docker_tools.py::TestDockerComposeTool::test_docker_compose_down",
 
-    # Tool tests - document tools
+    # Tool tests - document tools (require openpyxl, python-docx, pptx, pytesseract)
     "tests/tests/unit/tools/test_document_tools.py::TestDocumentMetadataExtractorTool::test_extract_metadata",
     "tests/tests/unit/tools/test_document_tools.py::TestExcelProcessorTool::test_create_excel",
     "tests/tests/unit/tools/test_document_tools.py::TestExcelProcessorTool::test_read_excel",
@@ -126,7 +114,7 @@ LEGACY_API_TESTS = {
     "tests/tests/unit/tools/test_document_tools.py::TestWordProcessorTool::test_read_document",
     "tests/tests/unit/tools/test_document_tools.py::TestPDFOCRTool::test_extract_text_from_pdf",
 
-    # Tool tests - git tools
+    # Tool tests - git tools (require git binary in PATH for success path)
     "tests/tests/unit/tools/test_git_tools.py::TestGitStatusTool::test_git_status_success",
     "tests/tests/unit/tools/test_git_tools.py::TestGitBranchTool::test_git_branch_list",
     "tests/tests/unit/tools/test_git_tools.py::TestGitBranchTool::test_git_branch_create",
@@ -138,20 +126,16 @@ LEGACY_API_TESTS = {
     "tests/tests/unit/tools/test_git_tools.py::TestGitMergeTool::test_git_merge_success",
     "tests/tests/unit/tools/test_git_tools.py::TestGitCloneTool::test_git_clone_success",
 
-    # Tool tests - system tools
+    # Tool tests - system tools (require psutil or system-specific binaries)
     "tests/tests/unit/tools/test_system_tools.py::TestProcessMonitorTool::test_list_processes",
     "tests/tests/unit/tools/test_system_tools.py::TestProcessMonitorTool::test_kill_process",
     "tests/tests/unit/tools/test_system_tools.py::TestSystemStatsTool::test_get_system_stats",
     "tests/tests/unit/tools/test_system_tools.py::TestSystemStatsTool::test_system_stats_detailed",
 
-    # Tool tests - web and media
+    # Tool tests - web and media (require aiohttp session mocking or whisper)
     "tests/tests/unit/tools/test_web_and_media_tools.py::TestHTTPClientTool::test_http_get_request",
     "tests/tests/unit/tools/test_web_and_media_tools.py::TestHTTPClientTool::test_http_post_request",
     "tests/tests/unit/tools/test_web_and_media_tools.py::TestAudioTranscribeTool::test_transcribe_audio",
-
-    # E2E structure tests (directory structure changes)
-    "tests/tests/e2e/test_mcp_protocol.py::test_protocol_directory_structure",
-    "tests/tests/e2e/test_observability.py::test_observability_module_structure",
 }
 
 
@@ -165,7 +149,7 @@ def pytest_collection_modifyitems(config, items):
         if test_id in LEGACY_API_TESTS:
             item.add_marker(
                 pytest.mark.xfail(
-                    reason="Legacy API signature - pending modernization (see KNOWN_ISSUES.md)",
+                    reason="Missing optional dependency - pending installation (see KNOWN_ISSUES.md)",
                     strict=False
                 )
             )

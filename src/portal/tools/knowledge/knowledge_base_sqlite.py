@@ -25,7 +25,6 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
-import pickle
 
 from portal.core.interfaces.tool import BaseTool, ToolMetadata, ToolParameter, ToolCategory
 
@@ -196,8 +195,8 @@ class EnhancedKnowledgeTool(BaseTool):
         try:
             # Generate embedding
             embedding = EnhancedKnowledgeTool._embeddings_model.encode([text[:1000]])[0]
-            # Serialize as bytes
-            return pickle.dumps(embedding.tolist())
+            # Serialize as JSON bytes (safe alternative to pickle)
+            return json.dumps(embedding.tolist()).encode('utf-8')
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
             return None
@@ -205,7 +204,19 @@ class EnhancedKnowledgeTool(BaseTool):
     def _deserialize_embedding(self, blob: bytes) -> Optional[np.ndarray]:
         """Deserialize embedding from blob"""
         try:
-            return np.array(pickle.loads(blob))
+            return np.array(json.loads(blob.decode('utf-8') if isinstance(blob, bytes) else blob))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            # Backward compat: attempt to load legacy pickle-serialized embeddings
+            try:
+                import pickle
+                logger.warning(
+                    "Loading embedding serialized with pickle (deprecated). "
+                    "Re-save this document to migrate to JSON encoding."
+                )
+                return np.array(pickle.loads(blob))
+            except Exception as e:
+                logger.error(f"Embedding deserialization failed (pickle fallback): {e}")
+                return None
         except Exception as e:
             logger.error(f"Embedding deserialization failed: {e}")
             return None

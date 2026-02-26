@@ -385,8 +385,8 @@ class TelegramInterface:
             await update.message.reply_text("⛔ Unauthorized")
             return
         
-        stats = self.agent_core.get_stats()
-        
+        stats = await self.agent_core.get_stats()
+
         message = (
             "**📊 Processing Statistics:**\n\n"
             f"• Messages processed: {stats['messages_processed']}\n"
@@ -408,7 +408,7 @@ class TelegramInterface:
             return
         
         # Get stats
-        stats = self.agent_core.get_stats()
+        stats = await self.agent_core.get_stats()
         tools = self.agent_core.get_tool_list()
         
         health = (

@@ -123,7 +123,7 @@ async def test_protocol_directory_structure():
     """Test 5: Protocol directory structure"""
     print("\n📚 Test 5: Protocol Directory Structure")
 
-    protocols_dir = Path("pocketportal/protocols")
+    protocols_dir = Path("src/portal/protocols")
 
     # Check protocols directory exists
     assert protocols_dir.exists()

@@ -46,8 +46,8 @@ class RateLimiter:
         """
         self.max_requests = max_requests
         self.window = window_seconds
-        self.requests: Dict[int, List[float]] = defaultdict(list)
-        self.violations: Dict[int, int] = defaultdict(int)
+        self.requests: Dict[str, List[float]] = defaultdict(list)
+        self.violations: Dict[str, int] = defaultdict(int)
 
         # Persistent storage to prevent reset-bypass attacks
         self.persist_path = persist_path or Path(
@@ -57,7 +57,7 @@ class RateLimiter:
         # Load existing rate limit data
         self._load_state()
     
-    def _check_limit_sync(self, user_id: int) -> Tuple[bool, Optional[str]]:
+    def _check_limit_sync(self, user_id: str) -> Tuple[bool, Optional[str]]:
         """Synchronous core of rate limit check (called via asyncio.to_thread)."""
         now = time.time()
         user_requests = self.requests[user_id]
@@ -95,7 +95,7 @@ class RateLimiter:
 
         return True, None
 
-    async def check_limit(self, user_id: int) -> Tuple[bool, Optional[str]]:
+    async def check_limit(self, user_id: str) -> Tuple[bool, Optional[str]]:
         """
         Check if user is within rate limit.
 
@@ -107,7 +107,7 @@ class RateLimiter:
         """
         return await asyncio.to_thread(self._check_limit_sync, user_id)
     
-    def get_remaining(self, user_id: int) -> int:
+    def get_remaining(self, user_id: str) -> int:
         """Get remaining requests for user"""
         now = time.time()
         user_requests = self.requests[user_id]
@@ -120,7 +120,7 @@ class RateLimiter:
         
         return max(0, self.max_requests - len(recent_requests))
 
-    async def check_rate_limit(self, user_id: int) -> bool:
+    async def check_rate_limit(self, user_id: str) -> bool:
         """
         Backward-compatible boolean-only rate limit check.
 
@@ -131,13 +131,13 @@ class RateLimiter:
         allowed, _ = await self.check_limit(user_id)
         return allowed
     
-    def reset_user(self, user_id: int):
+    def reset_user(self, user_id: str):
         """Reset rate limit for specific user"""
         self.requests[user_id] = []
         self.violations[user_id] = 0
         self._save_state()
     
-    def get_stats(self, user_id: int) -> Dict[str, int]:
+    def get_stats(self, user_id: str) -> Dict[str, int]:
         """Get statistics for a user"""
         now = time.time()
         user_requests = self.requests[user_id]
@@ -177,12 +177,12 @@ class RateLimiter:
             with open(self.persist_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            # Convert string keys back to integers
+            # Keep string keys (user_ids are stored as strings)
             self.requests = defaultdict(list, {
-                int(k): v for k, v in data.get('requests', {}).items()
+                k: v for k, v in data.get('requests', {}).items()
             })
             self.violations = defaultdict(int, {
-                int(k): v for k, v in data.get('violations', {}).items()
+                k: v for k, v in data.get('violations', {}).items()
             })
 
             # Clean up old requests outside the window
@@ -480,59 +480,3 @@ class InputSanitizer:
         return [shlex.quote(arg) for arg in args]
 
 
-# =============================================================================
-# USAGE EXAMPLES
-# =============================================================================
-
-def test_rate_limiter():
-    """Test rate limiter functionality"""
-    limiter = RateLimiter(max_requests=5, window_seconds=10)
-    
-    user_id = 12345
-    
-    # Should allow first 5 requests
-    for i in range(5):
-        allowed, msg = limiter.check_limit(user_id)
-        assert allowed, f"Request {i+1} should be allowed"
-    
-    # 6th request should be blocked
-    allowed, msg = limiter.check_limit(user_id)
-    assert not allowed, "6th request should be blocked"
-    assert msg is not None
-    
-    print("âœ… Rate limiter test passed")
-
-
-def test_input_sanitizer():
-    """Test input sanitizer functionality"""
-    
-    # Test dangerous command detection
-    dangerous_cmd = "rm -rf /"
-    sanitized, warnings = InputSanitizer.sanitize_command(dangerous_cmd)
-    assert warnings, "Dangerous command should trigger warnings"
-    
-    # Test path validation
-    valid, msg = InputSanitizer.validate_file_path("../../etc/passwd")
-    assert not valid, "Path traversal should be detected"
-    
-    # Test SQL injection detection
-    safe, msg = InputSanitizer.sanitize_sql_query("SELECT * FROM users WHERE id = 1")
-    assert safe, "Safe query should pass"
-    
-    unsafe, msg = InputSanitizer.sanitize_sql_query("SELECT * FROM users WHERE id = 1' OR '1'='1")
-    assert not unsafe, "SQL injection should be detected"
-    
-    # Test filename sanitization
-    filename = "../../etc/passwd.txt"
-    safe_filename = InputSanitizer.sanitize_filename(filename)
-    assert '..' not in safe_filename, "Parent refs should be removed"
-    assert '/' not in safe_filename, "Path separators should be removed"
-    
-    print("âœ… Input sanitizer test passed")
-
-
-if __name__ == "__main__":
-    """Run tests"""
-    test_rate_limiter()
-    test_input_sanitizer()
-    print("\nâœ… All security tests passed!")

@@ -51,6 +51,7 @@ slack = [
 generation = [
     "faster-whisper>=1.0.0",
     "pillow>=10.3.0",
+    "numexpr>=2.8.0",
 ]
 all = [
     "python-telegram-bot>=21.0,<22.0",

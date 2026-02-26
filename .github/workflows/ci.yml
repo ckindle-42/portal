@@ -24,4 +24,4 @@ jobs:
         run: mypy src/portal
 
       - name: Test with coverage
-        run: pytest tests/ --cov=src/portal --cov-report=term-missing --tb=short
+        run: pytest tests/ --cov=src/portal --cov-report=term-missing --cov-fail-under=50 --tb=short

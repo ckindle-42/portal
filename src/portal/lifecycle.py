@@ -158,6 +158,13 @@ class Runtime:
                 "'changeme-mcp-secret'. Set a strong secret before booting Portal."
             )
 
+        bootstrap_api_key = os.getenv("PORTAL_BOOTSTRAP_API_KEY", "").strip()
+        if bootstrap_api_key == "portal-dev-key":
+            logger.warning(
+                "PORTAL_BOOTSTRAP_API_KEY is set to the insecure default 'portal-dev-key'. "
+                "Set a strong key before exposing Portal outside localhost."
+            )
+
         # Step 2: Initialize event broker
         logger.info("Initializing event broker")
         event_broker = create_event_broker(

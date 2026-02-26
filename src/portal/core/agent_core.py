@@ -441,20 +441,18 @@ class AgentCore:
 
         return result
 
-    def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> Dict[str, Any]:
         """Get processing statistics"""
-        uptime = (datetime.now() - self.start_time).total_seconds()
-
-        stats = self.stats.copy()
+        async with self._stats_lock:
+            uptime = (datetime.now() - self.start_time).total_seconds()
+            stats = self.stats.copy()
         stats['uptime_seconds'] = uptime
-
         if stats['messages_processed'] > 0:
             stats['avg_execution_time'] = (
                 stats['total_execution_time'] / stats['messages_processed']
             )
         else:
             stats['avg_execution_time'] = 0
-
         return stats
 
     def get_tool_list(self) -> List[Dict[str, Any]]:
@@ -501,12 +499,25 @@ class AgentCore:
                 )
                 query = self._augment_query_with_tool_results(query, tool_results)
 
+        collected_response = []
+
         async for token in self.execution_engine.generate_stream(
             query=query,
             system_prompt=system_prompt,
             messages=messages if not had_tool_calls else None,
         ):
+            collected_response.append(token)
             yield token
+
+        # Save completed response to context
+        full_response = "".join(collected_response)
+        if full_response and incoming.id:
+            try:
+                await self._save_assistant_response(
+                    incoming.id, full_response, incoming.source or "web"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save streamed response to context: {e}")
 
 
     async def _run_execution_with_mcp_loop(
