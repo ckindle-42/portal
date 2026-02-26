@@ -393,15 +393,6 @@ class WebInterface(BaseInterface):
         if self._server:
             self._server.should_exit = True
 
-    async def send_message(self, chat_id: str, message: str, **kwargs) -> None:
-        return
-
-    async def receive_message(self):
-        return
-
-    async def handle_message(self, message):
-        return
-
 
 def create_app(agent_core=None, config: dict | None = None, secure_agent=None) -> FastAPI:
     if agent_core is None:
