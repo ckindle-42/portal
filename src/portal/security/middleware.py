@@ -234,6 +234,13 @@ class SecurityMiddleware:
         Raises:
             ValidationError: If validation fails
         """
+        # Reject empty messages
+        if not sec_ctx.sanitized_input or not sec_ctx.sanitized_input.strip():
+            raise ValidationError(
+                "Message cannot be empty",
+                details={'chat_id': sec_ctx.chat_id}
+            )
+
         # Example: Check message length
         max_message_length = 10000  # 10K characters
         if len(sec_ctx.sanitized_input) > max_message_length:

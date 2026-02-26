@@ -28,11 +28,16 @@ def _make_interface(stream_tokens=None, health_ok=True):
     )
     agent.health_check = AsyncMock(return_value=health_ok)
 
+    secure = MagicMock()
+    secure.process_message = AsyncMock(return_value=MagicMock(
+        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
+    ))
+
     config = MagicMock()
     config.interfaces.web.port = 8082
     config.llm.router_port = 8000
 
-    return WebInterface(agent_core=agent, config=config)
+    return WebInterface(agent_core=agent, config=config, secure_agent=secure)
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +176,11 @@ async def test_api_key_guard_blocks_without_key(monkeypatch):
     agent = MagicMock()
     agent.stream_response = AsyncMock(return_value=aiter(["hi"]))
     agent.health_check = AsyncMock(return_value=True)
-    iface = WebInterface(agent_core=agent, config=MagicMock())
+    secure = MagicMock()
+    secure.process_message = AsyncMock(return_value=MagicMock(
+        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
+    ))
+    iface = WebInterface(agent_core=agent, config=MagicMock(), secure_agent=secure)
     client = TestClient(iface.app, raise_server_exceptions=False)
 
     payload = {
@@ -194,7 +203,11 @@ async def test_api_key_guard_passes_with_bearer(monkeypatch):
 
     agent = MagicMock()
     agent.health_check = AsyncMock(return_value=True)
-    iface = WebInterface(agent_core=agent, config=MagicMock())
+    secure = MagicMock()
+    secure.process_message = AsyncMock(return_value=MagicMock(
+        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
+    ))
+    iface = WebInterface(agent_core=agent, config=MagicMock(), secure_agent=secure)
     client = TestClient(iface.app)
 
     resp = client.get(
