@@ -13,8 +13,9 @@ import numpy as np
 
 def _make_instance():
     """Create a EnhancedKnowledgeTool instance (no DB needed for unit test)."""
-    from portal.tools.knowledge.knowledge_base_sqlite import EnhancedKnowledgeTool
     import unittest.mock as mock
+
+    from portal.tools.knowledge.knowledge_base_sqlite import EnhancedKnowledgeTool
     with mock.patch("sqlite3.connect"):
         inst = EnhancedKnowledgeTool.__new__(EnhancedKnowledgeTool)
         inst.conn = None

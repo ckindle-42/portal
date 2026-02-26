@@ -6,9 +6,9 @@ malformed input rejects (400), oversized command rejects (400),
 unapproved token rejects (403).
 """
 
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
