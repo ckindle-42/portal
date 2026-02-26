@@ -28,15 +28,13 @@ Performance:
 
 import asyncio
 import logging
-import sys
 import tempfile
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from base_tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +52,10 @@ class SandboxConfig:
     """Configuration for sandbox execution"""
 
     # Resource limits
-    memory_limit: str = "256m"  # Memory limit
-    cpu_quota: int = 50000  # CPU quota (50% of one core)
+    memory_limit: str = "512m"  # Memory limit
+    cpu_quota: int = 100000  # CPU quota (100% of one core)
+    nano_cpus: int = 1_000_000_000  # --cpus=1.0 (in nano-CPUs)
+    pids_limit: int = 100  # Process/thread limit
     timeout_seconds: int = 30  # Execution timeout
 
     # Network
@@ -214,6 +214,8 @@ CMD ["python3"]
                 # Resource limits
                 'mem_limit': self.config.memory_limit,
                 'cpu_quota': self.config.cpu_quota,
+                'nano_cpus': self.config.nano_cpus,
+                'pids_limit': self.config.pids_limit,
 
                 # Security options
                 'security_opt': ['no-new-privileges'] if self.config.no_new_privileges else [],
@@ -222,11 +224,14 @@ CMD ["python3"]
 
                 # Filesystem
                 'tmpfs': {'/tmp': f'size={self.config.tmpfs_size}'},
+
+                # Network isolation (always enforced)
+                'network_mode': 'none',
             }
 
-            # Disable network if configured
-            if self.config.network_disabled:
-                container_config['network_mode'] = 'none'
+            # Conditionally override network if explicitly allowed
+            if not self.config.network_disabled:
+                container_config['network_mode'] = 'bridge'
 
             # Create and start container
             container = self.docker_client.containers.run(**container_config)

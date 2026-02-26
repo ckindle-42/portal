@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-from portal.tools.media_tools.audio.audio_transcriber import AudioTranscribeTool
+from portal.tools.media_tools.audio_transcriber import AudioTranscribeTool
 from portal.tools.web_tools.http_client import HTTPClientTool
 
 

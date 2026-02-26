@@ -57,6 +57,11 @@ python-docx, python-pptx, pytesseract, aiohttp session mocking, faster-whisper.
 for compatibility with Open WebUI's JavaScript. This should be tightened in
 production deployments that do not use a web UI frontend.
 
+**Pickle embedding migration** — Knowledge base embeddings serialized with the
+legacy `pickle` format will fail to load unless `ALLOW_LEGACY_PICKLE_EMBEDDINGS=true`
+is set. To migrate: re-index affected documents (`action=add`) so they are
+re-serialized in the current JSON format, then remove the environment variable.
+
 ---
 
 ## Section 3 — Open: M4 Mac Memory Pressure (MLX)

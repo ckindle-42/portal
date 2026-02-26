@@ -20,6 +20,7 @@ Performance:
 
 import json
 import logging
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -207,14 +208,19 @@ class EnhancedKnowledgeTool(BaseTool):
         try:
             return np.array(json.loads(blob.decode('utf-8') if isinstance(blob, bytes) else blob))
         except (json.JSONDecodeError, UnicodeDecodeError):
-            # Backward compat: attempt to load legacy pickle-serialized embeddings
+            if os.getenv("ALLOW_LEGACY_PICKLE_EMBEDDINGS", "false").lower() not in ("1", "true", "yes"):
+                logger.error(
+                    "Legacy pickle-serialized embedding detected but ALLOW_LEGACY_PICKLE_EMBEDDINGS "
+                    "is disabled. Re-index documents to migrate to JSON encoding."
+                )
+                return None
             try:
                 import pickle
                 logger.warning(
                     "Loading embedding serialized with pickle (deprecated). "
                     "Re-save this document to migrate to JSON encoding."
                 )
-                return np.array(pickle.loads(blob))
+                return np.array(pickle.loads(blob))  # noqa: S301
             except Exception as e:
                 logger.error(f"Embedding deserialization failed (pickle fallback): {e}")
                 return None

@@ -458,9 +458,14 @@ class ToolRegistry:
 
         # Basic validation if no custom validator
         required_params = tool.metadata.parameters
-        for param_name, param_spec in required_params.items():
-            if param_spec.get('required', False) and param_name not in parameters:
-                return False, f"Missing required parameter: {param_name}"
+        if isinstance(required_params, dict):
+            for param_name, param_spec in required_params.items():
+                if param_spec.get('required', False) and param_name not in parameters:
+                    return False, f"Missing required parameter: {param_name}"
+        elif isinstance(required_params, list):
+            for param in required_params:
+                if getattr(param, 'required', False) and param.name not in parameters:
+                    return False, f"Missing required parameter: {param.name}"
 
         return True, None
 
