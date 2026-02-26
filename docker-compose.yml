@@ -129,7 +129,8 @@ services:
     ports:
       - "8092:8092"
     volumes:
-      - ./:/app
+      - ./scripts/mcp:/app/scripts/mcp:ro
+      - ./src:/app/src:ro
 
 volumes:
   ollama_data:
