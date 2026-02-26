@@ -28,7 +28,7 @@ import json
 import os
 import time
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from portal.memory import MemoryManager
@@ -97,7 +97,7 @@ class AgentCore:
             confirmation_middleware: Optional middleware for human-in-the-loop confirmations
         """
         self.config = config
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(tz=UTC)
 
         # Injected dependencies (makes testing easy!)
         self.model_registry = model_registry
@@ -284,7 +284,7 @@ class AgentCore:
             metadata={
                 'chat_id': chat_id,
                 'interface': interface.value,
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(tz=UTC).isoformat(),
                 'routing_strategy': (
                     self.router.strategy.value if hasattr(self.router, 'strategy') else 'auto'
                 ),
@@ -420,7 +420,7 @@ class AgentCore:
     async def get_stats(self) -> dict[str, Any]:
         """Get processing statistics"""
         async with self._stats_lock:
-            uptime = (datetime.now() - self.start_time).total_seconds()
+            uptime = (datetime.now(tz=UTC) - self.start_time).total_seconds()
             stats = self.stats.copy()
         stats['uptime_seconds'] = uptime
         if stats['messages_processed'] > 0:

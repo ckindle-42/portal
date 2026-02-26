@@ -8,7 +8,7 @@ import inspect
 import logging
 import pkgutil
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from importlib import metadata as importlib_metadata
 from pathlib import Path
 from typing import Any
@@ -353,7 +353,7 @@ class ToolRegistry:
 
         stats = self.tool_stats[tool_name]
         stats.total_executions += 1
-        stats.last_execution = datetime.now()
+        stats.last_execution = datetime.now(tz=UTC)
 
         if success:
             stats.successful_executions += 1
@@ -384,7 +384,7 @@ class ToolRegistry:
             'failed_loads': len(self.failed_tools),
             'tools_never_executed': [],
             'tools_high_failure_rate': [],
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now(tz=UTC).isoformat()
         }
 
         # Check for tools that have never been executed

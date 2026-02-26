@@ -20,7 +20,7 @@ import logging
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -525,7 +525,7 @@ class WatchdogHealthCheck:
                 return HealthCheckResult(
                     status=HealthStatus.UNHEALTHY,
                     message="Watchdog not running",
-                    timestamp=datetime.now().isoformat()
+                    timestamp=datetime.now(tz=UTC).isoformat()
                 )
 
             status = self.watchdog.get_all_status()
@@ -540,14 +540,14 @@ class WatchdogHealthCheck:
                 return HealthCheckResult(
                     status=HealthStatus.DEGRADED,
                     message=f"Components failed: {', '.join(failed_components)}",
-                    timestamp=datetime.now().isoformat(),
+                    timestamp=datetime.now(tz=UTC).isoformat(),
                     details=status
                 )
 
             return HealthCheckResult(
                 status=HealthStatus.HEALTHY,
                 message="All monitored components healthy",
-                timestamp=datetime.now().isoformat(),
+                timestamp=datetime.now(tz=UTC).isoformat(),
                 details=status
             )
 
@@ -555,5 +555,5 @@ class WatchdogHealthCheck:
             return HealthCheckResult(
                 status=HealthStatus.UNHEALTHY,
                 message=f"Watchdog health check failed: {e}",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now(tz=UTC).isoformat()
             )

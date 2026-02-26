@@ -7,7 +7,7 @@ for high-risk tool execution.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -55,7 +55,7 @@ class TestConfirmationRequest:
             chat_id="chat_123",
             user_id="user_456",
             status=ConfirmationStatus.PENDING,
-            requested_at=datetime.now(),
+            requested_at=datetime.now(tz=UTC),
             timeout_seconds=300
         )
 
@@ -67,7 +67,7 @@ class TestConfirmationRequest:
     def test_confirmation_request_expiry(self):
         """Test confirmation request expiry"""
         # Create request that expired 10 seconds ago
-        past_time = datetime(2020, 1, 1, 12, 0, 0)
+        past_time = datetime(2020, 1, 1, 12, 0, 0, tzinfo=UTC)
         request = ConfirmationRequest(
             confirmation_id="test-123",
             tool_name="shell_safety",
@@ -90,7 +90,7 @@ class TestConfirmationRequest:
             chat_id="chat_123",
             user_id="user_456",
             status=ConfirmationStatus.PENDING,
-            requested_at=datetime.now(),
+            requested_at=datetime.now(tz=UTC),
             timeout_seconds=300
         )
 

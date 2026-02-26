@@ -12,7 +12,7 @@ import logging
 import re
 import uuid
 from contextvars import ContextVar
-from datetime import datetime
+from datetime import UTC, datetime
 
 # Context variable to store trace_id for current request
 _trace_id_var: ContextVar[str | None] = ContextVar('trace_id', default=None)
@@ -70,7 +70,7 @@ class StructuredLogger:
 
         # Build structured log entry
         log_entry = {
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now(tz=UTC).isoformat(),
             'level': level,
             'component': self.component,
             'message': _redact_secrets(message),

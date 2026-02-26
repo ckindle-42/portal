@@ -26,7 +26,7 @@ status = await health_system.check_health()
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -137,7 +137,7 @@ class HealthCheckSystem:
                 checks[name] = {
                     'status': HealthStatus.UNHEALTHY.value,
                     'message': f"Check failed: {e}",
-                    'timestamp': datetime.now().isoformat()
+                    'timestamp': datetime.now(tz=UTC).isoformat()
                 }
                 overall_status = HealthStatus.UNHEALTHY
 
@@ -158,14 +158,14 @@ class HealthCheckSystem:
                 checks[name] = {
                     'status': HealthStatus.UNHEALTHY.value,
                     'message': f"Check failed: {e}",
-                    'timestamp': datetime.now().isoformat()
+                    'timestamp': datetime.now(tz=UTC).isoformat()
                 }
                 overall_status = HealthStatus.UNHEALTHY
 
         return {
             'status': overall_status.value,
             'checks': checks,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now(tz=UTC).isoformat()
         }
 
     async def check_liveness(self) -> dict[str, Any]:
@@ -181,7 +181,7 @@ class HealthCheckSystem:
         return {
             'status': HealthStatus.HEALTHY.value,
             'message': 'Service is alive',
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now(tz=UTC).isoformat()
         }
 
     async def check_readiness(self) -> dict[str, Any]:
@@ -233,7 +233,7 @@ class DatabaseHealthCheck(HealthCheckProvider):
             return HealthCheckResult(
                 status=HealthStatus.HEALTHY,
                 message="Database connection healthy",
-                timestamp=datetime.now().isoformat(),
+                timestamp=datetime.now(tz=UTC).isoformat(),
                 details=stats
             )
 
@@ -241,7 +241,7 @@ class DatabaseHealthCheck(HealthCheckProvider):
             return HealthCheckResult(
                 status=HealthStatus.UNHEALTHY,
                 message=f"Database unhealthy: {e}",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now(tz=UTC).isoformat()
             )
 
 
@@ -269,14 +269,14 @@ class JobQueueHealthCheck(HealthCheckProvider):
                 return HealthCheckResult(
                     status=HealthStatus.DEGRADED,
                     message=f"Job queue degraded: {pending_count} pending jobs",
-                    timestamp=datetime.now().isoformat(),
+                    timestamp=datetime.now(tz=UTC).isoformat(),
                     details=stats
                 )
 
             return HealthCheckResult(
                 status=HealthStatus.HEALTHY,
                 message="Job queue healthy",
-                timestamp=datetime.now().isoformat(),
+                timestamp=datetime.now(tz=UTC).isoformat(),
                 details=stats
             )
 
@@ -284,7 +284,7 @@ class JobQueueHealthCheck(HealthCheckProvider):
             return HealthCheckResult(
                 status=HealthStatus.UNHEALTHY,
                 message=f"Job queue unhealthy: {e}",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now(tz=UTC).isoformat()
             )
 
 
@@ -307,7 +307,7 @@ class WorkerPoolHealthCheck(HealthCheckProvider):
                 return HealthCheckResult(
                     status=HealthStatus.UNHEALTHY,
                     message="Worker pool not running",
-                    timestamp=datetime.now().isoformat()
+                    timestamp=datetime.now(tz=UTC).isoformat()
                 )
 
             stats = self.worker_pool.get_stats()
@@ -318,14 +318,14 @@ class WorkerPoolHealthCheck(HealthCheckProvider):
                 return HealthCheckResult(
                     status=HealthStatus.DEGRADED,
                     message="All workers busy",
-                    timestamp=datetime.now().isoformat(),
+                    timestamp=datetime.now(tz=UTC).isoformat(),
                     details=stats
                 )
 
             return HealthCheckResult(
                 status=HealthStatus.HEALTHY,
                 message="Worker pool healthy",
-                timestamp=datetime.now().isoformat(),
+                timestamp=datetime.now(tz=UTC).isoformat(),
                 details=stats
             )
 
@@ -333,7 +333,7 @@ class WorkerPoolHealthCheck(HealthCheckProvider):
             return HealthCheckResult(
                 status=HealthStatus.UNHEALTHY,
                 message=f"Worker pool unhealthy: {e}",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now(tz=UTC).isoformat()
             )
 
 

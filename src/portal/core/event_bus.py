@@ -16,7 +16,7 @@ import logging
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -146,7 +146,7 @@ class EventBus:
         event = Event(
             event_type=event_type,
             chat_id=chat_id,
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(tz=UTC).isoformat(),
             data=data,
             trace_id=trace_id
         )

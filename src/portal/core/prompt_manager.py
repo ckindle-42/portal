@@ -7,7 +7,7 @@ Supports composable prompt templates.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class PromptManager:
         # Check cache
         if use_cache and template_name in self._cache:
             timestamp, content = self._cache[template_name]
-            age = datetime.now().timestamp() - timestamp
+            age = datetime.now(tz=UTC).timestamp() - timestamp
 
             if age < self.cache_ttl_seconds:
                 logger.debug(f"Using cached template: {template_name}")
@@ -73,7 +73,7 @@ class PromptManager:
                 content = f.read()
 
             # Update cache
-            self._cache[template_name] = (datetime.now().timestamp(), content)
+            self._cache[template_name] = (datetime.now(tz=UTC).timestamp(), content)
 
             logger.debug(f"Loaded template: {template_name}")
             return content

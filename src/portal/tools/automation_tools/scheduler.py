@@ -1,6 +1,6 @@
 """Job Scheduler Tool - Schedule recurring tasks"""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
@@ -96,7 +96,7 @@ class JobSchedulerTool(BaseTool):
             "schedule": schedule,
             "command": command,
             "status": "active",
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(tz=UTC).isoformat(),
             "last_run": None,
             "next_run": self._calculate_next_run(schedule),
             "run_count": 0
@@ -153,4 +153,4 @@ class JobSchedulerTool(BaseTool):
     def _calculate_next_run(self, schedule: str) -> str:
         """Calculate next run time (simplified)"""
         # In production, use croniter or APScheduler for accurate calculation
-        return datetime.now().isoformat()
+        return datetime.now(tz=UTC).isoformat()
