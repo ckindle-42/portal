@@ -263,7 +263,7 @@ class Runtime:
             return
 
         self._shutdown_in_progress = True
-        shutdown_start = asyncio.get_event_loop().time()
+        shutdown_start = asyncio.get_running_loop().time()
 
         logger.info(
             "Starting graceful shutdown",
@@ -342,7 +342,7 @@ class Runtime:
                         )
                     else:
                         # Run sync callback in thread pool
-                        loop = asyncio.get_event_loop()
+                        loop = asyncio.get_running_loop()
                         await asyncio.wait_for(
                             loop.run_in_executor(None, callback.callback),
                             timeout=callback_timeout
@@ -380,7 +380,7 @@ class Runtime:
                 logger.error(f"Error clearing event history: {e}", exc_info=True)
 
             # Calculate shutdown duration
-            shutdown_duration = asyncio.get_event_loop().time() - shutdown_start
+            shutdown_duration = asyncio.get_running_loop().time() - shutdown_start
 
             self._initialized = False
             logger.info(
