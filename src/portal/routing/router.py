@@ -178,7 +178,7 @@ async def health() -> dict:
         }
 
 
-@app.post("/api/dry-run")
+@app.post("/api/dry-run", dependencies=[Depends(_verify_token)])
 async def dry_run(request: Request) -> dict:
     """Return routing decision without executing."""
     body = await request.json()
@@ -193,7 +193,7 @@ async def dry_run(request: Request) -> dict:
     }
 
 
-@app.get("/api/tags")
+@app.get("/api/tags", dependencies=[Depends(_verify_token)])
 async def list_tags() -> dict:
     """Return Ollama models augmented with virtual workspace names."""
     try:
