@@ -315,6 +315,12 @@ class InputSanitizer:
         # "%2e%2e%2f" are detected by the regex patterns below.
         decoded_path = unquote(path)
 
+        # Reject embedded NUL bytes (including URL-encoded %00) early.
+        # Path.resolve() raises ValueError for these inputs, but callers expect
+        # this validator to return a (bool, error_message) tuple.
+        if "\x00" in decoded_path:
+            return False, "Path contains null byte"
+
         # Check for path traversal
         for pattern in InputSanitizer.PATH_TRAVERSAL_PATTERNS:
             if re.search(pattern, decoded_path, re.IGNORECASE):

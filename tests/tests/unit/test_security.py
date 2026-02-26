@@ -24,6 +24,14 @@ class TestInputSanitizer:
             assert not is_valid, f"Path traversal not detected: {path}"
             assert error is not None, f"No error message for: {path}"
 
+
+    def test_null_byte_path_rejected_cleanly(self):
+        """Test that null bytes are rejected without raising exceptions"""
+        is_valid, error = InputSanitizer.validate_file_path("safe%00name.txt")
+        assert not is_valid
+        assert error is not None
+        assert "null byte" in error.lower()
+
     def test_sensitive_path_blocked(self):
         """Test that sensitive paths are blocked"""
         sensitive_paths = [
