@@ -158,11 +158,13 @@ class Runtime:
                 "'changeme-mcp-secret'. Set a strong secret before booting Portal."
             )
 
-        bootstrap_api_key = os.getenv("PORTAL_BOOTSTRAP_API_KEY", "").strip()
-        if bootstrap_api_key == "portal-dev-key":
-            logger.warning(
-                "PORTAL_BOOTSTRAP_API_KEY is set to the insecure default 'portal-dev-key'. "
-                "Set a strong key before exposing Portal outside localhost."
+        effective_bootstrap_key = os.getenv("PORTAL_BOOTSTRAP_API_KEY", "").strip()
+        portal_env = os.getenv("PORTAL_ENV", "production")
+        if portal_env != "development" and effective_bootstrap_key in ("portal-dev-key", ""):
+            raise RuntimeError(
+                "Refusing to start: PORTAL_BOOTSTRAP_API_KEY is not set or uses the insecure "
+                "default 'portal-dev-key'. Generate a strong key: "
+                "python -c \"import secrets; print(secrets.token_urlsafe(32))\""
             )
 
         # Step 2: Initialize event broker
