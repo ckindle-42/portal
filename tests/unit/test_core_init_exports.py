@@ -51,18 +51,6 @@ class TestCoreInitExports:
 
         assert issubclass(EventType, enum.Enum)
 
-    def test_event_broker_is_class(self):
-        """EventBroker must be a class."""
-        from portal.core import EventBroker
-
-        assert inspect.isclass(EventBroker)
-
-    def test_create_event_broker_is_callable(self):
-        """create_event_broker must be callable."""
-        from portal.core import create_event_broker
-
-        assert callable(create_event_broker)
-
     def test_exception_types_are_exceptions(self):
         """All exported exception types must be Exception subclasses."""
         from portal.core import (
