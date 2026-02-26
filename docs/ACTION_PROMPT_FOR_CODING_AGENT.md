@@ -6,8 +6,9 @@ Portal is a local-first AI platform (Python 3.11+, FastAPI, Pydantic v2) with
 multi-interface support (Web, Telegram, Slack). Source in `src/portal/`, tools in
 `src/portal/tools/`, MCP servers in `mcp/`, tests in `tests/`.
 
-## Completed Tasks (v1.3.0)
+## Completed Tasks (v1.3.0 → v1.3.1)
 
+### v1.3.0
 - [x] Fix MCP tool loop context loss (`messages=None` → `messages=current_messages`)
 - [x] Fix `execute_parallel()` cancellation (`return_exceptions=True`)
 - [x] Replace O(n) `list.pop(0)` with `deque(maxlen=N)` in EventBus
@@ -17,37 +18,28 @@ multi-interface support (Web, Telegram, Slack). Source in `src/portal/`, tools i
 - [x] Version bump to 1.3.0 (pyproject.toml, __init__.py, ARCHITECTURE.md)
 - [x] CHANGELOG.md updated with v1.3.0 entry
 
+### v1.3.1
+- [x] Extract `BaseHTTPBackend._build_chat_messages()` (DRY, ~40 lines saved)
+- [x] Fix N+1 query in `_sync_list_conversations()` with single LEFT JOIN
+- [x] Implement `ROUTER_TOKEN` auth on proxy, `/api/dry-run`, `/api/tags`
+- [x] Replace all 34 `datetime.now()` with `datetime.now(tz=UTC)` across 11 files
+- [x] Fix version string mismatches (WebInterface + ARCHITECTURE.md: 1.2.0 → 1.3.0)
+- [x] Data-driven model registry (175 → 65 lines)
+- [x] Add 36 new tests (CircuitBreaker, secret redaction, router auth, message builder, model registry)
+- [x] Update CHANGELOG.md, CODE_REVIEW_SUMMARY.md
+
 ## Remaining Prioritized Task List
 
-### Batch A — DRY / Complexity (Priority: High)
+### Batch A — Performance (Priority: Medium)
 
-1. **`src/portal/routing/model_backends.py`** — Extract shared message-building
-   logic from `OllamaBackend.generate()`, `OllamaBackend.generate_stream()`,
-   `LMStudioBackend.generate()`, `LMStudioBackend.generate_stream()` into a
-   `BaseHTTPBackend._build_chat_messages(prompt, system_prompt, messages)` method.
+1. Replace O(n) vector search in `knowledge_base_sqlite.py` with sqlite-vec.
+2. Add performance regression benchmarks.
 
-2. **`src/portal/persistence/sqlite_impl.py`** — Fix N+1 query in
-   `_sync_list_conversations()`: use a single JOIN query.
+### Batch B — Structural (Priority: Low)
 
-### Batch B — Security (Priority: Medium)
-
-3. **`src/portal/routing/router.py`** — Implement `ROUTER_TOKEN` auth:
-   if env var is set, require `Authorization: Bearer <token>` on proxy endpoints.
-
-4. **`src/portal/middleware/tool_confirmation_middleware.py`** — Replace
-   `datetime.now()` with `datetime.now(timezone.utc)`.
-
-### Batch C — New Tests (Priority: Medium)
-
-5. Add `tests/unit/test_circuit_breaker.py` — CLOSED → OPEN → HALF_OPEN → CLOSED.
-6. Add `tests/unit/test_structured_logger.py` — Secret redaction patterns.
-7. Expand `tests/unit/test_memory_manager.py` — Empty retrieval, concurrent access.
-8. Add `tests/unit/test_model_backends.py` — Expand from 2 to 10+ tests.
-
-### Batch D — Performance
-
-9. Replace O(n) vector search in `knowledge_base_sqlite.py` with sqlite-vec.
-10. Add performance regression benchmarks.
+3. Split `AgentCore` (792 lines) into `MessageProcessor`, `ExecutionOrchestrator`, `ResponseBuilder`.
+4. Split `lifecycle.bootstrap()` (117 lines) and `shutdown()` (147 lines) into sub-functions.
+5. Add return type hints to remaining ~50% of functions.
 
 ## Testing & Verification
 

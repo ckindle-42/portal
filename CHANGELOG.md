@@ -24,6 +24,35 @@ To cut a release:
 
 ---
 
+## [1.3.1] - 2026-02-26
+
+### Security
+- **ROUTER_TOKEN auth enforcement** — proxy, `/api/dry-run`, and `/api/tags` routes now verify `ROUTER_TOKEN` via `hmac.compare_digest` when the env var is set. Auth is skipped when unset (dev environments).
+
+### Fixed
+- **Naive datetime bugs** — replaced all 34 `datetime.now()` calls across 11 source files with `datetime.now(tz=UTC)` to prevent naive/aware comparison errors and ensure consistent UTC timestamps.
+- **Version string mismatch** — `WebInterface` FastAPI version and `ARCHITECTURE.md` directory tree both updated from `1.2.0` to `1.3.0`.
+- **N+1 query** — `SQLiteConversationRepository._sync_list_conversations()` replaced per-conversation message fetch with a single LEFT JOIN query (subquery for correct LIMIT/OFFSET on conversations).
+
+### Refactored
+- **DRY message builder** — extracted duplicated chat-message construction from 4 methods in `OllamaBackend`/`LMStudioBackend` into `BaseHTTPBackend._build_chat_messages()` (~40 lines saved).
+- **Data-driven model registry** — replaced 175-line `_register_default_models()` with a compact list of dicts iterated in a 2-line loop (175 → 65 lines). All 9 models preserved.
+
+### Added
+- **36 new tests** (240 → 276 passing):
+  - `test_router_auth.py` — ROUTER_TOKEN enforcement (7 tests)
+  - `test_build_chat_messages.py` — shared message-builder helper (6 tests)
+  - `test_circuit_breaker.py` — full CircuitBreaker state machine (10 tests)
+  - `test_structured_logger_redaction.py` — secret redaction patterns (7 tests)
+  - `test_data_driven_registry.py` — model registry data integrity (7 tests)
+
+### Docs
+- **CHANGELOG** updated with all 1.3.1 changes.
+- **ARCHITECTURE.md** version string corrected to 1.3.0.
+- **CODE_REVIEW_SUMMARY** refreshed with 9.0/10 health score.
+
+---
+
 ## [1.3.0] - 2026-02-26
 
 ### Fixed
