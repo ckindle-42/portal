@@ -224,7 +224,16 @@ class WebInterface(BaseInterface):
 
         @app.get("/health")
         async def health():
-            return {"status": "ok", "interface": "web"}
+            try:
+                healthy = await self.agent_core.health_check()
+            except Exception:
+                healthy = False
+            status = "ok" if healthy else "degraded"
+            code = 200 if healthy else 503
+            return JSONResponse(
+                {"status": status, "interface": "web"},
+                status_code=code,
+            )
 
         return app
 
