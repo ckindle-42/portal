@@ -316,6 +316,13 @@ class WebInterface(BaseInterface):
             except Exception:
                 healthy = False
             body["agent_core"] = "ok" if healthy else "degraded"
+            mcp_status = {}
+            if hasattr(self.agent_core, 'mcp_registry') and self.agent_core.mcp_registry:
+                try:
+                    mcp_status = await self.agent_core.mcp_registry.health_check_all()
+                except Exception:
+                    mcp_status = {"error": "health check failed"}
+            body["mcp"] = mcp_status
             return JSONResponse(body, status_code=200)
 
     def _register_websocket_route(self, app: FastAPI) -> None:
