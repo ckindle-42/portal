@@ -420,7 +420,7 @@ class ExecutionEngine:
             for query in queries
         ]
 
-        return await asyncio.gather(*tasks)
+        return await asyncio.gather(*tasks, return_exceptions=True)
 
     async def close(self):
         """Close all backends"""

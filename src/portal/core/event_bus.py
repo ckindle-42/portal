@@ -13,6 +13,7 @@ Examples:
 
 import asyncio
 import logging
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -97,7 +98,7 @@ class EventBus:
         """
         self._subscribers: dict[EventType, list[Callable]] = {}
         self._enable_history = enable_history
-        self._event_history: list[Event] = [] if enable_history else []
+        self._event_history: deque[Event] = deque(maxlen=max_history) if enable_history else deque()
         self._max_history = max_history
 
         logger.info(f"EventBus initialized (history: {enable_history})")
@@ -151,10 +152,9 @@ class EventBus:
         )
 
         # Add to history (only if enabled to prevent memory leaks)
+        # deque(maxlen=N) automatically evicts the oldest entry in O(1)
         if self._enable_history:
             self._event_history.append(event)
-            if len(self._event_history) > self._max_history:
-                self._event_history.pop(0)
 
         # Get subscribers for this event type
         subscribers = self._subscribers.get(event_type, [])
