@@ -31,6 +31,13 @@ Read this file first. Follow the 9-step workflow with the new balanced 10/10 def
 
 ---
 
+## [Unreleased] — 2026-02-26 — Test Suite Shrink
+
+### test(prune): consolidate `portal.core` export contract checks
+- Replaced repetitive one-assert-per-test checks in `tests/unit/test_core_init_exports.py` with lean `pytest.mark.parametrize` coverage.
+- Removed low-value module leak assertion focused on import internals and kept behavior-focused API contract checks only.
+- Net result: same public API coverage with substantially less test code and simpler maintenance.
+
 ## [Unreleased] — 2026-02-26 — Complete Shrink & Rebase to Lean 10/10
 
 ### chore(shrink): Aggressive codebase shrink — 1,145 LOC removed (3.1% reduction)
