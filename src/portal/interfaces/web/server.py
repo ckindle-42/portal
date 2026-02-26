@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import uuid
@@ -27,6 +28,7 @@ from portal.observability.runtime_metrics import (
 )
 from portal.security.auth import UserStore
 
+logger = logging.getLogger(__name__)
 
 class ChatMessage(BaseModel):
     role: str
@@ -101,7 +103,7 @@ class WebInterface(BaseInterface):
             raise HTTPException(status_code=401, detail="Missing API key")
 
         try:
-            ctx = self.user_store.authenticate(token=token, fallback_user=user_id)
+            ctx = await self.user_store.authenticate(token=token, fallback_user=user_id)
         except ValueError as exc:
             raise HTTPException(status_code=401, detail=str(exc)) from exc
         return {"user_id": ctx.user_id, "role": ctx.role}
@@ -148,7 +150,7 @@ class WebInterface(BaseInterface):
             elapsed = time.perf_counter() - start
             tokens = (result.completion_tokens or max(len(result.response.split()), 1))
             TOKENS_PER_SECOND.observe(tokens / max(elapsed, 0.001))
-            self.user_store.add_tokens(user_id=user_id, tokens=(result.prompt_tokens or 0) + (result.completion_tokens or 0))
+            await self.user_store.add_tokens(user_id=user_id, tokens=(result.prompt_tokens or 0) + (result.completion_tokens or 0))
             return JSONResponse(self._format_completion(result, selected_model))
 
 
@@ -213,8 +215,7 @@ class WebInterface(BaseInterface):
             except WebSocketDisconnect:
                 return
             except Exception as e:
-                import logging as _logging
-                _logging.getLogger(__name__).error(f"WebSocket error: {e}", exc_info=True)
+                logger.error(f"WebSocket error: {e}", exc_info=True)
                 try:
                     await websocket.send_json({"error": "Internal error", "done": True})
                 except Exception:
@@ -244,7 +245,7 @@ class WebInterface(BaseInterface):
 
         elapsed = time.perf_counter() - started
         TOKENS_PER_SECOND.observe(token_count / max(elapsed, 0.001))
-        self.user_store.add_tokens(user_id=user_id, tokens=token_count)
+        await self.user_store.add_tokens(user_id=user_id, tokens=token_count)
 
         final = {"id": chunk_id, "object": "chat.completion.chunk", "created": created, "model": model, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
         yield f"data: {json.dumps(final)}\n\n"

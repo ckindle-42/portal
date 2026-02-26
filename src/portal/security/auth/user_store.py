@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
 import secrets
@@ -76,7 +77,11 @@ class UserStore:
             conn.commit()
         return token
 
-    def authenticate(self, token: str | None, fallback_user: str) -> AuthContext:
+    # ------------------------------------------------------------------
+    # Private sync helpers (called via asyncio.to_thread)
+    # ------------------------------------------------------------------
+
+    def _sync_authenticate(self, token: str | None, fallback_user: str) -> AuthContext:
         if not token:
             self.ensure_user(fallback_user, role="guest")
             return AuthContext(user_id=fallback_user, role="guest")
@@ -94,6 +99,31 @@ class UserStore:
         if not row:
             raise ValueError("Invalid API key")
         return AuthContext(api_key_id=row[0], user_id=row[1], role=row[2])
+
+    def _sync_add_tokens(self, user_id: str, tokens: int) -> None:
+        period = datetime.now(timezone.utc).strftime("%Y-%W")
+        now = datetime.now(timezone.utc).isoformat()
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO quotas(user_id, period, token_count, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(user_id, period)
+                DO UPDATE SET token_count = token_count + excluded.token_count, updated_at = excluded.updated_at
+                """,
+                (user_id, period, tokens, now),
+            )
+            conn.commit()
+
+    # ------------------------------------------------------------------
+    # Public async API
+    # ------------------------------------------------------------------
+
+    async def authenticate(self, token: str | None, fallback_user: str) -> AuthContext:
+        return await asyncio.to_thread(self._sync_authenticate, token, fallback_user)
+
+    async def add_tokens(self, user_id: str, tokens: int) -> None:
+        await asyncio.to_thread(self._sync_add_tokens, user_id, tokens)
 
     def _ensure_bootstrap_api_key(self) -> None:
         """Optionally pre-provision a static API key for local/dev stacks."""
@@ -114,21 +144,6 @@ class UserStore:
                 VALUES (?, ?, ?, ?)
                 """,
                 (user_id, key_hash, "bootstrap", now),
-            )
-            conn.commit()
-
-    def add_tokens(self, user_id: str, tokens: int) -> None:
-        period = datetime.now(timezone.utc).strftime("%Y-%W")
-        now = datetime.now(timezone.utc).isoformat()
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                INSERT INTO quotas(user_id, period, token_count, updated_at)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(user_id, period)
-                DO UPDATE SET token_count = token_count + excluded.token_count, updated_at = excluded.updated_at
-                """,
-                (user_id, period, tokens, now),
             )
             conn.commit()
 

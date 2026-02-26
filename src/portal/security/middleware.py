@@ -7,6 +7,7 @@ Acts as a protective wrapper around the core.
 """
 
 import logging
+import re
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
@@ -175,7 +176,6 @@ class SecurityMiddleware:
             )
 
             # Extract wait time from error message if possible
-            import re
             match = re.search(r'wait (\d+) seconds', error_msg)
             retry_after = int(match.group(1)) if match else 60
 

@@ -215,16 +215,23 @@ class AgentCore:
                 # Step 4: Get available tools
                 available_tools = [t.metadata.name for t in self.tool_registry.get_all_tools()]
 
-                # Step 5: Route, execute, and complete MCP tool loop when requested.
+                # Step 5: Build conversation history for the LLM (includes the message
+                # just saved in Step 2, so the full context is available).
+                context_history = await self.context_manager.get_formatted_history(
+                    chat_id, format='openai'
+                )
+
+                # Step 6: Route, execute, and complete MCP tool loop when requested.
                 result, tool_results = await self._run_execution_with_mcp_loop(
                     query=message,
                     system_prompt=system_prompt,
                     available_tools=available_tools,
                     chat_id=chat_id,
                     trace_id=trace_id,
+                    messages=context_history if context_history else None,
                 )
 
-                # Step 6: Save assistant response (after successful generation)
+                # Step 7: Save assistant response (after successful generation)
                 await self._save_assistant_response(chat_id, result.response, interface.value)
 
                 # Track execution time
@@ -377,7 +384,8 @@ class AgentCore:
         system_prompt: str,
         available_tools: List[str],
         chat_id: str,
-        trace_id: str
+        trace_id: str,
+        messages: Optional[List[Dict[str, Any]]] = None,
     ):
         """Execute with intelligent routing"""
         # Get routing decision
@@ -412,6 +420,7 @@ class AgentCore:
         result = await self.execution_engine.execute(
             query=query,
             system_prompt=system_prompt,
+            messages=messages,
         )
 
         if not result.success:
@@ -457,12 +466,15 @@ class AgentCore:
         system_prompt = self._build_system_prompt(interface.value, {})
         query = incoming.text
         max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
+        messages = incoming.history if incoming.history else None
+        had_tool_calls = False
 
         if self.mcp_registry:
             for _ in range(max_tool_rounds):
                 preflight = await self.execution_engine.execute(
                     query=query,
                     system_prompt=system_prompt,
+                    messages=messages if not had_tool_calls else None,
                 )
                 if not preflight.success:
                     break
@@ -471,6 +483,7 @@ class AgentCore:
                 if not tool_calls:
                     break
 
+                had_tool_calls = True
                 tool_results = await self._dispatch_mcp_tools(
                     tool_calls=tool_calls,
                     chat_id=incoming.id,
@@ -481,6 +494,7 @@ class AgentCore:
         async for token in self.execution_engine.generate_stream(
             query=query,
             system_prompt=system_prompt,
+            messages=messages if not had_tool_calls else None,
         ):
             yield token
 
@@ -492,11 +506,13 @@ class AgentCore:
         available_tools: List[str],
         chat_id: str,
         trace_id: str,
+        messages: Optional[List[Dict[str, Any]]] = None,
     ) -> tuple[Any, List[Dict[str, Any]]]:
         """Execute model calls and iterate tool calls until a final answer is produced."""
         current_query = query
         collected_tool_results: List[Dict[str, Any]] = []
         max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
+        current_messages = messages  # Use caller-provided history on first pass only
 
         for _ in range(max_tool_rounds):
             result = await self._execute_with_routing(
@@ -505,6 +521,7 @@ class AgentCore:
                 available_tools=available_tools,
                 chat_id=chat_id,
                 trace_id=trace_id,
+                messages=current_messages,
             )
 
             tool_calls = result.tool_calls or []
@@ -514,6 +531,7 @@ class AgentCore:
             mcp_results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
             collected_tool_results.extend(mcp_results)
             current_query = self._augment_query_with_tool_results(current_query, mcp_results)
+            current_messages = None  # After tool augmentation, rely on the enriched query
 
         final_result = await self._execute_with_routing(
             query=current_query,
@@ -521,6 +539,7 @@ class AgentCore:
             available_tools=available_tools,
             chat_id=chat_id,
             trace_id=trace_id,
+            messages=None,
         )
         return final_result, collected_tool_results
 
@@ -712,6 +731,8 @@ class AgentCore:
     async def cleanup(self):
         """Cleanup resources"""
         logger.info("Cleaning up AgentCore...")
+        if self.mcp_registry and hasattr(self.mcp_registry, 'close'):
+            await self.mcp_registry.close()
         await self.execution_engine.cleanup()
         logger.info("AgentCore cleanup complete")
 

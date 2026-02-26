@@ -3,6 +3,7 @@ Security Module - Rate limiting and input sanitization
 Protects against abuse and malicious inputs
 """
 
+import asyncio
 import time
 import html
 import re
@@ -104,8 +105,7 @@ class RateLimiter:
         Returns:
             (is_allowed, error_message)
         """
-        import asyncio as _asyncio
-        return await _asyncio.to_thread(self._check_limit_sync, user_id)
+        return await asyncio.to_thread(self._check_limit_sync, user_id)
     
     def get_remaining(self, user_id: int) -> int:
         """Get remaining requests for user"""
