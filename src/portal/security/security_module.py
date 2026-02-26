@@ -8,6 +8,7 @@ import html
 import re
 import json
 import os
+from urllib.parse import unquote
 import tempfile
 import shutil
 import shlex
@@ -110,6 +111,17 @@ class RateLimiter:
         ]
         
         return max(0, self.max_requests - len(recent_requests))
+
+    def check_rate_limit(self, user_id: int) -> bool:
+        """
+        Backward-compatible boolean-only rate limit check.
+
+        Some call sites and tests use the old API shape that returned only a
+        boolean. Keep this wrapper so older integrations continue to work while
+        new code can consume `check_limit`'s detailed tuple.
+        """
+        allowed, _ = self.check_limit(user_id)
+        return allowed
     
     def reset_user(self, user_id: int):
         """Reset rate limit for specific user"""
@@ -299,13 +311,17 @@ class InputSanitizer:
         Returns:
             (is_valid, error_message)
         """
+        # Decode URL-encoded input first so encoded traversal sequences such as
+        # "%2e%2e%2f" are detected by the regex patterns below.
+        decoded_path = unquote(path)
+
         # Check for path traversal
         for pattern in InputSanitizer.PATH_TRAVERSAL_PATTERNS:
-            if re.search(pattern, path, re.IGNORECASE):
+            if re.search(pattern, decoded_path, re.IGNORECASE):
                 return False, "Path traversal detected"
         
         # Check for absolute paths to sensitive directories
-        path_obj = Path(path).resolve()
+        path_obj = Path(decoded_path).resolve()
         sensitive_dirs = ['/etc', '/boot', '/sys', '/proc', '/dev']
         
         for sensitive_dir in sensitive_dirs:
