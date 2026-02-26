@@ -24,6 +24,45 @@ To cut a release:
 
 ---
 
+## [1.2.1] - 2026-02-26
+
+### Security
+- **Bash MCP sidecar hardened** — `shell=True` removed; commands are now parsed with `shlex.split()` and validated against an allowlist of safe binaries (`_ALLOWED_BINARIES`). Enforces `_MAX_CMD_LENGTH=2000` and `_MAX_ARGS=50` guards. Rejects unrecognised binaries with HTTP 403.
+- **`eval()` eliminated from `MathVisualizer`** — replaced with a recursive AST-walking evaluator (`_safe_eval`) that only permits arithmetic operators, safe math functions (`sin`, `cos`, `tan`, `log`, `exp`, `sqrt`, `abs`), and named constants (`pi`, `e`). Arbitrary code execution is no longer possible via the math expression input.
+- **Pickle deserialization gated** — legacy `pickle.loads()` fallback in `KnowledgeBaseSQLite._deserialize_embedding()` is now disabled by default. Enable only by setting `ALLOW_LEGACY_PICKLE_EMBEDDINGS=true`. Re-index documents to migrate to JSON encoding.
+- **Secret redaction added to structured logger** — `_redact_secrets()` filter applied to all log messages and string kwargs. Masks Slack bot tokens, OpenAI keys, Telegram bot tokens, GitHub PATs, and Bearer tokens.
+- **Docker sandbox resource limits** — `SandboxConfig` defaults updated to `memory=512m`, `cpus=1.0`, `pids_limit=100`. Network isolation (`network_mode=none`) is now the enforced default; only overridden if `network_disabled=False` is explicitly set.
+
+### Removed
+- `docs/archive/` (7 000 lines — PocketPortal v3 legacy docs, no references)
+- `src/portal/interfaces/telegram/renderers.py` (611 lines — not imported anywhere)
+- `src/portal/protocols/mcp/mcp_connector.py` (531 lines — broken `from base_tool import`, dead)
+- `src/portal/protocols/mcp/mcp_server.py` (224 lines — dead, only in try/except init)
+- `src/portal/protocols/mcp/security_policy.py` (223 lines — not imported anywhere)
+- `src/portal/protocols/approval/` package (275 lines — re-exported only, never consumed)
+- `src/portal/persistence/inmemory_impl.py` (371 lines — not imported or tested)
+- `src/portal/config/schemas/` package (empty docstring-only init)
+- `src/portal/observability/tracer.py` (208 lines — half-integrated, no OTLP wired)
+
+### Fixed
+- **`TelegramInterface` standalone entrypoint** — removed broken `main()` function that called `TelegramInterface()` with no arguments (constructor requires `agent_core` and `settings`).
+- **`lifecycle.py` Path coercion** — `_config_watch_path = self.config_path or _Path("portal.yaml")` replaced with `_Path(self.config_path) if self.config_path else _Path("portal.yaml")` so a bare string `config_path` no longer causes `AttributeError` on `.exists()`.
+- **`docker_sandbox.py` broken import** — `from base_tool import ...` with `sys.path.insert` hack replaced with canonical `from portal.core.interfaces.tool import BaseTool, ...`.
+- **`ToolRegistry.validate_tool_parameters` dict/list crash** — parameter iteration now handles both `dict` (legacy format) and `list` of `ToolParameter` objects (current format).
+
+### Changed
+- **`protocols/mcp/__init__.py`** simplified to export only `MCPRegistry` after removal of dead connector and server modules.
+- **`redis` moved to optional dependency** — `redis>=5.0.0` moved from `[project.dependencies]` to `[project.optional-dependencies].redis` and included in `all`/`dev` groups. Only needed for HITL approval workflow.
+- **`media_tools/audio/` nesting flattened** — `audio_transcriber.py` promoted to `media_tools/audio_transcriber.py`; the empty `audio/` subdirectory is removed.
+- **`/health` endpoint** — now includes `mcp` key with results of `MCPRegistry.health_check_all()` when an MCP registry is attached to `AgentCore`.
+
+### Added
+- `tests/unit/test_bash_mcp_hardening.py` — 8 tests covering approved/denied/blocked/malformed/oversized/injected commands.
+- `tests/unit/test_math_safe_eval.py` — 13 tests covering correctness (polynomial, trig, constants) and security (import, open, exec, unknown vars/functions, attribute access).
+- `tests/unit/test_pickle_gating.py` — 6 tests covering flag-disabled (default), flag-enabled (`true`/`1`/`yes`), and JSON path.
+
+---
+
 ## [1.2.0] - 2026-02-26
 
 ### Fixed
