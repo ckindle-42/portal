@@ -48,7 +48,7 @@ class ContextManager:
     - Handles context window limits
     """
 
-    def __init__(self, db_path: Path | None = None, max_context_messages: int = 50):
+    def __init__(self, db_path: Path | None = None, max_context_messages: int = 50) -> None:
         """
         Initialize context manager
 
@@ -65,9 +65,9 @@ class ContextManager:
         # Initialize database (synchronous; called from __init__)
         self._init_db()
 
-        logger.info(f"ContextManager initialized: {self.db_path}")
+        logger.info("ContextManager initialized: %s", self.db_path)
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize database schema"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("PRAGMA journal_mode=WAL")
@@ -161,7 +161,7 @@ class ContextManager:
         content: str,
         interface: str,
         metadata: dict[str, Any] | None = None
-    ):
+    ) -> None:
         """
         Add a message to conversation history
 
@@ -174,7 +174,7 @@ class ContextManager:
         """
         metadata = metadata or {}
         await asyncio.to_thread(self._sync_add_message, chat_id, role, content, interface, metadata)
-        logger.debug(f"Added {role} message to {chat_id} from {interface}")
+        logger.debug("Added %s message to %s from %s", role, chat_id, interface)
 
     async def get_history(
         self,
@@ -231,8 +231,8 @@ class ContextManager:
         else:
             raise ValueError(f"Unsupported format: {format}")
 
-    async def clear_history(self, chat_id: str):
+    async def clear_history(self, chat_id: str) -> None:
         """Clear conversation history for a chat"""
         await asyncio.to_thread(self._sync_clear_history, chat_id)
-        logger.info(f"Cleared history for chat_id: {chat_id}")
+        logger.info("Cleared history for chat_id: %s", chat_id)
 

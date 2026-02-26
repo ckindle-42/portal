@@ -16,7 +16,7 @@ Example:
 watcher = ConfigWatcher(config_file="config.yaml")
 
 # Register callback for config changes
-def on_config_change(new_config):
+def on_config_change(new_config) -> None:
     print(f"Config changed: {new_config}")
 
 watcher.add_callback(on_config_change)
@@ -67,9 +67,9 @@ class ConfigWatcher:
         self._last_hash: str | None = None
         self._current_config: dict[str, Any] | None = None
 
-        logger.info(f"ConfigWatcher initialized for: {config_file}")
+        logger.info("ConfigWatcher initialized for: %s", config_file)
 
-    def add_callback(self, callback: Callable[[dict[str, Any]], None]):
+    def add_callback(self, callback: Callable[[dict[str, Any]], None]) -> None:
         """
         Add a callback to be called when config changes.
 
@@ -77,9 +77,9 @@ class ConfigWatcher:
             callback: Function to call with new config
         """
         self._callbacks.append(callback)
-        logger.info(f"Added config change callback: {callback.__name__}")
+        logger.info("Added config change callback: %s", callback.__name__)
 
-    async def start(self):
+    async def start(self) -> None:
         """Start watching the config file"""
         if self._running:
             logger.warning("ConfigWatcher already running")
@@ -93,9 +93,9 @@ class ConfigWatcher:
         # Start watch loop
         self._task = asyncio.create_task(self._watch_loop())
 
-        logger.info(f"ConfigWatcher started, checking every {self.check_interval}s")
+        logger.info("ConfigWatcher started, checking every %ss", self.check_interval)
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop watching the config file"""
         if not self._running:
             return
@@ -111,7 +111,7 @@ class ConfigWatcher:
 
         logger.info("ConfigWatcher stopped")
 
-    async def _watch_loop(self):
+    async def _watch_loop(self) -> None:
         """Main watch loop"""
         while self._running:
             try:
@@ -127,12 +127,12 @@ class ConfigWatcher:
                 break
 
             except Exception as e:
-                logger.exception(f"Error in config watch loop: {e}")
+                logger.exception("Error in config watch loop: %s", e)
 
-    async def _check_for_changes(self):
+    async def _check_for_changes(self) -> None:
         """Check if config file has changed"""
         if not self.config_file.exists():
-            logger.warning(f"Config file not found: {self.config_file}")
+            logger.warning("Config file not found: %s", self.config_file)
             return
 
         # Calculate file hash
@@ -140,14 +140,14 @@ class ConfigWatcher:
 
         # Compare with last known hash
         if file_hash != self._last_hash:
-            logger.info(f"Config file changed: {self.config_file}")
+            logger.info("Config file changed: %s", self.config_file)
             await self._reload_config()
             self._last_hash = file_hash
 
-    async def _load_config(self):
+    async def _load_config(self) -> None:
         """Load config for the first time"""
         if not self.config_file.exists():
-            logger.error(f"Config file not found: {self.config_file}")
+            logger.error("Config file not found: %s", self.config_file)
             return
 
         try:
@@ -155,12 +155,12 @@ class ConfigWatcher:
             self._current_config = config
             self._last_hash = self._calculate_hash(self.config_file)
 
-            logger.info(f"Config loaded: {self.config_file}")
+            logger.info("Config loaded: %s", self.config_file)
 
         except Exception as e:
-            logger.exception(f"Failed to load config: {e}")
+            logger.exception("Failed to load config: %s", e)
 
-    async def _reload_config(self):
+    async def _reload_config(self) -> None:
         """Reload config when file changes"""
         try:
             # Read new config
@@ -185,17 +185,17 @@ class ConfigWatcher:
                         await result
 
                 except Exception as e:
-                    logger.exception(f"Config callback failed: {e}")
+                    logger.exception("Config callback failed: %s", e)
 
                     # Rollback on callback failure
                     self._current_config = old_config
                     logger.warning("Rolled back to previous config due to callback failure")
                     return
 
-            logger.info(f"Config reloaded successfully: {self.config_file}")
+            logger.info("Config reloaded successfully: %s", self.config_file)
 
         except Exception as e:
-            logger.exception(f"Failed to reload config: {e}")
+            logger.exception("Failed to reload config: %s", e)
 
     def _read_config_file(self, file_path: Path) -> dict[str, Any]:
         """

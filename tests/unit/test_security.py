@@ -95,7 +95,7 @@ class TestRateLimiter:
         user_id = "test_user_unique"
 
         for i in range(3):
-            allowed = await limiter.check_rate_limit(user_id)
+            allowed, _ = await limiter.check_limit(user_id)
             assert allowed, f"Request {i+1} was incorrectly blocked"
 
 

@@ -175,7 +175,7 @@ class Watchdog:
         health_check: Callable[[], Awaitable[HealthCheckResult]],
         restart_func: Callable[[], Awaitable[None]] | None = None,
         critical: bool = True
-    ):
+    ) -> None:
         """
         Register a component for monitoring.
 
@@ -195,12 +195,13 @@ class Watchdog:
         self._components[name] = component
 
         logger.info(
-            f"Registered component for monitoring: {name}",
+            "Registered component for monitoring: %s",
+            name,
             critical=critical,
             has_restart_func=restart_func is not None
         )
 
-    def unregister_component(self, name: str):
+    def unregister_component(self, name: str) -> None:
         """
         Unregister a component.
 
@@ -209,9 +210,9 @@ class Watchdog:
         """
         if name in self._components:
             del self._components[name]
-            logger.info(f"Unregistered component: {name}")
+            logger.info("Unregistered component: %s", name)
 
-    async def start(self):
+    async def start(self) -> None:
         """Start watchdog monitoring"""
         if self._running:
             logger.warning("Watchdog already running")
@@ -226,7 +227,7 @@ class Watchdog:
             check_interval=self.config.check_interval_seconds
         )
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop watchdog monitoring"""
         if not self._running:
             return
@@ -242,7 +243,7 @@ class Watchdog:
 
         logger.info("Watchdog stopped")
 
-    async def _monitoring_loop(self):
+    async def _monitoring_loop(self) -> None:
         """Main monitoring loop"""
         try:
             while self._running:
@@ -254,7 +255,8 @@ class Watchdog:
                         await self._check_component(component)
                     except Exception as e:
                         logger.error(
-                            f"Error checking component {component.name}: {e}",
+                            "Error checking component %s: %s",
+                            component.name, e,
                             exc_info=True
                         )
 
@@ -265,9 +267,9 @@ class Watchdog:
             logger.info("Monitoring loop cancelled")
             raise
         except Exception as e:
-            logger.error(f"Fatal error in monitoring loop: {e}", exc_info=True)
+            logger.error("Fatal error in monitoring loop: %s", e, exc_info=True)
 
-    async def _check_component(self, component: MonitoredComponent):
+    async def _check_component(self, component: MonitoredComponent) -> None:
         """
         Check health of a single component.
 
@@ -284,7 +286,7 @@ class Watchdog:
             if result.status == HealthStatus.HEALTHY:
                 # Component is healthy
                 if component.health.state != ComponentState.HEALTHY:
-                    logger.info(f"Component {component.name} recovered")
+                    logger.info("Component %s recovered", component.name)
 
                 component.health.state = ComponentState.HEALTHY
                 component.health.consecutive_failures = 0
@@ -296,7 +298,8 @@ class Watchdog:
                 component.health.consecutive_failures += 1
 
                 logger.warning(
-                    f"Component {component.name} is degraded",
+                    "Component %s is degraded",
+                    component.name,
                     consecutive_failures=component.health.consecutive_failures,
                     message=result.message
                 )
@@ -308,7 +311,8 @@ class Watchdog:
                 component.health.last_error = result.message
 
                 logger.error(
-                    f"Component {component.name} failed",
+                    "Component %s failed",
+                    component.name,
                     consecutive_failures=component.health.consecutive_failures,
                     error=result.message
                 )
@@ -318,7 +322,7 @@ class Watchdog:
                     try:
                         self.on_component_failed(component.name, result.message)
                     except Exception as e:
-                        logger.error(f"Error in failure callback: {e}")
+                        logger.error("Error in failure callback: %s", e)
 
                 # Check if we should restart
                 if (component.critical and
@@ -334,11 +338,12 @@ class Watchdog:
             component.health.last_error = str(e)
 
             logger.error(
-                f"Health check failed for {component.name}: {e}",
+                "Health check failed for %s: %s",
+                component.name, e,
                 exc_info=True
             )
 
-    async def _restart_component(self, component: MonitoredComponent):
+    async def _restart_component(self, component: MonitoredComponent) -> None:
         """
         Restart a failed component.
 
@@ -346,12 +351,13 @@ class Watchdog:
             component: Component to restart
         """
         if not component.restart_func:
-            logger.warning(f"No restart function for component {component.name}")
+            logger.warning("No restart function for component %s", component.name)
             return
 
         if component.health.restart_count >= self.config.max_restart_attempts:
             logger.error(
-                f"Component {component.name} has exceeded max restart attempts ({self.config.max_restart_attempts})",
+                "Component %s has exceeded max restart attempts (%s)",
+                component.name, self.config.max_restart_attempts,
                 restart_count=component.health.restart_count
             )
             return
@@ -361,7 +367,8 @@ class Watchdog:
             component.health.restart_count += 1
 
             logger.info(
-                f"Restarting component {component.name}",
+                "Restarting component %s",
+                component.name,
                 restart_attempt=component.health.restart_count,
                 max_attempts=self.config.max_restart_attempts
             )
@@ -369,7 +376,7 @@ class Watchdog:
             # Apply backoff delay
             if component.health.restart_count > 1:
                 backoff = self.config.restart_backoff_seconds * (2 ** (component.health.restart_count - 1))
-                logger.info(f"Waiting {backoff}s before restart (exponential backoff)")
+                logger.info("Waiting %ss before restart (exponential backoff)", backoff)
                 await asyncio.sleep(backoff)
 
             # Execute restart
@@ -378,20 +385,20 @@ class Watchdog:
             component.health.last_restart_time = time.time()
             component.health.consecutive_failures = 0
 
-            logger.info(f"Component {component.name} restarted successfully")
+            logger.info("Component %s restarted successfully", component.name)
 
             # Trigger restart callback
             if self.on_component_restarted:
                 try:
                     self.on_component_restarted(component.name)
                 except Exception as e:
-                    logger.error(f"Error in restart callback: {e}")
+                    logger.error("Error in restart callback: %s", e)
 
         except Exception as e:
-            logger.error(f"Failed to restart component {component.name}: {e}", exc_info=True)
+            logger.error("Failed to restart component %s: %s", component.name, e, exc_info=True)
             component.health.state = ComponentState.FAILED
 
-    async def _check_system_resources(self):
+    async def _check_system_resources(self) -> None:
         """Monitor system-level resources"""
         try:
             # Memory usage
@@ -400,7 +407,8 @@ class Watchdog:
 
             if memory_percent > self.config.memory_threshold_percent:
                 logger.warning(
-                    f"High memory usage: {memory_percent:.1f}%",
+                    "High memory usage: %.1f%%",
+                    memory_percent,
                     memory_mb=memory_info.rss / (1024 * 1024),
                     threshold=self.config.memory_threshold_percent
                 )
@@ -410,12 +418,13 @@ class Watchdog:
 
             if cpu_percent > self.config.cpu_threshold_percent:
                 logger.warning(
-                    f"High CPU usage: {cpu_percent:.1f}%",
+                    "High CPU usage: %.1f%%",
+                    cpu_percent,
                     threshold=self.config.cpu_threshold_percent
                 )
 
         except Exception as e:
-            logger.error(f"Error checking system resources: {e}")
+            logger.error("Error checking system resources: %s", e)
 
     def get_component_status(self, name: str) -> dict[str, Any] | None:
         """
@@ -473,7 +482,7 @@ class Watchdog:
             'components': components_status
         }
 
-    async def force_restart(self, component_name: str):
+    async def force_restart(self, component_name: str) -> None:
         """
         Manually force restart of a component.
 
@@ -482,13 +491,13 @@ class Watchdog:
         """
         component = self._components.get(component_name)
         if not component:
-            logger.warning(f"Component {component_name} not found")
+            logger.warning("Component %s not found", component_name)
             return
 
-        logger.info(f"Forcing restart of component: {component_name}")
+        logger.info("Forcing restart of component: %s", component_name)
         await self._restart_component(component)
 
-    def reset_restart_count(self, component_name: str):
+    def reset_restart_count(self, component_name: str) -> None:
         """
         Reset restart count for a component.
 
@@ -499,7 +508,7 @@ class Watchdog:
         if component:
             component.health.restart_count = 0
             component.health.consecutive_failures = 0
-            logger.info(f"Reset restart count for component: {component_name}")
+            logger.info("Reset restart count for component: %s", component_name)
 
 
 # =============================================================================
@@ -509,7 +518,7 @@ class Watchdog:
 class WatchdogHealthCheck:
     """Health check provider for Watchdog system"""
 
-    def __init__(self, watchdog: Watchdog):
+    def __init__(self, watchdog: Watchdog) -> None:
         """
         Initialize watchdog health check.
 

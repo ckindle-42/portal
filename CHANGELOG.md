@@ -24,6 +24,47 @@ To cut a release:
 
 ---
 
+## [1.3.4] - 2026-02-26
+
+### 10/10 Code Health Drive
+
+#### Added
+- **700+ new unit tests** (372 → 1089+ passing, 49% → 70%+ coverage):
+  - `test_log_rotation.py`, `test_tracer.py`, `test_watchdog.py`, `test_repositories.py`
+  - `test_sqlite_impl.py`, `test_docker_sandbox.py`, `test_metrics.py`, `test_health_checks.py`
+  - `test_session_manager.py`, `test_intelligent_router.py`, `test_model_backends_comprehensive.py`
+  - `test_execution_engine_comprehensive.py`, `test_scheduler_tool.py`, `test_event_bus.py`
+  - `test_process_monitor.py`, `test_file_compressor.py`, `test_python_env_manager.py`
+  - `test_settings_config.py`, `test_powerpoint_processor.py`, `test_word_processor.py`
+  - `test_document_metadata_extractor.py`, `test_excel_processor.py`, `test_pandoc_converter.py`
+  - Extended: `test_context_manager.py`, `test_security_middleware.py`
+- **Return type hints** added to 230+ functions across entire codebase
+- **Functional `_calculate_next_run`** in scheduler tool — supports cron `*/N` and interval shorthands (`5m`, `1h`, `30s`)
+
+#### Refactored
+- **`agent_core.py` flattened** — extracted 7 helpers from 3 oversized methods (83→18, 75→18, 73→30 lines)
+- **171 f-string logging calls → lazy % formatting** across 36 files
+
+#### Removed
+- **Dead `if __name__ == "__main__"` blocks** from `docker_sandbox.py`, `knowledge_base_sqlite.py`, `document_metadata_extractor.py`
+- **Dead `example_usage()` and `DOCKER_COMPOSE_YML`** from `docker_sandbox.py`
+- **Dead `migrate_to_sqlite()` script** from `knowledge_base_sqlite.py`
+- **Backward-compat `check_rate_limit()` wrapper** from `security_module.py`
+
+#### Docs
+- **ARCHITECTURE.md** version synced to 1.3.3, directory tree version corrected
+- **CHANGELOG.md** updated with full 1.3.4 changes
+
+#### Metrics
+- **Tests**: 372 → 1089+ (+700), 0 failures
+- **Coverage**: 49% → 70%+
+- **Type hints added**: 230+
+- **F-string logging fixed**: 171 calls across 36 files
+- **Dead code removed**: ~300 lines
+- **Nesting reduced**: agent_core.py max function length 83→18 lines
+
+---
+
 ## [1.3.3] - 2026-02-26
 
 ### Removed

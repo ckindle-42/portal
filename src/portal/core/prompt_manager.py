@@ -29,7 +29,7 @@ class PromptManager:
     - Cacheable: Reduce file I/O with smart caching
     """
 
-    def __init__(self, prompts_dir: Path | None = None, cache_ttl_seconds: int = 300):
+    def __init__(self, prompts_dir: Path | None = None, cache_ttl_seconds: int = 300) -> None:
         """
         Initialize prompt manager
 
@@ -43,7 +43,7 @@ class PromptManager:
         # Cache: {template_name: (timestamp, content)}
         self._cache: dict[str, tuple[float, str]] = {}
 
-        logger.info(f"PromptManager initialized: {self.prompts_dir}")
+        logger.info("PromptManager initialized: %s", self.prompts_dir)
 
     def load_template(self, template_name: str, use_cache: bool = True) -> str:
         """
@@ -62,7 +62,7 @@ class PromptManager:
             age = datetime.now(tz=UTC).timestamp() - timestamp
 
             if age < self.cache_ttl_seconds:
-                logger.debug(f"Using cached template: {template_name}")
+                logger.debug("Using cached template: %s", template_name)
                 return content
 
         # Load from file
@@ -75,14 +75,14 @@ class PromptManager:
             # Update cache
             self._cache[template_name] = (datetime.now(tz=UTC).timestamp(), content)
 
-            logger.debug(f"Loaded template: {template_name}")
+            logger.debug("Loaded template: %s", template_name)
             return content
 
         except FileNotFoundError:
-            logger.warning(f"Template not found: {template_name}")
+            logger.warning("Template not found: %s", template_name)
             return ""
         except Exception as e:
-            logger.error(f"Error loading template {template_name}: {e}")
+            logger.error("Error loading template %s: %s", template_name, e)
             return ""
 
     def build_system_prompt(

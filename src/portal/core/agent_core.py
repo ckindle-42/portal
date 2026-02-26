@@ -319,7 +319,7 @@ class AgentCore:
 
         await self.event_bus.publish(EventType.PROCESSING_FAILED, chat_id, error_payload, trace_id)
 
-    async def _load_context(self, chat_id: str, trace_id: str):
+    async def _load_context(self, chat_id: str, trace_id: str) -> None:
         """Load conversation context"""
         history = await self.context_manager.get_history(chat_id, limit=10)
 
@@ -332,7 +332,7 @@ class AgentCore:
 
         logger.debug("Context loaded", chat_id=chat_id, message_count=len(history))
 
-    async def _save_user_message(self, chat_id: str, message: str, interface: str):
+    async def _save_user_message(self, chat_id: str, message: str, interface: str) -> None:
         """
         Save user message to context immediately upon receipt
 
@@ -346,7 +346,7 @@ class AgentCore:
         )
         logger.debug("User message saved", chat_id=chat_id)
 
-    async def _save_assistant_response(self, chat_id: str, response: str, interface: str):
+    async def _save_assistant_response(self, chat_id: str, response: str, interface: str) -> None:
         """
         Save assistant response to context after generation
 
@@ -712,7 +712,7 @@ class AgentCore:
             )
         logger.info("Tool execution approved", tool=tool_name, chat_id=chat_id)
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Cleanup resources"""
         logger.info("Cleaning up AgentCore...")
         if self.mcp_registry and hasattr(self.mcp_registry, 'close'):

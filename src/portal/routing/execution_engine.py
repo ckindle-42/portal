@@ -80,7 +80,7 @@ class CircuitBreaker:
                 # Transition to half-open for testing
                 self.states[backend_id] = CircuitState.HALF_OPEN
                 self.half_open_calls[backend_id] = 0
-                logger.info(f"Circuit breaker for {backend_id}: OPEN -> HALF_OPEN")
+                logger.info("Circuit breaker for %s: OPEN -> HALF_OPEN", backend_id)
                 return True, "circuit_testing_recovery"
             else:
                 # Still in timeout period
@@ -97,7 +97,7 @@ class CircuitBreaker:
 
         return False, "circuit_unknown_state"
 
-    def record_success(self, backend_id: str):
+    def record_success(self, backend_id: str) -> None:
         """Record successful request"""
         state = self.states[backend_id]
 
@@ -106,12 +106,12 @@ class CircuitBreaker:
             self.states[backend_id] = CircuitState.CLOSED
             self.failure_counts[backend_id] = 0
             self.half_open_calls[backend_id] = 0
-            logger.info(f"Circuit breaker for {backend_id}: HALF_OPEN -> CLOSED (recovered)")
+            logger.info("Circuit breaker for %s: HALF_OPEN -> CLOSED (recovered)", backend_id)
         elif state == CircuitState.CLOSED:
             # Reset failure count on success
             self.failure_counts[backend_id] = max(0, self.failure_counts[backend_id] - 1)
 
-    def record_failure(self, backend_id: str):
+    def record_failure(self, backend_id: str) -> None:
         """Record failed request"""
         state = self.states[backend_id]
         self.failure_counts[backend_id] += 1
@@ -120,27 +120,28 @@ class CircuitBreaker:
         if state == CircuitState.HALF_OPEN:
             # Failed during testing, reopen circuit
             self.states[backend_id] = CircuitState.OPEN
-            logger.warning(f"Circuit breaker for {backend_id}: HALF_OPEN -> OPEN (test failed)")
+            logger.warning("Circuit breaker for %s: HALF_OPEN -> OPEN (test failed)", backend_id)
 
         elif state == CircuitState.CLOSED:
             # Check if threshold exceeded
             if self.failure_counts[backend_id] >= self.failure_threshold:
                 self.states[backend_id] = CircuitState.OPEN
                 logger.warning(
-                    f"Circuit breaker for {backend_id}: CLOSED -> OPEN "
-                    f"({self.failure_counts[backend_id]} failures)"
+                    "Circuit breaker for %s: CLOSED -> OPEN (%s failures)",
+                    backend_id,
+                    self.failure_counts[backend_id],
                 )
 
     def get_state(self, backend_id: str) -> CircuitState:
         """Get current circuit state for backend"""
         return self.states[backend_id]
 
-    def reset(self, backend_id: str):
+    def reset(self, backend_id: str) -> None:
         """Manually reset circuit for backend"""
         self.states[backend_id] = CircuitState.CLOSED
         self.failure_counts[backend_id] = 0
         self.half_open_calls[backend_id] = 0
-        logger.info(f"Circuit breaker for {backend_id}: manually reset to CLOSED")
+        logger.info("Circuit breaker for %s: manually reset to CLOSED", backend_id)
 
 
 @dataclass
@@ -241,20 +242,20 @@ class ExecutionEngine:
                 # Get backend
                 backend = self.backends.get(model.backend)
                 if not backend:
-                    logger.warning(f"No backend for {model.backend}")
+                    logger.warning("No backend for %s", model.backend)
                     continue
 
                 # Check circuit breaker (v4.6.2: Skip if disabled)
                 if self.circuit_breaker:
                     allowed, reason = self.circuit_breaker.should_allow_request(model.backend)
                     if not allowed:
-                        logger.info(f"Circuit breaker blocked {model.backend}: {reason}")
+                        logger.info("Circuit breaker blocked %s: %s", model.backend, reason)
                         fallbacks_used += 1
                         continue
 
                 # Check availability
                 if not await backend.is_available():
-                    logger.warning(f"Backend {model.backend} not available")
+                    logger.warning("Backend %s not available", model.backend)
                     if self.circuit_breaker:
                         self.circuit_breaker.record_failure(model.backend)
                     continue
@@ -293,7 +294,7 @@ class ExecutionEngine:
                         self.circuit_breaker.record_failure(model.backend)
                     last_error = result.error
                     fallbacks_used += 1
-                    logger.warning(f"Model {model_id} failed: {result.error}")
+                    logger.warning("Model %s failed: %s", model_id, result.error)
 
             except Exception as e:
                 # Record exception as failure
@@ -301,7 +302,7 @@ class ExecutionEngine:
                     self.circuit_breaker.record_failure(model.backend)
                 last_error = str(e)
                 fallbacks_used += 1
-                logger.error(f"Error with model {model_id}: {e}")
+                logger.error("Error with model %s: %s", model_id, e)
 
         # All models failed
         elapsed = (time.time() - start_time) * 1000
@@ -372,17 +373,17 @@ class ExecutionEngine:
 
             backend = self.backends.get(model.backend)
             if not backend:
-                logger.warning(f"No backend for {model.backend}")
+                logger.warning("No backend for %s", model.backend)
                 continue
 
             if self.circuit_breaker:
                 allowed, reason = self.circuit_breaker.should_allow_request(model.backend)
                 if not allowed:
-                    logger.info(f"Circuit breaker blocked {model.backend}: {reason}")
+                    logger.info("Circuit breaker blocked %s: %s", model.backend, reason)
                     continue
 
             if not await backend.is_available():
-                logger.warning(f"Backend {model.backend} not available for streaming")
+                logger.warning("Backend %s not available for streaming", model.backend)
                 if self.circuit_breaker:
                     self.circuit_breaker.record_failure(model.backend)
                 continue
@@ -403,7 +404,7 @@ class ExecutionEngine:
                     self.circuit_breaker.record_success(model.backend)
                 return
             except Exception as e:
-                logger.error(f"Streaming error with model {model_id}: {e}")
+                logger.error("Streaming error with model %s: %s", model_id, e)
                 if self.circuit_breaker:
                     self.circuit_breaker.record_failure(model.backend)
                 continue
@@ -422,7 +423,7 @@ class ExecutionEngine:
 
         return await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def close(self):
+    async def close(self) -> None:
         """Close all backends"""
         for backend in self.backends.values():
             if hasattr(backend, 'close'):
@@ -460,7 +461,7 @@ class ExecutionEngine:
                     'circuit_state': self.circuit_breaker.get_state(name).value if self.circuit_breaker else 'disabled',
                     'error': str(e)
                 }
-                logger.error(f"Health check failed for {name}: {e}")
+                logger.error("Health check failed for %s: %s", name, e)
 
         return health
 
@@ -487,7 +488,7 @@ class ExecutionEngine:
 
         return status
 
-    def reset_circuit_breaker(self, backend_name: str):
+    def reset_circuit_breaker(self, backend_name: str) -> None:
         """
         Manually reset circuit breaker for a backend
 
@@ -499,11 +500,11 @@ class ExecutionEngine:
 
         if backend_name in self.backends:
             self.circuit_breaker.reset(backend_name)
-            logger.info(f"Manually reset circuit breaker for {backend_name}")
+            logger.info("Manually reset circuit breaker for %s", backend_name)
         else:
-            logger.warning(f"Unknown backend: {backend_name}")
+            logger.warning("Unknown backend: %s", backend_name)
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """
         Cleanup resources
 

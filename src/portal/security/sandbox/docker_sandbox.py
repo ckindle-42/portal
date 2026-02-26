@@ -26,7 +26,6 @@ Performance:
 - Total overhead: ~200-800ms
 """
 
-import asyncio
 import logging
 import tempfile
 import uuid
@@ -73,7 +72,7 @@ class SandboxConfig:
     python_version: str = "3.11"  # Python version
     packages: list[str] = None  # Pre-installed packages
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.drop_capabilities is None:
             # Drop all capabilities for maximum security
             self.drop_capabilities = ["ALL"]
@@ -95,7 +94,7 @@ class DockerPythonSandbox:
     Creates ephemeral containers that execute code and are destroyed immediately.
     """
 
-    def __init__(self, config: SandboxConfig | None = None):
+    def __init__(self, config: SandboxConfig | None = None) -> None:
         """Initialize sandbox"""
 
         if not DOCKER_AVAILABLE:
@@ -110,25 +109,25 @@ class DockerPythonSandbox:
             self.docker_client = docker.from_env()
             logger.info("✅ Docker client initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize Docker client: {e}")
+            logger.error("Failed to initialize Docker client: %s", e)
             raise RuntimeError(f"Docker not available: {e}")
 
         # Check/build sandbox image
         self._ensure_image()
 
-    def _ensure_image(self):
+    def _ensure_image(self) -> None:
         """Ensure sandbox Docker image exists"""
 
         try:
             # Check if image exists
             self.docker_client.images.get(self.image_name)
-            logger.info(f"✅ Sandbox image exists: {self.image_name}")
+            logger.info("Sandbox image exists: %s", self.image_name)
 
         except docker.errors.ImageNotFound:
-            logger.info(f"🔨 Building sandbox image: {self.image_name}")
+            logger.info("Building sandbox image: %s", self.image_name)
             self._build_image()
 
-    def _build_image(self):
+    def _build_image(self) -> None:
         """Build sandbox Docker image"""
 
         # Create Dockerfile
@@ -166,10 +165,10 @@ CMD ["python3"]
                     rm=True,
                     forcerm=True
                 )
-                logger.info(f"✅ Image built: {self.image_name}")
+                logger.info("Image built: %s", self.image_name)
 
         except Exception as e:
-            logger.error(f"Failed to build image: {e}")
+            logger.error("Failed to build image: %s", e)
             raise
 
     async def execute_code(
@@ -242,7 +241,7 @@ CMD ["python3"]
                 exit_code = result['StatusCode']
             except Exception as e:
                 # Timeout or other error
-                logger.warning(f"Container execution timeout or error: {e}")
+                logger.warning("Container execution timeout or error: %s", e)
                 container.kill()
                 exit_code = -1
 
@@ -266,7 +265,7 @@ CMD ["python3"]
             }
 
         except Exception as e:
-            logger.error(f"Sandbox execution error: {e}")
+            logger.error("Sandbox execution error: %s", e)
             return {
                 'success': False,
                 'stdout': '',
@@ -304,7 +303,7 @@ CMD ["python3"]
                 'container_id': 'N/A'
             }
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup resources"""
         if self.docker_client:
             self.docker_client.close()
@@ -323,7 +322,7 @@ class DockerPythonExecutionTool(BaseTool):
 
     _sandbox: DockerPythonSandbox | None = None
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         # Initialize sandbox (shared across tool instances)
@@ -335,7 +334,7 @@ class DockerPythonExecutionTool(BaseTool):
             try:
                 DockerPythonExecutionTool._sandbox = DockerPythonSandbox()
             except Exception as e:
-                logger.error(f"Failed to initialize sandbox: {e}")
+                logger.error("Failed to initialize sandbox: %s", e)
 
     def _get_metadata(self) -> ToolMetadata:
         return ToolMetadata(
@@ -446,7 +445,7 @@ CMD ["python3"]
 """
 
     @staticmethod
-    def save_dockerfile(content: str, path: str):
+    def save_dockerfile(content: str, path: str) -> None:
         """Save Dockerfile to disk"""
         Path(path).write_text(content)
 
@@ -455,101 +454,3 @@ CMD ["python3"]
 # USAGE EXAMPLES
 # ============================================================================
 
-async def example_usage():
-    """Example usage of Docker sandbox"""
-
-    print("=" * 60)
-    print("Docker Python Sandbox - Examples")
-    print("=" * 60)
-
-    # Initialize sandbox
-    sandbox = DockerPythonSandbox()
-
-    # Example 1: Simple calculation
-    print("\n1. Simple Calculation:")
-    result = await sandbox.execute_code("""
-print("Hello from Docker!")
-print(f"2 + 2 = {2 + 2}")
-""")
-
-    print(f"Success: {result['success']}")
-    print(f"Output: {result['stdout']}")
-    print(f"Time: {result['execution_time']:.2f}s")
-
-    # Example 2: Using numpy
-    print("\n2. Using NumPy:")
-    result = await sandbox.execute_code("""
-import numpy as np
-arr = np.array([1, 2, 3, 4, 5])
-print(f"Mean: {arr.mean()}")
-print(f"Sum: {arr.sum()}")
-""")
-
-    print(f"Success: {result['success']}")
-    print(f"Output: {result['stdout']}")
-
-    # Example 3: Network test (should fail)
-    print("\n3. Network Test (should fail):")
-    result = await sandbox.execute_code("""
-import socket
-try:
-    socket.create_connection(("google.com", 80), timeout=2)
-    print("Network access: ENABLED")
-except Exception as e:
-    print(f"Network access: DISABLED ({e})")
-""")
-
-    print(f"Output: {result['stdout']}")
-
-    # Example 4: Filesystem test
-    print("\n4. Filesystem Test:")
-    result = await sandbox.execute_code("""
-import os
-print(f"Current dir: {os.getcwd()}")
-print(f"Can write to /tmp: {os.access('/tmp', os.W_OK)}")
-print(f"Can write to /: {os.access('/', os.W_OK)}")
-""")
-
-    print(f"Output: {result['stdout']}")
-
-    # Cleanup
-    sandbox.cleanup()
-    print("\n✅ Examples complete!")
-
-
-# ============================================================================
-# DOCKER-COMPOSE FOR DEVELOPMENT
-# ============================================================================
-
-DOCKER_COMPOSE_YML = """
-version: '3.8'
-
-services:
-  telegram-agent:
-    build: .
-    volumes:
-      - ./data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock  # For Docker-in-Docker
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - DOCKER_SANDBOX_ENABLED=true
-    restart: unless-stopped
-
-  # Optional: Pre-built sandbox images
-  sandbox-python:
-    image: python-sandbox:3.11
-    profiles: ["sandbox"]  # Only start when needed
-"""
-
-
-if __name__ == "__main__":
-    if not DOCKER_AVAILABLE:
-        print("❌ Docker package not installed")
-        print("Install: pip install docker")
-    else:
-        print("✅ Docker package available")
-        print("\nRun examples:")
-        print("  python docker_sandbox.py")
-
-        # Run examples
-        asyncio.run(example_usage())

@@ -63,13 +63,13 @@ class PDFOCRTool(BaseTool):
 
         try:
             # Convert PDF to images
-            logger.info(f"Converting PDF to images: {pdf_path}")
+            logger.info("Converting PDF to images: %s", pdf_path)
             images = convert_from_path(str(pdf_path), dpi=dpi)
 
             # OCR each page
             text_pages = []
             for i, image in enumerate(images):
-                logger.info(f"Processing page {i+1}/{len(images)}")
+                logger.info("Processing page %s/%s", i + 1, len(images))
                 text = pytesseract.image_to_string(image, lang=language)
                 text_pages.append(text)
 

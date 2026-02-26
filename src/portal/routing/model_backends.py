@@ -103,7 +103,7 @@ class BaseHTTPBackend(ModelBackend):
 class OllamaBackend(BaseHTTPBackend):
     """Ollama backend adapter"""
 
-    def __init__(self, base_url: str = "http://localhost:11434"):
+    def __init__(self, base_url: str = "http://localhost:11434") -> None:
         super().__init__(base_url)
 
     @staticmethod
@@ -184,7 +184,7 @@ class OllamaBackend(BaseHTTPBackend):
                     )
 
         except Exception as e:
-            logger.error(f"Ollama generation error: {e}")
+            logger.error("Ollama generation error: %s", e)
             return GenerationResult(
                 text="",
                 tokens_generated=0,
@@ -229,7 +229,7 @@ class OllamaBackend(BaseHTTPBackend):
                             continue
 
         except Exception as e:
-            logger.error(f"Ollama stream error: {e}")
+            logger.error("Ollama stream error: %s", e)
             return
 
     async def is_available(self) -> bool:
@@ -250,14 +250,14 @@ class OllamaBackend(BaseHTTPBackend):
                     data = await response.json()
                     return [m["name"] for m in data.get("models", [])]
         except Exception as e:
-            logger.error(f"Failed to list Ollama models: {e}")
+            logger.error("Failed to list Ollama models: %s", e)
         return []
 
 
 class LMStudioBackend(BaseHTTPBackend):
     """LM Studio backend adapter (OpenAI-compatible API)"""
 
-    def __init__(self, base_url: str = "http://localhost:1234/v1"):
+    def __init__(self, base_url: str = "http://localhost:1234/v1") -> None:
         super().__init__(base_url)
 
     async def generate(self, prompt: str, model_name: str,
@@ -310,7 +310,7 @@ class LMStudioBackend(BaseHTTPBackend):
                     )
 
         except Exception as e:
-            logger.error(f"LM Studio generation error: {e}")
+            logger.error("LM Studio generation error: %s", e)
             return GenerationResult(
                 text="",
                 tokens_generated=0,
@@ -354,7 +354,7 @@ class LMStudioBackend(BaseHTTPBackend):
                             continue
 
         except Exception as e:
-            logger.error(f"LM Studio stream error: {e}")
+            logger.error("LM Studio stream error: %s", e)
             return
 
     async def is_available(self) -> bool:
@@ -375,31 +375,31 @@ class LMStudioBackend(BaseHTTPBackend):
                     data = await response.json()
                     return [m["id"] for m in data.get("data", [])]
         except Exception as e:
-            logger.error(f"Failed to list LM Studio models: {e}")
+            logger.error("Failed to list LM Studio models: %s", e)
         return []
 
 
 class MLXBackend(ModelBackend):
     """MLX backend adapter for Apple Silicon"""
 
-    def __init__(self, model_path: str | None = None):
+    def __init__(self, model_path: str | None = None) -> None:
         self.model_path = model_path
         self._model = None
         self._tokenizer = None
         self._available = None
 
-    async def _load_model(self, model_path: str):
+    async def _load_model(self, model_path: str) -> None:
         """Load MLX model"""
         try:
             from mlx_lm import load
             self._model, self._tokenizer = load(model_path)
             self._available = True
-            logger.info(f"Loaded MLX model: {model_path}")
+            logger.info("Loaded MLX model: %s", model_path)
         except ImportError:
             logger.warning("MLX not available (not on Apple Silicon?)")
             self._available = False
         except Exception as e:
-            logger.error(f"Failed to load MLX model: {e}")
+            logger.error("Failed to load MLX model: %s", e)
             self._available = False
 
     async def generate(self, prompt: str, model_name: str,
@@ -455,7 +455,7 @@ class MLXBackend(ModelBackend):
             )
 
         except Exception as e:
-            logger.error(f"MLX generation error: {e}")
+            logger.error("MLX generation error: %s", e)
             return GenerationResult(
                 text="",
                 tokens_generated=0,
@@ -479,7 +479,7 @@ class MLXBackend(ModelBackend):
             for i in range(0, len(result.text), chunk_size):
                 yield result.text[i:i+chunk_size]
         else:
-            logger.error(f"MLX stream error: {result.error}")
+            logger.error("MLX stream error: %s", result.error)
             return
 
     async def is_available(self) -> bool:

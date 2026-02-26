@@ -55,7 +55,7 @@ class PowerPointProcessorTool(BaseTool):
         "picture_caption": 8
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def _get_metadata(self) -> ToolMetadata:
@@ -193,7 +193,7 @@ class PowerPointProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"PowerPoint creation error: {e}")
+            logger.error("PowerPoint creation error: %s", e)
             return self._error_response(f"Creation error: {e}")
 
     async def _add_slide(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -250,7 +250,7 @@ class PowerPointProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"PowerPoint add slide error: {e}")
+            logger.error("PowerPoint add slide error: %s", e)
             return self._error_response(f"Add slide error: {e}")
 
     async def _add_image_to_slide(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -296,7 +296,7 @@ class PowerPointProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"PowerPoint add image error: {e}")
+            logger.error("PowerPoint add image error: %s", e)
             return self._error_response(f"Add image error: {e}")
 
     async def _add_chart_to_slide(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -353,7 +353,7 @@ class PowerPointProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"PowerPoint add chart error: {e}")
+            logger.error("PowerPoint add chart error: %s", e)
             return self._error_response(f"Add chart error: {e}")
 
     async def _read_presentation(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -406,7 +406,7 @@ class PowerPointProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"PowerPoint read error: {e}")
+            logger.error("PowerPoint read error: %s", e)
             return self._error_response(f"Read error: {e}")
 
     async def _save_presentation(self, parameters: dict[str, Any]) -> dict[str, Any]:

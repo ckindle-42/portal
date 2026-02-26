@@ -151,6 +151,32 @@ class JobSchedulerTool(BaseTool):
         })
 
     def _calculate_next_run(self, schedule: str) -> str:
-        """Calculate next run time (simplified)"""
-        # In production, use croniter or APScheduler for accurate calculation
-        return datetime.now(tz=UTC).isoformat()
+        """Calculate next run time from a cron expression or interval shorthand.
+
+        Supports:
+        - Interval shorthand: '5m', '1h', '30s'
+        - Cron expressions: '*/5 * * * *' (minute field only for next-run estimate)
+        """
+        now = datetime.now(tz=UTC)
+
+        # Handle interval shorthand (e.g., '5m', '1h', '30s')
+        if schedule and schedule[-1] in ('s', 'm', 'h') and schedule[:-1].isdigit():
+            from datetime import timedelta
+            value = int(schedule[:-1])
+            unit = schedule[-1]
+            deltas = {'s': timedelta(seconds=value), 'm': timedelta(minutes=value), 'h': timedelta(hours=value)}
+            return (now + deltas[unit]).isoformat()
+
+        # Handle basic cron: extract minute field for simple next-run estimate
+        parts = schedule.strip().split()
+        if len(parts) >= 5:
+            minute_field = parts[0]
+            if minute_field.startswith('*/') and minute_field[2:].isdigit():
+                from datetime import timedelta
+                interval = int(minute_field[2:])
+                minutes_until = interval - (now.minute % interval)
+                return (now + timedelta(minutes=minutes_until)).replace(second=0, microsecond=0).isoformat()
+
+        # Fallback: next run in 1 hour
+        from datetime import timedelta
+        return (now + timedelta(hours=1)).isoformat()

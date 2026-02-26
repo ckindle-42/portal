@@ -41,7 +41,7 @@ class WordProcessorTool(BaseTool):
     Perfect for generating reports, contracts, and professional documents.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def _get_metadata(self) -> ToolMetadata:
@@ -191,7 +191,7 @@ class WordProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Word creation error: {e}")
+            logger.error("Word creation error: %s", e)
             return self._error_response(f"Creation error: {e}")
 
     async def _add_heading(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -223,7 +223,7 @@ class WordProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Word add heading error: {e}")
+            logger.error("Word add heading error: %s", e)
             return self._error_response(f"Add heading error: {e}")
 
     async def _add_paragraph(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -273,7 +273,7 @@ class WordProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Word add paragraph error: {e}")
+            logger.error("Word add paragraph error: %s", e)
             return self._error_response(f"Add paragraph error: {e}")
 
     async def _add_table(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -331,7 +331,7 @@ class WordProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Word add table error: {e}")
+            logger.error("Word add table error: %s", e)
             return self._error_response(f"Add table error: {e}")
 
     async def _add_image(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -363,7 +363,7 @@ class WordProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Word add image error: {e}")
+            logger.error("Word add image error: %s", e)
             return self._error_response(f"Add image error: {e}")
 
     async def _read_document(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -415,7 +415,7 @@ class WordProcessorTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Word read error: {e}")
+            logger.error("Word read error: %s", e)
             return self._error_response(f"Read error: {e}")
 
     async def _save_document(self, parameters: dict[str, Any]) -> dict[str, Any]:

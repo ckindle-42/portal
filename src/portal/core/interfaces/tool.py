@@ -54,7 +54,7 @@ class BaseTool(ABC):
     - execute(parameters): Execute the tool
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._metadata: ToolMetadata | None = None
 
     @property
@@ -140,5 +140,5 @@ class BaseTool(ABC):
         try:
             return await self.execute(parameters)
         except Exception as e:
-            logger.error(f"Tool {self.metadata.name} execution error: {e}")
+            logger.error("Tool %s execution error: %s", self.metadata.name, e)
             return self._error_response(str(e))

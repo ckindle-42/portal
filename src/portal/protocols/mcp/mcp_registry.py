@@ -63,7 +63,7 @@ class MCPRegistry:
             "transport": transport,
             "api_key": api_key,
         }
-        logger.info(f"Registered MCP server '{name}' at {url} ({transport})")
+        logger.info("Registered MCP server '%s' at %s (%s)", name, url, transport)
 
     async def health_check(self, name: str) -> bool:
         """Return True if the named server is reachable."""

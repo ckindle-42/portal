@@ -71,7 +71,7 @@ class ModelMetadata:
 class ModelRegistry:
     """Registry of available models with metadata"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.models: dict[str, ModelMetadata] = {}
         self._register_default_models()
 
@@ -144,7 +144,7 @@ class ModelRegistry:
         for spec in _defaults:
             self.register(ModelMetadata(**spec))
 
-    def register(self, model: ModelMetadata):
+    def register(self, model: ModelMetadata) -> None:
         """Register a model"""
         self.models[model.model_id] = model
 
@@ -207,7 +207,7 @@ class ModelRegistry:
         """Get all registered models"""
         return list(self.models.values())
 
-    def update_availability(self, model_id: str, available: bool):
+    def update_availability(self, model_id: str, available: bool) -> None:
         """Update model availability"""
         if model_id in self.models:
             self.models[model_id].available = available

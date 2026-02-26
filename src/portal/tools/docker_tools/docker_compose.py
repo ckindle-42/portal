@@ -102,7 +102,7 @@ class DockerComposeTool(BaseTool):
                 cmd.extend(services)
 
             # Execute command asynchronously
-            logger.info(f"Running: {' '.join(cmd)}")
+            logger.info("Running: %s", ' '.join(cmd))
 
             process = await asyncio.create_subprocess_exec(
                 *cmd,

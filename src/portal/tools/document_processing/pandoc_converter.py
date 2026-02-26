@@ -68,7 +68,7 @@ class PandocConverterTool(BaseTool):
         "xlsx": ["xlsx"],  # Excel (limited support)
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         # Template directory
@@ -146,7 +146,7 @@ class PandocConverterTool(BaseTool):
             ]
         )
 
-    def _install_default_templates(self):
+    def _install_default_templates(self) -> None:
         """Install default Pandoc templates"""
 
         # Simple HTML template
@@ -246,8 +246,8 @@ $body$
             )
 
             # Execute conversion
-            logger.info(f"Converting {input_file} ({from_format}) → {output_file} ({to_format})")
-            logger.debug(f"Command: {' '.join(cmd)}")
+            logger.info("Converting %s (%s) → %s (%s)", input_file, from_format, output_file, to_format)
+            logger.debug("Command: %s", ' '.join(cmd))
 
             result = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -282,7 +282,7 @@ $body$
             )
 
         except Exception as e:
-            logger.error(f"Pandoc conversion error: {e}")
+            logger.error("Pandoc conversion error: %s", e)
             return self._error_response(f"Conversion error: {e}")
 
     async def _build_pandoc_command(

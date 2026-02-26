@@ -25,7 +25,7 @@ def _check_ports_available(ports: list[tuple[int, str]]) -> list[str]:
 
 @click.group()
 @click.version_option(package_name="portal")
-def cli():
+def cli() -> None:
     """Portal — Local AI platform management."""
     pass
 
@@ -39,7 +39,7 @@ def cli():
     default=None,
     help="Hardware profile (auto-detected if omitted)",
 )
-def up(minimal: bool, skip_port_check: bool, profile: str | None):
+def up(minimal: bool, skip_port_check: bool, profile: str | None) -> None:
     """Start the Portal stack."""
     if not skip_port_check:
         required_ports = [
@@ -84,7 +84,7 @@ def up(minimal: bool, skip_port_check: bool, profile: str | None):
 
 
 @cli.command()
-def down():
+def down() -> None:
     """Stop the Portal stack."""
     repo_root = Path(__file__).parent.parent.parent.parent
     unified = repo_root / "launch.sh"
@@ -116,7 +116,7 @@ def down():
 
 
 @cli.command()
-def doctor():
+def doctor() -> None:
     """Health check all Portal components."""
     import asyncio
 
@@ -126,7 +126,7 @@ def doctor():
 
 @cli.command()
 @click.argument("service", required=False)
-def logs(service: str | None):
+def logs(service: str | None) -> None:
     """Tail Portal logs. Optional: specify service name."""
     log_dir = Path.home() / ".portal" / "logs"
     if service:

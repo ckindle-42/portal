@@ -53,7 +53,7 @@ class ExecutionSession:
     execution_count: int = 0
     variables: dict[str, Any] = field(default_factory=dict)
 
-    def touch(self):
+    def touch(self) -> None:
         """Update last_used_at timestamp"""
         self.last_used_at = datetime.utcnow()
 
@@ -110,13 +110,13 @@ class SessionManager:
             max_sessions=max_sessions
         )
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the session manager and cleanup task"""
         if self._cleanup_task is None:
             self._cleanup_task = asyncio.create_task(self._cleanup_loop())
             logger.info("SessionManager started")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the session manager and cleanup all sessions"""
         self._shutdown = True
 
@@ -227,7 +227,7 @@ class SessionManager:
 
         return session
 
-    async def _init_docker_session(self, session: ExecutionSession):
+    async def _init_docker_session(self, session: ExecutionSession) -> None:
         """
         Initialize a Docker container for the session
 
@@ -245,7 +245,7 @@ class SessionManager:
         logger.debug("Initializing Docker session (placeholder)")
         session.container_id = f"placeholder-{session.session_id[:8]}"
 
-    async def _init_jupyter_session(self, session: ExecutionSession):
+    async def _init_jupyter_session(self, session: ExecutionSession) -> None:
         """
         Initialize a Jupyter kernel for the session
 
@@ -302,7 +302,7 @@ class SessionManager:
             'execution_count': session.execution_count + 1
         }
 
-    async def _cleanup_loop(self):
+    async def _cleanup_loop(self) -> None:
         """Background task to cleanup idle sessions"""
         while not self._shutdown:
             try:
@@ -321,9 +321,9 @@ class SessionManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Cleanup loop error: {e}", exc_info=True)
+                logger.error("Cleanup loop error: %s", e, exc_info=True)
 
-    async def _cleanup_session(self, session: ExecutionSession):
+    async def _cleanup_session(self, session: ExecutionSession) -> None:
         """Cleanup a single session"""
         logger.info(
             f"Cleaning up session {session.session_id}",
@@ -343,7 +343,7 @@ class SessionManager:
         # Remove from sessions
         self._sessions.pop(session.chat_id, None)
 
-    async def _cleanup_oldest_session(self):
+    async def _cleanup_oldest_session(self) -> None:
         """Cleanup the oldest session to make room for new ones"""
         if not self._sessions:
             return

@@ -19,7 +19,7 @@ except ImportError:
 class DockerPSTool(BaseTool):
     """List Docker containers"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.client = None
 

@@ -65,7 +65,7 @@ class TelegramInterface:
     - settings: Application settings (for telegram, security, tools config)
     """
 
-    def __init__(self, agent_core: 'AgentCore', settings: 'Settings'):
+    def __init__(self, agent_core: 'AgentCore', settings: 'Settings') -> None:
         """
         Initialize Telegram interface with injected dependencies
 
@@ -136,7 +136,8 @@ class TelegramInterface:
                 self.agent_core.confirmation_middleware = self.confirmation_middleware
 
                 logger.info(
-                    f"Confirmation middleware enabled (admin_chat_id: {self.admin_chat_id})"
+                    "Confirmation middleware enabled (admin_chat_id: %s)",
+                    self.admin_chat_id,
                 )
 
         # Telegram application
@@ -144,8 +145,8 @@ class TelegramInterface:
 
         logger.info("=" * 60)
         logger.info("Telegram Interface ready!")
-        logger.info(f"  Bot token: {self.bot_token[:20]}...")
-        logger.info(f"  Authorized users: {len(self.authorized_user_ids)}")
+        logger.info("  Bot token: %s...", self.bot_token[:20])
+        logger.info("  Authorized users: %s", len(self.authorized_user_ids))
         logger.info("  Dependency Injection: ✓")
         logger.info("=" * 60)
 
@@ -165,7 +166,7 @@ class TelegramInterface:
     # CONFIRMATION MIDDLEWARE INTEGRATION
     # ========================================================================
 
-    async def _send_confirmation_request(self, request: ConfirmationRequest):
+    async def _send_confirmation_request(self, request: ConfirmationRequest) -> None:
         """
         Send a confirmation request to the admin via Telegram
 
@@ -217,7 +218,8 @@ class TelegramInterface:
             )
 
             logger.info(
-                f"Confirmation request sent to admin: {request.confirmation_id}",
+                "Confirmation request sent to admin: %s",
+                request.confirmation_id,
                 extra={
                     'tool_name': request.tool_name,
                     'confirmation_id': request.confirmation_id,
@@ -227,7 +229,8 @@ class TelegramInterface:
 
         except Exception as e:
             logger.error(
-                f"Failed to send confirmation request: {e}",
+                "Failed to send confirmation request: %s",
+                e,
                 exc_info=True
             )
             raise
@@ -272,7 +275,7 @@ class TelegramInterface:
                         f"The tool will now be executed.",
                         parse_mode='Markdown'
                     )
-                    logger.info(f"Tool execution approved: {confirmation_id}")
+                    logger.info("Tool execution approved: %s", confirmation_id)
                 else:
                     await query.edit_message_text(
                         "⚠️ **Confirmation Not Found**\n\n"
@@ -294,7 +297,7 @@ class TelegramInterface:
                         f"The tool execution has been cancelled.",
                         parse_mode='Markdown'
                     )
-                    logger.info(f"Tool execution denied: {confirmation_id}")
+                    logger.info("Tool execution denied: %s", confirmation_id)
                 else:
                     await query.edit_message_text(
                         "⚠️ **Confirmation Not Found**\n\n"
@@ -303,17 +306,17 @@ class TelegramInterface:
                     )
 
         except ValueError:
-            logger.error(f"Invalid callback data: {callback_data}", exc_info=True)
+            logger.error("Invalid callback data: %s", callback_data, exc_info=True)
             await query.edit_message_text("⚠️ Invalid callback data")
         except Exception as e:
-            logger.error(f"Error handling confirmation callback: {e}", exc_info=True)
+            logger.error("Error handling confirmation callback: %s", e, exc_info=True)
             await query.edit_message_text(f"⚠️ Error: {str(e)}")
 
     # ========================================================================
     # COMMAND HANDLERS
     # ========================================================================
 
-    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /start command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
@@ -334,7 +337,7 @@ class TelegramInterface:
 
         await update.message.reply_text(welcome, parse_mode='Markdown')
 
-    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /help command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
@@ -354,7 +357,7 @@ class TelegramInterface:
 
         await update.message.reply_text(help_text, parse_mode='Markdown')
 
-    async def tools_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def tools_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /tools command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
@@ -381,7 +384,7 @@ class TelegramInterface:
 
         await update.message.reply_text(message, parse_mode='Markdown')
 
-    async def stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /stats command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
@@ -403,7 +406,7 @@ class TelegramInterface:
 
         await update.message.reply_text(message, parse_mode='Markdown')
 
-    async def health_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def health_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /health command"""
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
@@ -429,7 +432,7 @@ class TelegramInterface:
     # MESSAGE HANDLER
     # ========================================================================
 
-    async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle text messages - the main interaction"""
 
         # Authorization check
@@ -447,7 +450,7 @@ class TelegramInterface:
         message = update.message.text
         chat_id = f"telegram_{update.effective_chat.id}"
 
-        logger.info(f"Received message from user {user_id}: {message[:50]}...")
+        logger.info("Received message from user %s: %s...", user_id, message[:50])
 
         # Show typing indicator
         await update.message.chat.send_action(ChatAction.TYPING)
@@ -494,7 +497,7 @@ class TelegramInterface:
                 await update.message.reply_text(response_text, parse_mode='Markdown')
 
         except Exception as e:
-            logger.error(f"Error handling message: {e}", exc_info=True)
+            logger.error("Error handling message: %s", e, exc_info=True)
             await update.message.reply_text(
                 f"⚠️ Error processing your request: {str(e)}"
             )
@@ -503,7 +506,7 @@ class TelegramInterface:
     # STARTUP & RUN
     # ========================================================================
 
-    def run(self):
+    def run(self) -> None:
         """Start the Telegram bot"""
 
         logger.info("Building Telegram application...")

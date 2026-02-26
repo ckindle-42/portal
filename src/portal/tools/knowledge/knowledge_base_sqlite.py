@@ -57,7 +57,7 @@ class EnhancedKnowledgeTool(BaseTool):
     _db_path: Path | None = None
     _embeddings_model: Any | None = None
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         # Initialize database path
@@ -129,7 +129,7 @@ class EnhancedKnowledgeTool(BaseTool):
             ]
         )
 
-    def _init_database(self):
+    def _init_database(self) -> None:
         """Initialize SQLite database with FTS5 and vector storage"""
 
         with sqlite3.connect(EnhancedKnowledgeTool._db_path) as conn:
@@ -200,7 +200,7 @@ class EnhancedKnowledgeTool(BaseTool):
             # Serialize as JSON bytes (safe alternative to pickle)
             return json.dumps(embedding.tolist()).encode('utf-8')
         except Exception as e:
-            logger.error(f"Embedding generation failed: {e}")
+            logger.error("Embedding generation failed: %s", e)
             return None
 
     def _deserialize_embedding(self, blob: bytes) -> np.ndarray | None:
@@ -222,10 +222,10 @@ class EnhancedKnowledgeTool(BaseTool):
                 )
                 return np.array(pickle.loads(blob))  # noqa: S301
             except Exception as e:
-                logger.error(f"Embedding deserialization failed (pickle fallback): {e}")
+                logger.error("Embedding deserialization failed (pickle fallback): %s", e)
                 return None
         except Exception as e:
-            logger.error(f"Embedding deserialization failed: {e}")
+            logger.error("Embedding deserialization failed: %s", e)
             return None
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -304,7 +304,7 @@ class EnhancedKnowledgeTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Failed to add document: {e}")
+            logger.error("Failed to add document: %s", e)
             return self._error_response(f"Database error: {e}")
 
     async def _search(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -383,7 +383,7 @@ class EnhancedKnowledgeTool(BaseTool):
                 )
 
         except Exception as e:
-            logger.error(f"Search failed: {e}")
+            logger.error("Search failed: %s", e)
             return self._error_response(f"Search error: {e}")
 
     async def _list_documents(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -520,7 +520,7 @@ class EnhancedKnowledgeTool(BaseTool):
                         failed += 1
 
                 except Exception as e:
-                    logger.error(f"Failed to migrate document: {e}")
+                    logger.error("Failed to migrate document: %s", e)
                     failed += 1
 
             return self._success_response(
@@ -533,32 +533,3 @@ class EnhancedKnowledgeTool(BaseTool):
 
         except Exception as e:
             return self._error_response(f"Migration error: {e}")
-
-
-# ============================================================================
-# MIGRATION SCRIPT
-# ============================================================================
-
-async def migrate_to_sqlite():
-    """Standalone migration script"""
-    print("=" * 60)
-    print("Knowledge Base Migration: JSON → SQLite")
-    print("=" * 60)
-
-    tool = EnhancedKnowledgeTool()
-
-    result = await tool._migrate_from_json({})
-
-    if result['success']:
-        stats = result['result']
-        print("\n✅ Migration complete!")
-        print(f"   Migrated: {stats['migrated']} documents")
-        print(f"   Failed: {stats['failed']} documents")
-        print(f"   Total: {stats['total']} documents")
-    else:
-        print(f"\n❌ Migration failed: {result['error']}")
-
-
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(migrate_to_sqlite())

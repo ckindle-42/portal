@@ -173,8 +173,45 @@ class TestJobSchedulerToolEdge:
         assert result["success"] is False
 
     @pytest.mark.asyncio
-    async def test_calculate_next_run(self):
+    async def test_calculate_next_run_cron(self):
         tool = JobSchedulerTool()
-        # Currently returns "now" — just verify it returns a string
-        result = tool._calculate_next_run("0 * * * *")
+        result = tool._calculate_next_run("*/5 * * * *")
         assert isinstance(result, str)
+        # Should be a valid ISO timestamp in the future
+        from datetime import UTC, datetime
+        next_run = datetime.fromisoformat(result)
+        assert next_run >= datetime.now(tz=UTC)
+
+    @pytest.mark.asyncio
+    async def test_calculate_next_run_interval_minutes(self):
+        tool = JobSchedulerTool()
+        from datetime import UTC, datetime
+        before = datetime.now(tz=UTC)
+        result = tool._calculate_next_run("5m")
+        next_run = datetime.fromisoformat(result)
+        assert next_run > before
+
+    @pytest.mark.asyncio
+    async def test_calculate_next_run_interval_hours(self):
+        tool = JobSchedulerTool()
+        from datetime import UTC, datetime
+        before = datetime.now(tz=UTC)
+        result = tool._calculate_next_run("1h")
+        next_run = datetime.fromisoformat(result)
+        assert next_run > before
+
+    @pytest.mark.asyncio
+    async def test_calculate_next_run_interval_seconds(self):
+        tool = JobSchedulerTool()
+        result = tool._calculate_next_run("30s")
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_calculate_next_run_fallback(self):
+        tool = JobSchedulerTool()
+        # Non-parseable schedule falls back to 1 hour from now
+        from datetime import UTC, datetime
+        before = datetime.now(tz=UTC)
+        result = tool._calculate_next_run("invalid")
+        next_run = datetime.fromisoformat(result)
+        assert next_run > before

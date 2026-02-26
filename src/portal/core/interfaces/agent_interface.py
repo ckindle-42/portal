@@ -31,7 +31,7 @@ class Message:
     chat_id: str | None = None
     message_id: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.metadata is None:
             self.metadata = {}
 
@@ -48,7 +48,7 @@ class Response:
     metadata: dict[str, Any] = None
     reply_to_message_id: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.metadata is None:
             self.metadata = {}
 
@@ -67,7 +67,7 @@ class BaseInterface(ABC):
     4. **Lifecycle Management**: Clear start/stop methods for resource management
     """
 
-    def __init__(self, agent_core: Any, config: dict[str, Any]):
+    def __init__(self, agent_core: Any, config: dict[str, Any]) -> None:
         """
         Initialize the interface.
 
@@ -79,7 +79,7 @@ class BaseInterface(ABC):
         self.config = config
         self.is_running = False
         self._shutdown_event = asyncio.Event()
-        logger.info(f"Initialized {self.__class__.__name__}")
+        logger.info("Initialized %s", self.__class__.__name__)
 
     @abstractmethod
     async def start(self) -> None:
@@ -163,7 +163,9 @@ class BaseInterface(ABC):
             message: The message being processed (if any)
         """
         logger.error(
-            f"Error in {self.__class__.__name__}: {error}",
+            "Error in %s: %s",
+            self.__class__.__name__,
+            error,
             exc_info=error,
             extra={"message": message}
         )

@@ -106,7 +106,7 @@ class LogRotator:
             rotation_hours=self.config.rotation_interval_hours
         )
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the log rotation background task"""
         if self._running:
             logger.warning("LogRotator already running")
@@ -116,7 +116,7 @@ class LogRotator:
         self._task = asyncio.create_task(self._rotation_loop())
         logger.info("LogRotator started")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the log rotation background task"""
         if not self._running:
             return
@@ -131,7 +131,7 @@ class LogRotator:
 
         logger.info("LogRotator stopped")
 
-    async def _rotation_loop(self):
+    async def _rotation_loop(self) -> None:
         """Main rotation loop"""
         check_interval = 60  # Check every minute
 
@@ -150,7 +150,7 @@ class LogRotator:
             logger.info("Rotation loop cancelled")
             raise
         except Exception as e:
-            logger.error(f"Error in rotation loop: {e}", exc_info=True)
+            logger.error("Error in rotation loop: %s", e, exc_info=True)
 
     async def _should_rotate(self) -> bool:
         """Check if log file should be rotated"""
@@ -161,7 +161,7 @@ class LogRotator:
         if self.config.strategy in (RotationStrategy.SIZE, RotationStrategy.SIZE_AND_TIME):
             file_size = self.log_file.stat().st_size
             if file_size >= self.config.max_bytes:
-                logger.debug(f"Log file size ({file_size} bytes) exceeds limit ({self.config.max_bytes} bytes)")
+                logger.debug("Log file size (%s bytes) exceeds limit (%s bytes)", file_size, self.config.max_bytes)
                 return True
 
         # Check time-based rotation
@@ -170,12 +170,12 @@ class LogRotator:
             rotation_interval_seconds = self.config.rotation_interval_hours * 3600
 
             if time_since_rotation >= rotation_interval_seconds:
-                logger.debug(f"Time since last rotation ({time_since_rotation}s) exceeds interval ({rotation_interval_seconds}s)")
+                logger.debug("Time since last rotation (%ss) exceeds interval (%ss)", time_since_rotation, rotation_interval_seconds)
                 return True
 
         return False
 
-    async def rotate(self):
+    async def rotate(self) -> None:
         """
         Rotate the log file.
 
@@ -186,7 +186,7 @@ class LogRotator:
         4. Trigger cleanup of old rotated files
         """
         if not self.log_file.exists():
-            logger.warning(f"Log file {self.log_file} does not exist, skipping rotation")
+            logger.warning("Log file %s does not exist, skipping rotation", self.log_file)
             return
 
         try:
@@ -195,7 +195,7 @@ class LogRotator:
             rotated_name = f"{self.log_file.stem}_{timestamp}{self.log_file.suffix}"
             rotated_path = self.log_file.parent / rotated_name
 
-            logger.info(f"Rotating log file: {self.log_file} -> {rotated_path}")
+            logger.info("Rotating log file: %s -> %s", self.log_file, rotated_path)
 
             # Rename current log file
             self.log_file.rename(rotated_path)
@@ -215,14 +215,14 @@ class LogRotator:
                 try:
                     self.on_rotate(str(self.log_file), str(rotated_path))
                 except Exception as e:
-                    logger.error(f"Error in rotation callback: {e}")
+                    logger.error("Error in rotation callback: %s", e)
 
             logger.info("Log rotation completed successfully")
 
         except Exception as e:
-            logger.error(f"Failed to rotate log file: {e}", exc_info=True)
+            logger.error("Failed to rotate log file: %s", e, exc_info=True)
 
-    async def _compress_log(self, log_path: Path):
+    async def _compress_log(self, log_path: Path) -> None:
         """
         Compress a log file with gzip.
 
@@ -232,7 +232,7 @@ class LogRotator:
         try:
             compressed_path = log_path.with_suffix(log_path.suffix + '.gz')
 
-            logger.debug(f"Compressing {log_path} -> {compressed_path}")
+            logger.debug("Compressing %s -> %s", log_path, compressed_path)
 
             # Compress file
             await asyncio.to_thread(self._compress_file, log_path, compressed_path)
@@ -240,19 +240,19 @@ class LogRotator:
             # Remove original uncompressed file
             log_path.unlink()
 
-            logger.debug(f"Compression completed: {compressed_path}")
+            logger.debug("Compression completed: %s", compressed_path)
 
         except Exception as e:
-            logger.error(f"Failed to compress log file {log_path}: {e}")
+            logger.error("Failed to compress log file %s: %s", log_path, e)
 
     @staticmethod
-    def _compress_file(src: Path, dst: Path):
+    def _compress_file(src: Path, dst: Path) -> None:
         """Compress file using gzip (blocking I/O)"""
         with open(src, 'rb') as f_in:
             with gzip.open(dst, 'wb') as f_out:
                 f_out.writelines(f_in)
 
-    async def _cleanup_old_logs(self):
+    async def _cleanup_old_logs(self) -> None:
         """Clean up old rotated log files"""
         try:
             # Find all rotated log files
@@ -268,7 +268,7 @@ class LogRotator:
                 files_to_delete = rotated_files[self.config.backup_count:]
 
                 for file_path in files_to_delete:
-                    logger.debug(f"Deleting old rotated log: {file_path}")
+                    logger.debug("Deleting old rotated log: %s", file_path)
                     file_path.unlink()
 
             # Delete files older than retention period
@@ -277,11 +277,11 @@ class LogRotator:
 
                 for file_path in rotated_files:
                     if file_path.stat().st_mtime < cutoff_time:
-                        logger.debug(f"Deleting log older than {self.config.cleanup_older_than_days} days: {file_path}")
+                        logger.debug("Deleting log older than %s days: %s", self.config.cleanup_older_than_days, file_path)
                         file_path.unlink()
 
         except Exception as e:
-            logger.error(f"Error during log cleanup: {e}", exc_info=True)
+            logger.error("Error during log cleanup: %s", e, exc_info=True)
 
     def get_rotated_logs(self) -> list[Path]:
         """
@@ -370,7 +370,7 @@ class RotatingStructuredLogHandler(logging.Handler):
         self._file_handler = logging.FileHandler(self.log_file)
         self.setFormatter(self._file_handler.formatter)
 
-    def emit(self, record):
+    def emit(self, record) -> None:
         """Emit a log record"""
         try:
             # Check if rotation is needed (synchronous check)
@@ -395,7 +395,7 @@ class RotatingStructuredLogHandler(logging.Handler):
 
         return False
 
-    def _rotate_sync(self):
+    def _rotate_sync(self) -> None:
         """Synchronous rotation (for use in logging handler)"""
         try:
             # Close current handler
@@ -434,16 +434,16 @@ class RotatingStructuredLogHandler(logging.Handler):
             import sys
             print(f"Log rotation failed: {e}", file=sys.stderr)
 
-    async def _compress_async(self, log_path: Path):
+    async def _compress_async(self, log_path: Path) -> None:
         """Async compression helper"""
         try:
             compressed_path = log_path.with_suffix(log_path.suffix + '.gz')
             await asyncio.to_thread(LogRotator._compress_file, log_path, compressed_path)
             log_path.unlink()
         except Exception as e:
-            logger.error(f"Background compression failed: {e}")
+            logger.error("Background compression failed: %s", e)
 
-    def close(self):
+    def close(self) -> None:
         """Close the handler"""
         self._file_handler.close()
         super().close()

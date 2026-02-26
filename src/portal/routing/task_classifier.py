@@ -120,7 +120,7 @@ class TaskClassifier:
         r'\b(explain|describe|tell\s+me|show\s+me)\b',
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Compile patterns for efficiency
         self._greeting_re = [re.compile(p, re.IGNORECASE) for p in self.GREETING_PATTERNS]
         self._code_re = [re.compile(p, re.IGNORECASE) for p in self.CODE_PATTERNS]

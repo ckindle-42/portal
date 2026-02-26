@@ -97,7 +97,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 @CentralDispatcher.register("web")
 class WebInterface(BaseInterface):
-    def __init__(self, agent_core, config, secure_agent=None):
+    def __init__(self, agent_core, config, secure_agent=None) -> None:
         self.agent_core = agent_core
         self.secure_agent = secure_agent  # SecurityMiddleware wrapping agent_core
         self.config = config
@@ -144,7 +144,7 @@ class WebInterface(BaseInterface):
         @asynccontextmanager
         async def lifespan(app: FastAPI):
             """Async lifespan: warm up AgentCore in the background so startup is non-blocking."""
-            async def _warmup():
+            async def _warmup() -> None:
                 try:
                     if hasattr(self.agent_core, "health_check"):
                         await self.agent_core.health_check()
@@ -327,7 +327,7 @@ class WebInterface(BaseInterface):
 
     def _register_websocket_route(self, app: FastAPI) -> None:
         @app.websocket("/ws")
-        async def websocket_endpoint(websocket: WebSocket):
+        async def websocket_endpoint(websocket: WebSocket) -> None:
             from portal.security.security_module import InputSanitizer
             sanitizer = InputSanitizer()
 
@@ -376,7 +376,7 @@ class WebInterface(BaseInterface):
             except WebSocketDisconnect:
                 return
             except Exception as e:
-                logger.error(f"WebSocket error: {e}", exc_info=True)
+                logger.error("WebSocket error: %s", e, exc_info=True)
                 try:
                     await websocket.send_json({"error": "Internal error", "done": True})
                 except Exception:

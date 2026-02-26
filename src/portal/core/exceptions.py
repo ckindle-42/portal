@@ -56,7 +56,7 @@ class PortalError(Exception):
         message: str,
         error_code: ErrorCode = ErrorCode.INTERNAL_ERROR,
         details: dict[str, Any] | None = None
-    ):
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.error_code = error_code
@@ -98,28 +98,28 @@ class PortalError(Exception):
 class PolicyViolationError(PortalError):
     """Raised when security policy is violated"""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.POLICY_VIOLATION, details)
 
 
 class ModelQuotaExceededError(PortalError):
     """Raised when model quota or rate limit is exceeded"""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.MODEL_QUOTA_EXCEEDED, details)
 
 
 class ModelNotAvailableError(PortalError):
     """Raised when no models are available"""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.MODEL_NOT_AVAILABLE, details)
 
 
 class ToolExecutionError(PortalError):
     """Raised when tool execution fails"""
 
-    def __init__(self, tool_name: str, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, tool_name: str, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.TOOL_EXECUTION_FAILED, details)
         self.tool_name = tool_name
 
@@ -127,14 +127,14 @@ class ToolExecutionError(PortalError):
 class AuthorizationError(PortalError):
     """Raised when user is not authorized"""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.UNAUTHORIZED, details)
 
 
 class RateLimitError(PortalError):
     """Raised when rate limit is exceeded"""
 
-    def __init__(self, message: str, retry_after: int, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, retry_after: int, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.RATE_LIMIT_EXCEEDED, details)
         self.retry_after = retry_after
 
@@ -142,12 +142,12 @@ class RateLimitError(PortalError):
 class ContextNotFoundError(PortalError):
     """Raised when conversation context is not found"""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.CONTEXT_NOT_FOUND, details)
 
 
 class ValidationError(PortalError):
     """Raised when input validation fails"""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.VALIDATION_ERROR, details)
