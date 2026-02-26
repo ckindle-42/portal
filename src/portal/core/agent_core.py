@@ -235,7 +235,12 @@ class AgentCore:
                 # response so this loop executes whenever the model requests tools.
                 tool_calls = result.tool_calls or []
                 if tool_calls and self.mcp_registry:
-                    mcp_results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
+                    mcp_results = await self._dispatch_mcp_tools(
+                        tool_calls,
+                        chat_id,
+                        trace_id,
+                        user_id=user_id,
+                    )
                     logger.info("MCP tools dispatched", count=len(mcp_results))
 
                 tools_used = getattr(result, 'tools_used', [])
@@ -488,6 +493,7 @@ class AgentCore:
         tool_calls: List[Dict[str, Any]],
         chat_id: str,
         trace_id: str,
+        user_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Dispatch a list of tool-call requests to the MCP registry.
@@ -519,11 +525,11 @@ class AgentCore:
             )
 
             if tool_name in {"bash", "filesystem_write", "web_fetch"}:
-                user_id = str(arguments.get("user_id", chat_id))
+                approval_user_id = str(arguments.get("user_id") or user_id or chat_id)
                 approval_token = str(arguments.get("approval_token", "")).strip()
                 if not approval_token:
                     approval_token = await self.hitl_middleware.request(
-                        user_id=user_id,
+                        user_id=approval_user_id,
                         channel="telegram",
                         tool_name=tool_name,
                         args=arguments,
@@ -540,7 +546,7 @@ class AgentCore:
                     )
                     continue
 
-                if not self.hitl_middleware.check_approved(user_id=user_id, token=approval_token):
+                if not self.hitl_middleware.check_approved(user_id=approval_user_id, token=approval_token):
                     results.append(
                         {
                             'tool': tool_name,
