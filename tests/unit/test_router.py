@@ -89,6 +89,7 @@ class TestCentralDispatcher:
 
     def test_registered_interfaces_accessible(self):
         """Interfaces decorated with @CentralDispatcher.register are retrievable."""
+        pytest.importorskip("telegram")
         import portal.interfaces.slack.interface  # noqa: F401
         import portal.interfaces.telegram.interface  # noqa: F401
 
