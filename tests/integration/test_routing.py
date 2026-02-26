@@ -2,8 +2,8 @@
 Integration test for model router.
 Requires: Router running at localhost:8000.
 """
-import pytest
 import httpx
+import pytest
 
 
 @pytest.mark.asyncio

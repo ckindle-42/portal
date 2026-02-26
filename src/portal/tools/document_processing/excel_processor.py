@@ -24,7 +24,7 @@ from typing import Any
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 try:
-    import openpyxl
+    import openpyxl  # noqa: F401
     from openpyxl.utils import get_column_letter
     OPENPYXL_AVAILABLE = True
 except ImportError:
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 class ExcelProcessorTool(BaseTool):
     """
     Comprehensive Excel file processor.
-    
+
     Create, read, analyze, and format Excel spreadsheets.
     """
 
@@ -114,7 +114,7 @@ class ExcelProcessorTool(BaseTool):
 
         # Lazy import - only load when actually executing
         try:
-            import openpyxl
+            import openpyxl  # noqa: F401
         except ImportError:
             return self._error_response(
                 "openpyxl not installed. Install: pip install openpyxl xlsxwriter"

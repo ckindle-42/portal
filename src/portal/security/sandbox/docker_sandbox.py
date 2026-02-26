@@ -91,7 +91,7 @@ class SandboxConfig:
 class DockerPythonSandbox:
     """
     Docker-based Python sandbox for secure code execution.
-    
+
     Creates ephemeral containers that execute code and are destroyed immediately.
     """
 
@@ -179,11 +179,11 @@ CMD ["python3"]
     ) -> dict[str, Any]:
         """
         Execute Python code in sandbox
-        
+
         Args:
             code: Python code to execute
             timeout: Execution timeout (overrides config)
-        
+
         Returns:
             {
                 'success': bool,
@@ -312,7 +312,7 @@ CMD ["python3"]
 class DockerPythonExecutionTool(BaseTool):
     """
     Tool for executing Python code in Docker sandbox.
-    
+
     Replaces direct subprocess execution with secure Docker container.
     """
 
@@ -529,7 +529,7 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - DOCKER_SANDBOX_ENABLED=true
     restart: unless-stopped
-    
+
   # Optional: Pre-built sandbox images
   sandbox-python:
     image: python-sandbox:3.11

@@ -406,7 +406,7 @@ class MLXBackend(ModelBackend):
     async def _load_model(self, model_path: str):
         """Load MLX model"""
         try:
-            from mlx_lm import generate, load
+            from mlx_lm import load
             self._model, self._tokenizer = load(model_path)
             self._available = True
             logger.info(f"Loaded MLX model: {model_path}")
@@ -504,7 +504,7 @@ class MLXBackend(ModelBackend):
             return self._available
 
         try:
-            import mlx_lm
+            import mlx_lm  # noqa: F401
             self._available = True
         except ImportError:
             self._available = False

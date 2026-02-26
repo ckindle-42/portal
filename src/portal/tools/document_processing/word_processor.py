@@ -37,7 +37,7 @@ except ImportError:
 class WordProcessorTool(BaseTool):
     """
     Create and edit Word documents.
-    
+
     Perfect for generating reports, contracts, and professional documents.
     """
 

@@ -2,10 +2,13 @@
 Unit tests for Document Processing tools
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock, MagicMock
-from pathlib import Path
-from portal.tools.document_processing.document_metadata_extractor import DocumentMetadataExtractorTool
+
+from portal.tools.document_processing.document_metadata_extractor import (
+    DocumentMetadataExtractorTool,
+)
 from portal.tools.document_processing.excel_processor import ExcelProcessorTool
 from portal.tools.document_processing.pandoc_converter import PandocConverterTool
 from portal.tools.document_processing.powerpoint_processor import PowerPointProcessorTool
@@ -188,7 +191,6 @@ class TestPDFOCRTool:
         """Test extracting text from PDF — requires Tesseract OCR binary and pdf2image/poppler"""
         try:
             import pytesseract
-            import pdf2image
             pytesseract.get_tesseract_version()
         except Exception:
             pytest.skip(

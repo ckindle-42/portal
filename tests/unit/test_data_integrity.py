@@ -7,15 +7,11 @@ Tests for:
 3. Circuit breaker pattern in execution_engine.py
 """
 
-import pytest
 import asyncio
-import os
 import json
-import tempfile
 import time
-from pathlib import Path
-from unittest.mock import Mock, AsyncMock, patch
 
+import pytest
 
 # =============================================================================
 # ATOMIC WRITE TESTS (local_knowledge.py)
@@ -59,7 +55,7 @@ class TestAtomicWrites:
         tool._save_db()
 
         # Verify we can read it back
-        with open(tool.DB_PATH, 'r') as f:
+        with open(tool.DB_PATH) as f:
             data = json.load(f)
             assert len(data['documents']) == 1
             assert data['documents'][0]['content'] == "important"
@@ -76,7 +72,7 @@ class TestAtomicWrites:
         tool._save_db()
 
         # Verify file is valid JSON
-        with open(tool.DB_PATH, 'r') as f:
+        with open(tool.DB_PATH) as f:
             data = json.load(f)  # Should not raise
             assert len(data['documents']) == 100
 
@@ -298,7 +294,7 @@ class TestDataIntegrityIntegration:
 
         limiter._flush_if_dirty()
         assert persist_path.exists()
-        with open(persist_path, "r") as f:
+        with open(persist_path) as f:
             data = json.load(f)
             assert "requests" in data
             assert "violations" in data

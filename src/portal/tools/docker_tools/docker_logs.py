@@ -65,7 +65,7 @@ class DockerLogsTool(BaseTool):
 
         container_id = parameters.get("container")
         tail = parameters.get("tail", 100)
-        follow = parameters.get("follow", False)
+        parameters.get("follow", False)
         timestamps = parameters.get("timestamps", False)
 
         if not container_id:

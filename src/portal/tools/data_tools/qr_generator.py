@@ -39,7 +39,6 @@ class QRGeneratorTool(BaseTool):
         """Generate QR code"""
         try:
             import qrcode
-            from PIL import Image
 
             content = parameters.get("content", "")
             size = min(max(parameters.get("size", 5), 1), 10)

@@ -11,7 +11,9 @@ This decouples the creation logic from the core, making it easier to:
 v4.6.1: Extracted from create_agent_core for better separation of concerns
 """
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry, RoutingStrategy
 
@@ -19,6 +21,11 @@ from .context_manager import ContextManager
 from .event_bus import EventBus
 from .prompt_manager import PromptManager
 from .structured_logger import get_logger
+
+if TYPE_CHECKING:
+    from portal.core.agent_core import AgentCore
+    from portal.protocols.mcp.mcp_registry import MCPRegistry
+    from portal.tools import ToolRegistry
 
 logger = get_logger('Factories')
 
@@ -192,7 +199,7 @@ def create_prompt_manager(config: dict[str, Any]) -> PromptManager:
 # TOOL REGISTRY FACTORY
 # =============================================================================
 
-def create_tool_registry(config: dict[str, Any]) -> 'ToolRegistry':
+def create_tool_registry(config: dict[str, Any]) -> ToolRegistry:
     """
     Create ToolRegistry instance.
 
@@ -247,7 +254,7 @@ class DependencyContainer:
 
         logger.info("DependencyContainer initialized with all components")
 
-    async def create_mcp_registry(self, mcp_config=None) -> "MCPRegistry":
+    async def create_mcp_registry(self, mcp_config=None) -> MCPRegistry:
         """Create and populate the MCP server registry from config."""
         from portal.protocols.mcp.mcp_registry import MCPRegistry
 
@@ -282,7 +289,7 @@ class DependencyContainer:
         self.mcp_registry = registry
         return registry
 
-    def create_agent_core(self, mcp_registry=None) -> "AgentCore":
+    def create_agent_core(self, mcp_registry=None) -> AgentCore:
         """
         Create an AgentCore using all dependencies held by this container.
 

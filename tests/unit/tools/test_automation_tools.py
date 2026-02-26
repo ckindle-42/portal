@@ -2,8 +2,10 @@
 Unit tests for Automation tools
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
+
 from portal.tools.automation_tools.scheduler import JobSchedulerTool
 from portal.tools.automation_tools.shell_safety import ShellSafetyTool
 

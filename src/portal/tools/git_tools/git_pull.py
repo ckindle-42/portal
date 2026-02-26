@@ -99,12 +99,12 @@ class GitPullTool(BaseTool):
             # Run in executor to avoid blocking
             loop = asyncio.get_event_loop()
             if rebase:
-                pull_info = await loop.run_in_executor(
+                await loop.run_in_executor(
                     None,
                     lambda: remote.pull(branch, rebase=True)
                 )
             else:
-                pull_info = await loop.run_in_executor(
+                await loop.run_in_executor(
                     None,
                     lambda: remote.pull(branch)
                 )

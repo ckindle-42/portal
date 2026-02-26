@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 class DocumentMetadataExtractorTool(BaseTool):
     """
     Extract metadata from documents, images, audio, and video files.
-    
+
     Works with 15+ file formats!
     """
 

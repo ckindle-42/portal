@@ -7,7 +7,6 @@ import importlib
 import inspect
 import logging
 import pkgutil
-import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -262,18 +261,12 @@ class ToolRegistry:
 
         try:
             # Get entry points for portal.tools
-            if sys.version_info >= (3, 10):
-                # Python 3.10+ uses entry_points().select()
-                entry_points = importlib_metadata.entry_points()
-                if hasattr(entry_points, 'select'):
-                    plugin_entry_points = entry_points.select(group='portal.tools')
-                else:
-                    # Fallback for some 3.10 versions
-                    plugin_entry_points = entry_points.get('portal.tools', [])
+            entry_points = importlib_metadata.entry_points()
+            if hasattr(entry_points, 'select'):
+                plugin_entry_points = entry_points.select(group='portal.tools')
             else:
-                # Python 3.8-3.9 uses entry_points() directly
-                all_entry_points = importlib_metadata.entry_points()
-                plugin_entry_points = all_entry_points.get('portal.tools', [])
+                # Fallback for some 3.10 versions
+                plugin_entry_points = entry_points.get('portal.tools', [])
 
             if not plugin_entry_points:
                 logger.debug("No plugin tools found via entry_points")

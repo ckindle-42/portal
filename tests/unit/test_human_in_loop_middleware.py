@@ -7,16 +7,13 @@ for high-risk tool execution.
 """
 
 import asyncio
-import pytest
-from unittest.mock import Mock, AsyncMock, MagicMock
 from datetime import datetime
+from unittest.mock import AsyncMock
 
-from portal.middleware import (
-    ToolConfirmationMiddleware,
-    ConfirmationRequest,
-    ConfirmationStatus
-)
+import pytest
+
 from portal.core.event_bus import EventBus, EventType
+from portal.middleware import ConfirmationRequest, ConfirmationStatus, ToolConfirmationMiddleware
 
 
 @pytest.fixture
@@ -407,7 +404,7 @@ class TestIntegrationWithAgentCore:
     @pytest.mark.asyncio
     async def test_tool_execution_with_confirmation(self):
         """Test that tools requiring confirmation are intercepted"""
-        from portal.core import create_agent_core, EventBus
+        from portal.core import EventBus, create_agent_core
         from portal.tools import registry as tool_registry
 
         # Create event bus and confirmation sender
@@ -453,7 +450,7 @@ class TestIntegrationWithAgentCore:
                 )
                 # Should succeed if approved
                 assert result is not None
-            except Exception as e:
+            except Exception:
                 # May fail if tool execution itself has issues, but
                 # confirmation should have been requested
                 pass

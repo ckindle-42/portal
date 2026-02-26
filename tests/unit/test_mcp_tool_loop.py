@@ -1,7 +1,8 @@
 """Tests for AgentCore MCP tool dispatch loop (_run_execution_with_mcp_loop)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 def _make_core_with_mcp(config=None):

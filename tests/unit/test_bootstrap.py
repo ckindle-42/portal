@@ -9,9 +9,7 @@ These are unit-level tests using mocks; they confirm the DI wiring is
 correct without executing any real LLM calls.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-
+from unittest.mock import MagicMock, patch
 
 # ---------------------------------------------------------------------------
 # Helpers

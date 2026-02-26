@@ -4,10 +4,9 @@ Integration tests for WebInterface.
 All tests use a mocked AgentCore — no live Ollama or other services required.
 Run with:  pytest tests/integration/test_web_interface.py -v
 """
-import asyncio
-import pytest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -62,6 +61,7 @@ async def test_health_returns_200():
 async def test_health_contains_version():
     """/health includes a version field from portal.__version__."""
     from fastapi.testclient import TestClient
+
     import portal
 
     iface = _make_interface()
@@ -146,7 +146,6 @@ async def test_models_returns_list():
 @pytest.mark.asyncio
 async def test_all_required_routes_exist():
     """WebInterface exposes all documented routes."""
-    from portal.interfaces.web.server import WebInterface
 
     iface = _make_interface()
     route_paths = [r.path for r in iface.app.routes]
@@ -164,8 +163,8 @@ async def test_all_required_routes_exist():
 @pytest.mark.asyncio
 async def test_api_key_guard_blocks_without_key(monkeypatch):
     """/v1/chat/completions returns 401 when WEB_API_KEY is set and header is missing."""
-    import os
     from fastapi.testclient import TestClient
+
     from portal.interfaces.web.server import WebInterface
 
     monkeypatch.setenv("WEB_API_KEY", "test-secret-key")
@@ -191,8 +190,8 @@ async def test_api_key_guard_blocks_without_key(monkeypatch):
 @pytest.mark.asyncio
 async def test_api_key_guard_passes_with_bearer(monkeypatch):
     """/v1/models returns 200 when correct Bearer token is provided."""
-    import os
     from fastapi.testclient import TestClient
+
     from portal.interfaces.web.server import WebInterface
 
     monkeypatch.setenv("WEB_API_KEY", "test-secret-key")
@@ -218,9 +217,11 @@ async def test_api_key_guard_passes_with_bearer(monkeypatch):
 
 def test_create_app_returns_fastapi_instance():
     """create_app() returns a FastAPI instance without raising."""
-    from fastapi import FastAPI
-    from portal.interfaces.web.server import create_app
     from unittest.mock import patch
+
+    from fastapi import FastAPI
+
+    from portal.interfaces.web.server import create_app
 
     mock_core = MagicMock()
     mock_core.health_check = AsyncMock(return_value=True)
@@ -238,6 +239,7 @@ def test_create_app_returns_fastapi_instance():
 async def test_streaming_response_emits_sse_done():
     """/v1/chat/completions stream=True emits SSE data: lines ending with [DONE]."""
     import os
+
     from fastapi.testclient import TestClient
 
     os.environ.pop("WEB_API_KEY", None)
@@ -260,6 +262,7 @@ async def test_streaming_response_emits_sse_done():
 async def test_non_streaming_returns_openai_format():
     """/v1/chat/completions stream=False returns an OpenAI-compatible JSON body."""
     import os
+
     from fastapi.testclient import TestClient
 
     os.environ.pop("WEB_API_KEY", None)
@@ -283,9 +286,11 @@ async def test_non_streaming_returns_openai_format():
 async def test_empty_message_returns_error():
     """Empty message content causes a non-200 response via SecurityMiddleware."""
     import os
+
     from fastapi.testclient import TestClient
-    from portal.interfaces.web.server import WebInterface
+
     from portal.core.exceptions import ValidationError
+    from portal.interfaces.web.server import WebInterface
 
     os.environ.pop("WEB_API_KEY", None)
 

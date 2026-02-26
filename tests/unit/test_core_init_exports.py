@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import inspect
 
-import pytest
-
 
 class TestCoreInitExports:
     """Ensure every symbol in portal.core.__all__ is importable and sane."""
@@ -132,7 +130,6 @@ class TestCoreInitExports:
 
     def test_no_extra_public_names(self):
         """portal.core should not leak private implementation details."""
-        import importlib
         import portal.core as core
 
         public_names = {name for name in dir(core) if not name.startswith("_")}

@@ -8,7 +8,6 @@ RuntimeError is raised only when the .redis property is accessed.
 
 import importlib
 import sys
-import types
 
 import pytest
 
