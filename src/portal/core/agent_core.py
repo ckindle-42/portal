@@ -47,6 +47,9 @@ from .exceptions import (
     ModelNotAvailableError,
     ToolExecutionError
 )
+from portal.memory import MemoryManager
+from portal.observability.runtime_metrics import MCP_TOOL_USAGE
+from portal.middleware.hitl_approval import HITLApprovalMiddleware
 
 logger = get_logger('AgentCore')
 
@@ -78,6 +81,7 @@ class AgentCore:
         config: Dict[str, Any],
         confirmation_middleware: Optional['ToolConfirmationMiddleware'] = None,
         mcp_registry: Optional[Any] = None,
+        memory_manager: Optional[MemoryManager] = None,
     ):
         """
         Initialize the unified core with dependency injection
@@ -106,6 +110,8 @@ class AgentCore:
         self.tool_registry = tool_registry
         self.confirmation_middleware = confirmation_middleware
         self.mcp_registry = mcp_registry
+        self.memory_manager = memory_manager or MemoryManager()
+        self.hitl_middleware = HITLApprovalMiddleware()
 
         # Event emitter helper
         self.events = EventEmitter(self.event_bus)
@@ -194,6 +200,13 @@ class AgentCore:
                 # Step 2: Save user message IMMEDIATELY (before processing)
                 # This ensures we don't lose the user's message if processing crashes
                 await self._save_user_message(chat_id, message, interface.value)
+
+                user_id = str(user_context.get("user_id") or chat_id)
+                await self.memory_manager.add_message(user_id=user_id, content=message)
+
+                memory_context = await self.memory_manager.build_context_block(user_id=user_id, query=message)
+                if memory_context:
+                    message = f"{memory_context}\n\nUser message:\n{message}"
 
                 # Step 3: Build system prompt from templates
                 system_prompt = self._build_system_prompt(interface.value, user_context)
@@ -505,7 +518,18 @@ class AgentCore:
                 chat_id=chat_id,
             )
 
+            if tool_name in {"bash", "filesystem_write", "web_fetch"}:
+                user_id = str(arguments.get("user_id", chat_id))
+                approval_token = await self.hitl_middleware.request(
+                    user_id=user_id,
+                    channel="telegram",
+                    tool_name=tool_name,
+                    args=arguments,
+                )
+                arguments["approval_token"] = approval_token
+
             result = await self.mcp_registry.call_tool(server_name, tool_name, arguments)
+            MCP_TOOL_USAGE.labels(tool_name=tool_name).inc()
             results.append({'tool': tool_name, 'result': result})
 
         return results
