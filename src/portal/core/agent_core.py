@@ -145,10 +145,7 @@ class AgentCore:
         files: list[Any] | None = None,
     ) -> ProcessingResult:
         """
-        Process a message from ANY interface
-
-        This is the main entry point for all message processing.
-        Telegram, Web, Slack - they all call this method.
+        Process a message from ANY interface (Telegram, Web, Slack).
 
         Args:
             chat_id: Unique identifier for this conversation
@@ -165,166 +162,147 @@ class AgentCore:
         """
         start_time = time.perf_counter()
         user_context = user_context or {}
+        interface = self._normalize_interface(interface)
 
-        # Coerce plain strings to InterfaceType so callers can pass either form
-        if isinstance(interface, str) and not isinstance(interface, InterfaceType):
-            try:
-                interface = InterfaceType(interface)
-            except ValueError:
-                interface = InterfaceType.UNKNOWN
-
-        # Create trace context for this request
         with TraceContext() as trace_id:
             try:
-                # Update statistics
-                async with self._stats_lock:
-                    self.stats['messages_processed'] += 1
-                    interface_key = interface.value
-                    if interface_key not in self.stats['by_interface']:
-                        self.stats['by_interface'][interface_key] = 0
-                    self.stats['by_interface'][interface_key] += 1
-
-                logger.info(
-                    "Processing message",
-                    chat_id=chat_id,
-                    interface=interface.value,
-                    message_length=len(message)
+                await self._record_message_start(chat_id, message, interface, trace_id)
+                message = await self._persist_user_context(chat_id, message, interface, user_context, trace_id)
+                system_prompt, available_tools, context_history = await self._build_execution_context(
+                    chat_id, interface, user_context
                 )
-
-                # Emit processing started event
-                await self.events.emit_processing_started(chat_id, message, trace_id)
-
-                # Step 1: Load conversation context
-                await self._load_context(chat_id, trace_id)
-
-                # Step 2: Save user message IMMEDIATELY (before processing)
-                # This ensures we don't lose the user's message if processing crashes
-                await self._save_user_message(chat_id, message, interface.value)
-
-                user_id = str(user_context.get("user_id") or chat_id)
-                await self.memory_manager.add_message(user_id=user_id, content=message)
-
-                memory_context = await self.memory_manager.build_context_block(user_id=user_id, query=message)
-                if memory_context:
-                    message = f"{memory_context}\n\nUser message:\n{message}"
-
-                # Step 3: Build system prompt from templates
-                system_prompt = self._build_system_prompt(interface.value, user_context)
-
-                # Step 4: Get available tools
-                available_tools = [t.metadata.name for t in self.tool_registry.get_all_tools()]
-
-                # Step 5: Build conversation history for the LLM (includes the message
-                # just saved in Step 2, so the full context is available).
-                context_history = await self.context_manager.get_formatted_history(
-                    chat_id, format='openai'
-                )
-
-                # Step 6: Route, execute, and complete MCP tool loop when requested.
                 result, tool_results = await self._run_execution_with_mcp_loop(
                     query=message,
                     system_prompt=system_prompt,
                     available_tools=available_tools,
                     chat_id=chat_id,
                     trace_id=trace_id,
-                    messages=context_history if context_history else None,
+                    messages=context_history or None,
                 )
-
-                # Step 7: Save assistant response (after successful generation)
                 await self._save_assistant_response(chat_id, result.response, interface.value)
-
-                # Track execution time
-                execution_time = time.perf_counter() - start_time
-                tools_used = getattr(result, 'tools_used', [])
-                async with self._stats_lock:
-                    self.stats['total_execution_time'] += execution_time
-                    self.stats['tools_executed'] += len(tools_used)
-
-                logger.info(
-                    "Completed processing",
-                    model=result.model_used,
-                    execution_time=execution_time,
-                    tools_count=len(tools_used)
-                )
-
-                # Emit completion event
-                await self.event_bus.publish(
-                    EventType.PROCESSING_COMPLETED,
-                    chat_id,
-                    {
-                        'model': result.model_used,
-                        'execution_time': execution_time,
-                        'tools_used': tools_used
-                    },
-                    trace_id
-                )
-
-                return ProcessingResult(
-                    success=result.success,
-                    response=result.response,
-                    model_used=result.model_used,
-                    execution_time=execution_time,
-                    tools_used=tools_used,
-                    warnings=[],
-                    completion_tokens=result.tokens_generated or None,
-                    metadata={
-                        'chat_id': chat_id,
-                        'interface': interface.value,
-                        'timestamp': datetime.now().isoformat(),
-                        'routing_strategy': (
-                            self.router.strategy.value
-                            if hasattr(self.router, 'strategy') else 'auto'
-                        ),
-                        'tool_results': tool_results,
-                    },
-                    trace_id=trace_id,
+                return await self._finalize_result(
+                    result, tool_results, chat_id, interface, start_time, trace_id
                 )
 
             except PortalError as e:
-                # Known error - log and rethrow
-                async with self._stats_lock:
-                    self.stats['errors'] += 1
-                execution_time = time.perf_counter() - start_time
-
-                logger.error(
-                    "Processing failed",
-                    error_type=type(e).__name__,
-                    error_message=str(e),
-                    details=e.details
-                )
-
-                await self.event_bus.publish(
-                    EventType.PROCESSING_FAILED,
-                    chat_id,
-                    {'error': e.to_dict()},
-                    trace_id
-                )
-
+                await self._handle_processing_error(e, chat_id, trace_id, start_time, known=True)
                 raise
 
             except Exception as e:
-                # Unknown error - log and wrap
-                async with self._stats_lock:
-                    self.stats['errors'] += 1
-                execution_time = time.perf_counter() - start_time
-
-                logger.error(
-                    "Unexpected error",
-                    error=str(e),
-                    exc_info=True
-                )
-
-                await self.event_bus.publish(
-                    EventType.PROCESSING_FAILED,
-                    chat_id,
-                    {'error': str(e)},
-                    trace_id
-                )
-
+                await self._handle_processing_error(e, chat_id, trace_id, start_time, known=False)
                 raise PortalError(
                     f"Unexpected error: {str(e)}",
                     details={'original_error': str(e)}
                 )
+
+    def _normalize_interface(self, interface: InterfaceType | str) -> InterfaceType:
+        """Coerce plain strings to InterfaceType."""
+        if isinstance(interface, str) and not isinstance(interface, InterfaceType):
+            try:
+                return InterfaceType(interface)
+            except ValueError:
+                return InterfaceType.UNKNOWN
+        return interface
+
+    async def _record_message_start(
+        self, chat_id: str, message: str, interface: InterfaceType, trace_id: str
+    ) -> None:
+        """Update stats, log, and emit processing-started event."""
+        async with self._stats_lock:
+            self.stats['messages_processed'] += 1
+            key = interface.value
+            self.stats['by_interface'][key] = self.stats['by_interface'].get(key, 0) + 1
+
+        logger.info("Processing message", chat_id=chat_id, interface=interface.value, message_length=len(message))
+        await self.events.emit_processing_started(chat_id, message, trace_id)
+
+    async def _persist_user_context(
+        self,
+        chat_id: str,
+        message: str,
+        interface: InterfaceType,
+        user_context: dict,
+        trace_id: str,
+    ) -> str:
+        """Load context, persist user message, enrich with memory. Returns enriched message."""
+        await self._load_context(chat_id, trace_id)
+        await self._save_user_message(chat_id, message, interface.value)
+
+        user_id = str(user_context.get("user_id") or chat_id)
+        await self.memory_manager.add_message(user_id=user_id, content=message)
+        memory_context = await self.memory_manager.build_context_block(user_id=user_id, query=message)
+        if memory_context:
+            message = f"{memory_context}\n\nUser message:\n{message}"
+        return message
+
+    async def _build_execution_context(
+        self, chat_id: str, interface: InterfaceType, user_context: dict
+    ) -> tuple[str, list[str], list[dict]]:
+        """Build system prompt, tool list, and conversation history."""
+        system_prompt = self._build_system_prompt(interface.value, user_context)
+        available_tools = [t.metadata.name for t in self.tool_registry.get_all_tools()]
+        context_history = await self.context_manager.get_formatted_history(chat_id, format='openai')
+        return system_prompt, available_tools, context_history
+
+    async def _finalize_result(
+        self,
+        result: Any,
+        tool_results: list,
+        chat_id: str,
+        interface: InterfaceType,
+        start_time: float,
+        trace_id: str,
+    ) -> ProcessingResult:
+        """Update stats, log completion, emit event, and return ProcessingResult."""
+        execution_time = time.perf_counter() - start_time
+        tools_used = getattr(result, 'tools_used', [])
+        async with self._stats_lock:
+            self.stats['total_execution_time'] += execution_time
+            self.stats['tools_executed'] += len(tools_used)
+
+        logger.info("Completed processing", model=result.model_used, execution_time=execution_time, tools_count=len(tools_used))
+        await self.event_bus.publish(
+            EventType.PROCESSING_COMPLETED,
+            chat_id,
+            {'model': result.model_used, 'execution_time': execution_time, 'tools_used': tools_used},
+            trace_id,
+        )
+        return ProcessingResult(
+            success=result.success,
+            response=result.response,
+            model_used=result.model_used,
+            execution_time=execution_time,
+            tools_used=tools_used,
+            warnings=[],
+            completion_tokens=result.tokens_generated or None,
+            metadata={
+                'chat_id': chat_id,
+                'interface': interface.value,
+                'timestamp': datetime.now().isoformat(),
+                'routing_strategy': (
+                    self.router.strategy.value if hasattr(self.router, 'strategy') else 'auto'
+                ),
+                'tool_results': tool_results,
+            },
+            trace_id=trace_id,
+        )
+
+    async def _handle_processing_error(
+        self, exc: Exception, chat_id: str, trace_id: str, start_time: float, known: bool
+    ) -> None:
+        """Increment error stats, log, and emit PROCESSING_FAILED event."""
+        async with self._stats_lock:
+            self.stats['errors'] += 1
+
+        if known:
+            portal_exc: Any = exc
+            logger.error("Processing failed", error_type=type(exc).__name__, error_message=str(exc), details=portal_exc.details)
+            error_payload = {'error': portal_exc.to_dict()}
+        else:
+            logger.error("Unexpected error", error=str(exc), exc_info=True)
+            error_payload = {'error': str(exc)}
+
+        await self.event_bus.publish(EventType.PROCESSING_FAILED, chat_id, error_payload, trace_id)
 
     async def _load_context(self, chat_id: str, trace_id: str):
         """Load conversation context"""

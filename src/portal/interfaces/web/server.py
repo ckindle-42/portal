@@ -159,19 +159,18 @@ class WebInterface(BaseInterface):
             finally:
                 warmup_task.cancel()
 
-        app = FastAPI(title="Portal Web Interface", version="1.1.0", lifespan=lifespan)
+        app = FastAPI(title="Portal Web Interface", version="1.2.0", lifespan=lifespan)
+        self._register_exception_handlers(app)
+        self._register_middleware(app)
+        self._register_routes(app, _agent_ready)
+        return app
 
+    def _register_exception_handlers(self, app: FastAPI) -> None:
         @app.exception_handler(RateLimitError)
         async def rate_limit_handler(request: Request, exc: RateLimitError):
             return JSONResponse(
                 status_code=429,
-                content={
-                    "error": {
-                        "message": str(exc),
-                        "type": "rate_limit_error",
-                        "code": "rate_limit_exceeded",
-                    }
-                },
+                content={"error": {"message": str(exc), "type": "rate_limit_error", "code": "rate_limit_exceeded"}},
                 headers={"Retry-After": str(getattr(exc, 'retry_after', 60))},
             )
 
@@ -179,44 +178,39 @@ class WebInterface(BaseInterface):
         async def validation_handler(request: Request, exc: ValidationError):
             return JSONResponse(
                 status_code=400,
-                content={
-                    "error": {
-                        "message": str(exc),
-                        "type": "invalid_request_error",
-                        "code": "validation_error",
-                    }
-                },
+                content={"error": {"message": str(exc), "type": "invalid_request_error", "code": "validation_error"}},
             )
 
         @app.exception_handler(ModelNotAvailableError)
         async def model_unavailable_handler(request: Request, exc: ModelNotAvailableError):
             return JSONResponse(
                 status_code=503,
-                content={
-                    "error": {
-                        "message": str(exc),
-                        "type": "server_error",
-                        "code": "model_not_available",
-                    }
-                },
+                content={"error": {"message": str(exc), "type": "server_error", "code": "model_not_available"}},
             )
 
         @app.exception_handler(PortalError)
         async def portal_error_handler(request: Request, exc: PortalError):
             return JSONResponse(
                 status_code=500,
-                content={
-                    "error": {
-                        "message": str(exc),
-                        "type": "server_error",
-                        "code": "internal_error",
-                    }
-                },
+                content={"error": {"message": str(exc), "type": "server_error", "code": "internal_error"}},
             )
 
+    def _register_middleware(self, app: FastAPI) -> None:
         app.add_middleware(SecurityHeadersMiddleware)
-        app.add_middleware(CORSMiddleware, allow_origins=_build_cors_origins(), allow_credentials=True, allow_methods=["POST", "GET", "OPTIONS"], allow_headers=["Authorization", "Content-Type", "X-Portal-User-Id", "X-User-Id"])
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=_build_cors_origins(),
+            allow_credentials=True,
+            allow_methods=["POST", "GET", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type", "X-Portal-User-Id", "X-User-Id"],
+        )
 
+    def _register_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
+        self._register_chat_routes(app)
+        self._register_utility_routes(app, _agent_ready)
+        self._register_websocket_route(app)
+
+    def _register_chat_routes(self, app: FastAPI) -> None:
         @app.post("/v1/chat/completions")
         async def chat_completions(payload: ChatCompletionRequest, request: Request, auth=Depends(self._auth_context)):
             user_id = auth["user_id"]
@@ -258,7 +252,6 @@ class WebInterface(BaseInterface):
             await self.user_store.add_tokens(user_id=user_id, tokens=(result.prompt_tokens or 0) + (result.completion_tokens or 0))
             return JSONResponse(self._format_completion(result, selected_model))
 
-
         @app.post("/v1/audio/transcriptions")
         async def audio_transcriptions(file: UploadFile = File(...), auth=Depends(self._auth_context)):
             data = await file.read()
@@ -284,6 +277,7 @@ class WebInterface(BaseInterface):
             except Exception:
                 return {"object": "list", "data": [{"id": "auto", "object": "model", "created": int(time.time()), "owned_by": "portal"}]}
 
+    def _register_utility_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
         @app.get("/metrics")
         async def metrics():
             set_memory_stats()
@@ -292,20 +286,43 @@ class WebInterface(BaseInterface):
         @app.get("/dashboard")
         async def dashboard():
             return Response(
-                """
-                <html><body><h1>Portal Dashboard</h1>
-                <p>Prometheus metrics are available at <code>/metrics</code>.</p>
-                </body></html>
-                """,
+                "<html><body><h1>Portal Dashboard</h1>"
+                "<p>Prometheus metrics are available at <code>/metrics</code>.</p>"
+                "</body></html>",
                 media_type="text/html",
             )
 
+        @app.get("/health")
+        async def health():
+            import sys
+            import portal as _portal
+
+            body: dict = {
+                "status": "ok",
+                "version": getattr(_portal, "__version__", "unknown"),
+                "build": {
+                    "python_version": sys.version.split()[0],
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                },
+                "interface": "web",
+            }
+            if not _agent_ready.is_set():
+                body["status"] = "warming_up"
+                body["agent_core"] = "warming_up"
+                return JSONResponse(body, status_code=200)
+            try:
+                healthy = await self.agent_core.health_check()
+            except Exception:
+                healthy = False
+            body["agent_core"] = "ok" if healthy else "degraded"
+            return JSONResponse(body, status_code=200)
+
+    def _register_websocket_route(self, app: FastAPI) -> None:
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
             from portal.security.security_module import InputSanitizer
             sanitizer = InputSanitizer()
 
-            # Verify API key from query params before accepting connection
             static_key = os.getenv("WEB_API_KEY", "").strip()
             if static_key:
                 token = websocket.query_params.get("api_key", "")
@@ -314,21 +331,15 @@ class WebInterface(BaseInterface):
                     return
             await websocket.accept()
 
-            # Per-connection rate limiting: max messages per window
-            ws_rate_limit = int(os.getenv("WS_RATE_LIMIT", "10"))       # messages
-            ws_rate_window = float(os.getenv("WS_RATE_WINDOW", "60"))   # seconds
+            ws_rate_limit = int(os.getenv("WS_RATE_LIMIT", "10"))
+            ws_rate_window = float(os.getenv("WS_RATE_WINDOW", "60"))
             message_timestamps: list[float] = []
 
             try:
                 while True:
                     data = await websocket.receive_json()
-
-                    # Enforce rate limit
                     now = time.time()
-                    message_timestamps = [
-                        ts for ts in message_timestamps
-                        if now - ts < ws_rate_window
-                    ]
+                    message_timestamps = [ts for ts in message_timestamps if now - ts < ws_rate_window]
                     if len(message_timestamps) >= ws_rate_limit:
                         await websocket.send_json({
                             "error": f"Rate limit exceeded ({ws_rate_limit} messages per {int(ws_rate_window)}s). Please wait.",
@@ -337,7 +348,6 @@ class WebInterface(BaseInterface):
                         continue
                     message_timestamps.append(now)
 
-                    # Input sanitization
                     raw_text = data.get("message", "")
                     sanitized_text, warnings = sanitizer.sanitize_command(raw_text)
                     if any("Dangerous pattern detected" in w for w in warnings):
@@ -364,34 +374,6 @@ class WebInterface(BaseInterface):
                 except Exception:
                     pass
                 return
-
-        @app.get("/health")
-        async def health():
-            import sys
-
-            import portal as _portal
-
-            body: dict = {
-                "status": "ok",
-                "version": getattr(_portal, "__version__", "unknown"),
-                "build": {
-                    "python_version": sys.version.split()[0],
-                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                },
-                "interface": "web",
-            }
-            if not _agent_ready.is_set():
-                body["status"] = "warming_up"
-                body["agent_core"] = "warming_up"
-                return JSONResponse(body, status_code=200)
-            try:
-                healthy = await self.agent_core.health_check()
-            except Exception:
-                healthy = False
-            body["agent_core"] = "ok" if healthy else "degraded"
-            return JSONResponse(body, status_code=200)
-
-        return app
 
     async def _stream_response(self, incoming: IncomingMessage, model: str, user_id: str) -> AsyncIterator[str]:
         chunk_id = f"chatcmpl-{uuid.uuid4().hex[:8]}"
@@ -478,5 +460,3 @@ def create_app(agent_core=None, config: dict | None = None, secure_agent=None) -
         )
 
     return WebInterface(agent_core, config or {}, secure_agent=secure_agent).app
-
-
