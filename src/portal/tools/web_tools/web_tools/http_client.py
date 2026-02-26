@@ -104,7 +104,7 @@ class HTTPClientTool(BaseTool):
                     # Try to get response body
                     try:
                         response_body = await response.json()
-                    except:
+                    except Exception:
                         response_body = await response.text()
                     
                     return self._success_response({
