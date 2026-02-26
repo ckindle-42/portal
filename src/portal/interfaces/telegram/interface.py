@@ -18,6 +18,8 @@ import logging
 from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
+from portal.agent.dispatcher import CentralDispatcher
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -45,6 +47,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@CentralDispatcher.register("telegram")
 class TelegramInterface:
     """
     Telegram Bot Interface - Passive Adapter Pattern

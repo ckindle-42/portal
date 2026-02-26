@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+from portal.agent.dispatcher import CentralDispatcher
 from portal.core.exceptions import PortalError, ModelNotAvailableError, RateLimitError, ValidationError
 from portal.core.types import IncomingMessage, InterfaceType, ProcessingResult
 from portal.interfaces.base import BaseInterface
@@ -75,6 +76,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+@CentralDispatcher.register("web")
 class WebInterface(BaseInterface):
     def __init__(self, agent_core, config, secure_agent=None):
         self.agent_core = agent_core

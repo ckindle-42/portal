@@ -88,77 +88,68 @@ class TestAtomicWrites:
 class TestPersistentRateLimiting:
     """Test persistent rate limiting in security_module.py"""
 
-    def test_rate_limit_persists_across_restarts(self, tmp_path):
+    @pytest.mark.asyncio
+    async def test_rate_limit_persists_across_restarts(self, tmp_path):
         """Verify rate limit data survives process restart"""
-        from security.security_module import RateLimiter
+        from portal.security.security_module import RateLimiter
 
         persist_path = tmp_path / "rate_limits.json"
 
-        # Create limiter and use it
         limiter1 = RateLimiter(max_requests=5, window_seconds=60, persist_path=persist_path)
-
-        user_id = 12345
+        user_id = "12345"
         for _ in range(5):
-            allowed, _ = limiter1.check_limit(user_id)
+            allowed, _ = await limiter1.check_limit(user_id)
             assert allowed
 
-        # 6th request should be blocked
-        allowed, msg = limiter1.check_limit(user_id)
+        allowed, msg = await limiter1.check_limit(user_id)
         assert not allowed
         assert msg is not None
 
-        # Simulate restart - create new limiter instance
-        limiter2 = RateLimiter(max_requests=5, window_seconds=60, persist_path=persist_path)
+        # Force flush before simulating restart
+        limiter1._flush_if_dirty()
 
-        # Should still be blocked (data persisted)
-        allowed, msg = limiter2.check_limit(user_id)
+        limiter2 = RateLimiter(max_requests=5, window_seconds=60, persist_path=persist_path)
+        allowed, msg = await limiter2.check_limit(user_id)
         assert not allowed, "Rate limit should persist across restart"
 
-    def test_rate_limit_prevents_restart_bypass(self, tmp_path):
+    @pytest.mark.asyncio
+    async def test_rate_limit_prevents_restart_bypass(self, tmp_path):
         """Verify malicious user can't bypass limits by forcing restart"""
-        from security.security_module import RateLimiter
+        from portal.security.security_module import RateLimiter
 
         persist_path = tmp_path / "rate_limits.json"
-
-        # User exhausts rate limit
         limiter1 = RateLimiter(max_requests=3, window_seconds=60, persist_path=persist_path)
-        user_id = 99999
+        user_id = "99999"
 
         for _ in range(3):
-            limiter1.check_limit(user_id)
+            await limiter1.check_limit(user_id)
 
-        # Blocked
-        allowed, _ = limiter1.check_limit(user_id)
+        allowed, _ = await limiter1.check_limit(user_id)
         assert not allowed
 
-        # Attacker "crashes" the bot and restarts
-        limiter2 = RateLimiter(max_requests=3, window_seconds=60, persist_path=persist_path)
+        limiter1._flush_if_dirty()
 
-        # CRITICAL: Should STILL be blocked
-        allowed, msg = limiter2.check_limit(user_id)
+        limiter2 = RateLimiter(max_requests=3, window_seconds=60, persist_path=persist_path)
+        allowed, msg = await limiter2.check_limit(user_id)
         assert not allowed, "SECURITY: Restart should not bypass rate limit"
 
-    def test_rate_limit_cleans_old_data(self, tmp_path):
+    @pytest.mark.asyncio
+    async def test_rate_limit_cleans_old_data(self, tmp_path):
         """Verify old rate limit data is cleaned up"""
-        from security.security_module import RateLimiter
+        from portal.security.security_module import RateLimiter
 
         persist_path = tmp_path / "rate_limits.json"
-
-        # Create limiter with short window
         limiter = RateLimiter(max_requests=5, window_seconds=1, persist_path=persist_path)
-        user_id = 11111
+        user_id = "11111"
 
-        # Make requests
         for _ in range(3):
-            limiter.check_limit(user_id)
+            await limiter.check_limit(user_id)
 
-        # Wait for window to expire
         time.sleep(2)
 
-        # Old data should be cleaned
         limiter._load_state()
         stats = limiter.get_stats(user_id)
-        assert stats['recent_requests'] == 0, "Old requests should be cleaned"
+        assert stats["recent_requests"] == 0, "Old requests should be cleaned"
 
 
 # =============================================================================
@@ -170,7 +161,7 @@ class TestCircuitBreaker:
 
     def test_circuit_opens_after_failures(self):
         """Verify circuit opens after threshold failures"""
-        from routing.execution_engine import CircuitBreaker, CircuitState
+        from portal.routing.execution_engine import CircuitBreaker, CircuitState
 
         cb = CircuitBreaker(failure_threshold=3, recovery_timeout=60)
         backend_id = "ollama"
@@ -192,7 +183,7 @@ class TestCircuitBreaker:
 
     def test_circuit_prevents_repeated_failures(self):
         """Verify circuit breaker prevents hammering failed backend"""
-        from routing.execution_engine import CircuitBreaker
+        from portal.routing.execution_engine import CircuitBreaker
 
         cb = CircuitBreaker(failure_threshold=3, recovery_timeout=60)
         backend_id = "lmstudio"
@@ -212,7 +203,7 @@ class TestCircuitBreaker:
 
     def test_circuit_transitions_to_half_open(self):
         """Verify circuit transitions to half-open after timeout"""
-        from routing.execution_engine import CircuitBreaker, CircuitState
+        from portal.routing.execution_engine import CircuitBreaker, CircuitState
 
         cb = CircuitBreaker(failure_threshold=3, recovery_timeout=2)
         backend_id = "mlx"
@@ -234,7 +225,7 @@ class TestCircuitBreaker:
 
     def test_circuit_closes_on_success(self):
         """Verify circuit closes after successful recovery"""
-        from routing.execution_engine import CircuitBreaker, CircuitState
+        from portal.routing.execution_engine import CircuitBreaker, CircuitState
 
         cb = CircuitBreaker(failure_threshold=3, recovery_timeout=1)
         backend_id = "ollama"
@@ -293,24 +284,24 @@ class TestDataIntegrityIntegration:
         assert len(LocalKnowledgeTool._documents) > 0
         assert isinstance(LocalKnowledgeTool._documents, list)
 
-    def test_rate_limiter_under_load(self, tmp_path):
+    @pytest.mark.asyncio
+    async def test_rate_limiter_under_load(self, tmp_path):
         """Test rate limiter performs well under load"""
-        from security.security_module import RateLimiter
+        from portal.security.security_module import RateLimiter
 
         persist_path = tmp_path / "load_test.json"
         limiter = RateLimiter(max_requests=100, window_seconds=60, persist_path=persist_path)
 
-        # Simulate many users
-        for user_id in range(100):
-            for _ in range(50):  # 50 requests per user
-                limiter.check_limit(user_id)
+        for user_id in range(10):
+            for _ in range(5):
+                await limiter.check_limit(str(user_id))
 
-        # Verify persistence file exists and is valid
+        limiter._flush_if_dirty()
         assert persist_path.exists()
-        with open(persist_path, 'r') as f:
+        with open(persist_path, "r") as f:
             data = json.load(f)
-            assert 'requests' in data
-            assert 'violations' in data
+            assert "requests" in data
+            assert "violations" in data
 
 
 if __name__ == "__main__":

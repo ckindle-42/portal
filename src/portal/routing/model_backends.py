@@ -58,23 +58,30 @@ class ModelBackend(ABC):
         pass
 
 
-class OllamaBackend(ModelBackend):
-    """Ollama backend adapter"""
-    
-    def __init__(self, base_url: str = "http://localhost:11434"):
-        self.base_url = base_url.rstrip('/')
+class BaseHTTPBackend(ModelBackend):
+    """Shared HTTP session management for HTTP-based model backends."""
+
+    def __init__(self, base_url: str) -> None:
+        self.base_url = base_url.rstrip("/")
         self._session: Optional[aiohttp.ClientSession] = None
-    
+
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=120)
             )
         return self._session
-    
-    async def close(self):
+
+    async def close(self) -> None:
         if self._session and not self._session.closed:
             await self._session.close()
+
+
+class OllamaBackend(BaseHTTPBackend):
+    """Ollama backend adapter"""
+
+    def __init__(self, base_url: str = "http://localhost:11434"):
+        super().__init__(base_url)
 
     @staticmethod
     def _normalize_tool_calls(raw_tool_calls: Any) -> Optional[list[Dict[str, Any]]]:
@@ -242,23 +249,11 @@ class OllamaBackend(ModelBackend):
         return []
 
 
-class LMStudioBackend(ModelBackend):
+class LMStudioBackend(BaseHTTPBackend):
     """LM Studio backend adapter (OpenAI-compatible API)"""
-    
+
     def __init__(self, base_url: str = "http://localhost:1234/v1"):
-        self.base_url = base_url.rstrip('/')
-        self._session: Optional[aiohttp.ClientSession] = None
-    
-    async def _get_session(self) -> aiohttp.ClientSession:
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=120)
-            )
-        return self._session
-    
-    async def close(self):
-        if self._session and not self._session.closed:
-            await self._session.close()
+        super().__init__(base_url)
     
     async def generate(self, prompt: str, model_name: str,
                       system_prompt: Optional[str] = None,
