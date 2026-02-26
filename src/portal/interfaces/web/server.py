@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import uuid
@@ -27,6 +28,7 @@ from portal.observability.runtime_metrics import (
 )
 from portal.security.auth import UserStore
 
+logger = logging.getLogger(__name__)
 
 class ChatMessage(BaseModel):
     role: str
@@ -213,8 +215,7 @@ class WebInterface(BaseInterface):
             except WebSocketDisconnect:
                 return
             except Exception as e:
-                import logging as _logging
-                _logging.getLogger(__name__).error(f"WebSocket error: {e}", exc_info=True)
+                logger.error(f"WebSocket error: {e}", exc_info=True)
                 try:
                     await websocket.send_json({"error": "Internal error", "done": True})
                 except Exception:
