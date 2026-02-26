@@ -60,7 +60,7 @@ if [ -f "$WEB_PID_FILE" ] && kill -0 "$(cat "$WEB_PID_FILE")" 2>/dev/null; then
 else
     echo "[portal-web] starting..."
     WEB_PORT="${WEB_PORT:-8081}"
-    nohup uvicorn portal.interfaces.web.server:app \
+    nohup uvicorn portal.interfaces.web.server:create_app --factory \
         --host 0.0.0.0 \
         --port "$WEB_PORT" \
         --workers 1 \
