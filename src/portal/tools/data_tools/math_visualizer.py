@@ -100,11 +100,7 @@ class MathVisualizerTool(BaseTool):
             x = np.linspace(x_range[0], x_range[1], 500)
 
             try:
-                try:
-                    import numexpr
-                    y = numexpr.evaluate(expression, local_dict={"x": x})
-                except ImportError:
-                    y = _safe_eval(expression, x)
+                y = _safe_eval(expression, x)
             except Exception as e:
                 return self._error_response(f"Invalid expression: {e}")
 

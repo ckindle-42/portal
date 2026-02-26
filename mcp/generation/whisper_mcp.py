@@ -2,8 +2,8 @@
 Whisper MCP Server
 Wraps faster-whisper for audio transcription as an MCP tool.
 """
+import asyncio
 import os
-import tempfile
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -39,7 +39,8 @@ async def transcribe_audio(file_path: str, language: str | None = None) -> dict:
         return {"error": f"File not found: {file_path}"}
 
     model = get_model()
-    segments, info = model.transcribe(
+    segments, info = await asyncio.to_thread(
+        model.transcribe,
         str(path),
         language=language,
         beam_size=5,
