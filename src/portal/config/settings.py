@@ -210,7 +210,7 @@ class BackendsConfig(BaseModel):
 class ToolsConfig(BaseModel):
     """Tools configuration"""
     enabled_categories: list[str] = Field(
-        default_factory=lambda: ["system", "git", "data", "web"],
+        default_factory=lambda: ["utility", "dev", "data", "web"],
         description="Enabled tool categories"
     )
     disabled_tools: list[str] = Field(default_factory=list, description="Specific tools to disable")

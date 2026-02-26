@@ -45,13 +45,13 @@ class ToolRegistry:
     def __init__(self):
         self.tools: dict[str, Any] = {}
         self.tool_categories: dict[str, list[str]] = {
+            'utility': [],
             'data': [],
-            'system': [],
             'web': [],
             'audio': [],
             'dev': [],
             'automation': [],
-            'knowledge': []
+            'knowledge': [],
         }
         self.tool_stats: dict[str, ToolExecutionStats] = {}
         self.failed_tools: list[dict[str, str]] = []
