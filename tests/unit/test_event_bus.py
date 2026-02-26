@@ -1,6 +1,9 @@
 """Tests for portal.core.event_bus"""
 
+from __future__ import annotations
+
 import asyncio
+from collections import deque
 
 import pytest
 
@@ -206,3 +209,49 @@ class TestEventEmitter:
         await emitter.emit_security_warning("chat-1", "suspicious input", "trace-1")
         await asyncio.sleep(0.05)
         assert len(events) >= 1
+
+
+class TestEventBusEdgeCases:
+    @pytest.mark.asyncio
+    async def test_unsubscribe_unknown_callback_is_safe(self):
+        """Unsubscribing a callback that was never registered does not crash."""
+        bus = EventBus()
+
+        async def handler(event: Event) -> None:
+            pass
+
+        bus.unsubscribe(EventType.PROCESSING_STARTED, handler)
+        bus.subscribe(EventType.PROCESSING_STARTED, handler)
+
+        async def other_handler(event: Event) -> None:
+            pass
+
+        bus.unsubscribe(EventType.PROCESSING_STARTED, other_handler)
+
+
+class TestEventBusHistory:
+    @pytest.mark.asyncio
+    async def test_event_history_uses_deque(self):
+        """EventBus uses deque with maxlen for O(1) eviction."""
+        bus = EventBus(enable_history=True, max_history=3)
+        assert isinstance(bus._event_history, deque)
+        assert bus._event_history.maxlen == 3
+
+    @pytest.mark.asyncio
+    async def test_event_history_evicts_oldest(self):
+        """Publishing beyond max_history evicts oldest events."""
+        bus = EventBus(enable_history=True, max_history=2)
+        await bus.publish(EventType.PROCESSING_STARTED, "c1", {"msg": "first"})
+        await bus.publish(EventType.PROCESSING_COMPLETED, "c1", {"msg": "second"})
+        await bus.publish(EventType.PROCESSING_FAILED, "c1", {"msg": "third"})
+        assert len(bus._event_history) == 2
+        events = list(bus._event_history)
+        assert events[0].data["msg"] == "second"
+        assert events[1].data["msg"] == "third"
+
+    @pytest.mark.asyncio
+    async def test_event_history_disabled_is_empty(self):
+        """Disabled history still uses deque but never grows."""
+        bus = EventBus(enable_history=False)
+        await bus.publish(EventType.PROCESSING_STARTED, "c1", {"msg": "test"})
+        assert len(bus._event_history) == 0

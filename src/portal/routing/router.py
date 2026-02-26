@@ -1,18 +1,4 @@
-"""
-Portal Model Router — FastAPI proxy to Ollama.
-
-Sits at :8000 and provides:
-  - Full Ollama API proxy (pass-through)
-  - Workspace virtual models (auto, auto-coding, auto-reasoning, auto-fast)
-  - Regex keyword routing rules
-  - Manual override via @model: prefix
-  - VRAM-aware model management
-  - /health — component status
-  - /api/dry-run — routing decision without execution
-  - /api/tags — augmented model list with virtual workspaces
-
-Based on M4 AI Stack Setup Guide v6.2 / v4.7.
-"""
+"""Portal Model Router — FastAPI proxy to Ollama with workspace routing and regex rules."""
 
 import hmac
 import json
@@ -27,10 +13,6 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 ROUTER_PORT = int(os.getenv("ROUTER_PORT", "8000"))
@@ -65,10 +47,6 @@ for rule in sorted(RULES.get("regex_rules", []), key=lambda r: -r.get("priority"
     patterns = [re.compile(k) for k in rule.get("keywords", [])]
     _compiled_rules.append((rule.get("priority", 0), rule["name"], patterns, rule["model"]))
 
-# ---------------------------------------------------------------------------
-# FastAPI app
-# ---------------------------------------------------------------------------
-
 app = FastAPI(
     title="Portal Model Router",
     version="1.0.0",
@@ -77,10 +55,6 @@ app = FastAPI(
     redoc_url=None,
 )
 
-
-# ---------------------------------------------------------------------------
-# Authentication
-# ---------------------------------------------------------------------------
 
 async def _verify_token(authorization: str | None = Header(None)) -> None:
     """Verify ROUTER_TOKEN when it is configured (non-empty).
@@ -97,10 +71,6 @@ async def _verify_token(authorization: str | None = Header(None)) -> None:
     if not hmac.compare_digest(token.encode(), ROUTER_TOKEN.encode()):
         raise HTTPException(status_code=401, detail="Invalid or missing ROUTER_TOKEN")
 
-
-# ---------------------------------------------------------------------------
-# Routing logic
-# ---------------------------------------------------------------------------
 
 def _extract_user_text(messages: list[dict]) -> str:
     """Extract latest user message content."""
@@ -151,9 +121,6 @@ def resolve_model(requested_model: str, messages: list[dict]) -> tuple[str, str]
     return DEFAULT_MODEL, "default"
 
 
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
 
 @app.get("/health")
 async def health() -> dict:

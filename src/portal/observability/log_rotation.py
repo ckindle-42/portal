@@ -1,15 +1,4 @@
-"""
-Log Rotation for Portal
-===============================
-
-Automated log file rotation with:
-- Size-based rotation
-- Time-based rotation
-- Compression of old logs
-- Automatic cleanup of old rotated logs
-
-v4.7.0: Initial implementation for production log management
-"""
+"""Log Rotation — size/time-based rotation with compression and automatic cleanup."""
 
 import asyncio
 import gzip
@@ -25,9 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class RotationStrategy(Enum):
-    """Log rotation strategies"""
-    SIZE = "size"           # Rotate when file reaches size limit
-    TIME = "time"           # Rotate at time intervals
+    SIZE = "size"
+    TIME = "time"
     SIZE_AND_TIME = "both"  # Rotate on either condition
 
 
@@ -56,22 +44,7 @@ class RotationConfig:
 
 
 class LogRotator:
-    """
-    Manages log file rotation and cleanup.
-
-    Features:
-    - Automatic rotation based on size or time
-    - Compression of rotated logs (gzip)
-    - Cleanup of old rotated logs
-    - Async operation for non-blocking I/O
-
-    Example:
-        >>> rotator = LogRotator(
-        ...     log_file="/var/log/portal/app.log",
-        ...     config=RotationConfig(max_bytes=10*1024*1024)
-        ... )
-        >>> await rotator.start()
-    """
+    """Manages log file rotation (size/time), gzip compression, and cleanup."""
 
     def __init__(
         self,

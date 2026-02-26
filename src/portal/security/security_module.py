@@ -1,7 +1,4 @@
-"""
-Security Module - Rate limiting and input sanitization
-Protects against abuse and malicious inputs
-"""
+"""Security Module — rate limiting and input sanitization."""
 
 import asyncio
 import atexit
@@ -21,62 +18,26 @@ from urllib.parse import unquote
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# RATE LIMITER
-# =============================================================================
-
 class RateLimiter:
-    """
-    Per-user rate limiting with sliding window algorithm.
-    Prevents spam and abuse of the agent.
-
-    SECURITY FIX: Now persists rate limit data to disk to prevent
-    malicious users from bypassing limits by forcing restarts.
-    """
+    """Per-user sliding-window rate limiter. Persists state to prevent restart-bypass attacks."""
 
     def __init__(self, max_requests: int = 30, window_seconds: int = 60,
                  persist_path: Path | None = None):
-        """
-        Initialize rate limiter.
-
-        Args:
-            max_requests: Maximum requests allowed per window
-            window_seconds: Window duration in seconds
-            persist_path: Path to persist rate limit data (prevents bypass via restart)
-        """
         self.max_requests = max_requests
         self.window = window_seconds
         self.requests: dict[str, list[float]] = defaultdict(list)
         self.violations: dict[str, int] = defaultdict(int)
-
-        # Persistent storage to prevent reset-bypass attacks
-        self.persist_path = persist_path or Path(
-            os.getenv('RATE_LIMIT_DATA_DIR', 'data')
-        ) / 'rate_limits.json'
-
-        # Batched write state
+        self.persist_path = persist_path or Path(os.getenv('RATE_LIMIT_DATA_DIR', 'data')) / 'rate_limits.json'
         self._dirty = False
         self._last_save = time.time()
-        self._save_interval = 5.0  # seconds
-
-        # Load existing rate limit data
+        self._save_interval = 5.0
         self._load_state()
-
-        # Flush on process exit
         atexit.register(self._flush_if_dirty)
 
     def _check_limit_sync(self, user_id: str) -> tuple[bool, str | None]:
         """Synchronous core of rate limit check (called via asyncio.to_thread)."""
         now = time.time()
-        user_requests = self.requests[user_id]
-
-        # Remove requests outside the window
-        user_requests = [
-            req_time for req_time in user_requests
-            if now - req_time < self.window
-        ]
-
-        # Check limit
+        user_requests = [t for t in self.requests[user_id] if now - t < self.window]
         if len(user_requests) >= self.max_requests:
             self.violations[user_id] += 1
             wait_time = int(user_requests[0] + self.window - now)
@@ -251,15 +212,8 @@ class RateLimiter:
             logger.error("Failed to save rate limit state: %s", e)
 
 
-# =============================================================================
-# INPUT SANITIZER
-# =============================================================================
-
 class InputSanitizer:
-    """
-    Input validation and sanitization.
-    Prevents malicious inputs and dangerous operations.
-    """
+    """Input validation and sanitization against malicious patterns."""
 
     # Dangerous command patterns
     DANGEROUS_PATTERNS = [
