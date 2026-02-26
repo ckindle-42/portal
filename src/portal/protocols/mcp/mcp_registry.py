@@ -9,12 +9,15 @@ Supports two transports:
   - streamable-http: native MCP streamable HTTP (LibreChat path)
 """
 
+import asyncio
 import logging
 from typing import Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+_RETRY_DELAYS = (1.0, 2.0, 4.0)  # seconds between attempts (3 retries total)
 
 
 class MCPRegistry:
@@ -25,7 +28,24 @@ class MCPRegistry:
 
     def __init__(self):
         self._servers: dict[str, dict] = {}
-        self._client = httpx.AsyncClient(timeout=60.0)
+        transport = httpx.AsyncHTTPTransport(retries=3)
+        self._client = httpx.AsyncClient(transport=transport, timeout=60.0)
+
+    async def _request(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """Execute an HTTP request with simple retry logic on transient errors."""
+        last_exc: Exception = RuntimeError("no attempts made")
+        for attempt, delay in enumerate((*_RETRY_DELAYS, None), start=1):
+            try:
+                resp = await self._client.request(method, url, **kwargs)
+                return resp
+            except (httpx.ConnectError, httpx.TimeoutException, httpx.RemoteProtocolError) as exc:
+                last_exc = exc
+                if delay is not None:
+                    logger.debug("MCP request attempt %d failed (%s); retrying in %.1fs", attempt, exc, delay)
+                    await asyncio.sleep(delay)
+                else:
+                    logger.warning("MCP request failed after %d attempts: %s", attempt, exc)
+        raise last_exc
 
     async def close(self) -> None:
         """Close the shared HTTP client. Call during application shutdown."""
@@ -53,18 +73,16 @@ class MCPRegistry:
             return False
 
         headers = self._auth_headers(server)
+        url = (
+            f"{server['url']}/openapi.json"
+            if server["transport"] == "openapi"
+            else server["url"]
+        )
         try:
-            if server["transport"] == "openapi":
-                resp = await self._client.get(
-                    f"{server['url']}/openapi.json", headers=headers, timeout=5.0
-                )
-            else:
-                resp = await self._client.get(
-                    f"{server['url']}", headers=headers, timeout=5.0
-                )
+            resp = await self._request("GET", url, headers=headers, timeout=5.0)
             return resp.status_code < 500
-        except Exception as e:
-            logger.debug(f"Health check failed for '{name}': {e}")
+        except Exception as exc:
+            logger.debug("Health check failed for %r: %s", name, exc)
             return False
 
     async def health_check_all(self) -> dict[str, bool]:
@@ -83,9 +101,7 @@ class MCPRegistry:
         headers = self._auth_headers(server)
         try:
             if server["transport"] == "openapi":
-                resp = await self._client.get(
-                    f"{server['url']}/openapi.json", headers=headers, timeout=10.0
-                )
+                resp = await self._request("GET", f"{server['url']}/openapi.json", headers=headers, timeout=10.0)
                 resp.raise_for_status()
                 spec = resp.json()
                 tools = []
@@ -100,15 +116,12 @@ class MCPRegistry:
                             })
                 return tools
             else:
-                # streamable-http: query /tools endpoint
-                resp = await self._client.get(
-                    f"{server['url']}/tools", headers=headers, timeout=10.0
-                )
+                resp = await self._request("GET", f"{server['url']}/tools", headers=headers, timeout=10.0)
                 if resp.status_code == 200:
                     return resp.json().get("tools", [])
                 return []
-        except Exception as e:
-            logger.warning(f"list_tools failed for '{server_name}': {e}")
+        except Exception as exc:
+            logger.warning("list_tools failed for %r: %s", server_name, exc)
             return []
 
     async def call_tool(
@@ -141,22 +154,21 @@ class MCPRegistry:
 
         try:
             if server["transport"] == "openapi":
-                resp = await self._client.post(
-                    f"{server['url']}/{tool_name}",
-                    headers=headers,
-                    json=arguments,
+                resp = await self._request(
+                    "POST", f"{server['url']}/{tool_name}", headers=headers, json=arguments
                 )
             else:
-                resp = await self._client.post(
+                resp = await self._request(
+                    "POST",
                     f"{server['url']}/call",
                     headers=headers,
                     json={"tool": tool_name, "arguments": arguments},
                 )
             resp.raise_for_status()
             return resp.json()
-        except Exception as e:
-            logger.error(f"call_tool '{tool_name}' on '{server_name}' failed: {e}")
-            return {"error": str(e)}
+        except Exception as exc:
+            logger.error("call_tool %r on %r failed: %s", tool_name, server_name, exc)
+            return {"error": str(exc)}
 
     def _auth_headers(self, server: dict) -> dict:
         headers = {}

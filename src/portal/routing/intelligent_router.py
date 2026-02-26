@@ -3,14 +3,26 @@ Intelligent Router - Model selection based on task analysis
 """
 
 import logging
-from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
-from .model_registry import ModelRegistry, ModelMetadata, ModelCapability, SpeedClass
-from .task_classifier import TaskClassifier, TaskClassification, TaskComplexity, TaskCategory
+from .model_registry import ModelCapability, ModelMetadata, ModelRegistry, SpeedClass
+from .task_classifier import TaskCategory, TaskClassification, TaskClassifier, TaskComplexity
 
 logger = logging.getLogger(__name__)
+
+# Default complexity→model-preference mapping.
+# Each tier is intentionally empty so the router falls back to
+# capability-based selection when the caller provides no preferences.
+_DEFAULT_PREFERENCES: Dict[str, List[str]] = {
+    "trivial": [],
+    "simple": [],
+    "moderate": [],
+    "complex": [],
+    "expert": [],
+    "code": [],
+}
 
 
 class RoutingStrategy(Enum):
@@ -40,16 +52,16 @@ class IntelligentRouter:
     Supports multiple strategies and automatic fallback selection
     """
 
-    def __init__(self, registry: ModelRegistry, strategy: RoutingStrategy = RoutingStrategy.AUTO,
-                 model_preferences: Optional[Dict[str, List[str]]] = None):
+    def __init__(
+        self,
+        registry: ModelRegistry,
+        strategy: RoutingStrategy = RoutingStrategy.AUTO,
+        model_preferences: Optional[Dict[str, List[str]]] = None,
+    ) -> None:
         self.registry = registry
         self.strategy = strategy
         self.classifier = TaskClassifier()
-
-        # Model preferences from config (or use defaults)
-        self.model_preferences = model_preferences or self._get_default_preferences()
-
-        # Verify model availability on initialization
+        self.model_preferences = model_preferences if model_preferences is not None else dict(_DEFAULT_PREFERENCES)
         self._verify_model_preferences()
     
     def route(self, query: str, max_cost: float = 1.0) -> RoutingDecision:
@@ -96,28 +108,6 @@ class IntelligentRouter:
             reasoning=reasoning
         )
     
-    def _get_default_preferences(self) -> Dict[str, List[str]]:
-        """
-        Get default model preferences based on available models.
-
-        This method dynamically discovers available models rather than hardcoding names.
-        Preferences can still be overridden via config for specific deployments.
-
-        Returns empty defaults - models should be configured via config file
-        or discovered dynamically from the registry.
-        """
-        # Return empty defaults - rely on capability-based fallback
-        # Users should configure their model preferences in config.yaml
-        logger.info("No model preferences configured. Will use capability-based model selection.")
-        return {
-            'trivial': [],
-            'simple': [],
-            'moderate': [],
-            'complex': [],
-            'expert': [],
-            'code': []
-        }
-
     def _route_auto(self, classification: TaskClassification,
                    max_cost: float) -> ModelMetadata:
         """Automatic balanced routing using configurable model preferences"""
@@ -251,29 +241,22 @@ class IntelligentRouter:
         
         raise RuntimeError("No models available in registry")
     
-    def _verify_model_preferences(self):
-        """Verify that preferred models exist in registry and log warnings if not"""
-
-        # Collect all model IDs from preferences
-        preferred_model_ids = set()
-        for models_list in self.model_preferences.values():
-            preferred_model_ids.update(models_list)
-
-        missing_models = []
-        for model_id in preferred_model_ids:
-            model = self.registry.get_model(model_id)
-            if not model:
-                missing_models.append(model_id)
-
-        if missing_models:
+    def _verify_model_preferences(self) -> None:
+        """Warn if any preferred model IDs are absent from the registry."""
+        missing = [
+            m_id
+            for tier in self.model_preferences.values()
+            for m_id in tier
+            if not self.registry.get_model(m_id)
+        ]
+        if missing:
             logger.warning(
-                f"Routing preferences reference {len(missing_models)} unavailable models: "
-                f"{', '.join(missing_models[:3])}{'...' if len(missing_models) > 3 else ''}. "
-                f"Routing will fall back to available models. "
-                f"To customize preferences, edit MODEL_PREF_* in .env"
+                "Routing preferences reference %d missing model(s): %s%s. "
+                "Falling back to capability-based selection.",
+                len(missing),
+                ", ".join(missing[:3]),
+                "..." if len(missing) > 3 else "",
             )
-        else:
-            logger.info("All preferred models found in registry")
 
     def _generate_reasoning(self, model: ModelMetadata,
                            classification: TaskClassification) -> str:

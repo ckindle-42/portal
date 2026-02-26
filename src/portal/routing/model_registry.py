@@ -3,9 +3,12 @@ Model Registry - Centralized model catalog with capabilities and metadata
 Optimized for M4 Mac Mini Pro with 128GB RAM
 """
 
-from typing import Dict, List, Optional
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class ModelCapability(Enum):
@@ -316,3 +319,87 @@ class ModelRegistry:
         """Update model availability"""
         if model_id in self.models:
             self.models[model_id].available = available
+
+    async def discover_from_ollama(
+        self,
+        base_url: str = "http://localhost:11434",
+        mark_others_unavailable: bool = False,
+    ) -> List[str]:
+        """
+        Query Ollama and register any models not already in the catalog.
+
+        For each model returned by ``GET /api/tags`` that has no entry in
+        ``self.models`` a minimal ``ModelMetadata`` is created and registered
+        with sensible defaults so the router can select it immediately.
+
+        Args:
+            base_url: Base URL of the Ollama server.
+            mark_others_unavailable: When True, mark every previously
+                registered Ollama model that is NOT in the live list as
+                unavailable.
+
+        Returns:
+            List of model_ids that were newly registered.
+        """
+        try:
+            import httpx
+        except ImportError:
+            logger.warning("httpx not available; skipping Ollama discovery")
+            return []
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(f"{base_url.rstrip('/')}/api/tags")
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as exc:
+            logger.warning("Ollama discovery failed (%s); using static registry", exc)
+            return []
+
+        live_names: set[str] = set()
+        newly_registered: list[str] = []
+
+        for entry in data.get("models", []):
+            name: str = entry.get("name", "")
+            if not name:
+                continue
+            live_names.add(name)
+
+            # Build a stable model_id from the name
+            model_id = f"ollama_{name.replace(':', '_').replace('/', '_')}"
+
+            if model_id not in self.models:
+                size_bytes: int = entry.get("size", 0)
+                params_b = size_bytes / 1e9
+                params_label = f"{params_b:.0f}B" if params_b >= 1 else f"{size_bytes // 1_000_000}M"
+
+                metadata = ModelMetadata(
+                    model_id=model_id,
+                    backend="ollama",
+                    display_name=name,
+                    parameters=params_label,
+                    quantization="unknown",
+                    capabilities=[ModelCapability.GENERAL, ModelCapability.FUNCTION_CALLING],
+                    speed_class=SpeedClass.MEDIUM,
+                    context_window=8192,
+                    general_quality=0.7,
+                    code_quality=0.6,
+                    reasoning_quality=0.6,
+                    cost=0.3,
+                    available=True,
+                    api_model_name=name,
+                )
+                self.register(metadata)
+                newly_registered.append(model_id)
+                logger.info("Discovered Ollama model: %s → %s", name, model_id)
+            else:
+                self.models[model_id].available = True
+
+        if mark_others_unavailable:
+            for model in self.models.values():
+                if model.backend == "ollama" and model.api_model_name not in live_names:
+                    model.available = False
+
+        if newly_registered:
+            logger.info("Registered %d new Ollama model(s): %s", len(newly_registered), newly_registered)
+        return newly_registered

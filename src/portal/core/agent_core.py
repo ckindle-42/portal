@@ -460,6 +460,44 @@ class AgentCore:
         """Get list of available tools"""
         return self.tool_registry.get_tool_list()
 
+    async def _resolve_preflight_tools(
+        self,
+        query: str,
+        system_prompt: str,
+        messages: Optional[List[Dict[str, Any]]],
+        chat_id: str,
+        trace_id: str,
+        max_rounds: int,
+    ) -> List[Dict[str, str]]:
+        """
+        Run the preflight MCP tool loop and return accumulated tool-result messages.
+
+        Executes up to *max_rounds* of model → tool-call → result iterations so
+        that `stream_response` receives a resolved context before it begins
+        token streaming.  Returns an empty list when no MCP registry is attached
+        or when the model produces no tool-call requests.
+        """
+        tool_messages: List[Dict[str, str]] = []
+        if not self.mcp_registry:
+            return tool_messages
+
+        for _ in range(max_rounds):
+            loop_messages = messages if not tool_messages else (messages or []) + tool_messages
+            preflight = await self.execution_engine.execute(
+                query=query,
+                system_prompt=system_prompt,
+                messages=loop_messages,
+            )
+            if not preflight.success:
+                break
+            tool_calls = preflight.tool_calls or []
+            if not tool_calls:
+                break
+            results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
+            tool_messages.extend(self._format_tool_results_as_messages(results))
+
+        return tool_messages
+
     async def stream_response(self, incoming: IncomingMessage) -> AsyncIterator[str]:
         """
         Yield response tokens for streaming interfaces (WebInterface, SlackInterface).
@@ -476,29 +514,15 @@ class AgentCore:
         query = incoming.text
         max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
         messages = incoming.history if incoming.history else None
-        tool_messages: List[Dict[str, str]] = []
 
-        if self.mcp_registry:
-            for _ in range(max_tool_rounds):
-                loop_messages = messages if not tool_messages else (messages or []) + tool_messages
-                preflight = await self.execution_engine.execute(
-                    query=query,
-                    system_prompt=system_prompt,
-                    messages=loop_messages,
-                )
-                if not preflight.success:
-                    break
-
-                tool_calls = preflight.tool_calls or []
-                if not tool_calls:
-                    break
-
-                tool_results = await self._dispatch_mcp_tools(
-                    tool_calls=tool_calls,
-                    chat_id=incoming.id,
-                    trace_id=f"stream-{incoming.id}",
-                )
-                tool_messages.extend(self._format_tool_results_as_messages(tool_results))
+        tool_messages = await self._resolve_preflight_tools(
+            query=query,
+            system_prompt=system_prompt,
+            messages=messages,
+            chat_id=incoming.id,
+            trace_id=f"stream-{incoming.id}",
+            max_rounds=max_tool_rounds,
+        )
 
         collected_response = []
         final_messages = (messages or []) + tool_messages if tool_messages else messages

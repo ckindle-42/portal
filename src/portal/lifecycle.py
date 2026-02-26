@@ -228,6 +228,15 @@ class Runtime:
         if log_rotator:
             await log_rotator.start()
 
+        # Start config watcher for hot reload if portal.yaml is present
+        from pathlib import Path as _Path
+        _config_watch_path = self.config_path or _Path("portal.yaml")
+        if _config_watch_path.exists():
+            from portal.observability.config_watcher import ConfigWatcher
+            _config_watcher = ConfigWatcher(config_file=_config_watch_path)
+            asyncio.create_task(_config_watcher.start(), name="config-watcher")
+            logger.info("Config watcher started for %s", _config_watch_path)
+
         self._initialized = True
         logger.info(
             "Runtime bootstrap completed",
