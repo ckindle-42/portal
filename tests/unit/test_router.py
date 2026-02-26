@@ -4,17 +4,17 @@ Tests for intelligent router and CentralDispatcher interface registry.
 
 import pytest
 
-from portal.routing.task_classifier import TaskClassifier
 from portal.routing.intelligent_router import IntelligentRouter
+from portal.routing.task_classifier import TaskClassifier
 
 
 class TestTaskClassifier:
     """Test task classification logic"""
-    
+
     def test_classify_trivial_queries(self):
         """Test that greetings and simple queries are classified as trivial"""
         classifier = TaskClassifier()
-        
+
         trivial_queries = [
             "hello",
             "hi there",
@@ -22,34 +22,34 @@ class TestTaskClassifier:
             "thanks",
             "ok"
         ]
-        
+
         for query in trivial_queries:
             result = classifier.classify(query)
             assert result.complexity.value in ["trivial", "simple"], f"'{query}' should be trivial/simple, got {result}"
-    
+
     def test_classify_complex_queries(self):
         """Test that complex queries are correctly classified"""
         classifier = TaskClassifier()
-        
+
         complex_queries = [
             "Write a detailed analysis of the current codebase architecture and suggest improvements",
             "Generate a comprehensive report on system performance with graphs and recommendations",
         ]
-        
+
         for query in complex_queries:
             result = classifier.classify(query)
             assert result.complexity.value in ["simple", "moderate", "complex", "expert"], f"'{query}' should be at least simple, got {result}"
-    
+
     def test_classify_code_queries(self):
         """Test that code-related queries are at least medium complexity"""
         classifier = TaskClassifier()
-        
+
         code_queries = [
             "Write a Python function to sort a list",
             "Create a React component for user authentication",
             "Debug this error in my code"
         ]
-        
+
         for query in code_queries:
             result = classifier.classify(query)
             assert result.complexity.value in ["simple", "moderate", "complex", "expert"], f"'{query}' should need at least simple complexity, got {result}"
@@ -57,7 +57,7 @@ class TestTaskClassifier:
 
 class TestIntelligentRouter:
     """Test intelligent routing decisions"""
-    
+
     def test_router_initialization(self):
         """Test router initializes with registry"""
         from portal.routing.model_registry import ModelRegistry
@@ -71,10 +71,10 @@ class TestIntelligentRouter:
     def test_route_selection(self):
         """Test that router selects appropriate models"""
         from portal.routing.model_registry import ModelRegistry
-        
+
         registry = ModelRegistry()
         router = IntelligentRouter(registry)
-        
+
         # Simple query should use fast model
         simple_task = router.classifier.classify("hello")
         assert simple_task.complexity.value in ["trivial", "simple"]
@@ -89,12 +89,12 @@ class TestCentralDispatcher:
 
     def test_registered_interfaces_accessible(self):
         """Interfaces decorated with @CentralDispatcher.register are retrievable."""
-        from portal.agent.dispatcher import CentralDispatcher
+        import portal.interfaces.slack.interface  # noqa: F401
+        import portal.interfaces.telegram.interface  # noqa: F401
 
         # web, telegram, and slack are registered at import time
         import portal.interfaces.web.server  # noqa: F401 — trigger registration
-        import portal.interfaces.telegram.interface  # noqa: F401
-        import portal.interfaces.slack.interface  # noqa: F401
+        from portal.agent.dispatcher import CentralDispatcher
 
         names = CentralDispatcher.registered_names()
         assert "web" in names
@@ -105,8 +105,8 @@ class TestCentralDispatcher:
         """CentralDispatcher.get() returns the registered class."""
         import inspect
 
-        from portal.agent.dispatcher import CentralDispatcher
         import portal.interfaces.web.server  # noqa: F401 — trigger registration
+        from portal.agent.dispatcher import CentralDispatcher
 
         web_cls = CentralDispatcher.get("web")
         assert inspect.isclass(web_cls)

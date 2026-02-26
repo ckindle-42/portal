@@ -1,7 +1,8 @@
 """Tests for AgentCore.stream_response()"""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from portal.core.types import IncomingMessage
 

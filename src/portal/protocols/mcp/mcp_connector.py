@@ -125,7 +125,7 @@ class MCPConnectorTool(BaseTool):
 
     def _load_server_configs(self) -> dict[str, dict]:
         """Load MCP server configurations
-        
+
         These are the default MCP servers. Users can add custom servers
         via configuration file or environment variables.
         """
@@ -403,7 +403,7 @@ class MCPConnectorTool(BaseTool):
 
         try:
             # Close session
-            session = self.active_sessions.pop(server_name)
+            self.active_sessions.pop(server_name)
             # Note: Session cleanup happens automatically when context manager exits
 
             logger.info(f"Disconnected from {server_name}")

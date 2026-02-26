@@ -2,9 +2,10 @@
 Unit tests for Data tools
 """
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, Mock, mock_open
-from pathlib import Path
+
 from portal.tools.data_tools.csv_analyzer import CSVAnalyzerTool
 from portal.tools.data_tools.file_compressor import FileCompressorTool
 from portal.tools.data_tools.math_visualizer import MathVisualizerTool

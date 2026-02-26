@@ -7,11 +7,10 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-
 
 # =============================================================================
 # SHARED FIXTURES
@@ -128,14 +127,14 @@ def mock_logger():
 # =============================================================================
 
 
-def assert_tool_success(result: Dict[str, Any]):
+def assert_tool_success(result: dict[str, Any]):
     """Assert that a tool execution was successful."""
     assert isinstance(result, dict), "Result should be a dictionary"
     assert result.get("success") is True, f"Tool should succeed: {result}"
     assert "result" in result or "data" in result, "Result should contain result or data"
 
 
-def assert_tool_failure(result: Dict[str, Any], expected_error: str = None):
+def assert_tool_failure(result: dict[str, Any], expected_error: str = None):
     """Assert that a tool execution failed as expected."""
     assert isinstance(result, dict), "Result should be a dictionary"
     assert result.get("success") is False, "Tool should fail"
@@ -146,7 +145,7 @@ def assert_tool_failure(result: Dict[str, Any], expected_error: str = None):
         )
 
 
-def create_mock_tool_response(success: bool = True, **kwargs) -> Dict[str, Any]:
+def create_mock_tool_response(success: bool = True, **kwargs) -> dict[str, Any]:
     """Create a mock tool response."""
     if success:
         return {"success": True, "result": kwargs.get("result", "mock result"), **kwargs}

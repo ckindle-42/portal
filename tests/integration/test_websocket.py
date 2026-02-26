@@ -4,10 +4,9 @@ Integration tests for WebSocket endpoint and streaming (SSE) response.
 All tests use mocked AgentCore/SecurityMiddleware — no live services required.
 Run with:  pytest tests/integration/test_websocket.py -v
 """
-import json
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -47,7 +46,6 @@ def _make_interface(stream_tokens=None, health_ok=True):
 @pytest.mark.asyncio
 async def test_websocket_valid_api_key_connects(monkeypatch):
     """WebSocket with correct api_key query param connects and streams tokens."""
-    import os
     from fastapi.testclient import TestClient
 
     monkeypatch.setenv("WEB_API_KEY", "test-ws-key")
@@ -65,9 +63,7 @@ async def test_websocket_valid_api_key_connects(monkeypatch):
 @pytest.mark.asyncio
 async def test_websocket_invalid_api_key_closes_4001(monkeypatch):
     """WebSocket with wrong api_key is rejected with close code 4001."""
-    import os
     from fastapi.testclient import TestClient
-    from starlette.websockets import WebSocketDisconnect
 
     monkeypatch.setenv("WEB_API_KEY", "correct-key")
 
@@ -82,8 +78,9 @@ async def test_websocket_invalid_api_key_closes_4001(monkeypatch):
 @pytest.mark.asyncio
 async def test_websocket_no_api_key_when_guard_disabled():
     """WebSocket connects without api_key when WEB_API_KEY is not set."""
-    from fastapi.testclient import TestClient
     import os
+
+    from fastapi.testclient import TestClient
 
     # Ensure WEB_API_KEY is not set
     os.environ.pop("WEB_API_KEY", None)
@@ -101,6 +98,7 @@ async def test_websocket_no_api_key_when_guard_disabled():
 async def test_websocket_dangerous_input_blocked(monkeypatch):
     """WebSocket blocks messages containing dangerous shell commands."""
     import os
+
     from fastapi.testclient import TestClient
 
     os.environ.pop("WEB_API_KEY", None)
@@ -119,6 +117,7 @@ async def test_websocket_dangerous_input_blocked(monkeypatch):
 async def test_websocket_oversized_message_blocked(monkeypatch):
     """WebSocket blocks messages that exceed the 10 000-character limit."""
     import os
+
     from fastapi.testclient import TestClient
 
     os.environ.pop("WEB_API_KEY", None)
@@ -138,6 +137,7 @@ async def test_websocket_oversized_message_blocked(monkeypatch):
 async def test_websocket_rate_limit_rejects_after_n_messages(monkeypatch):
     """WebSocket per-connection rate limiter fires after WS_RATE_LIMIT messages."""
     import os
+
     from fastapi.testclient import TestClient
 
     os.environ.pop("WEB_API_KEY", None)
@@ -171,8 +171,9 @@ async def test_websocket_rate_limit_rejects_after_n_messages(monkeypatch):
 @pytest.mark.asyncio
 async def test_streaming_response_emits_sse_lines():
     """Streaming /v1/chat/completions emits data: lines and ends with [DONE]."""
-    from fastapi.testclient import TestClient
     import os
+
+    from fastapi.testclient import TestClient
 
     os.environ.pop("WEB_API_KEY", None)
 
@@ -194,8 +195,9 @@ async def test_streaming_response_emits_sse_lines():
 @pytest.mark.asyncio
 async def test_non_streaming_response_returns_openai_format():
     """Non-streaming /v1/chat/completions returns OpenAI-compatible JSON."""
-    from fastapi.testclient import TestClient
     import os
+
+    from fastapi.testclient import TestClient
 
     os.environ.pop("WEB_API_KEY", None)
 
@@ -218,14 +220,15 @@ async def test_non_streaming_response_returns_openai_format():
 @pytest.mark.asyncio
 async def test_empty_message_validation():
     """Empty message to /v1/chat/completions returns 400 or 422 error."""
-    from fastapi.testclient import TestClient
     import os
+
+    from fastapi.testclient import TestClient
 
     os.environ.pop("WEB_API_KEY", None)
 
     # Make secure_agent raise ValidationError on empty message
-    from portal.interfaces.web.server import WebInterface
     from portal.core.exceptions import ValidationError
+    from portal.interfaces.web.server import WebInterface
 
     agent = MagicMock()
     agent.stream_response = MagicMock(side_effect=lambda i: aiter(["ok"]))

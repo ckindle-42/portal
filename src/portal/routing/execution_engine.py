@@ -209,14 +209,14 @@ class ExecutionEngine:
                      messages: list[dict[str, Any]] | None = None) -> ExecutionResult:
         """
         Execute query with intelligent routing and fallback
-        
+
         Args:
             query: User query
             system_prompt: Optional system prompt
             max_tokens: Maximum output tokens
             temperature: Generation temperature
             max_cost: Maximum cost factor
-            
+
         Returns:
             ExecutionResult with response or error
         """

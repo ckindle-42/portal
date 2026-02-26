@@ -2,8 +2,10 @@
 Unit tests for System tools
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock, MagicMock
+
 from portal.tools.system_tools.clipboard_manager import ClipboardManagerTool
 from portal.tools.system_tools.process_monitor import ProcessMonitorTool
 from portal.tools.system_tools.system_stats import SystemStatsTool

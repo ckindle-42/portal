@@ -24,6 +24,8 @@ Architecture:
                  └─ Shutdown Sequence (Enhanced v4.7.0)
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
 import signal
@@ -31,13 +33,17 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from portal.config.settings import Settings, load_settings
 from portal.core import AgentCore, create_agent_core
 from portal.core.event_broker import EventBroker, create_event_broker
 from portal.core.structured_logger import get_logger
 from portal.security import SecurityMiddleware
+
+if TYPE_CHECKING:
+    from portal.observability.log_rotation import LogRotator
+    from portal.observability.watchdog import Watchdog
 
 logger = get_logger('Lifecycle')
 
@@ -84,8 +90,8 @@ class RuntimeContext:
     shutdown_callbacks: list[ShutdownCallback] = field(default_factory=list)
 
     # v4.7.0: New optional components
-    watchdog: Optional['Watchdog'] = None
-    log_rotator: Optional['LogRotator'] = None
+    watchdog: Watchdog | None = None
+    log_rotator: LogRotator | None = None
 
     # v4.7.0: Track in-flight operations
     active_tasks: set[asyncio.Task] = field(default_factory=set)

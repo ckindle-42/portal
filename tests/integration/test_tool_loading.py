@@ -3,6 +3,7 @@ Integration tests for tool loading and registration
 """
 
 import pytest
+
 from portal.tools import ToolRegistry
 
 

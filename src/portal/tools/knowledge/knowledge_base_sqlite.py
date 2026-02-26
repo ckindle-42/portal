@@ -43,7 +43,7 @@ except ImportError:
 class EnhancedKnowledgeTool(BaseTool):
     """
     SQLite-based knowledge base with full-text search and vector embeddings.
-    
+
     Improvements over JSON version:
     - 10-100x faster search at scale
     - Full-text search (FTS5)
@@ -390,7 +390,7 @@ class EnhancedKnowledgeTool(BaseTool):
                 cursor = conn.cursor()
 
                 cursor.execute("""
-                    SELECT id, source, 
+                    SELECT id, source,
                            substr(content, 1, 200) as preview,
                            metadata, added_at
                     FROM documents

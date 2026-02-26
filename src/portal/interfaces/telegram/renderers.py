@@ -20,7 +20,7 @@ Benefits:
 """
 
 import logging
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 # CALLBACK DATA PATTERNS
 # ============================================================================
 
-class CallbackAction(str, Enum):
+class CallbackAction(StrEnum):
     """Callback action types"""
     # Tool confirmations
     CONFIRM_DELETE = "confirm_delete"
@@ -72,7 +72,7 @@ class InlineKeyboardHelper:
     ) -> InlineKeyboardMarkup:
         """
         Create confirmation keyboard
-        
+
         Args:
             action: Callback action (e.g., 'confirm_delete')
             data: Additional data to pass
@@ -193,7 +193,7 @@ class InlineKeyboardHelper:
 class EnhancedTelegramBot:
     """
     Enhanced Telegram bot with inline keyboards.
-    
+
     This extends the basic Telegram interface with interactive buttons
     for better UX, especially on mobile devices.
     """
@@ -201,7 +201,7 @@ class EnhancedTelegramBot:
     def __init__(self, base_bot_instance):
         """
         Initialize with existing bot instance
-        
+
         Args:
             base_bot_instance: Existing TelegramInterface instance
         """
@@ -583,13 +583,13 @@ from enhanced_telegram_ui import EnhancedTelegramBot
 class TelegramInterface:
     def __init__(self):
         # ... existing init code ...
-        
+
         # Add enhanced UI
         self.enhanced_ui = EnhancedTelegramBot(self)
-    
+
     def _register_handlers(self, application):
         # ... existing handlers ...
-        
+
         # Register enhanced handlers
         self.enhanced_ui.register_handlers(application)
 

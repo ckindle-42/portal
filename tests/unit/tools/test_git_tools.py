@@ -2,17 +2,19 @@
 Unit tests for Git tools
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, Mock, MagicMock
-from portal.tools.git_tools.git_status import GitStatusTool
+
 from portal.tools.git_tools.git_branch import GitBranchTool
+from portal.tools.git_tools.git_clone import GitCloneTool
 from portal.tools.git_tools.git_commit import GitCommitTool
 from portal.tools.git_tools.git_diff import GitDiffTool
 from portal.tools.git_tools.git_log import GitLogTool
-from portal.tools.git_tools.git_push import GitPushTool
-from portal.tools.git_tools.git_pull import GitPullTool
 from portal.tools.git_tools.git_merge import GitMergeTool
-from portal.tools.git_tools.git_clone import GitCloneTool
+from portal.tools.git_tools.git_pull import GitPullTool
+from portal.tools.git_tools.git_push import GitPushTool
+from portal.tools.git_tools.git_status import GitStatusTool
 
 
 def _make_mock_repo(branch="main", hexsha="abc123456789", dirty=False, remotes=None):

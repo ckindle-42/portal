@@ -66,11 +66,11 @@ class IntelligentRouter:
     def route(self, query: str, max_cost: float = 1.0) -> RoutingDecision:
         """
         Route query to optimal model
-        
+
         Args:
             query: User query
             max_cost: Maximum cost factor (0.0-1.0)
-            
+
         Returns:
             RoutingDecision with selected model and fallbacks
         """

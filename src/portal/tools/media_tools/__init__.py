@@ -9,6 +9,6 @@ This package contains tools for processing various media types:
 """
 
 # Audio tools are exported from the audio subpackage
-from .audio import *
+from .audio import *  # noqa: F403
 
 __all__ = []

@@ -21,13 +21,15 @@ Architecture:
                                   PromptManager
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import os
 import time
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from portal.memory import MemoryManager
 from portal.middleware.hitl_approval import HITLApprovalMiddleware
@@ -43,6 +45,10 @@ from .exceptions import ModelNotAvailableError, PortalError, ToolExecutionError
 from .prompt_manager import PromptManager
 from .structured_logger import TraceContext, get_logger
 from .types import IncomingMessage, InterfaceType, ProcessingResult
+
+if TYPE_CHECKING:
+    from portal.middleware.tool_confirmation_middleware import ToolConfirmationMiddleware
+    from portal.tools import ToolRegistry
 
 logger = get_logger('AgentCore')
 
@@ -70,9 +76,9 @@ class AgentCore:
         context_manager: ContextManager,
         event_bus: EventBus,
         prompt_manager: PromptManager,
-        tool_registry: 'ToolRegistry',
+        tool_registry: ToolRegistry,
         config: dict[str, Any],
-        confirmation_middleware: Optional['ToolConfirmationMiddleware'] = None,
+        confirmation_middleware: ToolConfirmationMiddleware | None = None,
         mcp_registry: Any | None = None,
         memory_manager: MemoryManager | None = None,
     ):

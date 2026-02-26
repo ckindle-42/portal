@@ -238,11 +238,6 @@ class ApprovalProtocol:
             future.set_result(decision)
 
         # Emit decision event
-        event_type = (
-            EventType.TOOL_CONFIRMATION_APPROVED
-            if decision.status == ApprovalStatus.APPROVED
-            else EventType.TOOL_CONFIRMATION_DENIED
-        )
 
         # Get chat_id from any pending request context
         # (we need to emit an event, so we need the chat_id)

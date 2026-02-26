@@ -38,7 +38,7 @@ except ImportError:
 class PowerPointProcessorTool(BaseTool):
     """
     Create and edit PowerPoint presentations.
-    
+
     Perfect for generating reports, pitch decks, and presentations programmatically.
     """
 

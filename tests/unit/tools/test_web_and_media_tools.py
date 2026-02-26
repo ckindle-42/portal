@@ -2,10 +2,12 @@
 Unit tests for Web and Media tools
 """
 
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock, AsyncMock, MagicMock
-from portal.tools.web_tools.http_client import HTTPClientTool
+
 from portal.tools.media_tools.audio.audio_transcriber import AudioTranscribeTool
+from portal.tools.web_tools.http_client import HTTPClientTool
 
 
 @pytest.mark.unit

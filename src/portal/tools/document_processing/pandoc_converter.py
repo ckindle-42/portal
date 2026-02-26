@@ -40,7 +40,7 @@ except Exception:
 class PandocConverterTool(BaseTool):
     """
     Universal document converter using Pandoc.
-    
+
     The Swiss Army knife of document conversion - handles 40+ formats!
     """
 

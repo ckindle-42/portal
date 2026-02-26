@@ -2,13 +2,15 @@
 Unit tests for Docker tools
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, Mock, MagicMock, AsyncMock
+
+from portal.tools.docker_tools.docker_compose import DockerComposeTool
+from portal.tools.docker_tools.docker_logs import DockerLogsTool
 from portal.tools.docker_tools.docker_ps import DockerPSTool
 from portal.tools.docker_tools.docker_run import DockerRunTool
 from portal.tools.docker_tools.docker_stop import DockerStopTool
-from portal.tools.docker_tools.docker_logs import DockerLogsTool
-from portal.tools.docker_tools.docker_compose import DockerComposeTool
 
 
 def _make_mock_docker_client():

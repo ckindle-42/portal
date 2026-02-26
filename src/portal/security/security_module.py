@@ -321,10 +321,10 @@ class InputSanitizer:
     def sanitize_command(command: str) -> tuple[str, list[str]]:
         """
         Sanitize shell command and detect dangerous patterns.
-        
+
         Args:
             command: Shell command to sanitize
-            
+
         Returns:
             (sanitized_command, list_of_warnings)
         """
@@ -345,10 +345,10 @@ class InputSanitizer:
     def validate_file_path(path: str) -> tuple[bool, str | None]:
         """
         Validate file path to prevent path traversal attacks.
-        
+
         Args:
             path: File path to validate
-            
+
         Returns:
             (is_valid, error_message)
         """
@@ -375,10 +375,10 @@ class InputSanitizer:
     def sanitize_sql_query(query: str) -> tuple[bool, str | None]:
         """
         Check SQL query for injection attempts.
-        
+
         Args:
             query: SQL query to check
-            
+
         Returns:
             (is_safe, error_message)
         """
@@ -393,10 +393,10 @@ class InputSanitizer:
     def sanitize_html(text: str) -> str:
         """
         Sanitize HTML to prevent XSS attacks.
-        
+
         Args:
             text: Text potentially containing HTML
-            
+
         Returns:
             Sanitized text
         """
@@ -407,10 +407,10 @@ class InputSanitizer:
     def validate_url(url: str) -> tuple[bool, str | None]:
         """
         Validate URL format and safety.
-        
+
         Args:
             url: URL to validate
-            
+
         Returns:
             (is_valid, error_message)
         """

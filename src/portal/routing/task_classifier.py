@@ -48,7 +48,7 @@ class TaskClassification:
 class TaskClassifier:
     """
     Heuristic-based task classifier
-    
+
     Uses pattern matching for instant classification (<10ms)
     No LLM calls needed - pure rule-based for speed
     """
@@ -133,7 +133,7 @@ class TaskClassifier:
     def classify(self, query: str) -> TaskClassification:
         """
         Classify a query using heuristics
-        
+
         Returns classification in <10ms
         """
         query = query.strip()

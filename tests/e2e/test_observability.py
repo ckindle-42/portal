@@ -6,18 +6,18 @@ Tests the observability features.
 """
 
 import asyncio
-import sys
-from pathlib import Path
-import tempfile
 import json
+import sys
+import tempfile
+from pathlib import Path
 
+from portal.observability.config_watcher import ConfigWatcher
 from portal.observability.health import (
-    HealthCheckSystem,
     HealthCheckProvider,
     HealthCheckResult,
+    HealthCheckSystem,
     HealthStatus,
 )
-from portal.observability.config_watcher import ConfigWatcher
 
 
 class DummyHealthCheck(HealthCheckProvider):
@@ -167,7 +167,7 @@ async def test_config_validation():
         config_file = Path(f.name)
         json.dump({"value": 10}, f)
 
-    print(f"  ✓ Created temp config")
+    print("  ✓ Created temp config")
 
     changes = []
 
@@ -224,7 +224,7 @@ async def test_observability_module_structure():
 
     # Check directory exists
     assert obs_dir.exists()
-    print(f"  ✓ Observability directory exists")
+    print("  ✓ Observability directory exists")
 
     # Check key files
     files = [
@@ -250,22 +250,22 @@ async def test_observability_imports():
     print("\n📥 Test 6: Observability Imports")
 
     try:
-        from portal.observability import (
-            HealthCheckSystem,
+        from portal.observability import (  # noqa: F401
             ConfigWatcher,
+            HealthCheckSystem,
         )
         print("  ✓ Can import HealthCheckSystem")
         print("  ✓ Can import ConfigWatcher")
 
         # Try optional imports
         try:
-            from portal.observability import setup_telemetry
+            from portal.observability import setup_telemetry  # noqa: F401
             print("  ✓ Can import setup_telemetry")
         except ImportError as e:
             print(f"  ⚠️  Tracer import warning: {e}")
 
         try:
-            from portal.observability import MetricsCollector
+            from portal.observability import MetricsCollector  # noqa: F401
             print("  ✓ Can import MetricsCollector")
         except ImportError as e:
             print(f"  ⚠️  Metrics import warning: {e}")

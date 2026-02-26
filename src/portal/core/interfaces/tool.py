@@ -47,7 +47,7 @@ class ToolMetadata:
 class BaseTool(ABC):
     """
     Abstract base class for all tools
-    
+
     Subclasses must implement:
     - _get_metadata(): Return tool metadata
     - execute(parameters): Execute the tool
@@ -72,10 +72,10 @@ class BaseTool(ABC):
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         Execute the tool
-        
+
         Args:
             parameters: Dictionary of parameter name -> value
-            
+
         Returns:
             Dictionary with 'success' (bool) and 'result' or 'error'
         """
@@ -84,7 +84,7 @@ class BaseTool(ABC):
     def validate_parameters(self, parameters: dict[str, Any]) -> tuple[bool, str | None]:
         """
         Validate parameters against metadata
-        
+
         Returns:
             (is_valid, error_message)
         """

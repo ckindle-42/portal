@@ -11,11 +11,11 @@ response text and the richer metadata that Telegram/debug views surface.
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class InterfaceType(str, Enum):
+class InterfaceType(StrEnum):
     """
     Enumeration of supported interface types.
 

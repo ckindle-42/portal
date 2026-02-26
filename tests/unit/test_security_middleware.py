@@ -1,10 +1,11 @@
 """Tests for SecurityMiddleware wrapper."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from portal.security.middleware import SecurityMiddleware
+import pytest
+
 from portal.core.exceptions import PolicyViolationError, ValidationError
+from portal.security.middleware import SecurityMiddleware
 
 
 @pytest.fixture
@@ -89,8 +90,8 @@ async def test_rate_limiting_enforced(tmp_path):
     core = AsyncMock()
     core.process_message = AsyncMock(return_value=MagicMock(success=True, response="ok", warnings=[]))
 
-    from portal.security.security_module import RateLimiter
     from portal.core.exceptions import RateLimitError
+    from portal.security.security_module import RateLimiter
 
     # Very restrictive: 1 request per window; use tmp_path to avoid persistent state
     rate_limiter = RateLimiter(
