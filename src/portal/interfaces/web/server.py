@@ -295,6 +295,7 @@ class WebInterface(BaseInterface):
         @app.get("/health")
         async def health():
             import sys
+
             import portal as _portal
 
             body: dict = {

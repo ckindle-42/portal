@@ -24,6 +24,31 @@ To cut a release:
 
 ---
 
+## [1.2.0] - 2026-02-26
+
+### Fixed
+- Critical runtime bugs: `get_column_letter` and `OPENPYXL_AVAILABLE` undefined in `excel_processor.py`
+- Missing `import sys` in `tests/e2e/test_job_queue_system.py` and `tests/e2e/test_observability.py`
+
+### Removed
+- ~1 640 lines of dead code: `job_worker.py` (473 lines), `LogParser`, `InterfaceManager`, unused `EventBus` methods (`get_event_history`, `clear_history`, `get_stats`), unused `PromptManager` methods, unused `ContextManager` methods, `DependencyFactory` Protocol, `example_usage()` in `renderers.py`
+- Corresponding dead test files (`test_job_queue_system.py`, `test_job_queue.py`)
+- Stale `src/portal/config/schemas/README.md`
+
+### Refactored
+- `_build_app()` in `server.py` split into `_register_exception_handlers()`, `_register_middleware()`, `_register_chat_routes()`, `_register_utility_routes()`, `_register_websocket_route()`
+- `process_message()` in `agent_core.py` split into `_normalize_interface()`, `_record_message_start()`, `_persist_user_context()`, `_build_execution_context()`, `_finalize_result()`, `_handle_processing_error()`
+- Unused imports removed from `tools/__init__.py`, `word_processor.py`, `powerpoint_processor.py`
+
+### Docs
+- `ARCHITECTURE.md`: CLI commands synchronized (`portal logs [SERVICE]` added; `portal status`/`portal config` removed)
+- `ARCHITECTURE.md`: class names corrected (`WatchdogMonitor` → `Watchdog`, `DockerSandbox` → `DockerPythonSandbox`)
+- `ARCHITECTURE.md`: hardware path corrected (`hardware/linux/` → `hardware/linux-bare/`)
+- `ARCHITECTURE.md`: added Dynamic Ollama Discovery, `BaseHTTPBackend`, and Interface Registry sections; bumped to v1.2.0
+- `Makefile`: removed bogus `tests/tests/unit/` path from `test-unit` target
+
+---
+
 ## [1.1.0] - 2026-02-26
 
 ### Phase 7 — Modernisation: security hardening, structural cleanup, and resilience
