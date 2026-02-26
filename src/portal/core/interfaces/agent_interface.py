@@ -2,7 +2,7 @@
 Base Interface Abstract Class
 ==============================
 
-Defines the contract that all PocketPortal interfaces must implement.
+Defines the contract that all Portal interfaces must implement.
 This enables the AgentCore to work with any interface uniformly.
 """
 
@@ -55,7 +55,7 @@ class Response:
 
 class BaseInterface(ABC):
     """
-    Abstract base class for all PocketPortal interfaces.
+    Abstract base class for all Portal interfaces.
 
     All interfaces (Telegram, Web, Slack, Discord, etc.) must implement
     this contract to ensure uniform interaction with the agent core.

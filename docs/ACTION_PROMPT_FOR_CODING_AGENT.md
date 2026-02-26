@@ -6,7 +6,7 @@ Portal is a local-first AI platform (Python 3.11+, FastAPI, Pydantic v2) with
 multi-interface support (Web, Telegram, Slack). Source in `src/portal/`, tools in
 `src/portal/tools/`, MCP servers in `mcp/`, tests in `tests/`.
 
-## Completed Tasks (v1.3.0 → v1.3.2)
+## Completed Tasks (v1.3.0 → v1.3.3)
 
 ### v1.3.0
 - [x] Fix MCP tool loop context loss (`messages=None` → `messages=current_messages`)
@@ -36,23 +36,36 @@ multi-interface support (Web, Telegram, Slack). Source in `src/portal/`, tools i
 - [x] Add 47 new tests (lifecycle, event bus subscribers, security edge cases)
 - [x] Update CHANGELOG.md, CODE_REVIEW_SUMMARY.md, ACTION_PROMPT
 
+### v1.3.3
+- [x] Remove dead example code from 4 document tools (~250 lines)
+- [x] Fix legacy "PocketPortal" references (2 docstrings)
+- [x] Fix stale version string in exceptions.py
+- [x] Extract constants (DEFAULT_MCP_TOOL_MAX_ROUNDS, HIGH_RISK_TOOLS)
+- [x] Replace f-string logging in agent_core tool confirmation path
+- [x] Add 51 new tests (MemoryManager, ContextManager, PromptManager, constants, registry)
+- [x] Sync version strings to 1.3.3
+- [x] Update CHANGELOG.md, CODE_REVIEW_SUMMARY.md, ACTION_PROMPT
+
 ## Remaining Prioritized Task List
 
 ### Batch A — Testing (Priority: High)
 
-1. Add MemoryManager edge-case tests (empty retrieval, concurrent access).
-2. Add integration tests for full MCP tool loop with retries.
-3. Target >=95% test coverage (currently ~70% measured).
+1. Add integration tests for full MCP tool loop with retries.
+2. Target >=95% test coverage (currently ~75% estimated).
 
 ### Batch B — Performance (Priority: Medium)
 
-4. Replace O(n) vector search in `knowledge_base_sqlite.py` with sqlite-vec.
-5. Add performance regression benchmarks for model backends.
+3. Replace O(n) vector search in `knowledge_base_sqlite.py` with sqlite-vec.
+4. Add performance regression benchmarks for model backends.
 
 ### Batch C — Observability (Priority: Low)
 
-6. Wire OpenTelemetry tracing when OTLP endpoint is configured.
-7. Add model discovery auto-refresh timer in model_registry.
+5. Wire OpenTelemetry tracing when OTLP endpoint is configured.
+6. Add model discovery auto-refresh timer in model_registry.
+
+### Batch D — Code Quality (Priority: Low)
+
+7. Convert remaining f-string logging in routing/*.py to %-formatting.
 
 ## Testing & Verification
 
@@ -62,8 +75,8 @@ multi-interface support (Web, Telegram, Slack). Source in `src/portal/`, tools i
 
 ## Success Criteria
 
-- [x] 321+ tests passing
+- [x] 372+ tests passing
 - [x] 0 lint errors
 - [x] CHANGELOG.md updated
-- [x] Health score at 9.4/10
-- [ ] All batches A–C completed → 10/10
+- [x] Health score at 9.6/10
+- [ ] All batches A–D completed → 10/10

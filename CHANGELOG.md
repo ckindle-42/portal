@@ -24,6 +24,32 @@ To cut a release:
 
 ---
 
+## [1.3.3] - 2026-02-26
+
+### Removed
+- **Dead example code** from document processing tools — removed ~250 lines of unused `example_*()` functions and `if __name__ == "__main__"` blocks from `pandoc_converter.py`, `word_processor.py`, `excel_processor.py`, and `powerpoint_processor.py`. These were production-module dead code, not executed by any test or user path.
+- **Legacy "PocketPortal" references** — updated two docstrings in `agent_interface.py` and a stale version string in `exceptions.py`.
+
+### Added
+- **Module-level constants** in `agent_core.py` — extracted `DEFAULT_MCP_TOOL_MAX_ROUNDS` and `HIGH_RISK_TOOLS` frozenset to replace scattered magic numbers and hardcoded strings.
+- **51 new unit tests** covering previously under-tested areas:
+  - `test_memory_manager_comprehensive.py` (20 tests): CRUD, edge cases, concurrency, DB integrity, MemorySnippet dataclass
+  - `test_context_manager.py` (10 tests): history CRUD, limits, clear, formatting, concurrent writes
+  - `test_prompt_manager.py` (9 tests): template loading, caching, system prompt composition
+  - `test_agent_core_constants.py` (4 tests): constant values and immutability
+  - `test_model_registry_discovery.py` (8 tests): Ollama discovery mocking, query helpers, availability
+
+### Changed
+- **Version bump** 1.3.2 → 1.3.3 across `pyproject.toml`, `__init__.py`, `server.py`.
+- Replaced f-string logging with structured fields in `agent_core.py` tool confirmation path.
+
+### Metrics
+- **Dead code removed**: ~250 lines (document tools examples)
+- **Tests added**: 51 new tests (321 → 372 total)
+- **Health score**: 9.4 → 9.6/10
+
+---
+
 ## [1.3.2] - 2026-02-26
 
 ### Removed
