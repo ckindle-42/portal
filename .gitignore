@@ -35,6 +35,11 @@ AI_Output/
 qr_*.png
 plot_*.png
 
+# Testing / Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
 # IDE
 .vscode/
 .idea/
