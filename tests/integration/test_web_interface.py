@@ -233,3 +233,86 @@ def test_create_app_returns_fastapi_instance():
     with patch("portal.interfaces.web.server.create_app") as _:
         app = create_app(agent_core=mock_core, config={})
         assert isinstance(app, FastAPI)
+
+
+# ---------------------------------------------------------------------------
+# Streaming response
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_streaming_response_emits_sse_done():
+    """/v1/chat/completions stream=True emits SSE data: lines ending with [DONE]."""
+    import os
+    from fastapi.testclient import TestClient
+
+    os.environ.pop("WEB_API_KEY", None)
+
+    iface = _make_interface(stream_tokens=["Hello", " world"])
+    client = TestClient(iface.app)
+
+    payload = {
+        "model": "auto",
+        "messages": [{"role": "user", "content": "hi"}],
+        "stream": True,
+    }
+    resp = client.post("/v1/chat/completions", json=payload)
+    assert resp.status_code == 200
+    body = resp.text
+    assert "data: " in body
+    assert "data: [DONE]" in body
+
+
+@pytest.mark.asyncio
+async def test_non_streaming_returns_openai_format():
+    """/v1/chat/completions stream=False returns an OpenAI-compatible JSON body."""
+    import os
+    from fastapi.testclient import TestClient
+
+    os.environ.pop("WEB_API_KEY", None)
+
+    iface = _make_interface()
+    client = TestClient(iface.app)
+
+    payload = {
+        "model": "auto",
+        "messages": [{"role": "user", "content": "hello"}],
+        "stream": False,
+    }
+    resp = client.post("/v1/chat/completions", json=payload)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body.get("object") == "chat.completion"
+    assert "choices" in body
+    assert len(body["choices"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_empty_message_returns_error():
+    """Empty message content causes a non-200 response via SecurityMiddleware."""
+    import os
+    from fastapi.testclient import TestClient
+    from portal.interfaces.web.server import WebInterface
+    from portal.security.exceptions import ValidationError
+
+    os.environ.pop("WEB_API_KEY", None)
+
+    agent = MagicMock()
+    agent.stream_response = MagicMock(side_effect=lambda i: aiter(["ok"]))
+    agent.health_check = AsyncMock(return_value=True)
+
+    secure = MagicMock()
+    secure.process_message = AsyncMock(
+        side_effect=ValidationError("Message cannot be empty", details={})
+    )
+
+    config = MagicMock()
+    iface = WebInterface(agent_core=agent, config=config, secure_agent=secure)
+    client = TestClient(iface.app, raise_server_exceptions=False)
+
+    payload = {
+        "model": "auto",
+        "messages": [{"role": "user", "content": ""}],
+        "stream": False,
+    }
+    resp = client.post("/v1/chat/completions", json=payload)
+    assert resp.status_code in (400, 422, 500)
