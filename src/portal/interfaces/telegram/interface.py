@@ -546,30 +546,3 @@ class TelegramInterface:
 
         # Start polling
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-
-# ============================================================================
-# ENTRY POINT
-# ============================================================================
-
-def main():
-    """Main entry point"""
-
-    # Ensure required directories exist
-    Path("logs").mkdir(exist_ok=True)
-    Path("screenshots").mkdir(exist_ok=True)
-    Path("browser_data").mkdir(exist_ok=True)
-
-    # Create and run interface
-    interface = TelegramInterface()
-    interface.run()
-
-
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n👋 Shutdown requested by user")
-    except Exception as e:
-        logger.error(f"Fatal error: {e}", exc_info=True)
-        sys.exit(1)
