@@ -159,7 +159,7 @@ class WebInterface(BaseInterface):
             finally:
                 warmup_task.cancel()
 
-        app = FastAPI(title="Portal Web Interface", version="1.3.0", lifespan=lifespan)
+        app = FastAPI(title="Portal Web Interface", version="1.3.2", lifespan=lifespan)
         self._register_exception_handlers(app)
         self._register_middleware(app)
         self._register_routes(app, _agent_ready)
