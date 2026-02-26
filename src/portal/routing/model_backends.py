@@ -218,8 +218,8 @@ class OllamaBackend(ModelBackend):
 
         except Exception as e:
             logger.error(f"Ollama stream error: {e}")
-            yield f"[Error: {str(e)}]"
-    
+            return
+
     async def is_available(self) -> bool:
         """Check if Ollama is available"""
         try:
@@ -373,8 +373,8 @@ class LMStudioBackend(ModelBackend):
         
         except Exception as e:
             logger.error(f"LM Studio stream error: {e}")
-            yield f"[Error: {str(e)}]"
-    
+            return
+
     async def is_available(self) -> bool:
         """Check if LM Studio is available"""
         try:
@@ -498,8 +498,9 @@ class MLXBackend(ModelBackend):
                 yield result.text[i:i+chunk_size]
                 await asyncio.sleep(0.01)  # Small delay for effect
         else:
-            yield f"[Error: {result.error}]"
-    
+            logger.error(f"MLX stream error: {result.error}")
+            return
+
     async def is_available(self) -> bool:
         """Check if MLX is available"""
         if self._available is not None:

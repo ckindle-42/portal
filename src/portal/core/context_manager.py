@@ -257,11 +257,13 @@ class ContextManager:
         if format == 'openai':
             return [{'role': msg.role, 'content': msg.content} for msg in messages]
         elif format == 'anthropic':
-            # Anthropic uses different format
+            # Anthropic handles system prompts separately; skip system messages here
             formatted = []
             for msg in messages:
+                if msg.role == 'system':
+                    continue
                 formatted.append({
-                    'role': 'user' if msg.role == 'user' else 'assistant',
+                    'role': msg.role,  # preserve 'user' and 'assistant' as-is
                     'content': msg.content
                 })
             return formatted

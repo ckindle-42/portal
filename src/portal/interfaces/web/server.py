@@ -45,7 +45,7 @@ class ChatCompletionRequest(BaseModel):
 
 
 def _build_cors_origins() -> list[str]:
-    raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
+    raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000")
     origins = [o.strip() for o in raw.split(",") if o.strip()]
     return origins or ["http://localhost:8080"]
 
@@ -64,7 +64,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+        csp = os.getenv(
+            "PORTAL_CSP",
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: blob:; frame-ancestors 'none'; base-uri 'self'",
+        )
+        response.headers["Content-Security-Policy"] = csp
+        if _bool_env("PORTAL_HSTS"):
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
 
 
@@ -224,7 +230,16 @@ class WebInterface(BaseInterface):
 
         @app.get("/health")
         async def health():
-            return {"status": "ok", "interface": "web"}
+            try:
+                healthy = await self.agent_core.health_check()
+            except Exception:
+                healthy = False
+            status = "ok" if healthy else "degraded"
+            code = 200 if healthy else 503
+            return JSONResponse(
+                {"status": status, "interface": "web"},
+                status_code=code,
+            )
 
         return app
 
@@ -246,6 +261,13 @@ class WebInterface(BaseInterface):
         elapsed = time.perf_counter() - started
         TOKENS_PER_SECOND.observe(token_count / max(elapsed, 0.001))
         await self.user_store.add_tokens(user_id=user_id, tokens=token_count)
+
+        if not first_token_emitted:
+            error_chunk = {
+                "id": chunk_id, "object": "chat.completion.chunk", "created": created,
+                "model": model, "choices": [{"index": 0, "delta": {"content": "I'm sorry, I wasn't able to generate a response. Please try again."}, "finish_reason": "stop"}]
+            }
+            yield f"data: {json.dumps(error_chunk)}\n\n"
 
         final = {"id": chunk_id, "object": "chat.completion.chunk", "created": created, "model": model, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
         yield f"data: {json.dumps(final)}\n\n"

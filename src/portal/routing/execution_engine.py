@@ -407,7 +407,8 @@ class ExecutionEngine:
                     self.circuit_breaker.record_failure(model.backend)
                 continue
 
-        yield "[Error: no models available for streaming]"
+        logger.error("No models available for streaming")
+        return
 
     async def execute_parallel(self, queries: List[str],
                               system_prompt: Optional[str] = None) -> List[ExecutionResult]:
