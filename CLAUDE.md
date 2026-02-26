@@ -2,91 +2,66 @@
 
 **Project**: Portal — Local-First AI Platform  
 **Repository**: https://github.com/ckindle-42/portal  
-**Last Updated**: February 2026  
-**Purpose**: Claude Code (web or CLI) must follow these rules on every interaction to ensure consistent, high-quality, production-grade modernization of the codebase.
+**Last Updated**: February 26, 2026  
 
-## 1. Project Overview & Core Values
-- **Local-first AI platform** that runs **entirely on the user’s hardware**.
-- Zero cloud dependencies, zero subscriptions, full data sovereignty.
-- Unified backend (`AgentCore`) shared across multiple interfaces: Open WebUI / LibreChat (primary), Telegram, Slack, and future interfaces.
-- Hardware-optimized: Apple M4 Pro (primary), NVIDIA CUDA (Linux/WSL2), with hardware-specific launch scripts.
-- Tech stack: **Python 3.11+**, Poetry (`pyproject.toml`), Docker, FastAPI-style routing, MCP (Model-Controller-Provider) tools in `/mcp/`, source in `src/portal/`.
-- Key directories to always respect:
-  - `src/portal/` → core application
-  - `docs/` → especially `ARCHITECTURE.md`
-  - `mcp/` → interface-agnostic tools
-  - `hardware/` → platform-specific configs
-  - `tests/` → full test coverage required
-  - `deploy/web-ui/` → deployment artifacts
+## Core Directives (All Equally Important – Follow Every Session)
+As a high-priority directive, **aggressively identify and safely remove technical debt** throughout every review and change. Technical debt includes:
+- Dead/unused code (imports, functions, files, routes, configs)
+- Duplicated logic or unnecessary abstractions
+- Overly nested or complex structures
+- Stale/outdated documentation or comments
+- Performance anti-patterns affecting local AI workloads
+- Tight coupling between modules
 
-**Non-negotiable mindset for every change**:
-- Privacy-first, hardware-efficient, minimal dependencies.
-- New interfaces must be added with ~50 lines of Python (keep this bar).
-- All changes must improve or preserve **local performance** and **zero-cloud** guarantees.
+Other equally important directives:
+- Perform exhaustive top-to-bottom review of every file and line of code
+- Flatten structures and reduce complexity wherever it improves readability/maintainability
+- Keep all documentation perfectly synchronized with code
+- Validate existing features and proactively plan realistic enhancements aligned with local-first, privacy-first, hardware-efficient goals
+- Never break existing functionality or hardware-specific paths
 
-## 2. Code Quality & Modernization Principles
-- **Aggressive Dead-Code Elimination**: After full dependency tracing (grep, IDE search, static analysis), remove unused imports, functions, classes, files, routes, configs. Justify every removal with evidence.
-- **Flatten & Simplify**: Reduce nesting depth, collapse small modules, eliminate unnecessary abstraction layers. Prefer flat structures in `src/portal/` unless complexity is truly warranted.
-- **Complexity Reduction**: Target cyclomatic complexity < 10 per function, function length < 50 lines where possible. Consolidate repeated logic.
-- **Modern Python Standards**:
-  - Strict PEP 8 + ruff / black formatting
-  - Full type hints (Python 3.11+ syntax)
-  - Pydantic v2 for all models
-  - Async where performance-critical (local AI inference)
-  - Use `pathlib` exclusively (no `os.path`)
-- **Security & Reliability**:
-  - Never introduce external network calls unless explicitly for optional features.
-  - All file I/O must be sandboxed to user-configured directories.
-  - Proper error handling with structured logging.
+## Project Overview & Non-Negotiable Values
+- Local-first AI platform running entirely on user hardware (M4 Pro primary, CUDA support).
+- Unified AgentCore shared across interfaces (Open WebUI/LibreChat primary).
+- New interfaces must still be addable in ≤50 lines of Python.
+- Tech stack: Python 3.11+, Poetry, MCP tools in `/mcp/`, hardware-specific in `/hardware/`.
 
-## 3. Documentation Synchronization (Mandatory)
-- Every code change **must** update:
-  - `docs/ARCHITECTURE.md`
-  - `README.md`
-  - `CHANGELOG.md` (use conventional commits + date-stamped entry)
-  - All relevant inline comments and docstrings
-  - `.env.example`
-- Keep documentation perfectly in sync — never let drift occur.
+## Mandatory Workflow for Every Session
+1. Load and explicitly reference this CLAUDE.md.
+2. Full file inventory + technical debt scan (as high-priority directive).
+3. Exhaustive code & documentation review.
+4. Identify dead code, flattening opportunities, bugs, and enhancement ideas.
+5. Execute changes in safe batches: debt removal → flattening → fixes → doc sync → enhancements.
+6. Run full test suite after each batch.
+7. Update CHANGELOG.md and all documentation.
+8. Commit with conventional messages highlighting debt removal where applicable.
+9. Create PR with debt-reduction metrics alongside other improvements.
 
-## 4. Testing Requirements
-- Run full test suite (`poetry run pytest` or equivalent) after every batch of changes.
-- Maintain or increase coverage (>80% target).
-- Add tests for any new feature, bug fix, or refactored path.
-- Test hardware-specific paths where possible (mock when needed).
+## Code Quality Standards
+- Full type hints, pathlib, Pydantic v2, async where beneficial.
+- Ruff + Black formatting.
+- Function length <50 lines, nesting depth <4 where possible.
+- Evidence-based debt removal only (full dependency tracing required).
 
-## 5. Git & PR Workflow
-- Always work on a branch named `ai-full-modernization-YYYY-MM-DD`
-- Use conventional commit messages:
-  - `refactor:` / `chore:` / `feat:` / `docs:` / `fix:`
-- After every major phase: commit, push, then create PR with full summary from the review.
-- PR title format: `AI Modernization & Refactor Pass [YYYY-MM-DD]`
-- Include change table, before/after complexity metrics, and health score improvement.
+## Testing & Git/PR Rules
+- `poetry run pytest` (or equivalent) after every batch; target >80% coverage.
+- Branch: `ai-full-modernization-YYYY-MM-DD`
+- Commit prefixes: `chore(debt):`, `refactor:`, `feat:`, `docs:`, `fix:`
+- PR must include technical debt reduction summary (files removed, complexity delta, etc.) plus overall health improvement.
 
-## 6. Review & Modernization Checklist (Apply to Every Session)
-- [ ] Full directory tree reviewed
-- [ ] Every file in `src/portal/`, `mcp/`, `hardware/`, `docs/`, `tests/` examined line-by-line
-- [ ] Dead/unused code removal plan created and executed
-- [ ] Structural flattening proposals implemented
-- [ ] All documentation updated and cross-checked
-- [ ] Feature enhancements validated against local-first goals
-- [ ] Tests passing + new tests added
+## Review Checklist (Apply Every Time)
+- [ ] Full file inventory completed
+- [ ] Technical debt identified and removed (high-priority directive)
+- [ ] Structures flattened and complexity reduced
+- [ ] All documentation synchronized
+- [ ] Features validated + enhancements planned/implemented
+- [ ] Tests passing + coverage maintained or improved
 - [ ] CHANGELOG.md updated
-- [ ] Overall health score improved
-
-## 7. Edge Cases & Special Instructions
-- Hardware-specific code (`hardware/m4-mac/`, CUDA paths) must remain functional or be generalized without breaking existing setups.
-- MCP tools are sacred — do not refactor their public interface without updating all callers.
-- Adding a new interface must still require ≤50 lines of Python.
-- Performance-critical paths (inference routing, context management) must never regress in speed or memory usage.
-- If removing a file, ensure `git rm` is used and `pyproject.toml` / imports are cleaned.
 
 **Claude Code Instructions**:
 - Read this file at the start of every session.
-- Reference it explicitly in your reasoning.
-- When in doubt, default to: **simpler, flatter, fewer files, better documented, more local-efficient**.
-
-You are now operating under these permanent project rules.  
-Begin every modernization task by confirming you have loaded CLAUDE.md.
+- Treat technical debt removal as a high-priority directive to follow alongside all other objectives.
+- When in doubt, ask: “Does this change reduce technical debt while preserving functionality and supporting local-first goals?”
 
 ---
-*This file is authoritative. Any conflict with README or ARCHITECTURE.md is resolved in favor of this CLAUDE.md until updated.*
+*This file is authoritative for all Claude Code sessions on the Portal repository.*
