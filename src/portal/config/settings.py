@@ -32,6 +32,20 @@ def _is_placeholder(value: str) -> bool:
     return any(v.startswith(p) or p in v for p in _CHANGEME_PREFIXES)
 
 
+_SECRET_MIN_LENGTH = 16
+
+
+def _is_weak_secret(value: str) -> bool:
+    """Return True if value is too short or low-entropy for use as an API key."""
+    stripped = value.strip()
+    if len(stripped) < _SECRET_MIN_LENGTH:
+        return True
+    # Check for trivially low entropy (all same character, sequential)
+    if len(set(stripped)) < 4:
+        return True
+    return False
+
+
 class ModelConfig(BaseModel):
     """Configuration for a single model"""
     name: str = Field(..., description="Model name/identifier")
@@ -59,10 +73,17 @@ class SecurityConfig(BaseModel):
     @field_validator('mcp_api_key')
     @classmethod
     def validate_mcp_api_key(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and _is_placeholder(v):
+        if v is None:
+            return v
+        if _is_placeholder(v):
             raise ValueError(
                 "MCP_API_KEY is still set to a placeholder value. "
                 "Set a strong random key before enabling MCP."
+            )
+        if _is_weak_secret(v):
+            raise ValueError(
+                f"MCP_API_KEY is too weak (minimum {_SECRET_MIN_LENGTH} characters "
+                "with reasonable entropy). Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
             )
         return v
 
@@ -141,6 +162,11 @@ class SlackConfig(BaseModel):
             raise ValueError(
                 "SLACK_SIGNING_SECRET is still set to a placeholder value. "
                 "Set the real signing secret from your Slack app settings."
+            )
+        if _is_weak_secret(v):
+            raise ValueError(
+                f"SLACK_SIGNING_SECRET is too weak (minimum {_SECRET_MIN_LENGTH} characters "
+                "with reasonable entropy). Use the signing secret from your Slack app settings."
             )
         return v
 

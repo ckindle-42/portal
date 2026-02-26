@@ -275,6 +275,7 @@ class AgentCore:
                     execution_time=execution_time,
                     tools_used=tools_used,
                     warnings=[],
+                    completion_tokens=result.tokens_generated or None,
                     metadata={
                         'chat_id': chat_id,
                         'interface': interface.value,
