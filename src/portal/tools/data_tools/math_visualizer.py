@@ -1,8 +1,52 @@
 """Math Visualizer Tool - Plot equations and functions"""
 
+import ast
+import operator
 from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+
+_SAFE_OPS = {
+    ast.Add: operator.add, ast.Sub: operator.sub,
+    ast.Mult: operator.mul, ast.Div: operator.truediv,
+    ast.Pow: operator.pow, ast.USub: operator.neg,
+}
+
+
+def _safe_eval(expr: str, x: "np.ndarray") -> "np.ndarray":  # type: ignore[name-defined]  # noqa: F821
+    """Evaluate a math expression safely via AST walking."""
+    import numpy as np
+
+    _SAFE_FUNCS = {
+        "sin": np.sin, "cos": np.cos, "tan": np.tan,
+        "log": np.log, "exp": np.exp, "sqrt": np.sqrt, "abs": np.abs,
+    }
+    _SAFE_CONSTS = {"pi": np.pi, "e": np.e}
+
+    tree = ast.parse(expr, mode="eval")
+
+    def _eval_node(node: ast.expr) -> Any:
+        if isinstance(node, ast.Expression):
+            return _eval_node(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return node.value
+        if isinstance(node, ast.Name):
+            if node.id == "x":
+                return x
+            if node.id in _SAFE_CONSTS:
+                return _SAFE_CONSTS[node.id]
+            raise ValueError(f"Unknown variable: {node.id}")
+        if isinstance(node, ast.BinOp) and type(node.op) in _SAFE_OPS:
+            return _SAFE_OPS[type(node.op)](_eval_node(node.left), _eval_node(node.right))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in _SAFE_OPS:
+            return _SAFE_OPS[type(node.op)](_eval_node(node.operand))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id in _SAFE_FUNCS and len(node.args) == 1:
+                return _SAFE_FUNCS[node.func.id](_eval_node(node.args[0]))
+            raise ValueError(f"Unknown function: {node.func.id}")
+        raise ValueError(f"Unsupported expression: {ast.dump(node)}")
+
+    return _eval_node(tree)
 
 
 class MathVisualizerTool(BaseTool):
@@ -52,36 +96,15 @@ class MathVisualizerTool(BaseTool):
             x_range = parameters.get("x_range", [-10, 10])
             title = parameters.get("title", "Function Plot")
 
-            # Validate expression (security check)
-            allowed_chars = set("x0123456789+-*/().** sincostanlogexpsqrtabspi")
-            expr_clean = expression.replace(" ", "")
-            if not all(c in allowed_chars for c in expr_clean.replace("np.", "")):
-                return self._error_response("Expression contains invalid characters")
-
             # Generate x values
             x = np.linspace(x_range[0], x_range[1], 500)
-
-            # Safe expression evaluation
-            safe_dict = {
-                "x": x,
-                "np": np,
-                "sin": np.sin,
-                "cos": np.cos,
-                "tan": np.tan,
-                "log": np.log,
-                "exp": np.exp,
-                "sqrt": np.sqrt,
-                "abs": np.abs,
-                "pi": np.pi
-            }
 
             try:
                 try:
                     import numexpr
                     y = numexpr.evaluate(expression, local_dict={"x": x})
                 except ImportError:
-                    # Fallback: use ast-based safe eval with restricted builtins
-                    y = eval(expression, {"__builtins__": {}}, safe_dict)
+                    y = _safe_eval(expression, x)
             except Exception as e:
                 return self._error_response(f"Invalid expression: {e}")
 
