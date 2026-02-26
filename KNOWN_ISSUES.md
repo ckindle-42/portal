@@ -23,20 +23,36 @@ and the `xfail` markers from `LEGACY_API_TESTS` apply as intended.
 
 ---
 
-## Section 2 — Open: Legacy API Mismatches (`xfail` tests)
+## Section 2 — Resolved: Legacy API Mismatches (2026-02-26)
 
-~51 tests in `tests/tests/unit/` and `tests/tests/e2e/` use old API signatures
-that no longer match the current source. They are marked `xfail` in
-`tests/conftest.py` via the `LEGACY_API_TESTS` set. They are preserved as a
-modernisation backlog and should be updated once the corresponding source APIs
-are stabilised.
+The following 18 tests were removed from the `LEGACY_API_TESTS` xfail set in
+`tests/conftest.py` after being fixed:
 
-Categories:
-- `BaseTool._success_response` signature changed
-- `TestTaskClassifier` / `TestIntelligentRouter` expect a different router API
-- Docker / git / document tool responses have a different shape
-- E2E tests check directory paths that no longer exist
+- `test_base_tool.py::test_tool_execution` — fixed by updating
+  `BaseTool._success_response()` and `_error_response()` to accept `**kwargs`
+- `test_data_integrity.py` atomic write tests (×4) — already passing once
+  LocalKnowledgeTool._save_db atomic pattern was confirmed correct
+- `test_job_queue.py::test_event_bus_integration` — fixed by replacing
+  `sys.path` hack in `job_worker.py` with absolute imports (resolves
+  EventType module-identity mismatch between `core.event_bus` and
+  `portal.core.event_bus`)
+- `test_router.py` classifier/router tests (×4) — fixed by updating assertions
+  to use `result.complexity.value` (TaskClassification dataclass)
+- `test_security.py::test_rate_limit_allows_initial_requests` — fixed by
+  making the test async and adding `await`
+- `test_security.py::test_path_traversal_detected` — was already passing
+- `test_automation_tools.py::test_list_jobs` — fixed parameter `operation`→`action`
+- `test_mcp_protocol.py::test_protocol_directory_structure` — updated path
+  from `pocketportal/protocols` to `src/portal/protocols`
+- `test_observability.py::test_observability_module_structure` — updated path
+  from `pocketportal/observability` to `src/portal/observability`; added
+  `watchdog.py` and `log_rotation.py` to file list
 
-**Action required:** update each test to match the current API (or update the
-source and test together) and remove the corresponding entry from
-`LEGACY_API_TESTS`.
+Remaining xfail entries (33) are tests requiring optional dependencies not
+installed in the base dev environment: pandas, Docker SDK, openpyxl,
+python-docx, python-pptx, pytesseract, aiohttp session mocking, faster-whisper.
+
+**Open: CSP trade-off** — The default Content-Security-Policy in
+`src/portal/interfaces/web/server.py` includes `'unsafe-inline' 'unsafe-eval'`
+for compatibility with Open WebUI's JavaScript. This should be tightened in
+production deployments that do not use a web UI frontend.
