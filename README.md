@@ -32,7 +32,6 @@ Adding a 4th interface is ~50 lines of Python.
 git clone https://github.com/ckindle-42/portal
 cd portal
 cp .env.example .env          # edit with your real values (see comments inside)
-bash scripts/bootstrap_python.sh
 pip install -e ".[all]"
 ```
 

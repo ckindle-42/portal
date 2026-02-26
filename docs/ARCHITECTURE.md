@@ -243,9 +243,9 @@ sub-URL (e.g. `http://localhost:9000/filesystem`) so the path resolves to
 | ComfyUI | openapi | Image generation at :8188 |
 | Whisper | openapi | Audio transcription at :5002 |
 
-MCP dispatch into `AgentCore.process_message()` is wired (ARCH-3) and
-ready; full tool-use loop requires `ExecutionEngine` to surface tool-call
-entries from the LLM response (Phase 2 work).
+MCP dispatch into `AgentCore.process_message()` is fully wired: `OllamaBackend.generate()`
+surfaces `tool_calls` from the LLM response and `AgentCore._dispatch_mcp_tools()` routes
+them to `MCPRegistry`.
 
 ---
 
@@ -256,7 +256,6 @@ entries from the LLM response (Phase 2 work).
 | `Watchdog` | Health-checks registered components; auto-restarts on failure |
 | `LogRotator` | Time- and size-based log rotation with optional gzip compression |
 | `metrics.py` | Prometheus metrics endpoint (`:9090/metrics`) |
-| `tracer.py` | OpenTelemetry tracing (optional; configure OTLP endpoint) |
 | `config_watcher.py` | File-system watcher for live config reloads |
 
 ---
@@ -339,7 +338,6 @@ module load time.
 | Implementation | Notes |
 |----------------|-------|
 | `SQLiteImpl` | Default; per-conversation history in `data/context.db` |
-| `InMemoryImpl` | Testing and ephemeral sessions |
 
 ---
 
@@ -410,7 +408,7 @@ with per-callback timeouts and active-task draining.
 ```
 portal/
 ├── src/portal/
-│   ├── __init__.py             version = "1.1.0"
+│   ├── __init__.py             version = "1.2.0"
 │   ├── cli.py
 │   ├── lifecycle.py
 │   ├── agent/
@@ -433,15 +431,15 @@ portal/
 │   │   ├── web/server.py       WebInterface (FastAPI, @CentralDispatcher.register("web"))
 │   │   ├── telegram/interface.py  (@CentralDispatcher.register("telegram"))
 │   │   └── slack/interface.py     (@CentralDispatcher.register("slack"))
+│   ├── memory/
+│   │   └── manager.py          MemoryManager
 │   ├── routing/
 │   │   ├── model_registry.py   ModelRegistry + discover_from_ollama()
 │   │   ├── intelligent_router.py
 │   │   ├── model_backends.py   BaseHTTPBackend, OllamaBackend, LMStudioBackend
 │   │   └── execution_engine.py
 │   ├── protocols/mcp/
-│   │   ├── mcp_registry.py     MCPRegistry with retry transport
-│   │   ├── mcp_connector.py
-│   │   └── mcp_server.py
+│   │   └── mcp_registry.py     MCPRegistry with retry transport
 │   ├── middleware/
 │   │   ├── __init__.py         exports ToolConfirmationMiddleware
 │   │   ├── hitl_approval.py    HITLApprovalMiddleware (Redis-backed)
@@ -484,3 +482,10 @@ portal/
 | ComfyUI / Whisper MCP integration tests | Phase 3 |
 | LaunchAgent plist for M4 autostart | Phase 3 |
 | `portal doctor` structured output | Phase 3 |
+
+### v1.2.1 Modernization (Feb 2026)
+- Removed ~3,200 lines dead/stale code across 11+ files and directories
+- Security hardened: bash sidecar (`shell=True` → allowlist), `eval()` → AST, pickle gating, secret redaction in logger, Docker sandbox resource limits + network isolation
+- Flattened `media_tools/audio/` unnecessary nesting
+- Removed half-integrated tracer module (rewire when OTLP endpoint is configured)
+- Fixed 4 confirmed bugs: `TelegramInterface` broken entrypoint, `lifecycle.py` Path coercion, `docker_sandbox.py` broken import, `ToolRegistry` dict/list parameter crash
