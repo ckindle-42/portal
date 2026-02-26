@@ -5,8 +5,9 @@ from __future__ import annotations
 import enum
 import inspect
 
-import portal.core as core
 import pytest
+
+import portal.core as core
 
 
 @pytest.mark.parametrize("name", core.__all__)

@@ -1,6 +1,5 @@
 """Tests for portal.observability.watchdog"""
 
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -9,13 +8,13 @@ pytest.importorskip("psutil")
 
 from portal.observability.health import HealthCheckResult, HealthStatus
 from portal.observability.watchdog import (
-    ComponentHealth,
     ComponentState,
     MonitoredComponent,
     Watchdog,
     WatchdogConfig,
     WatchdogHealthCheck,
 )
+
 
 class TestMonitoredComponent:
     def test_init(self):
