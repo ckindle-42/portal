@@ -476,14 +476,15 @@ class AgentCore:
         query = incoming.text
         max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
         messages = incoming.history if incoming.history else None
-        had_tool_calls = False
+        tool_messages: List[Dict[str, str]] = []
 
         if self.mcp_registry:
             for _ in range(max_tool_rounds):
+                loop_messages = messages if not tool_messages else (messages or []) + tool_messages
                 preflight = await self.execution_engine.execute(
                     query=query,
                     system_prompt=system_prompt,
-                    messages=messages if not had_tool_calls else None,
+                    messages=loop_messages,
                 )
                 if not preflight.success:
                     break
@@ -492,20 +493,20 @@ class AgentCore:
                 if not tool_calls:
                     break
 
-                had_tool_calls = True
                 tool_results = await self._dispatch_mcp_tools(
                     tool_calls=tool_calls,
                     chat_id=incoming.id,
                     trace_id=f"stream-{incoming.id}",
                 )
-                query = self._augment_query_with_tool_results(query, tool_results)
+                tool_messages.extend(self._format_tool_results_as_messages(tool_results))
 
         collected_response = []
+        final_messages = (messages or []) + tool_messages if tool_messages else messages
 
         async for token in self.execution_engine.generate_stream(
             query=query,
             system_prompt=system_prompt,
-            messages=messages if not had_tool_calls else None,
+            messages=final_messages,
         ):
             collected_response.append(token)
             yield token
@@ -552,8 +553,8 @@ class AgentCore:
 
             mcp_results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
             collected_tool_results.extend(mcp_results)
-            current_query = self._augment_query_with_tool_results(current_query, mcp_results)
-            current_messages = None  # After tool augmentation, rely on the enriched query
+            tool_msgs = self._format_tool_results_as_messages(mcp_results)
+            current_messages = (current_messages or []) + tool_msgs
 
         final_result = await self._execute_with_routing(
             query=current_query,
@@ -565,15 +566,17 @@ class AgentCore:
         )
         return final_result, collected_tool_results
 
-    def _augment_query_with_tool_results(self, query: str, tool_results: List[Dict[str, Any]]) -> str:
-        """Append MCP tool outputs so the model can integrate them in a follow-up pass."""
-        payload = json.dumps(tool_results, ensure_ascii=False, default=str)
-        return (
-            f"{query}\n\n"
-            "Tool execution results (JSON):\n"
-            f"{payload}\n\n"
-            "Use these tool results to answer the user request directly."
-        )
+    def _format_tool_results_as_messages(self, tool_results: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+        """Format MCP tool outputs as structured messages for the model."""
+        messages = []
+        for result in tool_results:
+            tool_name = result.get('tool', 'unknown')
+            tool_output = json.dumps(result.get('result', {}), ensure_ascii=False, default=str)
+            messages.append({
+                "role": "tool",
+                "content": f"[{tool_name}] {tool_output}",
+            })
+        return messages
 
     async def health_check(self) -> bool:
         """
