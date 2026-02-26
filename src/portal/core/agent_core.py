@@ -731,6 +731,8 @@ class AgentCore:
     async def cleanup(self):
         """Cleanup resources"""
         logger.info("Cleaning up AgentCore...")
+        if self.mcp_registry and hasattr(self.mcp_registry, 'close'):
+            await self.mcp_registry.close()
         await self.execution_engine.cleanup()
         logger.info("AgentCore cleanup complete")
 
