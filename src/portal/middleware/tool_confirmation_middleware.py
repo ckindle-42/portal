@@ -23,7 +23,7 @@ import logging
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -64,7 +64,7 @@ class ConfirmationRequest:
     def is_expired(self) -> bool:
         """Check if confirmation request has expired"""
         expiry_time = self.requested_at + timedelta(seconds=self.timeout_seconds)
-        return datetime.now() > expiry_time
+        return datetime.now(tz=UTC) > expiry_time
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
@@ -214,7 +214,7 @@ class ToolConfirmationMiddleware:
             chat_id=chat_id,
             user_id=user_id,
             status=ConfirmationStatus.PENDING,
-            requested_at=datetime.now(),
+            requested_at=datetime.now(tz=UTC),
             timeout_seconds=timeout,
             trace_id=trace_id
         )

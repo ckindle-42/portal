@@ -78,6 +78,27 @@ class BaseHTTPBackend(ModelBackend):
         if self._session and not self._session.closed:
             await self._session.close()
 
+    @staticmethod
+    def _build_chat_messages(
+        prompt: str,
+        system_prompt: str | None,
+        messages: list[dict[str, Any]] | None,
+    ) -> list[dict[str, Any]]:
+        """Build a chat-messages list from prompt, system prompt, and optional history.
+
+        Shared by Ollama and LMStudio backends to eliminate message-building duplication.
+        """
+        if messages is not None:
+            chat_messages: list[dict[str, Any]] = list(messages)
+            if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
+                chat_messages.insert(0, {"role": "system", "content": system_prompt})
+        else:
+            chat_messages = []
+            if system_prompt:
+                chat_messages.append({"role": "system", "content": system_prompt})
+            chat_messages.append({"role": "user", "content": prompt})
+        return chat_messages
+
 
 class OllamaBackend(BaseHTTPBackend):
     """Ollama backend adapter"""
@@ -122,16 +143,7 @@ class OllamaBackend(BaseHTTPBackend):
 
         try:
             session = await self._get_session()
-
-            if messages is not None:
-                chat_messages: list[dict[str, Any]] = list(messages)
-                if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
-                    chat_messages.insert(0, {"role": "system", "content": system_prompt})
-            else:
-                chat_messages = []
-                if system_prompt:
-                    chat_messages.append({"role": "system", "content": system_prompt})
-                chat_messages.append({"role": "user", "content": prompt})
+            chat_messages = self._build_chat_messages(prompt, system_prompt, messages)
 
             payload = {
                 "model": model_name,
@@ -190,16 +202,7 @@ class OllamaBackend(BaseHTTPBackend):
         """Stream generation from Ollama /api/chat."""
         try:
             session = await self._get_session()
-
-            if messages is not None:
-                chat_messages: list[dict[str, Any]] = list(messages)
-                if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
-                    chat_messages.insert(0, {"role": "system", "content": system_prompt})
-            else:
-                chat_messages = []
-                if system_prompt:
-                    chat_messages.append({"role": "system", "content": system_prompt})
-                chat_messages.append({"role": "user", "content": prompt})
+            chat_messages = self._build_chat_messages(prompt, system_prompt, messages)
 
             payload = {
                 "model": model_name,
@@ -267,16 +270,7 @@ class LMStudioBackend(BaseHTTPBackend):
 
         try:
             session = await self._get_session()
-
-            if messages is not None:
-                chat_messages: list[dict[str, Any]] = list(messages)
-                if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
-                    chat_messages.insert(0, {"role": "system", "content": system_prompt})
-            else:
-                chat_messages = []
-                if system_prompt:
-                    chat_messages.append({"role": "system", "content": system_prompt})
-                chat_messages.append({"role": "user", "content": prompt})
+            chat_messages = self._build_chat_messages(prompt, system_prompt, messages)
 
             payload = {
                 "model": model_name,
@@ -334,16 +328,7 @@ class LMStudioBackend(BaseHTTPBackend):
         """Stream generation from LM Studio"""
         try:
             session = await self._get_session()
-
-            if messages is not None:
-                chat_messages: list[dict[str, Any]] = list(messages)
-                if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
-                    chat_messages.insert(0, {"role": "system", "content": system_prompt})
-            else:
-                chat_messages = []
-                if system_prompt:
-                    chat_messages.append({"role": "system", "content": system_prompt})
-                chat_messages.append({"role": "user", "content": prompt})
+            chat_messages = self._build_chat_messages(prompt, system_prompt, messages)
 
             payload = {
                 "model": model_name,

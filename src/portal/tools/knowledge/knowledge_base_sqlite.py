@@ -22,7 +22,7 @@ import json
 import logging
 import os
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -270,7 +270,7 @@ class EnhancedKnowledgeTool(BaseTool):
             except Exception as e:
                 return self._error_response(f"Failed to read file: {e}")
         else:
-            source = f"text_{datetime.now().isoformat()}"
+            source = f"text_{datetime.now(tz=UTC).isoformat()}"
 
         # Generate embedding
         embedding_blob = self._generate_embedding(content)
@@ -280,7 +280,7 @@ class EnhancedKnowledgeTool(BaseTool):
             with self._get_connection() as conn:
                 cursor = conn.cursor()
 
-                now = datetime.now().isoformat()
+                now = datetime.now(tz=UTC).isoformat()
 
                 cursor.execute("""
                     INSERT OR REPLACE INTO documents

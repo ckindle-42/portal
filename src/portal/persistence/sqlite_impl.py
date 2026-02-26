@@ -234,29 +234,62 @@ class SQLiteConversationRepository(ConversationRepository):
         conn = self._pool.get()
         conn.row_factory = sqlite3.Row
 
+        # Single JOIN query eliminates N+1 per-conversation message fetches.
         query = """
-            SELECT c.chat_id, c.created_at, c.updated_at, c.metadata
+            SELECT c.chat_id, c.created_at, c.updated_at, c.metadata,
+                   m.role AS msg_role, m.content AS msg_content,
+                   m.timestamp AS msg_timestamp, m.metadata AS msg_metadata
             FROM conversations c
-            ORDER BY c.updated_at DESC
+            LEFT JOIN messages m ON m.chat_id = c.chat_id
+            ORDER BY c.updated_at DESC, m.timestamp ASC
         """
         params: list[Any] = []
 
         if limit is not None:
-            query += " LIMIT ? OFFSET ?"
+            # Use a subquery so LIMIT applies to conversations, not joined rows.
+            query = """
+                SELECT c.chat_id, c.created_at, c.updated_at, c.metadata,
+                       m.role AS msg_role, m.content AS msg_content,
+                       m.timestamp AS msg_timestamp, m.metadata AS msg_metadata
+                FROM (
+                    SELECT chat_id, created_at, updated_at, metadata
+                    FROM conversations
+                    ORDER BY updated_at DESC
+                    LIMIT ? OFFSET ?
+                ) c
+                LEFT JOIN messages m ON m.chat_id = c.chat_id
+                ORDER BY c.updated_at DESC, m.timestamp ASC
+            """
             params.extend([limit, offset])
 
         rows = conn.execute(query, params).fetchall()
-        results = []
+
+        # Group rows by chat_id preserving order.
+        conversations: dict[str, Conversation] = {}
         for row in rows:
-            messages = self._sync_get_messages(conn, row["chat_id"])
-            results.append(Conversation(
-                chat_id=row["chat_id"],
-                messages=messages,
-                created_at=datetime.fromisoformat(row["created_at"]),
-                updated_at=datetime.fromisoformat(row["updated_at"]),
-                metadata=json.loads(row["metadata"]) if row["metadata"] else None,
-            ))
-        return results
+            chat_id = row["chat_id"]
+            if chat_id not in conversations:
+                conversations[chat_id] = Conversation(
+                    chat_id=chat_id,
+                    messages=[],
+                    created_at=datetime.fromisoformat(row["created_at"]),
+                    updated_at=datetime.fromisoformat(row["updated_at"]),
+                    metadata=json.loads(row["metadata"]) if row["metadata"] else None,
+                )
+            if row["msg_role"] is not None:
+                conversations[chat_id].messages.append(Message(
+                    role=row["msg_role"],
+                    content=row["msg_content"],
+                    timestamp=(
+                        datetime.fromisoformat(row["msg_timestamp"])
+                        if row["msg_timestamp"] else None
+                    ),
+                    metadata=(
+                        json.loads(row["msg_metadata"])
+                        if row["msg_metadata"] else None
+                    ),
+                ))
+        return list(conversations.values())
 
     def _sync_search_messages(
         self,

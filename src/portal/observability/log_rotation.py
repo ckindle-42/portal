@@ -17,7 +17,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 
@@ -191,7 +191,7 @@ class LogRotator:
 
         try:
             # Generate rotated filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
             rotated_name = f"{self.log_file.stem}_{timestamp}{self.log_file.suffix}"
             rotated_path = self.log_file.parent / rotated_name
 
@@ -402,7 +402,7 @@ class RotatingStructuredLogHandler(logging.Handler):
             self._file_handler.close()
 
             # Generate rotated filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
             rotated_name = f"{self.log_file.stem}_{timestamp}{self.log_file.suffix}"
             rotated_path = self.log_file.parent / rotated_name
 

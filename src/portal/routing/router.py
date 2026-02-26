@@ -14,6 +14,7 @@ Sits at :8000 and provides:
 Based on M4 AI Stack Setup Guide v6.2 / v4.7.
 """
 
+import hmac
 import json
 import logging
 import os
@@ -22,7 +23,7 @@ import time
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,26 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url=None,
 )
+
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+
+async def _verify_token(authorization: str | None = Header(None)) -> None:
+    """Verify ROUTER_TOKEN when it is configured (non-empty).
+
+    Uses ``hmac.compare_digest`` to prevent timing-attack enumeration.
+    When ROUTER_TOKEN is unset or empty, all requests are allowed through
+    so development environments work without extra configuration.
+    """
+    if not ROUTER_TOKEN:
+        return
+    token = ""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
+    if not hmac.compare_digest(token.encode(), ROUTER_TOKEN.encode()):
+        raise HTTPException(status_code=401, detail="Invalid or missing ROUTER_TOKEN")
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +178,7 @@ async def health() -> dict:
         }
 
 
-@app.post("/api/dry-run")
+@app.post("/api/dry-run", dependencies=[Depends(_verify_token)])
 async def dry_run(request: Request) -> dict:
     """Return routing decision without executing."""
     body = await request.json()
@@ -172,7 +193,7 @@ async def dry_run(request: Request) -> dict:
     }
 
 
-@app.get("/api/tags")
+@app.get("/api/tags", dependencies=[Depends(_verify_token)])
 async def list_tags() -> dict:
     """Return Ollama models augmented with virtual workspace names."""
     try:
@@ -221,6 +242,7 @@ async def _proxy_stream(
 @app.api_route(
     "/{path:path}",
     methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
+    dependencies=[Depends(_verify_token)],
 )
 async def proxy(request: Request, path: str) -> Response:
     """

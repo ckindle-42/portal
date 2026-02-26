@@ -11,7 +11,7 @@ import json
 import logging
 import sqlite3
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -103,7 +103,7 @@ class ContextManager:
         interface: str,
         metadata: dict[str, Any],
     ) -> None:
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now(tz=UTC).isoformat()
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 INSERT INTO conversations (chat_id, role, content, timestamp, interface, metadata)

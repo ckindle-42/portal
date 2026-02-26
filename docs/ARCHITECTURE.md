@@ -433,7 +433,7 @@ with per-callback timeouts and active-task draining.
 ```
 portal/
 ├── src/portal/
-│   ├── __init__.py             version = "1.2.0"
+│   ├── __init__.py             version = "1.3.0"
 │   ├── cli.py
 │   ├── lifecycle.py
 │   ├── agent/

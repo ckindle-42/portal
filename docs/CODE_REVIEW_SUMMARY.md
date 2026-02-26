@@ -1,24 +1,25 @@
 # Code Review & Modernization Summary – portal (Target: 10/10)
 
 **Date**: 2026-02-26
-**Version**: 1.2.2 → 1.3.0
+**Version**: 1.3.0 → 1.3.1
 **Reviewer**: Elite Code Review & Modernization Agent
-**Branch**: `claude/elite-code-review-agent-fjxKf`
-**Previous Health Score**: 7.5/10 → **Current**: 8.5/10
+**Branch**: `claude/elite-code-review-agent-kMW98`
+**Previous Health Score**: 8.5/10 → **Current**: 9.0/10
 
 ---
 
 ## Executive Summary
 
-Portal's codebase has been elevated from 7.5 to **8.5/10** through targeted debt removal, structural deduplication, a critical bug fix, and documentation synchronization. All 236 tests remain green.
+Portal's codebase has been elevated from 8.5 to **9.0/10** through DRY refactoring, security hardening, UTC datetime consistency, N+1 query elimination, data-driven model registry, and 36 new tests. All 276 tests pass with 0 lint errors.
 
 ### Key Improvements This Session
-1. **Fixed**: MCP tool loop discarded accumulated context on final execution pass (`messages=None` → `messages=current_messages`)
-2. **Fixed**: `execute_parallel()` could cancel sibling queries on single failure (added `return_exceptions=True`)
-3. **Optimized**: Event history from O(n) `list.pop(0)` to O(1) `collections.deque(maxlen=N)`
-4. **Deduplicated**: ~40 lines of tool registration logic consolidated into `_register_tool_instance()`
-5. **Cleaned**: Import sorting (ruff I001), unnecessary Path alias in lifecycle.py
-6. **Synchronized**: Version bumped to 1.3.0 across all files; ARCHITECTURE.md header corrected
+1. **DRY**: Extracted `BaseHTTPBackend._build_chat_messages()` eliminating 4× duplicated message-building logic
+2. **Performance**: Fixed N+1 query in `_sync_list_conversations()` with single LEFT JOIN
+3. **Security**: Enforced `ROUTER_TOKEN` auth on all API routes (proxy, dry-run, tags) using `hmac.compare_digest`
+4. **Correctness**: Replaced all 34 `datetime.now()` calls with `datetime.now(tz=UTC)` across 11 files
+5. **Refactored**: Data-driven model registry (175 → 65 lines)
+6. **Testing**: Added 36 new tests covering CircuitBreaker, secret redaction, router auth, message builder, model registry
+7. **Docs**: Version strings fixed (1.2.0 → 1.3.0), CHANGELOG updated with v1.3.1
 
 ---
 
@@ -27,8 +28,8 @@ Portal's codebase has been elevated from 7.5 to **8.5/10** through targeted debt
 | Metric | Value |
 |---|---|
 | Python source files | 109 |
-| Test files | 23 |
-| Tests passing | 236 (1 skipped) |
+| Test files | 28 |
+| Tests passing | 276 (1 skipped) |
 | Python version | 3.11+ (required) |
 | Framework | FastAPI + Pydantic v2 |
 | Estimated src/ lines | ~21,000 |
