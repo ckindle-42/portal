@@ -383,7 +383,7 @@ portal/
 |-------|--------|
 | Token streaming (true per-token from Ollama) | **Done** — `ExecutionEngine.generate_stream()` calls Ollama `/api/chat` with `stream: true` and yields tokens as they arrive |
 | MCP tool-use loop in AgentCore | **Done** — `OllamaBackend.generate()` uses `/api/chat`; `tool_calls` surface via `ExecutionResult`; `AgentCore._dispatch_mcp_tools()` dispatches them to `MCPRegistry` |
-| Security headers on WebInterface | **Done** — `SecurityHeadersMiddleware` adds CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy; HSTS opt-in via `PORTAL_HSTS=1` |
+| Security headers on WebInterface | **Done** — `SecurityHeadersMiddleware` adds CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy; HSTS opt-in via `PORTAL_HSTS=1`. **Note:** The default CSP includes `'unsafe-inline' 'unsafe-eval'` for compatibility with Open WebUI's JavaScript. Production deployments that do not use a web UI frontend should override via `PORTAL_CSP` env var with a stricter policy. |
 | API-key guard on /v1/* routes | **Done** — `WEB_API_KEY` env var enables `_verify_api_key` dependency; must be set before any non-localhost exposure |
 | mcpo endpoint format verification | Phase 3 — see QUAL-3 note in `mcp_registry.py` |
 | Slack E2E test (needs ngrok/Cloudflare) | Phase 3 |
