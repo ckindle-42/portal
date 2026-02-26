@@ -1,5 +1,5 @@
 """
-Custom Exceptions for Portal 4.0
+Custom Exceptions for Portal
 ======================================
 
 Structured error handling allows interfaces to handle errors appropriately

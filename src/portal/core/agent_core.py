@@ -52,6 +52,10 @@ if TYPE_CHECKING:
 
 logger = get_logger('AgentCore')
 
+# Configuration constants (avoid magic numbers/strings scattered throughout)
+DEFAULT_MCP_TOOL_MAX_ROUNDS = 3
+HIGH_RISK_TOOLS = frozenset({"bash", "filesystem_write", "web_fetch"})
+
 
 class AgentCore:
     """
@@ -487,7 +491,7 @@ class AgentCore:
 
         system_prompt = self._build_system_prompt(interface.value, {})
         query = incoming.text
-        max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
+        max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", DEFAULT_MCP_TOOL_MAX_ROUNDS))
         messages = incoming.history if incoming.history else None
 
         tool_messages = await self._resolve_preflight_tools(
@@ -518,7 +522,7 @@ class AgentCore:
                     incoming.id, full_response, incoming.source or "web"
                 )
             except Exception as e:
-                logger.warning(f"Failed to save streamed response to context: {e}")
+                logger.warning("Failed to save streamed response to context: %s", e)
 
 
     async def _run_execution_with_mcp_loop(
@@ -533,7 +537,7 @@ class AgentCore:
         """Execute model calls and iterate tool calls until a final answer is produced."""
         current_query = query
         collected_tool_results: list[dict[str, Any]] = []
-        max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", 3))
+        max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", DEFAULT_MCP_TOOL_MAX_ROUNDS))
         current_messages = messages  # Use caller-provided history on first pass only
 
         for _ in range(max_tool_rounds):
@@ -627,7 +631,7 @@ class AgentCore:
                 chat_id=chat_id,
             )
 
-            if self.hitl_middleware and tool_name in {"bash", "filesystem_write", "web_fetch"}:
+            if self.hitl_middleware and tool_name in HIGH_RISK_TOOLS:
                 user_id = str(arguments.get("user_id", chat_id))
                 approval_token = str(arguments.get("approval_token", "")).strip()
                 if not approval_token:
@@ -709,7 +713,7 @@ class AgentCore:
 
         if requires_confirmation and self.confirmation_middleware:
             logger.info(
-                f"Tool {tool_name} requires confirmation, requesting approval...",
+                "Tool requires confirmation, requesting approval",
                 tool=tool_name,
                 chat_id=chat_id
             )
@@ -725,7 +729,7 @@ class AgentCore:
 
             if not approved:
                 logger.warning(
-                    f"Tool execution denied: {tool_name}",
+                    "Tool execution denied",
                     tool=tool_name,
                     chat_id=chat_id
                 )
@@ -736,7 +740,7 @@ class AgentCore:
                 )
 
             logger.info(
-                f"Tool execution approved: {tool_name}",
+                "Tool execution approved",
                 tool=tool_name,
                 chat_id=chat_id
             )
