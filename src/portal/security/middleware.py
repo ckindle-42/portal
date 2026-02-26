@@ -53,7 +53,8 @@ class SecurityMiddleware:
         rate_limiter: Optional[RateLimiter] = None,
         input_sanitizer: Optional[InputSanitizer] = None,
         enable_rate_limiting: bool = True,
-        enable_input_sanitization: bool = True
+        enable_input_sanitization: bool = True,
+        max_message_length: int = 10000,
     ):
         """
         Initialize security middleware
@@ -70,6 +71,7 @@ class SecurityMiddleware:
         self.input_sanitizer = input_sanitizer or InputSanitizer()
         self.enable_rate_limiting = enable_rate_limiting
         self.enable_input_sanitization = enable_input_sanitization
+        self.max_message_length = max_message_length
 
         logger.info(
             "SecurityMiddleware initialized",
@@ -241,8 +243,8 @@ class SecurityMiddleware:
                 details={'chat_id': sec_ctx.chat_id}
             )
 
-        # Example: Check message length
-        max_message_length = 10000  # 10K characters
+        # Check message length
+        max_message_length = self.max_message_length
         if len(sec_ctx.sanitized_input) > max_message_length:
             raise ValidationError(
                 f"Message exceeds maximum length of {max_message_length} characters",
