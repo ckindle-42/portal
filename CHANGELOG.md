@@ -24,6 +24,24 @@ To cut a release:
 
 ---
 
+## [1.2.2] - 2026-02-26
+
+### Refactored
+- **Python 3.11+ modernization** — removed `importlib_metadata` fallback for Python <3.8 in `tools/__init__.py`; project requires 3.11+.
+- **`os.path` → `pathlib`** — replaced `os.path.exists()` in `security_module.py` with `Path().exists()` per project guidelines.
+- **ToolCategory alignment** — `ToolRegistry` pre-initialized categories and `ToolsConfig.enabled_categories` now use actual `ToolCategory` enum values (`utility`/`dev`) instead of phantom `system`/`git`.
+
+### Fixed
+- **TelegramInterface async/sync mismatch** — `_check_rate_limit()` now properly `await`s the async `RateLimiter.check_limit()` method. Previously returned a coroutine instead of a tuple, which would crash at runtime.
+- **Path traversal false positives** — `InputSanitizer.validate_file_path()` now uses `Path.relative_to()` instead of `str.startswith()` to check sensitive directories. Prevents false rejections of paths like `/etc-safe/` that merely prefix-match `/etc`.
+- **Log rotation in sync context** — `RotatingStructuredLogHandler._rotate_sync()` gracefully handles missing asyncio event loop by falling back to synchronous gzip compression instead of raising `RuntimeError`.
+- **Hardcoded version in Prometheus metrics** — `MetricsCollector` now reads version from `importlib.metadata` instead of hardcoded `"4.3.0"`.
+
+### Added
+- **`ToolMetadata.async_capable`** field — new `bool` field (default `True`) on the `ToolMetadata` dataclass, preventing `AttributeError` when `ToolRegistry.get_tool_list()` accesses it.
+
+---
+
 ## [1.2.1] - 2026-02-26
 
 ### Security
