@@ -228,6 +228,31 @@ entries from the LLM response (Phase 2 work).
 | `RateLimiter` | SQLite-backed per-user request throttling |
 | `DockerSandbox` | Runs untrusted code in an isolated container |
 
+#### Security Hardening
+
+##### Content Security Policy
+
+The default CSP includes `'unsafe-inline' 'unsafe-eval'` for Open WebUI
+compatibility. For deployments without a web UI frontend (API-only), set a
+strict CSP via environment variable:
+
+```bash
+PORTAL_CSP="default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'"
+```
+
+##### Bootstrap API Key
+
+`PORTAL_BOOTSTRAP_API_KEY` is **required** in production. The application
+refuses to start when this is unset or left at the default `portal-dev-key`
+value (unless `PORTAL_ENV=development` is set, which is automatically applied
+by `docker-compose.override.yml`).
+
+Generate a strong key before first deployment:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
 ---
 
 ### Middleware (`src/portal/middleware/`)
