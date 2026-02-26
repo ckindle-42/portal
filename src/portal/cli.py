@@ -33,7 +33,13 @@ def cli():
 @cli.command()
 @click.option("--minimal", is_flag=True, help="Router + Ollama only (no Docker)")
 @click.option("--skip-port-check", is_flag=True, help="Skip port availability check")
-def up(minimal: bool, skip_port_check: bool):
+@click.option(
+    "--profile",
+    type=click.Choice(["m4-mac", "linux-bare", "linux-wsl2"]),
+    default=None,
+    help="Hardware profile (auto-detected if omitted)",
+)
+def up(minimal: bool, skip_port_check: bool, profile: str | None):
     """Start the Portal stack."""
     if not skip_port_check:
         required_ports = [
@@ -52,32 +58,48 @@ def up(minimal: bool, skip_port_check: bool):
             click.echo("\nUse --skip-port-check to bypass.", err=True)
             raise SystemExit(1)
 
-    hardware_dir = Path(__file__).parent.parent.parent.parent / "hardware"
-    # Detect platform and run appropriate launcher
-    if sys.platform == "darwin":
-        launcher = hardware_dir / "m4-mac" / "launch.sh"
+    repo_root = Path(__file__).parent.parent.parent.parent
+    unified = repo_root / "launch.sh"
+
+    if unified.exists():
+        args = ["bash", str(unified), "up"]
+        if minimal:
+            args.append("--minimal")
+        if profile:
+            args.extend(["--profile", profile])
+        click.echo("Starting Portal...")
+        subprocess.run(args, check=True)
     else:
-        launcher = hardware_dir / "linux-bare" / "launch.sh"
-
-    args = [str(launcher)]
-    if minimal:
-        args.append("--minimal")
-
-    click.echo(f"Starting Portal ({launcher.name})...")
-    subprocess.run(args, check=True)
+        # Legacy fallback to per-platform scripts
+        hardware_dir = repo_root / "hardware"
+        if sys.platform == "darwin":
+            launcher = hardware_dir / "m4-mac" / "launch.sh"
+        else:
+            launcher = hardware_dir / "linux-bare" / "launch.sh"
+        args = ["bash", str(launcher), "up"]
+        if minimal:
+            args.append("--minimal")
+        click.echo(f"Starting Portal ({launcher.name})...")
+        subprocess.run(args, check=True)
 
 
 @cli.command()
 def down():
     """Stop the Portal stack."""
-    hardware_dir = Path(__file__).parent.parent.parent.parent / "hardware"
-    if sys.platform == "darwin":
-        launcher = hardware_dir / "m4-mac" / "launch.sh"
-    else:
-        launcher = hardware_dir / "linux-bare" / "launch.sh"
+    repo_root = Path(__file__).parent.parent.parent.parent
+    unified = repo_root / "launch.sh"
 
     click.echo("Stopping Portal stack...")
-    result = subprocess.run([str(launcher), "down"], check=False)
+    if unified.exists():
+        result = subprocess.run(["bash", str(unified), "down"], check=False)
+    else:
+        # Legacy fallback to per-platform scripts
+        hardware_dir = repo_root / "hardware"
+        if sys.platform == "darwin":
+            launcher = hardware_dir / "m4-mac" / "launch.sh"
+        else:
+            launcher = hardware_dir / "linux-bare" / "launch.sh"
+        result = subprocess.run(["bash", str(launcher), "down"], check=False)
 
     # Fallback lifecycle cleanup so the command is useful even when launcher scripts fail.
     compose_file = Path(__file__).parent.parent.parent.parent / "docker-compose.yml"

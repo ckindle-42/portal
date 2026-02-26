@@ -201,6 +201,31 @@ dict that `DependencyContainer` and `create_agent_core()` consume.
 Each profile ships an environment file that sets hardware-specific variables
 (compute backend, Docker host IP, supervisor type, etc.).
 
+#### Zero-Config Bootstrap
+
+`launch.sh` (repository root) provides a guided first-run experience that
+layers on top of the per-platform scripts — those remain fully available for
+direct use.
+
+1. **Hardware detection:** `uname -s` for OS, `/proc/version` grep for WSL2
+2. **Interactive setup:** Web UI choice (1 question), optional Telegram/Slack
+3. **Secret generation:** 6 cryptographic keys via `openssl rand -base64 32`
+4. **`.env` written:** All values filled, hardware defaults applied
+
+On subsequent runs, `launch.sh up` sources the existing `.env` and starts
+services without any prompts.
+
+| Subcommand | Purpose |
+|---|---|
+| `launch.sh up [--minimal] [--profile X]` | Start all services (bootstrap on first run) |
+| `launch.sh down` | Graceful stop of all services |
+| `launch.sh doctor` | Health check all components |
+| `launch.sh logs [service]` | Tail service logs from `~/.portal/logs/` |
+| `launch.sh status` | One-line service overview |
+| `launch.sh reset-secrets` | Rotate all 6 auto-generated keys |
+
+Override hardware detection with `PORTAL_HARDWARE=<profile>` or `--profile`.
+
 ---
 
 ### MCP Layer (`src/portal/protocols/mcp/`)

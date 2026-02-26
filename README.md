@@ -26,14 +26,47 @@ Adding a 4th interface is ~50 lines of Python.
 
 ## Quick Start
 
-### 1. Install
+### 1. Clone & Launch
 
 ```bash
 git clone https://github.com/ckindle-42/portal
 cd portal
-cp .env.example .env          # edit with your real values (see comments inside)
-pip install -e ".[all]"
+bash launch.sh up
 ```
+
+On first run, Portal will:
+- Auto-detect your hardware (M4 Mac / Linux / WSL2)
+- Ask which web UI you prefer (Open WebUI or LibreChat)
+- Ask if you want Telegram or Slack (optional, press Enter to skip)
+- Auto-generate all security keys
+- Install dependencies, start all services
+
+**That's it.** Open http://localhost:8080 when it finishes.
+
+### Other commands
+
+```bash
+bash launch.sh doctor          # health check all services
+bash launch.sh down            # stop everything
+bash launch.sh logs portal-api # tail a service log
+bash launch.sh status          # one-line service status
+bash launch.sh reset-secrets   # rotate all auto-generated keys
+```
+
+### Manual setup (if you prefer)
+
+<details>
+<summary>Click to expand manual .env setup</summary>
+
+```bash
+cp .env.example .env
+# Edit .env with your values — see comments inside for guidance
+# Then use per-platform launcher:
+bash hardware/m4-mac/launch.sh up      # Apple Silicon
+bash hardware/linux-bare/launch.sh up  # Linux with NVIDIA
+bash hardware/linux-wsl2/launch.sh up  # Windows WSL2
+```
+</details>
 
 ### Development Setup
 
@@ -46,46 +79,24 @@ make lint                  # run linter
 make ci                    # full CI pipeline locally
 ```
 
-### 2. Launch
-
-**Apple M4 Mac (recommended):**
-```bash
-bash hardware/m4-mac/launch.sh up
-```
-
-**Linux bare-metal:**
-```bash
-bash hardware/linux-bare/launch.sh up
-```
-
-**Linux WSL2:**
-```bash
-bash hardware/linux-wsl2/launch.sh up
-```
-
-**Minimal (Portal API only, no Docker stack):**
-```bash
-bash hardware/m4-mac/launch.sh up --minimal
-```
-
-### 3. Verify with `portal doctor`
+### Verify with `portal doctor`
 
 After startup, run the built-in health check to confirm every service is live:
 
 ```bash
-bash hardware/m4-mac/launch.sh doctor
+bash launch.sh doctor
 ```
 
 Expected output when everything is healthy:
 
 ```
 === Portal Doctor ===
-[ollama]      OK
-[router]      OK
-[portal-api]  OK
-[web-ui]      OK
-[mcpo]        OK
-[scrapling]   OK (optional)
+[ollama      ] OK
+[router      ] OK
+[portal-api  ] OK
+[web-ui      ] OK (optional)
+[mcpo        ] OK (optional)
+[scrapling   ] NOT RUNNING (optional)
 ```
 
 You can also hit each endpoint manually:
@@ -109,10 +120,10 @@ The Portal API endpoint for Open WebUI / LibreChat is:
 http://localhost:8081/v1
 ```
 
-### 4. Stop
+### Stop
 
 ```bash
-bash hardware/m4-mac/launch.sh down
+bash launch.sh down
 ```
 
 ## Security Notes
