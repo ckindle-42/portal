@@ -36,6 +36,17 @@ bash scripts/bootstrap_python.sh
 pip install -e ".[all]"
 ```
 
+### Development Setup
+
+```bash
+git clone https://github.com/ckindle-42/portal
+cd portal
+pip install -e ".[dev]"   # installs all deps + test/lint tools
+make test                  # run full test suite
+make lint                  # run linter
+make ci                    # full CI pipeline locally
+```
+
 ### 2. Launch
 
 **Apple M4 Mac (recommended):**

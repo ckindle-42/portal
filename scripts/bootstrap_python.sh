@@ -15,6 +15,9 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 python -m pip install --upgrade pip
+# Install with all extras + dev tools (testing, linting, typing)
 pip install -e ".[dev]"
 
 echo "Bootstrap complete using: $PYTHON_BIN"
+echo "Run tests:  python -m pytest tests/"
+echo "Run lint:   ruff check src/"
