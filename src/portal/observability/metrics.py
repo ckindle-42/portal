@@ -1,32 +1,4 @@
-"""
-Prometheus Metrics
-==================
-
-Prometheus-compatible metrics for production monitoring.
-
-Metrics:
-- Request counters (by endpoint, status)
-- Request duration histograms
-- Job queue metrics
-- Worker pool metrics
-- LLM request metrics
-- Error rates
-
-Endpoints:
-- /metrics - Prometheus scrape endpoint
-
-Example:
---------
-# Initialize metrics
-metrics = MetricsCollector()
-
-# Record metrics
-metrics.increment_counter("requests_total", {"endpoint": "/chat", "status": "200"})
-metrics.observe_histogram("request_duration_seconds", 0.5, {"endpoint": "/chat"})
-
-# Expose metrics endpoint (FastAPI)
-app.add_route("/metrics", metrics.get_metrics_handler())
-"""
+"""Prometheus-compatible metrics — counters, histograms, and /metrics endpoint."""
 
 import logging
 import time
@@ -353,11 +325,6 @@ class MetricsCollector:
             )
 
         return metrics
-
-
-# =============================================================================
-# FASTAPI MIDDLEWARE
-# =============================================================================
 
 
 class MetricsMiddleware:

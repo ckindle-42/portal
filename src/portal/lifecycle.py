@@ -1,22 +1,4 @@
-"""
-Lifecycle Management - Bootstrap and Runtime Orchestration
-===========================================================
-
-This module provides lifecycle management for Portal, handling:
-- Application bootstrap (loading config, initializing DI container)
-- Starting core services
-- OS signal handling (SIGINT/SIGTERM)
-- Graceful shutdown with timeouts and draining
-
-Architecture:
-    CLI/Main → Runtime → Engine
-                 ├─ Config Loading
-                 ├─ DI Container
-                 ├─ Signal Handling
-                 ├─ Watchdog
-                 ├─ Log Rotation
-                 └─ Shutdown Sequence
-"""
+"""Lifecycle Management — bootstrap, signal handling, and graceful shutdown for Portal."""
 
 from __future__ import annotations
 
@@ -43,12 +25,12 @@ logger = get_logger('Lifecycle')
 
 
 class ShutdownPriority(Enum):
-    """Shutdown priority levels. Higher priority items shut down first."""
-    CRITICAL = 100   # Stop accepting new work
-    HIGH = 75        # Stop processing new requests
-    NORMAL = 50      # Normal cleanup
-    LOW = 25         # Background tasks
-    LOWEST = 0       # Final cleanup
+    """Shutdown priority levels (higher = shuts down first)."""
+    CRITICAL = 100
+    HIGH = 75
+    NORMAL = 50
+    LOW = 25
+    LOWEST = 0
 
 
 @dataclass
@@ -62,11 +44,7 @@ class ShutdownCallback:
 
 @dataclass
 class RuntimeContext:
-    """
-    Runtime context containing all initialized components.
-
-    Serves as the DI container for the application.
-    """
+    """DI container holding all initialized Portal components."""
     settings: Settings
     agent_core: AgentCore
     secure_agent: SecurityMiddleware
@@ -82,14 +60,7 @@ class RuntimeContext:
 
 
 class Runtime:
-    """
-    Runtime orchestrator for Portal.
-
-    Responsibilities:
-    1. Bootstrap: Load config, initialize services
-    2. Signal handling: Graceful shutdown on SIGINT/SIGTERM
-    3. Lifecycle management: Start/stop services
-    """
+    """Runtime orchestrator — bootstrap, signal handling, graceful shutdown."""
 
     def __init__(
         self,
@@ -114,12 +85,9 @@ class Runtime:
             return self.context
 
         logger.info("Bootstrapping Portal runtime")
-
-        # Step 1: Load configuration
-        logger.info("Loading configuration")
         settings = load_settings(self.config_path) if self.config_path else load_settings()
 
-        # Critical guard: refuse to start with default MCP secret.
+        # Refuse to start with insecure default MCP secret
         raw_mcp_api_key = (settings.security.mcp_api_key or '').strip()
         env_mcp_api_key = os.getenv("MCP_API_KEY", "").strip()
         effective_mcp_api_key = env_mcp_api_key or raw_mcp_api_key
@@ -138,26 +106,15 @@ class Runtime:
                 "python -c \"import secrets; print(secrets.token_urlsafe(32))\""
             )
 
-        # Step 2: Create agent core
-        logger.info("Creating agent core")
         agent_core = create_agent_core(settings.to_agent_config())
+        secure_agent = SecurityMiddleware(agent_core, enable_rate_limiting=True, enable_input_sanitization=True)
 
-        # Step 3: Wrap with security middleware
-        logger.info("Initializing security middleware")
-        secure_agent = SecurityMiddleware(
-            agent_core,
-            enable_rate_limiting=True,
-            enable_input_sanitization=True
-        )
-
-        # Step 4: Initialize watchdog
         watchdog = None
         if self.enable_watchdog:
             from portal.observability.watchdog import Watchdog, WatchdogConfig
             logger.info("Initializing watchdog")
             watchdog = Watchdog(config=WatchdogConfig())
 
-        # Step 5: Initialize log rotation
         log_rotator = None
         if self.enable_log_rotation:
             from portal.observability.log_rotation import LogRotator, RotationConfig
@@ -165,10 +122,7 @@ class Runtime:
             logger.info("Initializing log rotation for %s", log_file)
             log_rotator = LogRotator(log_file=log_file, config=RotationConfig())
 
-        # Step 6: Setup signal handlers
         self._setup_signal_handlers()
-
-        # Create runtime context
         self.context = RuntimeContext(
             settings=settings,
             agent_core=agent_core,
@@ -177,13 +131,11 @@ class Runtime:
             log_rotator=log_rotator
         )
 
-        # Start optional components
         if watchdog:
             await watchdog.start()
         if log_rotator:
             await log_rotator.start()
 
-        # Start config watcher for hot reload if portal.yaml is present
         config_watch_path = Path(self.config_path) if self.config_path else Path("portal.yaml")
         if config_watch_path.exists():
             from portal.observability.config_watcher import ConfigWatcher

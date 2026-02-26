@@ -410,12 +410,7 @@ class MLXBackend(ModelBackend):
 
             from mlx_lm import generate
 
-            # Format prompt with system prompt if provided
-            full_prompt = prompt
-            if system_prompt:
-                full_prompt = f"System: {system_prompt}\n\nUser: {prompt}\n\nAssistant:"
-
-            # Run generation in thread pool (MLX is CPU/GPU bound)
+            full_prompt = prompt if not system_prompt else f"System: {system_prompt}\n\nUser: {prompt}\n\nAssistant:"
             loop = asyncio.get_running_loop()
             response = await loop.run_in_executor(
                 None,
@@ -447,17 +442,14 @@ class MLXBackend(ModelBackend):
                              max_tokens: int = 2048,
                              temperature: float = 0.7,
                              messages: list[dict[str, Any]] | None = None) -> AsyncGenerator[str, None]:
-        """Stream generation from MLX"""
-        # MLX doesn't have native streaming, so we generate and yield
+        """Stream generation from MLX (simulated — no native streaming)."""
         result = await self.generate(prompt, model_name, system_prompt, max_tokens, temperature)
         if result.success:
-            # Yield in chunks
             chunk_size = 50
             for i in range(0, len(result.text), chunk_size):
-                yield result.text[i:i+chunk_size]
+                yield result.text[i:i + chunk_size]
         else:
             logger.error("MLX stream error: %s", result.error)
-            return
 
     async def is_available(self) -> bool:
         """Check if MLX is available"""
@@ -474,5 +466,4 @@ class MLXBackend(ModelBackend):
 
     async def list_models(self) -> list:
         """List available MLX models"""
-        # MLX models are loaded from HuggingFace paths
         return ["mlx-community/Qwen2.5-7B-Instruct-4bit"]

@@ -1,24 +1,8 @@
-"""
-Unified Agent Core - Refactored with Dependency Injection
-==========================================================
+"""Unified Agent Core — orchestrates AI operations across all interfaces.
 
-This is the heart of Portal - truly modular and production-ready.
-
-Key Improvements:
-1. ✅ Dependency Injection - All dependencies passed in, easily testable
-2. ✅ Structured Errors - Custom exceptions instead of string returns
-3. ✅ Context Management - Shared history across interfaces
-4. ✅ Event Bus - Real-time feedback to interfaces
-5. ✅ Structured Logging - JSON logs with trace IDs
-6. ✅ Externalized Prompts - No hardcoded strings
-7. ✅ Security Middleware - No data reaches core without validation
-
-Architecture:
-    Interface → SecurityMiddleware → AgentCore → Router → LLM
-                                       ↓
-                                  ContextManager
-                                  EventBus
-                                  PromptManager
+Architecture: Interface → SecurityMiddleware → AgentCore → Router → LLM
+                                                   ↓
+                                          ContextManager / EventBus
 """
 
 from __future__ import annotations
@@ -58,19 +42,7 @@ HIGH_RISK_TOOLS = frozenset({"bash", "filesystem_write", "web_fetch"})
 
 
 class AgentCore:
-    """
-    Unified Agent Core - The Brain
-
-    This class orchestrates all AI operations regardless of which interface
-    the user is using. Telegram, Web, Slack, or API - all call this same core.
-
-    Key Features:
-    - Interface-agnostic processing
-    - Dependency injection for testability
-    - Event emission for real-time feedback
-    - Context-aware conversation handling
-    - Structured logging with trace IDs
-    """
+    """Orchestrates AI operations across all interfaces via dependency injection."""
 
     def __init__(
         self,
@@ -86,20 +58,6 @@ class AgentCore:
         mcp_registry: Any | None = None,
         memory_manager: MemoryManager | None = None,
     ):
-        """
-        Initialize the unified core with dependency injection
-
-        Args:
-            model_registry: Registry of available models
-            router: Intelligent routing system
-            execution_engine: Execution engine with backends
-            context_manager: Conversation context manager
-            event_bus: Event bus for async feedback
-            prompt_manager: System prompt manager
-            tool_registry: Registry of available tools
-            config: Configuration dictionary
-            confirmation_middleware: Optional middleware for human-in-the-loop confirmations
-        """
         self.config = config
         self.start_time = datetime.now(tz=UTC)
 
@@ -159,22 +117,7 @@ class AgentCore:
         user_context: dict | None = None,
         files: list[Any] | None = None,
     ) -> ProcessingResult:
-        """
-        Process a message from ANY interface (Telegram, Web, Slack).
-
-        Args:
-            chat_id: Unique identifier for this conversation
-            message: The user's message text (already sanitized by SecurityMiddleware)
-            interface: Source interface (InterfaceType enum)
-            user_context: Optional context about the user/session
-            files: Optional list of attached files
-
-        Returns:
-            ProcessingResult with response and metadata
-
-        Raises:
-            PortalError: On processing failures
-        """
+        """Process a message from any interface (Telegram, Web, Slack). Raises PortalError on failure."""
         start_time = time.perf_counter()
         user_context = user_context or {}
         interface = self._normalize_interface(interface)
@@ -333,11 +276,7 @@ class AgentCore:
         logger.debug("Context loaded", chat_id=chat_id, message_count=len(history))
 
     async def _save_user_message(self, chat_id: str, message: str, interface: str) -> None:
-        """
-        Save user message to context immediately upon receipt
-
-        This ensures we don't lose the user's message if processing crashes.
-        """
+        """Save user message to context immediately (preserves message if processing crashes)."""
         await self.context_manager.add_message(
             chat_id=chat_id,
             role='user',
@@ -347,11 +286,7 @@ class AgentCore:
         logger.debug("User message saved", chat_id=chat_id)
 
     async def _save_assistant_response(self, chat_id: str, response: str, interface: str) -> None:
-        """
-        Save assistant response to context after generation
-
-        Called after successful response generation.
-        """
+        """Save assistant response to context after successful generation."""
         await self.context_manager.add_message(
             chat_id=chat_id,
             role='assistant',
@@ -361,11 +296,7 @@ class AgentCore:
         logger.debug("Assistant response saved", chat_id=chat_id)
 
     def _build_system_prompt(self, interface: str, user_context: dict | None) -> str:
-        """
-        Build system prompt from external templates
-
-        No more hardcoded strings!
-        """
+        """Build system prompt from external templates."""
         user_prefs = user_context.get('preferences', {}) if user_context else {}
 
         return self.prompt_manager.build_system_prompt(
@@ -382,48 +313,22 @@ class AgentCore:
         trace_id: str,
         messages: list[dict[str, Any]] | None = None,
     ):
-        """Execute with intelligent routing"""
-        # Get routing decision
+        """Route the query and execute it, emitting routing/generating events."""
         decision = self.router.route(query)
-
-        # Emit routing decision event
         await self.event_bus.publish(
-            EventType.ROUTING_DECISION,
-            chat_id,
-            {
-                'model': decision.model_id,
-                'reasoning': decision.reasoning,
-                'complexity': decision.classification.complexity.value
-            },
-            trace_id
+            EventType.ROUTING_DECISION, chat_id,
+            {'model': decision.model_id, 'reasoning': decision.reasoning,
+             'complexity': decision.classification.complexity.value},
+            trace_id,
         )
-
-        logger.info(
-            "Routing decision",
-            model=decision.model_id,
-            complexity=decision.classification.complexity.value
-        )
-
-        # Execute with execution engine
-        await self.event_bus.publish(
-            EventType.MODEL_GENERATING,
-            chat_id,
-            {'model': decision.model_id},
-            trace_id
-        )
-
-        result = await self.execution_engine.execute(
-            query=query,
-            system_prompt=system_prompt,
-            messages=messages,
-        )
-
+        logger.info("Routing decision", model=decision.model_id, complexity=decision.classification.complexity.value)
+        await self.event_bus.publish(EventType.MODEL_GENERATING, chat_id, {'model': decision.model_id}, trace_id)
+        result = await self.execution_engine.execute(query=query, system_prompt=system_prompt, messages=messages)
         if not result.success:
             raise ModelNotAvailableError(
                 f"Model execution failed: {result.error}",
-                details={'model': decision.model_id, 'error': result.error}
+                details={'model': decision.model_id, 'error': result.error},
             )
-
         return result
 
     async def get_stats(self) -> dict[str, Any]:
@@ -453,14 +358,7 @@ class AgentCore:
         trace_id: str,
         max_rounds: int,
     ) -> list[dict[str, str]]:
-        """
-        Run the preflight MCP tool loop and return accumulated tool-result messages.
-
-        Executes up to *max_rounds* of model → tool-call → result iterations so
-        that `stream_response` receives a resolved context before it begins
-        token streaming.  Returns an empty list when no MCP registry is attached
-        or when the model produces no tool-call requests.
-        """
+        """Run up to max_rounds MCP tool loops before streaming. Returns tool-result messages."""
         tool_messages: list[dict[str, str]] = []
         if not self.mcp_registry:
             return tool_messages
@@ -483,12 +381,7 @@ class AgentCore:
         return tool_messages
 
     async def stream_response(self, incoming: IncomingMessage) -> AsyncIterator[str]:
-        """
-        Yield response tokens for streaming interfaces (WebInterface, SlackInterface).
-
-        If the model requests MCP tools, run the full tool loop first and then
-        stream the final answer token-by-token.
-        """
+        """Yield response tokens; resolves any MCP tool calls before streaming."""
         try:
             interface = InterfaceType(incoming.source) if incoming.source else InterfaceType.WEB
         except ValueError:
@@ -713,7 +606,7 @@ class AgentCore:
         logger.info("Tool execution approved", tool=tool_name, chat_id=chat_id)
 
     async def cleanup(self) -> None:
-        """Cleanup resources"""
+        """Release MCP and execution-engine resources."""
         logger.info("Cleaning up AgentCore...")
         if self.mcp_registry and hasattr(self.mcp_registry, 'close'):
             await self.mcp_registry.close()
@@ -721,32 +614,10 @@ class AgentCore:
         logger.info("AgentCore cleanup complete")
 
 
-# =============================================================================
-# FACTORY FUNCTION
-# =============================================================================
-
 def create_agent_core(config) -> AgentCore:
-    """
-    Factory function to create AgentCore with all dependencies.
-
-    This is the recommended way to instantiate AgentCore.
-
-    Args:
-        config: Configuration dict OR a Settings object.  When a Settings
-                object is passed (e.g. from lifecycle.py) it is converted to a
-                plain dict via Settings.to_agent_config() before use.
-
-    Returns:
-        Initialized AgentCore instance
-    """
+    """Create AgentCore with all dependencies. Accepts a Settings object or plain dict."""
     from .factories import create_dependencies
 
-    # Allow callers to pass a Settings object (lifecycle.py) or a plain dict
     if not isinstance(config, dict):
-        if hasattr(config, 'to_agent_config'):
-            config = config.to_agent_config()
-        else:
-            config = {}
-
-    deps = create_dependencies(config)
-    return AgentCore(**deps.get_all())
+        config = config.to_agent_config() if hasattr(config, 'to_agent_config') else {}
+    return AgentCore(**create_dependencies(config).get_all())
