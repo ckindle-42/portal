@@ -236,7 +236,7 @@ class Runtime:
 
         # Start config watcher for hot reload if portal.yaml is present
         from pathlib import Path as _Path
-        _config_watch_path = self.config_path or _Path("portal.yaml")
+        _config_watch_path = _Path(self.config_path) if self.config_path else _Path("portal.yaml")
         if _config_watch_path.exists():
             from portal.observability.config_watcher import ConfigWatcher
             _config_watcher = ConfigWatcher(config_file=_config_watch_path)
