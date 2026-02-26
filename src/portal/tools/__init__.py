@@ -12,12 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Try to import importlib.metadata (Python 3.8+)
-try:
-    from importlib import metadata as importlib_metadata
-except ImportError:
-    # Fallback for older Python versions
-    import importlib_metadata
+from importlib import metadata as importlib_metadata
 
 logger = logging.getLogger(__name__)
 

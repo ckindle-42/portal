@@ -157,9 +157,9 @@ class TelegramInterface:
         """Check if user is authorized"""
         return update.effective_user.id in self.authorized_user_ids
 
-    def _check_rate_limit(self, user_id: int) -> tuple[bool, str | None]:
+    async def _check_rate_limit(self, user_id: int) -> tuple[bool, str | None]:
         """Check rate limiting"""
-        return self.rate_limiter.check_limit(user_id)
+        return await self.rate_limiter.check_limit(user_id)
 
     # ========================================================================
     # CONFIRMATION MIDDLEWARE INTEGRATION
@@ -439,7 +439,7 @@ class TelegramInterface:
 
         # Rate limiting check
         user_id = update.effective_user.id
-        allowed, error_msg = self._check_rate_limit(user_id)
+        allowed, error_msg = await self._check_rate_limit(user_id)
         if not allowed:
             await update.message.reply_text(error_msg)
             return

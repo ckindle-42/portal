@@ -40,6 +40,7 @@ class ToolMetadata:
     category: ToolCategory
     version: str = "1.0.0"
     requires_confirmation: bool = False
+    async_capable: bool = True
     parameters: list[ToolParameter] = field(default_factory=list)
     examples: list[str] = field(default_factory=list)
 

@@ -254,8 +254,8 @@ class RateLimiter:
                 shutil.move(temp_path, self.persist_path)
 
             except Exception:
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
+                if Path(temp_path).exists():
+                    Path(temp_path).unlink()
                 raise
 
         except Exception as e:
