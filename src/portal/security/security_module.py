@@ -4,6 +4,7 @@ Protects against abuse and malicious inputs
 """
 
 import asyncio
+import atexit
 import time
 import html
 import re
@@ -54,8 +55,16 @@ class RateLimiter:
             os.getenv('RATE_LIMIT_DATA_DIR', 'data')
         ) / 'rate_limits.json'
 
+        # Batched write state
+        self._dirty = False
+        self._last_save = time.time()
+        self._save_interval = 5.0  # seconds
+
         # Load existing rate limit data
         self._load_state()
+
+        # Flush on process exit
+        atexit.register(self._flush_if_dirty)
     
     def _check_limit_sync(self, user_id: str) -> Tuple[bool, Optional[str]]:
         """Synchronous core of rate limit check (called via asyncio.to_thread)."""
@@ -78,8 +87,11 @@ class RateLimiter:
                 f"({len(user_requests)}/{self.max_requests} requests)"
             )
 
-            # Persist violation immediately (blocking I/O, safe inside to_thread)
-            self._save_state()
+            self._dirty = True
+            if now - self._last_save >= self._save_interval:
+                self._save_state()
+                self._last_save = now
+                self._dirty = False
 
             return False, f"⏱️ Rate limit exceeded. Please wait {wait_time} seconds."
 
@@ -90,8 +102,11 @@ class RateLimiter:
         # Evict expired users to prevent unbounded memory growth
         self._evict_expired_users()
 
-        # Persist state after each check (prevent bypass via restart)
-        self._save_state()
+        self._dirty = True
+        if now - self._last_save >= self._save_interval:
+            self._save_state()
+            self._last_save = now
+            self._dirty = False
 
         return True, None
 
@@ -135,7 +150,14 @@ class RateLimiter:
         """Reset rate limit for specific user"""
         self.requests[user_id] = []
         self.violations[user_id] = 0
+        self._flush_if_dirty()
         self._save_state()
+
+    def _flush_if_dirty(self):
+        """Flush state to disk if there are pending changes."""
+        if self._dirty:
+            self._save_state()
+            self._dirty = False
     
     def get_stats(self, user_id: str) -> Dict[str, int]:
         """Get statistics for a user"""
