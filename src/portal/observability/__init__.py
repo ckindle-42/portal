@@ -6,18 +6,12 @@ Production-grade observability for Portal.
 
 Modules:
 --------
-- tracer: OpenTelemetry distributed tracing
 - health: Kubernetes-style health/readiness probes
 - config_watcher: Hot-reloading configuration
 - metrics: Prometheus-compatible metrics
 
 Example Usage:
 --------------
-# Setup tracing
-from portal.observability import setup_telemetry, instrument_fastapi
-setup_telemetry(service_name="portal")
-instrument_fastapi(app)
-
 # Setup health checks
 from portal.observability import HealthCheckSystem, register_health_endpoints
 health = HealthCheckSystem()
@@ -34,7 +28,6 @@ from portal.observability import watch_config
 watcher = await watch_config("config.yaml", on_config_change)
 """
 
-# Tracing
 # Config watching
 from .config_watcher import (
     ConfigWatcher,
@@ -59,28 +52,8 @@ from .metrics import (
     MetricsMiddleware,
     register_metrics_endpoint,
 )
-from .tracer import (
-    add_trace_event,
-    get_tracer,
-    instrument_aiohttp,
-    instrument_fastapi,
-    set_trace_attribute,
-    setup_telemetry,
-    shutdown_telemetry,
-    trace_operation,
-)
 
 __all__ = [
-    # Tracing
-    'setup_telemetry',
-    'get_tracer',
-    'instrument_fastapi',
-    'instrument_aiohttp',
-    'trace_operation',
-    'add_trace_event',
-    'set_trace_attribute',
-    'shutdown_telemetry',
-
     # Health checks
     'HealthCheckSystem',
     'HealthCheckProvider',
