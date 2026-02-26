@@ -262,6 +262,13 @@ class WebInterface(BaseInterface):
         TOKENS_PER_SECOND.observe(token_count / max(elapsed, 0.001))
         await self.user_store.add_tokens(user_id=user_id, tokens=token_count)
 
+        if not first_token_emitted:
+            error_chunk = {
+                "id": chunk_id, "object": "chat.completion.chunk", "created": created,
+                "model": model, "choices": [{"index": 0, "delta": {"content": "I'm sorry, I wasn't able to generate a response. Please try again."}, "finish_reason": "stop"}]
+            }
+            yield f"data: {json.dumps(error_chunk)}\n\n"
+
         final = {"id": chunk_id, "object": "chat.completion.chunk", "created": created, "model": model, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
         yield f"data: {json.dumps(final)}\n\n"
         yield "data: [DONE]\n\n"
