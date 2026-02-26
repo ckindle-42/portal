@@ -520,13 +520,38 @@ class AgentCore:
 
             if tool_name in {"bash", "filesystem_write", "web_fetch"}:
                 user_id = str(arguments.get("user_id", chat_id))
-                approval_token = await self.hitl_middleware.request(
-                    user_id=user_id,
-                    channel="telegram",
-                    tool_name=tool_name,
-                    args=arguments,
-                )
-                arguments["approval_token"] = approval_token
+                approval_token = str(arguments.get("approval_token", "")).strip()
+                if not approval_token:
+                    approval_token = await self.hitl_middleware.request(
+                        user_id=user_id,
+                        channel="telegram",
+                        tool_name=tool_name,
+                        args=arguments,
+                    )
+                    results.append(
+                        {
+                            'tool': tool_name,
+                            'result': {
+                                'status': 'pending_approval',
+                                'approval_token': approval_token,
+                                'message': 'Tool execution deferred until approval token is granted.',
+                            },
+                        }
+                    )
+                    continue
+
+                if not self.hitl_middleware.check_approved(user_id=user_id, token=approval_token):
+                    results.append(
+                        {
+                            'tool': tool_name,
+                            'result': {
+                                'status': 'pending_approval',
+                                'approval_token': approval_token,
+                                'message': 'Approval token is still pending or denied.',
+                            },
+                        }
+                    )
+                    continue
 
             result = await self.mcp_registry.call_tool(server_name, tool_name, arguments)
             MCP_TOOL_USAGE.labels(tool_name=tool_name).inc()
