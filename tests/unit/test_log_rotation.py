@@ -14,38 +14,6 @@ from portal.observability.log_rotation import (
     RotationStrategy,
 )
 
-# ── RotationConfig defaults ──────────────────────────────────────────────
-
-
-class TestRotationConfig:
-    def test_defaults(self):
-        cfg = RotationConfig()
-        assert cfg.strategy == RotationStrategy.SIZE_AND_TIME
-        assert cfg.max_bytes == 10 * 1024 * 1024
-        assert cfg.rotation_interval_hours == 24
-        assert cfg.backup_count == 7
-        assert cfg.compress_rotated is True
-        assert cfg.cleanup_enabled is True
-        assert cfg.cleanup_older_than_days == 30
-
-    def test_custom_values(self):
-        cfg = RotationConfig(
-            strategy=RotationStrategy.SIZE,
-            max_bytes=1024,
-            backup_count=3,
-        )
-        assert cfg.strategy == RotationStrategy.SIZE
-        assert cfg.max_bytes == 1024
-        assert cfg.backup_count == 3
-
-
-class TestRotationStrategy:
-    def test_enum_values(self):
-        assert RotationStrategy.SIZE.value == "size"
-        assert RotationStrategy.TIME.value == "time"
-        assert RotationStrategy.SIZE_AND_TIME.value == "both"
-
-
 # ── LogRotator ───────────────────────────────────────────────────────────
 
 

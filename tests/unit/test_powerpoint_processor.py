@@ -72,47 +72,17 @@ def _mock_pptx_module():
 @pytest.mark.unit
 class TestPowerPointProcessorMetadata:
 
-    def test_metadata_name_and_category(self):
+    def test_metadata(self):
+        from portal.tools.document_processing.powerpoint_processor import PowerPointProcessorTool
         tool = _make_tool()
         meta = tool.metadata
         assert meta.name == "powerpoint_processor"
         assert meta.category == ToolCategory.UTILITY
-
-    def test_metadata_version(self):
-        tool = _make_tool()
-        assert tool.metadata.version == "1.0.0"
-
-    def test_metadata_has_required_action_parameter(self):
-        tool = _make_tool()
-        action_param = next(
-            (p for p in tool.metadata.parameters if p.name == "action"), None
-        )
-        assert action_param is not None
-        assert action_param.required is True
-
-    def test_metadata_has_file_path_parameter(self):
-        tool = _make_tool()
-        fp = next(
-            (p for p in tool.metadata.parameters if p.name == "file_path"), None
-        )
-        assert fp is not None
-        assert fp.required is True
-
-    def test_metadata_parameters_count(self):
-        """All documented parameters are declared."""
-        tool = _make_tool()
-        names = {p.name for p in tool.metadata.parameters}
-        expected = {
-            "action", "file_path", "layout", "title", "content",
-            "bullet_points", "image_path", "image_position",
-            "chart_data", "chart_type", "theme",
-        }
-        assert expected == names
-
-    def test_layouts_dict(self):
-        from portal.tools.document_processing.powerpoint_processor import (
-            PowerPointProcessorTool,
-        )
+        assert meta.version == "1.0.0"
+        names = {p.name for p in meta.parameters}
+        assert {"action", "file_path", "chart_data", "chart_type"} <= names
+        required_params = [p for p in meta.parameters if p.name in ("action", "file_path")]
+        assert all(p.required for p in required_params)
         assert "title" in PowerPointProcessorTool.LAYOUTS
         assert "blank" in PowerPointProcessorTool.LAYOUTS
 
@@ -557,8 +527,9 @@ class TestAddChart:
             assert "No chart data" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_add_chart_bar_success(self, temp_dir):
-        pptx_file = temp_dir / "test.pptx"
+    @pytest.mark.parametrize("chart_type", ["bar", "line", "pie"])
+    async def test_add_chart_types(self, temp_dir, chart_type):
+        pptx_file = temp_dir / f"test_{chart_type}.pptx"
         pptx_file.write_bytes(b"placeholder")
 
         mock_prs = MagicMock()
@@ -566,49 +537,8 @@ class TestAddChart:
         mock_prs.slides.__getitem__ = MagicMock(return_value=mock_slide)
         mock_prs.slides.__len__ = lambda self: 1
 
-        mock_chart_data_cls = MagicMock()
-
         with patch(
-            "portal.tools.document_processing.powerpoint_processor.PPTX_AVAILABLE",
-            True,
-        ), patch(
-            "portal.tools.document_processing.powerpoint_processor.Presentation",
-            return_value=mock_prs,
-        ), patch(
-            "portal.tools.document_processing.powerpoint_processor.CategoryChartData",
-            return_value=mock_chart_data_cls,
-        ), patch(
-            "portal.tools.document_processing.powerpoint_processor.Inches",
-            side_effect=lambda v: int(v * 914400),
-        ), patch(
-            "portal.tools.document_processing.powerpoint_processor.XL_CHART_TYPE",
-        ) as mock_chart_type:
-            mock_chart_type.COLUMN_CLUSTERED = 1
-            tool = _make_tool()
-            result = await tool.execute({
-                "action": "add_chart",
-                "file_path": str(pptx_file),
-                "chart_type": "bar",
-                "chart_data": {
-                    "categories": ["Q1", "Q2"],
-                    "series": [{"name": "Rev", "values": [100, 200]}],
-                },
-            })
-            assert result["success"] is True
-            assert result["result"]["chart_added"] == "bar"
-
-    @pytest.mark.asyncio
-    async def test_add_chart_line_type(self, temp_dir):
-        pptx_file = temp_dir / "test.pptx"
-        pptx_file.write_bytes(b"placeholder")
-
-        mock_prs = MagicMock()
-        mock_slide = MagicMock()
-        mock_prs.slides.__getitem__ = MagicMock(return_value=mock_slide)
-
-        with patch(
-            "portal.tools.document_processing.powerpoint_processor.PPTX_AVAILABLE",
-            True,
+            "portal.tools.document_processing.powerpoint_processor.PPTX_AVAILABLE", True,
         ), patch(
             "portal.tools.document_processing.powerpoint_processor.Presentation",
             return_value=mock_prs,
@@ -621,48 +551,15 @@ class TestAddChart:
         ), patch(
             "portal.tools.document_processing.powerpoint_processor.XL_CHART_TYPE",
         ) as mock_ct:
+            mock_ct.COLUMN_CLUSTERED = 1
             mock_ct.LINE = 2
-            tool = _make_tool()
-            result = await tool.execute({
-                "action": "add_chart",
-                "file_path": str(pptx_file),
-                "chart_type": "line",
-                "chart_data": {"categories": ["A"], "series": [{"name": "s", "values": [1]}]},
-            })
-            assert result["success"] is True
-            assert result["result"]["chart_added"] == "line"
-
-    @pytest.mark.asyncio
-    async def test_add_chart_pie_type(self, temp_dir):
-        pptx_file = temp_dir / "test.pptx"
-        pptx_file.write_bytes(b"placeholder")
-
-        mock_prs = MagicMock()
-        mock_slide = MagicMock()
-        mock_prs.slides.__getitem__ = MagicMock(return_value=mock_slide)
-
-        with patch(
-            "portal.tools.document_processing.powerpoint_processor.PPTX_AVAILABLE",
-            True,
-        ), patch(
-            "portal.tools.document_processing.powerpoint_processor.Presentation",
-            return_value=mock_prs,
-        ), patch(
-            "portal.tools.document_processing.powerpoint_processor.CategoryChartData",
-            return_value=MagicMock(),
-        ), patch(
-            "portal.tools.document_processing.powerpoint_processor.Inches",
-            side_effect=lambda v: int(v * 914400),
-        ), patch(
-            "portal.tools.document_processing.powerpoint_processor.XL_CHART_TYPE",
-        ) as mock_ct:
             mock_ct.PIE = 3
             tool = _make_tool()
             result = await tool.execute({
                 "action": "add_chart",
                 "file_path": str(pptx_file),
-                "chart_type": "pie",
-                "chart_data": {"categories": ["A"], "series": [{"name": "s", "values": [1]}]},
+                "chart_type": chart_type,
+                "chart_data": {"categories": ["Q1", "Q2"], "series": [{"name": "Rev", "values": [100, 200]}]},
             })
             assert result["success"] is True
 

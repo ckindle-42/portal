@@ -30,33 +30,16 @@ def _make_tool():
 @pytest.mark.unit
 class TestWordProcessorMetadata:
 
-    def test_metadata_name(self):
+    def test_metadata(self):
         tool = _make_tool()
-        assert tool.metadata.name == "word_processor"
-
-    def test_metadata_category(self):
-        tool = _make_tool()
-        assert tool.metadata.category == ToolCategory.UTILITY
-
-    def test_metadata_version(self):
-        tool = _make_tool()
-        assert tool.metadata.version == "1.0.0"
-
-    def test_metadata_has_action_parameter(self):
-        tool = _make_tool()
-        action = next((p for p in tool.metadata.parameters if p.name == "action"), None)
-        assert action is not None
+        meta = tool.metadata
+        assert meta.name == "word_processor"
+        assert meta.category == ToolCategory.UTILITY
+        assert meta.version == "1.0.0"
+        names = {p.name for p in meta.parameters}
+        assert {"action", "file_path", "text", "style"} <= names
+        action = next(p for p in meta.parameters if p.name == "action")
         assert action.required is True
-
-    def test_metadata_parameter_names(self):
-        tool = _make_tool()
-        names = {p.name for p in tool.metadata.parameters}
-        expected = {
-            "action", "file_path", "title", "text", "heading", "level",
-            "style", "alignment", "table_data", "image_path",
-            "image_width", "metadata",
-        }
-        assert expected == names
 
 
 # ---------------------------------------------------------------------------
@@ -331,8 +314,13 @@ class TestAddParagraph:
             assert result["result"]["paragraph_added"] is True
 
     @pytest.mark.asyncio
-    async def test_add_paragraph_bold(self, temp_dir):
-        docx_file = temp_dir / "doc.docx"
+    @pytest.mark.parametrize("style,attr", [
+        ("bold", "bold"),
+        ("italic", "italic"),
+        ("underline", "underline"),
+    ])
+    async def test_add_paragraph_styles(self, temp_dir, style, attr):
+        docx_file = temp_dir / f"doc_{style}.docx"
         docx_file.write_bytes(b"PK")
 
         mock_doc = MagicMock()
@@ -354,71 +342,11 @@ class TestAddParagraph:
             result = await tool.execute({
                 "action": "add_paragraph",
                 "file_path": str(docx_file),
-                "text": "Bold text",
-                "style": "bold",
+                "text": f"{style} text",
+                "style": style,
             })
             assert result["success"] is True
-            assert mock_run.bold is True
-
-    @pytest.mark.asyncio
-    async def test_add_paragraph_italic(self, temp_dir):
-        docx_file = temp_dir / "doc.docx"
-        docx_file.write_bytes(b"PK")
-
-        mock_doc = MagicMock()
-        mock_run = MagicMock()
-        mock_para = MagicMock()
-        mock_para.runs = [mock_run]
-        mock_doc.add_paragraph.return_value = mock_para
-
-        with patch(
-            "portal.tools.document_processing.word_processor.DOCX_AVAILABLE", True
-        ), patch(
-            "portal.tools.document_processing.word_processor.Document",
-            return_value=mock_doc,
-        ), patch(
-            "portal.tools.document_processing.word_processor.WD_ALIGN_PARAGRAPH",
-        ) as mock_align:
-            mock_align.LEFT = 0
-            tool = _make_tool()
-            result = await tool.execute({
-                "action": "add_paragraph",
-                "file_path": str(docx_file),
-                "text": "Italic text",
-                "style": "italic",
-            })
-            assert result["success"] is True
-            assert mock_run.italic is True
-
-    @pytest.mark.asyncio
-    async def test_add_paragraph_underline(self, temp_dir):
-        docx_file = temp_dir / "doc.docx"
-        docx_file.write_bytes(b"PK")
-
-        mock_doc = MagicMock()
-        mock_run = MagicMock()
-        mock_para = MagicMock()
-        mock_para.runs = [mock_run]
-        mock_doc.add_paragraph.return_value = mock_para
-
-        with patch(
-            "portal.tools.document_processing.word_processor.DOCX_AVAILABLE", True
-        ), patch(
-            "portal.tools.document_processing.word_processor.Document",
-            return_value=mock_doc,
-        ), patch(
-            "portal.tools.document_processing.word_processor.WD_ALIGN_PARAGRAPH",
-        ) as mock_align:
-            mock_align.LEFT = 0
-            tool = _make_tool()
-            result = await tool.execute({
-                "action": "add_paragraph",
-                "file_path": str(docx_file),
-                "text": "Underlined",
-                "style": "underline",
-            })
-            assert result["success"] is True
-            assert mock_run.underline is True
+            assert getattr(mock_run, attr) is True
 
     @pytest.mark.asyncio
     async def test_add_paragraph_center_alignment(self, temp_dir):

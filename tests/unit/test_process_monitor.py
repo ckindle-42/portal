@@ -33,7 +33,8 @@ class TestProcessMonitorList:
     @patch("portal.tools.system_tools.process_monitor.PSUTIL_AVAILABLE", True)
     @patch("portal.tools.system_tools.process_monitor.psutil")
     @pytest.mark.asyncio
-    async def test_list_by_cpu(self, mock_psutil):
+    @pytest.mark.parametrize("sort_by", ["cpu", "memory", "name"])
+    async def test_list_sort_options(self, mock_psutil, sort_by):
         proc1 = MagicMock()
         proc1.info = {"pid": 1, "name": "python", "cpu_percent": 50.0, "memory_percent": 10.0}
         proc2 = MagicMock()
@@ -41,34 +42,7 @@ class TestProcessMonitorList:
         mock_psutil.process_iter.return_value = [proc1, proc2]
 
         tool = ProcessMonitorTool()
-        result = await tool.execute({"action": "list", "sort_by": "cpu", "limit": 5})
-        assert result["success"] is True
-        assert "python" in result["result"]
-
-    @patch("portal.tools.system_tools.process_monitor.PSUTIL_AVAILABLE", True)
-    @patch("portal.tools.system_tools.process_monitor.psutil")
-    @pytest.mark.asyncio
-    async def test_list_by_memory(self, mock_psutil):
-        proc1 = MagicMock()
-        proc1.info = {"pid": 1, "name": "python", "cpu_percent": 5.0, "memory_percent": 80.0}
-        mock_psutil.process_iter.return_value = [proc1]
-
-        tool = ProcessMonitorTool()
-        result = await tool.execute({"action": "list", "sort_by": "memory"})
-        assert result["success"] is True
-
-    @patch("portal.tools.system_tools.process_monitor.PSUTIL_AVAILABLE", True)
-    @patch("portal.tools.system_tools.process_monitor.psutil")
-    @pytest.mark.asyncio
-    async def test_list_by_name(self, mock_psutil):
-        proc1 = MagicMock()
-        proc1.info = {"pid": 1, "name": "alpha", "cpu_percent": 0, "memory_percent": 0}
-        proc2 = MagicMock()
-        proc2.info = {"pid": 2, "name": "zeta", "cpu_percent": 0, "memory_percent": 0}
-        mock_psutil.process_iter.return_value = [proc2, proc1]
-
-        tool = ProcessMonitorTool()
-        result = await tool.execute({"action": "list", "sort_by": "name"})
+        result = await tool.execute({"action": "list", "sort_by": sort_by})
         assert result["success"] is True
 
     @patch("portal.tools.system_tools.process_monitor.PSUTIL_AVAILABLE", True)

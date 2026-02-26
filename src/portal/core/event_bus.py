@@ -99,7 +99,6 @@ class EventBus:
         self._subscribers: dict[EventType, list[Callable]] = {}
         self._enable_history = enable_history
         self._event_history: deque[Event] = deque(maxlen=max_history) if enable_history else deque()
-        self._max_history = max_history
 
         logger.info("EventBus initialized (history: %s)", enable_history)
 
@@ -220,38 +219,3 @@ class EventEmitter:
             trace_id
         )
 
-    async def emit_model_selected(self, chat_id: str, model_name: str, reasoning: str, trace_id: str) -> None:
-        """Emit model selection event"""
-        await self.event_bus.publish(
-            EventType.MODEL_SELECTED,
-            chat_id,
-            {'model': model_name, 'reasoning': reasoning},
-            trace_id
-        )
-
-    async def emit_tool_started(self, chat_id: str, tool_name: str, trace_id: str) -> None:
-        """Emit tool execution started event"""
-        await self.event_bus.publish(
-            EventType.TOOL_STARTED,
-            chat_id,
-            {'tool': tool_name},
-            trace_id
-        )
-
-    async def emit_tool_completed(self, chat_id: str, tool_name: str, result: str, trace_id: str) -> None:
-        """Emit tool execution completed event"""
-        await self.event_bus.publish(
-            EventType.TOOL_COMPLETED,
-            chat_id,
-            {'tool': tool_name, 'result': result},
-            trace_id
-        )
-
-    async def emit_security_warning(self, chat_id: str, warning: str, trace_id: str) -> None:
-        """Emit security warning event"""
-        await self.event_bus.publish(
-            EventType.SECURITY_WARNING,
-            chat_id,
-            {'warning': warning},
-            trace_id
-        )

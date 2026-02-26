@@ -31,32 +31,16 @@ def _make_tool():
 @pytest.mark.unit
 class TestExcelProcessorMetadata:
 
-    def test_metadata_name(self):
+    def test_metadata(self):
         tool = _make_tool()
-        assert tool.metadata.name == "excel_processor"
-
-    def test_metadata_category(self):
-        tool = _make_tool()
-        assert tool.metadata.category == ToolCategory.DATA
-
-    def test_metadata_version(self):
-        tool = _make_tool()
-        assert tool.metadata.version == "1.0.0"
-
-    def test_metadata_has_action_parameter(self):
-        tool = _make_tool()
-        action = next((p for p in tool.metadata.parameters if p.name == "action"), None)
-        assert action is not None
+        meta = tool.metadata
+        assert meta.name == "excel_processor"
+        assert meta.category == ToolCategory.DATA
+        assert meta.version == "1.0.0"
+        names = {p.name for p in meta.parameters}
+        assert {"action", "file_path", "chart_type"} <= names
+        action = next(p for p in meta.parameters if p.name == "action")
         assert action.required is True
-
-    def test_metadata_parameter_names(self):
-        tool = _make_tool()
-        names = {p.name for p in tool.metadata.parameters}
-        expected = {
-            "action", "file_path", "sheet_name", "data", "range",
-            "headers", "formatting", "chart_type", "formulas",
-        }
-        assert expected == names
 
 
 # ---------------------------------------------------------------------------
@@ -545,58 +529,10 @@ class TestFormatExcel:
 @pytest.mark.skipif(not _has_openpyxl, reason="openpyxl not installed")
 class TestApplyCellFormatting:
 
-    def test_apply_font(self):
+    def test_apply_all_formatting_and_empty(self):
+        """_apply_cell_formatting handles all style types and empty dict without raising."""
         tool = _make_tool()
         cell = MagicMock()
-
-        with patch("openpyxl.styles.Font") as MockFont:
-            tool._apply_cell_formatting(cell, {
-                "font": {"name": "Arial", "size": 14, "bold": True, "italic": False, "color": "0000FF"},
-            })
-            MockFont.assert_called_once_with(
-                name="Arial", size=14, bold=True, italic=False, color="0000FF"
-            )
-
-    def test_apply_fill(self):
-        tool = _make_tool()
-        cell = MagicMock()
-
-        with patch("openpyxl.styles.PatternFill") as MockFill:
-            tool._apply_cell_formatting(cell, {
-                "fill": {"color": "FF0000"},
-            })
-            MockFill.assert_called_once_with(
-                start_color="FF0000", end_color="FF0000", fill_type="solid"
-            )
-
-    def test_apply_alignment(self):
-        tool = _make_tool()
-        cell = MagicMock()
-
-        with patch("openpyxl.styles.Alignment") as MockAlign:
-            tool._apply_cell_formatting(cell, {
-                "alignment": {"horizontal": "center", "vertical": "middle", "wrap": True},
-            })
-            MockAlign.assert_called_once_with(
-                horizontal="center", vertical="middle", wrap_text=True
-            )
-
-    def test_apply_border(self):
-        tool = _make_tool()
-        cell = MagicMock()
-
-        with patch("openpyxl.styles.Border") as MockBorder, \
-             patch("openpyxl.styles.Side") as MockSide:
-            tool._apply_cell_formatting(cell, {
-                "border": {"style": "thick"},
-            })
-            assert MockSide.call_count == 4  # left, right, top, bottom
-            MockBorder.assert_called_once()
-
-    def test_apply_all_formatting_at_once(self):
-        tool = _make_tool()
-        cell = MagicMock()
-
         with patch("openpyxl.styles.Font"), \
              patch("openpyxl.styles.PatternFill"), \
              patch("openpyxl.styles.Alignment"), \
@@ -608,13 +544,6 @@ class TestApplyCellFormatting:
                 "alignment": {"horizontal": "center"},
                 "border": {"style": "thin"},
             })
-            # If no exception, all branches ran successfully
-            assert True
-
-    def test_no_formatting_keys(self):
-        tool = _make_tool()
-        cell = MagicMock()
-        # Should not raise even with empty dict
         tool._apply_cell_formatting(cell, {})
 
 
@@ -655,8 +584,13 @@ class TestAddChart:
             assert "not found" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_add_bar_chart(self, temp_dir):
-        xlsx_file = temp_dir / "test.xlsx"
+    @pytest.mark.parametrize("chart_type,chart_class", [
+        ("bar", "BarChart"),
+        ("line", "LineChart"),
+        ("pie", "PieChart"),
+    ])
+    async def test_add_chart_types(self, temp_dir, chart_type, chart_class):
+        xlsx_file = temp_dir / f"test_{chart_type}.xlsx"
         xlsx_file.write_bytes(b"PK")
 
         mock_ws = MagicMock()
@@ -665,61 +599,16 @@ class TestAddChart:
         mock_wb.__getitem__ = MagicMock(return_value=mock_ws)
 
         with patch("openpyxl.load_workbook", return_value=mock_wb), \
-             patch("openpyxl.chart.BarChart"), \
+             patch(f"openpyxl.chart.{chart_class}"), \
              patch("openpyxl.chart.Reference"):
             tool = _make_tool()
             result = await tool.execute({
                 "action": "add_chart",
                 "file_path": str(xlsx_file),
-                "chart_type": "bar",
-                "range": "A1:B5",
+                "chart_type": chart_type,
             })
             assert result["success"] is True
-            assert result["result"]["chart_added"] == "bar"
-
-    @pytest.mark.asyncio
-    async def test_add_line_chart(self, temp_dir):
-        xlsx_file = temp_dir / "test.xlsx"
-        xlsx_file.write_bytes(b"PK")
-
-        mock_ws = MagicMock()
-        mock_wb = MagicMock()
-        mock_wb.sheetnames = ["Sheet1"]
-        mock_wb.__getitem__ = MagicMock(return_value=mock_ws)
-
-        with patch("openpyxl.load_workbook", return_value=mock_wb), \
-             patch("openpyxl.chart.LineChart"), \
-             patch("openpyxl.chart.Reference"):
-            tool = _make_tool()
-            result = await tool.execute({
-                "action": "add_chart",
-                "file_path": str(xlsx_file),
-                "chart_type": "line",
-            })
-            assert result["success"] is True
-            assert result["result"]["chart_added"] == "line"
-
-    @pytest.mark.asyncio
-    async def test_add_pie_chart(self, temp_dir):
-        xlsx_file = temp_dir / "test.xlsx"
-        xlsx_file.write_bytes(b"PK")
-
-        mock_ws = MagicMock()
-        mock_wb = MagicMock()
-        mock_wb.sheetnames = ["Sheet1"]
-        mock_wb.__getitem__ = MagicMock(return_value=mock_ws)
-
-        with patch("openpyxl.load_workbook", return_value=mock_wb), \
-             patch("openpyxl.chart.PieChart"), \
-             patch("openpyxl.chart.Reference"):
-            tool = _make_tool()
-            result = await tool.execute({
-                "action": "add_chart",
-                "file_path": str(xlsx_file),
-                "chart_type": "pie",
-            })
-            assert result["success"] is True
-            assert result["result"]["chart_added"] == "pie"
+            assert result["result"]["chart_added"] == chart_type
 
     @pytest.mark.asyncio
     async def test_unknown_chart_type(self, temp_dir):

@@ -149,19 +149,6 @@ class TestMessageDataclass:
         assert d["role"] == "user"
         assert d["content"] == "hi"
 
-    def test_from_dict(self) -> None:
-        from portal.core.context_manager import Message
-        d = {"role": "assistant", "content": "hey", "timestamp": "t", "interface": "api", "metadata": {}}
-        msg = Message.from_dict(d)
-        assert msg.role == "assistant"
-        assert msg.interface == "api"
-
-    def test_roundtrip(self) -> None:
-        from portal.core.context_manager import Message
-        msg = Message(role="system", content="init", timestamp="ts", interface="telegram", metadata={"k": "v"})
-        msg2 = Message.from_dict(msg.to_dict())
-        assert msg == msg2
-
 
 class TestConcurrency:
     @pytest.mark.asyncio

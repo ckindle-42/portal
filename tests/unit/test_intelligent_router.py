@@ -16,7 +16,6 @@ from unittest.mock import patch
 import pytest
 
 from portal.routing.intelligent_router import (
-    _DEFAULT_PREFERENCES,
     IntelligentRouter,
     RoutingDecision,
     RoutingStrategy,
@@ -139,7 +138,7 @@ class TestIntelligentRouterInit:
     def test_default_preferences_used_when_none(self):
         reg = _empty_registry()
         router = IntelligentRouter(reg)
-        assert router.model_preferences == dict(_DEFAULT_PREFERENCES)
+        assert router.model_preferences == {}
 
     def test_custom_preferences_applied(self):
         reg = _empty_registry()

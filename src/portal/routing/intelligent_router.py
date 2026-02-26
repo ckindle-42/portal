@@ -9,12 +9,6 @@ from .task_classifier import TaskCategory, TaskClassification, TaskClassifier, T
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_PREFERENCES: dict[str, list[str]] = {
-    "trivial": [], "simple": [], "moderate": [],
-    "complex": [], "expert": [], "code": [],
-}
-
-
 class RoutingStrategy(Enum):
     AUTO = "auto"
     SPEED = "speed"
@@ -45,7 +39,7 @@ class IntelligentRouter:
         self.registry = registry
         self.strategy = strategy
         self.classifier = TaskClassifier()
-        self.model_preferences = model_preferences if model_preferences is not None else dict(_DEFAULT_PREFERENCES)
+        self.model_preferences = model_preferences if model_preferences is not None else {}
         self._verify_model_preferences()
 
     def route(self, query: str, max_cost: float = 1.0) -> RoutingDecision:
