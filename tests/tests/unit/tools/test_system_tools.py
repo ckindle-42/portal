@@ -3,7 +3,7 @@ Unit tests for System tools
 """
 
 import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 from portal.tools.system_tools.clipboard_manager import ClipboardManagerTool
 from portal.tools.system_tools.process_monitor import ProcessMonitorTool
 from portal.tools.system_tools.system_stats import SystemStatsTool
@@ -68,12 +68,12 @@ class TestProcessMonitorTool:
             mock_iter.return_value = [mock_process]
 
             result = await tool.execute({
-                "operation": "list",
-                "limit": 10
+                "action": "list",
+                "limit": 10,
             })
 
-            assert result["success"] is True
-            assert "processes" in result or "result" in result
+        assert result["success"] is True
+        assert "processes" in result or "result" in result
 
     @pytest.mark.asyncio
     async def test_kill_process(self):
@@ -82,16 +82,18 @@ class TestProcessMonitorTool:
 
         with patch("psutil.Process") as mock_process_class:
             mock_proc = Mock()
+            mock_proc.name.return_value = "test_process"
             mock_proc.terminate = Mock()
+            mock_proc.wait = Mock(return_value=None)
             mock_process_class.return_value = mock_proc
 
             result = await tool.execute({
-                "operation": "kill",
-                "pid": 9999
+                "action": "kill",
+                "pid": 9999,
             })
 
-            # May succeed or fail depending on implementation
-            assert "success" in result
+        # May succeed or fail depending on implementation
+        assert "success" in result
 
 
 @pytest.mark.unit
@@ -103,30 +105,46 @@ class TestSystemStatsTool:
         """Test getting system resource usage"""
         tool = SystemStatsTool()
 
-        with patch("psutil.cpu_percent") as mock_cpu, \
-             patch("psutil.virtual_memory") as mock_mem, \
-             patch("psutil.disk_usage") as mock_disk:
+        GB = 1024 ** 3
 
-            mock_cpu.return_value = 45.5
-            mock_mem.return_value = Mock(percent=60.0, total=16000000000)
-            mock_disk.return_value = Mock(percent=75.0, total=500000000000)
+        with patch("psutil.cpu_percent", return_value=45.5), \
+             patch("psutil.cpu_count", return_value=4), \
+             patch("psutil.virtual_memory", return_value=Mock(
+                 percent=60.0, total=16 * GB, used=9 * GB, available=7 * GB
+             )), \
+             patch("psutil.disk_usage", return_value=Mock(
+                 percent=75.0, total=500 * GB, used=375 * GB, free=125 * GB
+             )):
 
             result = await tool.execute({})
 
-            assert result["success"] is True
-            assert "cpu" in str(result) or "memory" in str(result) or "result" in result
+        assert result["success"] is True
+        assert "cpu" in str(result) or "memory" in str(result) or "result" in result
 
     @pytest.mark.asyncio
     async def test_system_stats_detailed(self):
         """Test detailed system statistics"""
         tool = SystemStatsTool()
 
-        with patch("psutil.cpu_percent"), \
-             patch("psutil.virtual_memory"), \
-             patch("psutil.disk_usage"):
+        GB = 1024 ** 3
+
+        mock_partition = Mock()
+        mock_partition.device = "/dev/sda1"
+        mock_partition.mountpoint = "/"
+        mock_partition.fstype = "ext4"
+
+        with patch("psutil.cpu_percent", side_effect=[45.5, [10.0, 20.0, 30.0, 40.0]]), \
+             patch("psutil.cpu_count", return_value=4), \
+             patch("psutil.virtual_memory", return_value=Mock(
+                 percent=60.0, total=16 * GB, used=9 * GB, available=7 * GB
+             )), \
+             patch("psutil.disk_usage", return_value=Mock(
+                 percent=75.0, total=500 * GB, used=375 * GB, free=125 * GB
+             )), \
+             patch("psutil.disk_partitions", return_value=[mock_partition]):
 
             result = await tool.execute({
                 "detailed": True
             })
 
-            assert result["success"] is True
+        assert result["success"] is True
