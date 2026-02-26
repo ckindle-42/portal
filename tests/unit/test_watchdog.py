@@ -1,12 +1,13 @@
 """Tests for portal.observability.watchdog"""
 
-import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from portal.observability.health import HealthCheckResult, HealthCheckSystem, HealthStatus
+pytest.importorskip("psutil")
+
+from portal.observability.health import HealthCheckResult, HealthStatus
 from portal.observability.watchdog import (
     ComponentHealth,
     ComponentState,
@@ -15,7 +16,6 @@ from portal.observability.watchdog import (
     WatchdogConfig,
     WatchdogHealthCheck,
 )
-
 
 # ── Data Classes & Enums ─────────────────────────────────────────────────
 

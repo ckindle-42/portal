@@ -1,11 +1,9 @@
 """Tests for portal.observability.log_rotation"""
 
-import asyncio
 import gzip
 import logging
 import time
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -15,7 +13,6 @@ from portal.observability.log_rotation import (
     RotationConfig,
     RotationStrategy,
 )
-
 
 # ── RotationConfig defaults ──────────────────────────────────────────────
 

@@ -13,12 +13,11 @@ Covers:
 """
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from portal.routing.execution_engine import (
-    CircuitBreaker,
     CircuitState,
     ExecutionEngine,
     ExecutionResult,
@@ -27,7 +26,6 @@ from portal.routing.intelligent_router import IntelligentRouter, RoutingDecision
 from portal.routing.model_backends import GenerationResult
 from portal.routing.model_registry import ModelCapability, ModelMetadata, ModelRegistry, SpeedClass
 from portal.routing.task_classifier import TaskCategory, TaskClassification, TaskComplexity
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -6,17 +6,12 @@ extraction paths, unsupported format, file-not-found, and library-not-installed
 fallback for each format.
 """
 
-import os
-import time
-from datetime import datetime
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from portal.core.interfaces.tool import ToolCategory
-
 
 # ---------------------------------------------------------------------------
 # Helpers

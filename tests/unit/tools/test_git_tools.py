@@ -2,6 +2,7 @@
 Unit tests for Git tools
 """
 
+import importlib.util
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,6 +16,11 @@ from portal.tools.git_tools.git_merge import GitMergeTool
 from portal.tools.git_tools.git_pull import GitPullTool
 from portal.tools.git_tools.git_push import GitPushTool
 from portal.tools.git_tools.git_status import GitStatusTool
+
+pytestmark = pytest.mark.skipif(
+    not importlib.util.find_spec("git"),
+    reason="GitPython not installed",
+)
 
 
 def _make_mock_repo(branch="main", hexsha="abc123456789", dirty=False, remotes=None):

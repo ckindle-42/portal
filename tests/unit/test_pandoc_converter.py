@@ -7,15 +7,12 @@ Covers: metadata, format detection, command building, successful conversions,
         subprocess error handling.
 """
 
-import asyncio
 from pathlib import Path
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from portal.core.interfaces.tool import ToolCategory
-
 
 # ---------------------------------------------------------------------------
 # Helpers

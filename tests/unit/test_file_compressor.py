@@ -3,7 +3,6 @@
 import os
 import tarfile
 import zipfile
-from pathlib import Path
 
 import pytest
 

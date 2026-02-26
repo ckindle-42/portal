@@ -1,7 +1,6 @@
 """Tests for portal.persistence.repositories — abstract interfaces and dataclasses"""
 
 from datetime import datetime
-from typing import Any
 
 import pytest
 
@@ -16,7 +15,6 @@ from portal.persistence.repositories import (
     KnowledgeRepository,
     Message,
 )
-
 
 # ── Dataclass tests ──────────────────────────────────────────────────────
 

@@ -5,14 +5,14 @@ Covers: metadata, create, add_heading, add_paragraph, add_table, add_image,
         read, save, unknown action, docx-not-available fallback, and error handling.
 """
 
-from pathlib import Path
-from typing import Any
+import importlib.util
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from portal.core.interfaces.tool import ToolCategory
 
+_has_docx = importlib.util.find_spec("docx") is not None
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -110,6 +110,7 @@ class TestWordUnknownAction:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_docx, reason="python-docx not installed")
 class TestCreateDocument:
 
     @pytest.mark.asyncio
@@ -179,6 +180,7 @@ class TestCreateDocument:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_docx, reason="python-docx not installed")
 class TestAddHeading:
 
     @pytest.mark.asyncio
@@ -261,6 +263,7 @@ class TestAddHeading:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_docx, reason="python-docx not installed")
 class TestAddParagraph:
 
     @pytest.mark.asyncio
@@ -474,6 +477,7 @@ class TestAddParagraph:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_docx, reason="python-docx not installed")
 class TestAddTable:
 
     @pytest.mark.asyncio
@@ -623,6 +627,7 @@ class TestAddTable:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_docx, reason="python-docx not installed")
 class TestAddImage:
 
     @pytest.mark.asyncio
@@ -713,6 +718,7 @@ class TestAddImage:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_docx, reason="python-docx not installed")
 class TestReadDocument:
 
     @pytest.mark.asyncio

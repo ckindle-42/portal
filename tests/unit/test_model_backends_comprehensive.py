@@ -10,7 +10,6 @@ Covers:
 """
 
 import json
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -22,7 +21,6 @@ from portal.routing.model_backends import (
     MLXBackend,
     OllamaBackend,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

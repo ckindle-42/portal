@@ -8,7 +8,9 @@ Verifies:
 
 import pickle
 
-import numpy as np
+import pytest
+
+np = pytest.importorskip("numpy")
 
 
 def _make_instance():

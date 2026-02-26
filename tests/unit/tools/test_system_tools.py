@@ -2,6 +2,7 @@
 Unit tests for System tools
 """
 
+import importlib.util
 from unittest.mock import Mock, patch
 
 import pytest
@@ -9,6 +10,8 @@ import pytest
 from portal.tools.system_tools.clipboard_manager import ClipboardManagerTool
 from portal.tools.system_tools.process_monitor import ProcessMonitorTool
 from portal.tools.system_tools.system_stats import SystemStatsTool
+
+_has_psutil = importlib.util.find_spec("psutil") is not None
 
 
 @pytest.mark.unit
@@ -51,6 +54,7 @@ class TestClipboardManagerTool:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_psutil, reason="psutil not installed")
 class TestProcessMonitorTool:
     """Test process_monitor tool"""
 
@@ -99,6 +103,7 @@ class TestProcessMonitorTool:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_psutil, reason="psutil not installed")
 class TestSystemStatsTool:
     """Test system_stats tool"""
 

@@ -6,14 +6,14 @@ Covers: metadata, read, write, analyze, format, add_chart, unknown action,
         handling for every path.
 """
 
-from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+import importlib.util
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from portal.core.interfaces.tool import ToolCategory
 
+_has_openpyxl = importlib.util.find_spec("openpyxl") is not None
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -102,6 +102,7 @@ def _selective_import_error(blocked_module):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_openpyxl, reason="openpyxl not installed")
 class TestExcelUnknownAction:
 
     @pytest.mark.asyncio
@@ -127,6 +128,7 @@ class TestExcelUnknownAction:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_openpyxl, reason="openpyxl not installed")
 class TestReadExcel:
 
     @pytest.mark.asyncio
@@ -227,6 +229,7 @@ class TestReadExcel:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_openpyxl, reason="openpyxl not installed")
 class TestWriteExcel:
 
     @pytest.mark.asyncio
@@ -345,6 +348,7 @@ class TestWriteExcel:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_openpyxl, reason="openpyxl not installed")
 class TestAnalyzeExcel:
 
     @pytest.mark.asyncio
@@ -438,6 +442,7 @@ class TestAnalyzeExcel:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_openpyxl, reason="openpyxl not installed")
 class TestFormatExcel:
 
     @pytest.mark.asyncio
@@ -537,6 +542,7 @@ class TestFormatExcel:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_openpyxl, reason="openpyxl not installed")
 class TestApplyCellFormatting:
 
     def test_apply_font(self):
@@ -617,6 +623,7 @@ class TestApplyCellFormatting:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_openpyxl, reason="openpyxl not installed")
 class TestAddChart:
 
     @pytest.mark.asyncio
@@ -658,8 +665,8 @@ class TestAddChart:
         mock_wb.__getitem__ = MagicMock(return_value=mock_ws)
 
         with patch("openpyxl.load_workbook", return_value=mock_wb), \
-             patch("openpyxl.chart.BarChart") as MockBar, \
-             patch("openpyxl.chart.Reference") as MockRef:
+             patch("openpyxl.chart.BarChart"), \
+             patch("openpyxl.chart.Reference"):
             tool = _make_tool()
             result = await tool.execute({
                 "action": "add_chart",

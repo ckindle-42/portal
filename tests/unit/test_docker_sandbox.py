@@ -1,16 +1,17 @@
 """Tests for portal.security.sandbox.docker_sandbox"""
 
+import importlib.util
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from portal.security.sandbox.docker_sandbox import (
-    DOCKER_AVAILABLE,
     DockerfileGenerator,
     SandboxConfig,
 )
 
+_has_docker = importlib.util.find_spec("docker") is not None
 
 # ── SandboxConfig ────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ class TestSandboxConfig:
 # ── DockerPythonSandbox ──────────────────────────────────────────────────
 
 
+@pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerPythonSandboxInit:
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", False)
     def test_raises_without_docker(self):
@@ -82,6 +84,7 @@ class TestDockerPythonSandboxInit:
             DockerPythonSandbox()
 
 
+@pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerPythonSandboxExecute:
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", True)
     @patch("portal.security.sandbox.docker_sandbox.docker")

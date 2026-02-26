@@ -4,10 +4,11 @@ Tests for AST-based safe math evaluator in MathVisualizer (Task 1.2).
 Verifies: valid formulas produce correct output, and exploit attempts raise ValueError.
 """
 
-import numpy as np
 import pytest
 
 from portal.tools.data_tools.math_visualizer import _safe_eval
+
+np = pytest.importorskip("numpy")
 
 
 class TestSafeEval:
