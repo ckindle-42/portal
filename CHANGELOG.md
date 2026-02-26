@@ -24,6 +24,24 @@ To cut a release:
 
 ---
 
+## [1.3.0] - 2026-02-26
+
+### Fixed
+- **MCP tool loop context loss** — final fallback execution in `_run_execution_with_mcp_loop()` passed `messages=None`, discarding all accumulated tool results. Now correctly passes `current_messages` with full context history.
+- **`execute_parallel()` cancellation** — added `return_exceptions=True` to `asyncio.gather()` in `ExecutionEngine.execute_parallel()` so one failing query no longer cancels sibling queries.
+
+### Refactored
+- **Event history O(n) → O(1)** — replaced `list.pop(0)` in `EventBus` with `collections.deque(maxlen=N)` for constant-time eviction of oldest events.
+- **Tool registration deduplicated** — extracted shared validate/register/categorize logic into `ToolRegistry._register_tool_instance()`, eliminating ~40 lines of duplication between internal discovery and entry-point plugin loading.
+- **Import cleanup** — moved `from pathlib import Path` to module-level in `lifecycle.py` (was inline as `from pathlib import Path as _Path`); fixed ruff I001 unsorted imports in `tools/__init__.py`.
+
+### Docs
+- **Version bump** — `pyproject.toml`, `src/portal/__init__.py`, `docs/ARCHITECTURE.md` all updated to 1.3.0.
+- **Code Review Summary** refreshed with current health score and 10/10 path checklist.
+- **Action Prompt** updated with completed and remaining tasks.
+
+---
+
 ## [1.2.2] - 2026-02-26
 
 ### Refactored

@@ -561,7 +561,7 @@ class AgentCore:
             available_tools=available_tools,
             chat_id=chat_id,
             trace_id=trace_id,
-            messages=None,
+            messages=current_messages,
         )
         return final_result, collected_tool_results
 

@@ -33,6 +33,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from portal.config.settings import Settings, load_settings
@@ -235,13 +236,12 @@ class Runtime:
             await log_rotator.start()
 
         # Start config watcher for hot reload if portal.yaml is present
-        from pathlib import Path as _Path
-        _config_watch_path = _Path(self.config_path) if self.config_path else _Path("portal.yaml")
-        if _config_watch_path.exists():
+        config_watch_path = Path(self.config_path) if self.config_path else Path("portal.yaml")
+        if config_watch_path.exists():
             from portal.observability.config_watcher import ConfigWatcher
-            _config_watcher = ConfigWatcher(config_file=_config_watch_path)
-            asyncio.create_task(_config_watcher.start(), name="config-watcher")
-            logger.info("Config watcher started for %s", _config_watch_path)
+            config_watcher = ConfigWatcher(config_file=config_watch_path)
+            asyncio.create_task(config_watcher.start(), name="config-watcher")
+            logger.info("Config watcher started for %s", config_watch_path)
 
         self._initialized = True
         logger.info(

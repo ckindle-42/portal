@@ -9,10 +9,9 @@ import logging
 import pkgutil
 from dataclasses import dataclass
 from datetime import datetime
+from importlib import metadata as importlib_metadata
 from pathlib import Path
 from typing import Any
-
-from importlib import metadata as importlib_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -133,37 +132,9 @@ class ToolRegistry:
                 # Load each tool class found in the module
                 for class_name, tool_class in tool_classes:
                     try:
-                        # Instantiate tool
                         tool_instance = tool_class()
-
-                        # Validate tool has required attributes
-                        if not hasattr(tool_instance, 'metadata'):
-                            raise AttributeError(f"Tool {class_name} missing 'metadata' attribute")
-
-                        if not hasattr(tool_instance, 'execute'):
-                            raise AttributeError(f"Tool {class_name} missing 'execute' method")
-
-                        # Validate metadata contract - emit warnings for legacy formats
-                        self._validate_tool_metadata(tool_instance, class_name, module_path)
-
-                        # Register tool
-                        tool_name = tool_instance.metadata.name
-                        self.tools[tool_name] = tool_instance
-
-                        # Initialize stats
-                        self.tool_stats[tool_name] = ToolExecutionStats()
-
-                        # Add to category
-                        category = tool_instance.metadata.category.value
-                        if category in self.tool_categories:
-                            self.tool_categories[category].append(tool_name)
-                        else:
-                            # Create new category if not exists
-                            self.tool_categories[category] = [tool_name]
-
+                        self._register_tool_instance(tool_instance, class_name, module_path)
                         loaded += 1
-                        logger.info(f"Loaded tool: {tool_name} ({category}) from {module_path}")
-
                     except Exception as e:
                         failed += 1
                         error_msg = f"Failed to instantiate {class_name} from {module_path}: {str(e)}"
@@ -198,6 +169,39 @@ class ToolRegistry:
                 })
 
         return loaded, failed
+
+    def _register_tool_instance(self, tool_instance: Any, class_name: str, source: str) -> None:
+        """
+        Validate and register a single tool instance.
+
+        Shared by both internal discovery and entry-point plugin loading.
+
+        Args:
+            tool_instance: Instantiated tool object
+            class_name: Class name (for error messages)
+            source: Module path or plugin identifier (for logging)
+
+        Raises:
+            AttributeError: If tool is missing required attributes
+        """
+        if not hasattr(tool_instance, 'metadata'):
+            raise AttributeError(f"Tool {class_name} missing 'metadata' attribute")
+        if not hasattr(tool_instance, 'execute'):
+            raise AttributeError(f"Tool {class_name} missing 'execute' method")
+
+        self._validate_tool_metadata(tool_instance, class_name, source)
+
+        tool_name = tool_instance.metadata.name
+        self.tools[tool_name] = tool_instance
+        self.tool_stats[tool_name] = ToolExecutionStats()
+
+        category = tool_instance.metadata.category.value
+        if category in self.tool_categories:
+            self.tool_categories[category].append(tool_name)
+        else:
+            self.tool_categories[category] = [tool_name]
+
+        logger.info(f"Loaded tool: {tool_name} ({category}) from {source}")
 
     def _validate_tool_metadata(self, tool_instance: Any, class_name: str, module_path: str) -> None:
         """
@@ -274,44 +278,16 @@ class ToolRegistry:
 
             for entry_point in plugin_entry_points:
                 try:
-                    # Load the tool class
                     tool_class = entry_point.load()
 
-                    # Validate it's a BaseTool subclass
                     if not (inspect.isclass(tool_class) and issubclass(tool_class, BaseTool)):
                         raise TypeError(f"{entry_point.name} is not a valid BaseTool subclass")
 
-                    # Instantiate the tool
                     tool_instance = tool_class()
-
-                    # Validate tool has required attributes
-                    if not hasattr(tool_instance, 'metadata'):
-                        raise AttributeError(f"Plugin tool {entry_point.name} missing 'metadata' attribute")
-
-                    if not hasattr(tool_instance, 'execute'):
-                        raise AttributeError(f"Plugin tool {entry_point.name} missing 'execute' method")
-
-                    # Validate metadata contract - emit warnings for legacy formats
-                    self._validate_tool_metadata(tool_instance, entry_point.name, f"plugin:{entry_point.value}")
-
-                    # Register tool
-                    tool_name = tool_instance.metadata.name
-                    self.tools[tool_name] = tool_instance
-
-                    # Initialize stats
-                    self.tool_stats[tool_name] = ToolExecutionStats()
-
-                    # Add to category
-                    category = tool_instance.metadata.category.value
-                    if category in self.tool_categories:
-                        self.tool_categories[category].append(tool_name)
-                    else:
-                        # Create new category if not exists
-                        self.tool_categories[category] = [tool_name]
-
+                    self._register_tool_instance(
+                        tool_instance, entry_point.name, f"plugin:{entry_point.value}"
+                    )
                     loaded += 1
-                    logger.info(f"Loaded plugin tool: {tool_name} ({category}) from {entry_point.value}")
-
                 except Exception as e:
                     failed += 1
                     error_msg = f"Failed to load plugin {entry_point.name}: {str(e)}"
