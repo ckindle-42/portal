@@ -2,6 +2,7 @@
 Unit tests for Document Processing tools
 """
 
+import importlib.util
 from unittest.mock import Mock, patch
 
 import pytest
@@ -14,6 +15,9 @@ from portal.tools.document_processing.pandoc_converter import PandocConverterToo
 from portal.tools.document_processing.powerpoint_processor import PowerPointProcessorTool
 from portal.tools.document_processing.word_processor import WordProcessorTool
 from portal.tools.document_tools.pdf_ocr import PDFOCRTool
+
+_has_openpyxl = importlib.util.find_spec("openpyxl") is not None
+_has_docx = importlib.util.find_spec("docx") is not None
 
 
 @pytest.mark.unit
@@ -59,6 +63,7 @@ class TestExcelProcessorTool:
 
         assert result["success"] is True or "error" in result
 
+    @pytest.mark.skipif(not _has_openpyxl, reason="openpyxl not installed")
     @pytest.mark.asyncio
     async def test_read_excel(self, temp_dir):
         """Test reading an Excel file"""
@@ -162,6 +167,7 @@ class TestWordProcessorTool:
 
         assert result["success"] is True or "error" in result
 
+    @pytest.mark.skipif(not _has_docx, reason="python-docx not installed")
     @pytest.mark.asyncio
     async def test_read_document(self, temp_dir):
         """Test reading a Word document"""

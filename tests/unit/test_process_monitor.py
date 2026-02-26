@@ -1,10 +1,13 @@
 """Tests for portal.tools.system_tools.process_monitor"""
 
+import importlib.util
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from portal.tools.system_tools.process_monitor import ProcessMonitorTool
+
+_has_psutil = importlib.util.find_spec("psutil") is not None
 
 
 class TestProcessMonitorMetadata:
@@ -25,6 +28,7 @@ class TestProcessMonitorNoPS:
         assert "psutil" in result["error"]
 
 
+@pytest.mark.skipif(not _has_psutil, reason="psutil not installed")
 class TestProcessMonitorList:
     @patch("portal.tools.system_tools.process_monitor.PSUTIL_AVAILABLE", True)
     @patch("portal.tools.system_tools.process_monitor.psutil")
@@ -80,6 +84,7 @@ class TestProcessMonitorList:
         assert result["success"] is True
 
 
+@pytest.mark.skipif(not _has_psutil, reason="psutil not installed")
 class TestProcessMonitorSearch:
     @patch("portal.tools.system_tools.process_monitor.PSUTIL_AVAILABLE", True)
     @patch("portal.tools.system_tools.process_monitor.psutil")
@@ -118,6 +123,7 @@ class TestProcessMonitorSearch:
         assert "Query" in result["error"]
 
 
+@pytest.mark.skipif(not _has_psutil, reason="psutil not installed")
 class TestProcessMonitorInfo:
     @patch("portal.tools.system_tools.process_monitor.PSUTIL_AVAILABLE", True)
     @patch("portal.tools.system_tools.process_monitor.psutil")
@@ -164,6 +170,7 @@ class TestProcessMonitorInfo:
         assert result["success"] is False
 
 
+@pytest.mark.skipif(not _has_psutil, reason="psutil not installed")
 class TestProcessMonitorKill:
     @patch("portal.tools.system_tools.process_monitor.PSUTIL_AVAILABLE", True)
     @patch("portal.tools.system_tools.process_monitor.psutil")

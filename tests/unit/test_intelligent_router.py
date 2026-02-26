@@ -11,19 +11,18 @@ Covers:
 """
 
 import logging
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from portal.routing.intelligent_router import (
+    _DEFAULT_PREFERENCES,
     IntelligentRouter,
     RoutingDecision,
     RoutingStrategy,
-    _DEFAULT_PREFERENCES,
 )
 from portal.routing.model_registry import ModelCapability, ModelMetadata, ModelRegistry, SpeedClass
 from portal.routing.task_classifier import TaskCategory, TaskClassification, TaskComplexity
-
 
 # ---------------------------------------------------------------------------
 # Helpers – reusable test model factories
@@ -392,7 +391,7 @@ class TestRouteBalanced:
         cls = _classification(complexity=TaskComplexity.MODERATE)
         with patch.object(router.classifier, "classify", return_value=cls):
             with patch.object(router, "_route_auto", wraps=router._route_auto) as spy:
-                decision = router.route("moderate task")
+                router.route("moderate task")
                 spy.assert_called_once()
                 # max_cost passed should be 1.0 * 0.7 = 0.7
                 call_args = spy.call_args

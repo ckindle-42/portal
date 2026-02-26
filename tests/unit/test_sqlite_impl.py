@@ -1,17 +1,14 @@
 """Tests for portal.persistence.sqlite_impl"""
 
-import asyncio
-from pathlib import Path
+import importlib.util
 
 import pytest
 
-from portal.persistence.repositories import Document, Message
 from portal.persistence.sqlite_impl import (
     SQLiteConversationRepository,
     SQLiteKnowledgeRepository,
     _ConnectionPool,
 )
-
 
 # ── _ConnectionPool ──────────────────────────────────────────────────────
 
@@ -225,9 +222,12 @@ class TestSQLiteKnowledgeRepository:
         results = await repo.search("python", limit=5)
         assert len(results) >= 1
 
+    @pytest.mark.skipif(
+        not importlib.util.find_spec("numpy"),
+        reason="numpy not installed",
+    )
     @pytest.mark.asyncio
     async def test_search_by_embedding(self, repo):
-        import numpy as np
         await repo.add_document("doc1", embedding=[1.0, 0.0, 0.0])
         await repo.add_document("doc2", embedding=[0.0, 1.0, 0.0])
         results = await repo.search_by_embedding([1.0, 0.0, 0.0], limit=2)

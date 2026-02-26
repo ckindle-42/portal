@@ -7,7 +7,6 @@ and register_metrics_endpoint covering both Prometheus-available
 and Prometheus-unavailable code paths.
 """
 
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -422,7 +421,6 @@ class TestGetMetricsHandlerAvailable:
         """Handler should call generate_latest and wrap in a Response."""
         mock_gen_latest.return_value = b"# HELP test\n"
 
-        from portal.observability.metrics import MetricsCollector
 
         mc = _fresh_collector()
         # The handler produced by get_metrics_handler uses the module-level

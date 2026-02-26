@@ -5,16 +5,15 @@ Covers: metadata, create, add_slide, add_image, add_chart, read, save,
         unknown action, pptx-not-available fallback, and error handling.
 """
 
-import sys
-from pathlib import Path
+import importlib.util
 from types import ModuleType
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from portal.core.interfaces.tool import ToolCategory
 
+_has_pptx = importlib.util.find_spec("pptx") is not None
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -173,6 +172,7 @@ class TestPowerPointUnknownAction:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_pptx, reason="python-pptx not installed")
 class TestCreatePresentation:
 
     @pytest.mark.asyncio
@@ -253,6 +253,7 @@ class TestCreatePresentation:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_pptx, reason="python-pptx not installed")
 class TestAddSlide:
 
     @pytest.mark.asyncio
@@ -363,6 +364,7 @@ class TestAddSlide:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_pptx, reason="python-pptx not installed")
 class TestAddImage:
 
     @pytest.mark.asyncio
@@ -519,6 +521,7 @@ class TestAddImage:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_pptx, reason="python-pptx not installed")
 class TestAddChart:
 
     @pytest.mark.asyncio
@@ -722,6 +725,7 @@ class TestAddChart:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_pptx, reason="python-pptx not installed")
 class TestReadPresentation:
 
     @pytest.mark.asyncio

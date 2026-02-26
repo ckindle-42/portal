@@ -11,11 +11,15 @@ does not accept. We patch the module-level logger throughout to avoid
 ``TypeError`` exceptions during tests.
 """
 
-import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+
+from portal.tools.dev_tools.session_manager import (
+    ExecutionSession,
+    SessionManager,
+)
 
 # Patch the module logger for ALL tests in this module so that
 # keyword-argument calls like logger.info("msg", backend=...) do not raise.
@@ -27,13 +31,6 @@ def _patch_session_manager_logger():
     """Replace the session_manager module logger with a silent MagicMock."""
     with patch("portal.tools.dev_tools.session_manager.logger", new_callable=MagicMock):
         yield
-
-
-from portal.tools.dev_tools.session_manager import (
-    ExecutionSession,
-    SessionManager,
-)
-
 
 # ===========================================================================
 # ExecutionSession dataclass

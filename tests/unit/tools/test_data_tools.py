@@ -2,6 +2,7 @@
 Unit tests for Data tools
 """
 
+import importlib.util
 from unittest.mock import patch
 
 import pytest
@@ -12,11 +13,16 @@ from portal.tools.data_tools.math_visualizer import MathVisualizerTool
 from portal.tools.data_tools.qr_generator import QRGeneratorTool
 from portal.tools.data_tools.text_transformer import TextTransformerTool
 
+_has_pandas = importlib.util.find_spec("pandas") is not None
+_has_matplotlib = importlib.util.find_spec("matplotlib") is not None
+_has_qrcode = importlib.util.find_spec("qrcode") is not None
+
 
 @pytest.mark.unit
 class TestCSVAnalyzerTool:
     """Test csv_analyzer tool"""
 
+    @pytest.mark.skipif(not _has_pandas, reason="pandas not installed")
     @pytest.mark.asyncio
     async def test_csv_analyze_success(self, sample_csv_file):
         """Test analyzing a CSV file — uses real pandas"""
@@ -85,6 +91,7 @@ class TestFileCompressorTool:
 class TestMathVisualizerTool:
     """Test math_visualizer tool"""
 
+    @pytest.mark.skipif(not _has_matplotlib, reason="matplotlib not installed")
     @pytest.mark.asyncio
     async def test_plot_function(self, temp_dir):
         """Test plotting a mathematical function — uses real matplotlib"""
@@ -113,6 +120,7 @@ class TestMathVisualizerTool:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_qrcode, reason="qrcode not installed")
 class TestQRGeneratorTool:
     """Test qr_generator tool"""
 

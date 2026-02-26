@@ -1,8 +1,6 @@
 """Tests for portal.observability.tracer"""
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from portal.observability.tracer import (
     _NoOpTracer,

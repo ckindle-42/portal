@@ -2,6 +2,7 @@
 Unit tests for Docker tools
 """
 
+import importlib.util
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,6 +12,8 @@ from portal.tools.docker_tools.docker_logs import DockerLogsTool
 from portal.tools.docker_tools.docker_ps import DockerPSTool
 from portal.tools.docker_tools.docker_run import DockerRunTool
 from portal.tools.docker_tools.docker_stop import DockerStopTool
+
+_has_docker = importlib.util.find_spec("docker") is not None
 
 
 def _make_mock_docker_client():
@@ -33,6 +36,7 @@ def _make_mock_docker_client():
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerPSTool:
     """Test docker_ps tool"""
 
@@ -65,6 +69,7 @@ class TestDockerPSTool:
 
 @pytest.mark.unit
 @pytest.mark.requires_docker
+@pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerRunTool:
     """Test docker_run tool"""
 
@@ -89,6 +94,7 @@ class TestDockerRunTool:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerStopTool:
     """Test docker_stop tool"""
 
@@ -112,6 +118,7 @@ class TestDockerStopTool:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerLogsTool:
     """Test docker_logs tool"""
 

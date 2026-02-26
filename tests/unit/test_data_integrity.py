@@ -8,15 +8,19 @@ Tests for:
 """
 
 import asyncio
+import importlib.util
 import json
 import time
 
 import pytest
 
+_has_numpy = importlib.util.find_spec("numpy") is not None
+
 # =============================================================================
 # ATOMIC WRITE TESTS (local_knowledge.py)
 # =============================================================================
 
+@pytest.mark.skipif(not _has_numpy, reason="numpy not installed")
 class TestAtomicWrites:
     """Test atomic write functionality in LocalKnowledgeTool"""
 
@@ -252,6 +256,7 @@ class TestCircuitBreaker:
 class TestDataIntegrityIntegration:
     """Integration tests for all data integrity fixes"""
 
+    @pytest.mark.skipif(not _has_numpy, reason="numpy not installed")
     @pytest.mark.asyncio
     async def test_concurrent_writes_knowledge_base(self, tmp_path):
         """Test concurrent writes don't corrupt knowledge base"""
