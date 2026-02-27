@@ -30,7 +30,7 @@ AgentCore and model backend.
 │                     AgentCore                        │
 │  process_message()  stream_response()  health_check()│
 │  ContextManager   EventBus   PromptManager           │
-│  ToolRegistry     MCPRegistry (ARCH-3)               │
+│  ToolRegistry     MCPRegistry                        │
 └──────┬──────────────────────────────────────────────┘
        │ route(query) → ModelDecision
        ▼
@@ -253,7 +253,7 @@ exponential backoff (1 s → 2 s → 4 s) for transient
 `ConnectError / TimeoutException / RemoteProtocolError`.  The underlying
 `httpx.AsyncClient` also uses `AsyncHTTPTransport(retries=3)` at the TCP level.
 
-**QUAL-3 note:** The `openapi` transport endpoint format
+**Note:** The `openapi` transport endpoint format
 `{server_url}/{tool_name}` needs verification against a live mcpo instance.
 If mcpo mounts servers under a prefix, register the server at the prefixed
 sub-URL (e.g. `http://localhost:9000/filesystem`) so the path resolves to
@@ -493,7 +493,7 @@ portal/
 | MCP tool-use loop in AgentCore | **Done** — `OllamaBackend.generate()` uses `/api/chat`; `tool_calls` surface via `ExecutionResult`; `AgentCore._dispatch_mcp_tools()` dispatches them to `MCPRegistry` |
 | Security headers on WebInterface | **Done** — `SecurityHeadersMiddleware` adds CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy; HSTS opt-in via `PORTAL_HSTS=1`. **Note:** The default CSP includes `'unsafe-inline' 'unsafe-eval'` for compatibility with Open WebUI's JavaScript. Production deployments that do not use a web UI frontend should override via `PORTAL_CSP` env var with a stricter policy. |
 | API-key guard on /v1/* routes | **Done** — `WEB_API_KEY` env var enables `_verify_api_key` dependency; must be set before any non-localhost exposure |
-| mcpo endpoint format verification | Phase 3 — see QUAL-3 note in `mcp_registry.py` |
+| mcpo endpoint format verification | Phase 3 — see note in `mcp_registry.py` |
 | Slack E2E test (needs ngrok/Cloudflare) | Phase 3 |
 | ComfyUI / Whisper MCP integration tests | Phase 3 |
 | LaunchAgent plist for M4 autostart | Phase 3 |
