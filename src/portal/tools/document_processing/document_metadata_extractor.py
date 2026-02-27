@@ -75,24 +75,29 @@ class DocumentMetadataExtractorTool(BaseTool):
             return self._error_response(f"File not found: {file_path}")
 
         try:
-            # Determine file type
             suffix = file_path.suffix.lower()
-
-            # Extract based on type
-            if suffix == ".pdf":
-                metadata = await self._extract_pdf_metadata(file_path, detailed)
-            elif suffix in [".docx", ".doc"]:
-                metadata = await self._extract_docx_metadata(file_path, detailed)
-            elif suffix == ".pptx":
-                metadata = await self._extract_pptx_metadata(file_path, detailed)
-            elif suffix in [".xlsx", ".xls"]:
-                metadata = await self._extract_xlsx_metadata(file_path, detailed)
-            elif suffix in [".jpg", ".jpeg", ".png", ".gif", ".bmp"]:
-                metadata = await self._extract_image_metadata(file_path, detailed)
-            elif suffix in [".mp3", ".m4a", ".flac", ".ogg", ".wav"]:
-                metadata = await self._extract_audio_metadata(file_path, detailed)
-            else:
+            dispatch = {
+                ".pdf": self._extract_pdf_metadata,
+                ".docx": self._extract_docx_metadata,
+                ".doc": self._extract_docx_metadata,
+                ".pptx": self._extract_pptx_metadata,
+                ".xlsx": self._extract_xlsx_metadata,
+                ".xls": self._extract_xlsx_metadata,
+                ".jpg": self._extract_image_metadata,
+                ".jpeg": self._extract_image_metadata,
+                ".png": self._extract_image_metadata,
+                ".gif": self._extract_image_metadata,
+                ".bmp": self._extract_image_metadata,
+                ".mp3": self._extract_audio_metadata,
+                ".m4a": self._extract_audio_metadata,
+                ".flac": self._extract_audio_metadata,
+                ".ogg": self._extract_audio_metadata,
+                ".wav": self._extract_audio_metadata,
+            }
+            handler = dispatch.get(suffix)
+            if handler is None:
                 return self._error_response(f"Unsupported file format: {suffix}")
+            metadata = await handler(file_path, detailed)
 
             # Add common file properties
             stat = file_path.stat()

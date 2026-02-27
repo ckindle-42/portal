@@ -145,23 +145,18 @@ class PowerPointProcessorTool(BaseTool):
             )
 
         action = parameters.get("action", "").lower()
-
-        if action == "create":
-            return await self._create_presentation(parameters)
-        elif action == "add_slide":
-            return await self._add_slide(parameters)
-        elif action == "add_text":
-            return await self._add_text_to_slide(parameters)
-        elif action == "add_image":
-            return await self._add_image_to_slide(parameters)
-        elif action == "add_chart":
-            return await self._add_chart_to_slide(parameters)
-        elif action == "read":
-            return await self._read_presentation(parameters)
-        elif action == "save":
-            return await self._save_presentation(parameters)
-        else:
+        dispatch = {
+            "create": self._create_presentation,
+            "add_slide": self._add_slide,
+            "add_image": self._add_image_to_slide,
+            "add_chart": self._add_chart_to_slide,
+            "read": self._read_presentation,
+            "save": self._save_presentation,
+        }
+        handler = dispatch.get(action)
+        if handler is None:
             return self._error_response(f"Unknown action: {action}")
+        return await handler(parameters)
 
     async def _create_presentation(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Create new presentation"""
