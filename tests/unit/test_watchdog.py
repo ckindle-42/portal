@@ -107,32 +107,25 @@ class TestWatchdog:
     # ── _check_component ─────────────────────────────────────────────
 
     @pytest.mark.asyncio
-    @patch("portal.observability.watchdog.psutil.Process")
-    async def test_check_component_healthy(self, mock_process):
-        wd = Watchdog()
-        hc = AsyncMock(return_value=HealthCheckResult(
-            status=HealthStatus.HEALTHY, message="ok", timestamp="now"
-        ))
-        wd.register_component("comp", hc)
-        comp = wd._components["comp"]
-        comp.health.state = ComponentState.DEGRADED  # was degraded
-        await wd._check_component(comp)
-        assert comp.health.state == ComponentState.HEALTHY
-        assert comp.health.consecutive_failures == 0
-
-    @pytest.mark.asyncio
+    @pytest.mark.parametrize("input_status,initial_state,expected_state,expected_failures", [
+        (HealthStatus.HEALTHY, ComponentState.DEGRADED, ComponentState.HEALTHY, 0),
+        (HealthStatus.DEGRADED, ComponentState.HEALTHY, ComponentState.DEGRADED, 1),
+    ])
     @patch("portal.observability.watchdog.logger")
     @patch("portal.observability.watchdog.psutil.Process")
-    async def test_check_component_degraded(self, mock_process, mock_logger):
+    async def test_check_component_state_transition(self, mock_process, mock_logger,
+                                                    input_status, initial_state,
+                                                    expected_state, expected_failures):
         wd = Watchdog()
         hc = AsyncMock(return_value=HealthCheckResult(
-            status=HealthStatus.DEGRADED, message="slow", timestamp="now"
+            status=input_status, message="msg", timestamp="now"
         ))
         wd.register_component("comp", hc)
         comp = wd._components["comp"]
+        comp.health.state = initial_state
         await wd._check_component(comp)
-        assert comp.health.state == ComponentState.DEGRADED
-        assert comp.health.consecutive_failures == 1
+        assert comp.health.state == expected_state
+        assert comp.health.consecutive_failures == expected_failures
 
     @pytest.mark.asyncio
     @patch("portal.observability.watchdog.logger")
@@ -272,28 +265,20 @@ class TestWatchdog:
     # ── _check_system_resources ──────────────────────────────────────
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("rss_mb,memory_pct,cpu_pct", [
+        (100, 10.0, 5.0),
+        (8000, 95.0, 5.0),
+    ])
     @patch("portal.observability.watchdog.psutil.Process")
-    async def test_check_system_resources_normal(self, mock_process):
+    async def test_check_system_resources(self, mock_process, rss_mb, memory_pct, cpu_pct):
         mock_proc = MagicMock()
-        mock_proc.memory_info.return_value = MagicMock(rss=100 * 1024 * 1024)
-        mock_proc.memory_percent.return_value = 10.0
-        mock_proc.cpu_percent.return_value = 5.0
+        mock_proc.memory_info.return_value = MagicMock(rss=rss_mb * 1024 * 1024)
+        mock_proc.memory_percent.return_value = memory_pct
+        mock_proc.cpu_percent.return_value = cpu_pct
         mock_process.return_value = mock_proc
 
         wd = Watchdog()
         await wd._check_system_resources()  # Should not raise
-
-    @pytest.mark.asyncio
-    @patch("portal.observability.watchdog.psutil.Process")
-    async def test_check_system_resources_high_memory(self, mock_process):
-        mock_proc = MagicMock()
-        mock_proc.memory_info.return_value = MagicMock(rss=8000 * 1024 * 1024)
-        mock_proc.memory_percent.return_value = 95.0
-        mock_proc.cpu_percent.return_value = 5.0
-        mock_process.return_value = mock_proc
-
-        wd = Watchdog()
-        await wd._check_system_resources()  # Should log warning but not raise
 
 
 # ── WatchdogHealthCheck ──────────────────────────────────────────────────
