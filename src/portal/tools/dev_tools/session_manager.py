@@ -28,7 +28,7 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -46,8 +46,8 @@ class ExecutionSession:
     """
     session_id: str
     chat_id: str
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    last_used_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
+    last_used_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     container_id: str | None = None
     kernel_id: str | None = None
     execution_count: int = 0
@@ -55,11 +55,11 @@ class ExecutionSession:
 
     def touch(self) -> None:
         """Update last_used_at timestamp"""
-        self.last_used_at = datetime.utcnow()
+        self.last_used_at = datetime.now(tz=UTC)
 
     def is_idle(self, idle_timeout_minutes: int = 30) -> bool:
         """Check if session is idle"""
-        idle_time = datetime.utcnow() - self.last_used_at
+        idle_time = datetime.now(tz=UTC) - self.last_used_at
         return idle_time > timedelta(minutes=idle_timeout_minutes)
 
 

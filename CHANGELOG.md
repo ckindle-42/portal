@@ -31,6 +31,78 @@ Read this file first. Follow the 9-step workflow with the new balanced 10/10 def
 
 ---
 
+## [Unreleased] — 2026-02-27 — Codebase Shrink & Optimization
+
+### chore(shrink): Tier 1 — dead code removal, bug fixes, test consolidation
+
+**Dead code removed:**
+- `src/portal/persistence/` (sqlite_impl.py, repositories.py, __init__.py — 931 LOC): never
+  imported by any production code; application uses ContextManager + MemoryManager instead.
+- `src/portal/observability/tracer.py` (99 LOC): never imported by production code or re-exported.
+- `src/portal/core/exceptions.py`: removed dead `ContextNotFoundError`, `ModelQuotaExceededError`,
+  `ErrorCode.CONTEXT_NOT_FOUND`, and `ErrorCode.MODEL_QUOTA_EXCEEDED`.
+- `src/portal/core/structured_logger.py`: removed unused `set_trace_id()` and `get_trace_id()`.
+- `src/portal/lifecycle.py`: removed dead `run_with_lifecycle()` function + `sys` import.
+- `src/portal/routing/execution_engine.py`: removed dead `execute_parallel()` method.
+- `src/portal/observability/health.py`: removed speculative `JobQueueHealthCheck` +
+  `WorkerPoolHealthCheck` (no job queue or worker pool exists in Portal).
+
+**Bug fixes:**
+- `src/portal/routing/router.py`: `/health` endpoint now returns `"version": __version__`
+  instead of hardcoded `"1.0.0"`.
+
+**Tests removed/consolidated:**
+- `tests/unit/test_sqlite_impl.py` (320 LOC, 40 tests) — dead code removed.
+- `tests/unit/test_repositories.py` (131 LOC, 8 tests) — dead code removed.
+- `tests/unit/test_tracer.py` (57 LOC, 8 tests) — dead code removed.
+- `tests/unit/test_health_checks.py`: removed `TestJobQueueHealthCheck` (4 tests) and
+  `TestWorkerPoolHealthCheck` (3 tests) for removed classes.
+- `tests/unit/test_execution_engine_comprehensive.py`: removed `TestExecuteParallel` class.
+- `tests/unit/test_dynamic_model_registry.py` (125 LOC, 5 tests): merged 3 unique tests into
+  `test_model_registry_discovery.py`; deleted duplicate file.
+- `tests/unit/test_core_init_exports.py` (67 LOC, 4 tests): low-value module-export shape tests.
+- `tests/unit/test_agent_core_constants.py` (24 LOC, 4 tests): low-value constant checks.
+- Fixed invalid `# noqa` directive in `test_execution_engine_comprehensive.py`.
+
+**Documentation updated:**
+- `KNOWN_ISSUES.md`: removed fully resolved Section 1 and Section 2.
+- `docs/CODE_REVIEW_SUMMARY.md`: added historical artifact header with accurate caveats.
+- `docs/implementation_plan.md`: marked as COMPLETE.
+- `docs/ACTION_PROMPT_FOR_CODING_AGENT.md`: marked as superseded.
+
+### fix(deprecation): Tier 2 — deprecation debt, dependency cleanup, code flattening
+
+**Deprecation fixes:**
+- `src/portal/tools/dev_tools/session_manager.py`: replaced 4× `datetime.utcnow()` with
+  `datetime.now(tz=UTC)` (Python 3.12+ deprecation).
+- `tests/unit/test_session_manager.py`: same fix (2× occurrences).
+- `src/portal/tools/document_processing/document_metadata_extractor.py`: replaced deprecated
+  `PyPDF2.PdfReader` import with `pypdf.PdfReader`.
+- `pyproject.toml`: replaced `PyPDF2>=3.0.0` with `pypdf>=4.0.0` in dev deps.
+
+**Dependency cleanup:**
+- `pyproject.toml`: removed `requests>=2.32.0` from core deps (unused; codebase uses httpx/aiohttp).
+- `pyproject.toml`: removed `numexpr>=2.8.0` from `generation` optional deps (never imported).
+
+**Code flattening:**
+- `src/portal/security/sandbox/docker_sandbox.py`: decomposed 111-line `execute_code()` into
+  `_prepare_container()`, `_run_container()`, `_collect_output()` helpers; orchestrator ≤30 lines.
+- `src/portal/routing/task_classifier.py`: extracted `_match_all_patterns()` helper; `classify()`
+  reduced from 91 to ~35 lines.
+- `src/portal/tools/knowledge/local_knowledge.py`: extracted `_keyword_search()` and
+  `_embedding_search()` helpers; `_search()` reduced from 94 to ~20 lines.
+
+**Metrics:**
+| Metric | Before | After | Δ |
+|--------|--------|-------|---|
+| Dead source removed | — | ~1,538 LOC | −1,538 |
+| Test files removed | — | 8 deleted, 1 consolidated | −~637 LOC |
+| Lint errors | 0 | 0 | 0 |
+| Unit tests passing | 937 | 827 | −110 (dead tests removed) |
+| DeprecationWarnings | 1 (PyPDF2) | 0 | −1 |
+
+---
+
 ## [Unreleased] — 2026-02-26 — Test Suite Shrink
 
 ### test(prune): consolidate `portal.core` export contract checks

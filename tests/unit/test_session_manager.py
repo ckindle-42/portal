@@ -1,7 +1,7 @@
 """Tests for portal.tools.dev_tools.session_manager."""
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -39,7 +39,7 @@ class TestExecutionSession:
     ])
     def test_is_idle(self, age_min, timeout_min, expected_idle):
         s = ExecutionSession(session_id="s1", chat_id="c1")
-        s.last_used_at = datetime.utcnow() - timedelta(minutes=age_min)
+        s.last_used_at = datetime.now(tz=UTC) - timedelta(minutes=age_min)
         assert s.is_idle(idle_timeout_minutes=timeout_min) is expected_idle
 
     def test_variables_are_independent(self):
@@ -134,7 +134,7 @@ class TestSessionManagerMaxSessions:
     async def test_evicts_oldest_on_overflow(self):
         mgr = SessionManager(max_sessions=2, backend="docker")
         await mgr.execute("chat_a", "a = 1")
-        mgr._sessions["chat_a"].last_used_at = datetime.utcnow() - timedelta(hours=1)
+        mgr._sessions["chat_a"].last_used_at = datetime.now(tz=UTC) - timedelta(hours=1)
         await mgr.execute("chat_b", "b = 1")
         await mgr.execute("chat_c", "c = 1")
         assert "chat_a" not in mgr._sessions
@@ -187,7 +187,7 @@ class TestSessionManagerCleanup:
     async def test_cleanup_loop_idle_logic(self, age_min, timeout_min, stays):
         mgr = SessionManager(idle_timeout_minutes=timeout_min)
         s = ExecutionSession(session_id="s1", chat_id="c1")
-        s.last_used_at = datetime.utcnow() - timedelta(minutes=age_min)
+        s.last_used_at = datetime.now(tz=UTC) - timedelta(minutes=age_min)
         mgr._sessions["c1"] = s
         for session in [sess for sess in mgr._sessions.values() if sess.is_idle(mgr.idle_timeout_minutes)]:
             await mgr._cleanup_session(session)

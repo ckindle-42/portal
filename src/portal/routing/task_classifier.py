@@ -130,84 +130,60 @@ class TaskClassifier:
         self._tool_re = [re.compile(p, re.IGNORECASE) for p in self.TOOL_PATTERNS]
         self._question_re = [re.compile(p, re.IGNORECASE) for p in self.QUESTION_PATTERNS]
 
-    def classify(self, query: str) -> TaskClassification:
-        """
-        Classify a query using heuristics
+    def _match_all_patterns(self, query: str) -> dict[str, int]:
+        """Return match counts for each pattern group against query."""
+        return {
+            'code': sum(1 for p in self._code_re if p.search(query)),
+            'math': sum(1 for p in self._math_re if p.search(query)),
+            'analysis': sum(1 for p in self._analysis_re if p.search(query)),
+            'creative': sum(1 for p in self._creative_re if p.search(query)),
+            'tool': sum(1 for p in self._tool_re if p.search(query)),
+        }
 
-        Returns classification in <10ms
-        """
+    def classify(self, query: str) -> TaskClassification:
+        """Classify a query using heuristics. Returns classification in <10ms."""
         query = query.strip()
-        query_lower = query.lower()
         word_count = len(query.split())
         char_count = len(query)
+        patterns_matched: list[str] = []
 
-        # Track matched patterns
-        patterns_matched = []
+        # Greetings: fast-path before full pattern scan
+        if word_count <= 5 and any(p.search(query.lower()) for p in self._greeting_re):
+            patterns_matched.append("greeting")
+            return TaskClassification(
+                complexity=TaskComplexity.TRIVIAL,
+                category=TaskCategory.GREETING,
+                estimated_tokens=20,
+                requires_reasoning=False,
+                requires_code=False,
+                requires_math=False,
+                is_multi_turn=False,
+                confidence=0.95,
+                patterns_matched=patterns_matched
+            )
 
-        # Check for greetings first (highest priority for speed)
-        if word_count <= 5:
-            for pattern in self._greeting_re:
-                if pattern.search(query_lower):
-                    patterns_matched.append("greeting")
-                    return TaskClassification(
-                        complexity=TaskComplexity.TRIVIAL,
-                        category=TaskCategory.GREETING,
-                        estimated_tokens=20,
-                        requires_reasoning=False,
-                        requires_code=False,
-                        requires_math=False,
-                        is_multi_turn=False,
-                        confidence=0.95,
-                        patterns_matched=patterns_matched
-                    )
+        counts = self._match_all_patterns(query)
+        patterns_matched.extend(f"{k}:{v}" for k, v in counts.items() if v > 0)
 
-        # Check for code patterns
-        code_matches = sum(1 for p in self._code_re if p.search(query))
-        if code_matches > 0:
-            patterns_matched.append(f"code:{code_matches}")
-
-        # Check for math patterns
-        math_matches = sum(1 for p in self._math_re if p.search(query))
-        if math_matches > 0:
-            patterns_matched.append(f"math:{math_matches}")
-
-        # Check for analysis patterns
-        analysis_matches = sum(1 for p in self._analysis_re if p.search(query))
-        if analysis_matches > 0:
-            patterns_matched.append(f"analysis:{analysis_matches}")
-
-        # Check for creative patterns
-        creative_matches = sum(1 for p in self._creative_re if p.search(query))
-        if creative_matches > 0:
-            patterns_matched.append(f"creative:{creative_matches}")
-
-        # Check for tool patterns
-        tool_matches = sum(1 for p in self._tool_re if p.search(query))
-        if tool_matches > 0:
-            patterns_matched.append(f"tool:{tool_matches}")
-
-        # Determine primary category
-        category = TaskCategory.GENERAL
-        if code_matches >= 2:
+        if counts['code'] >= 2:
             category = TaskCategory.CODE
-        elif math_matches >= 2:
+        elif counts['math'] >= 2:
             category = TaskCategory.MATH
-        elif tool_matches >= 1:
+        elif counts['tool'] >= 1:
             category = TaskCategory.TOOL_USE
-        elif creative_matches >= 2:
+        elif counts['creative'] >= 2:
             category = TaskCategory.CREATIVE
-        elif analysis_matches >= 2:
+        elif counts['analysis'] >= 2:
             category = TaskCategory.ANALYSIS
         elif any(p.search(query) for p in self._question_re):
             category = TaskCategory.QUESTION
+        else:
+            category = TaskCategory.GENERAL
 
-        # Determine complexity based on length and patterns
         complexity = self._estimate_complexity(
-            word_count, char_count, code_matches, math_matches,
-            analysis_matches, creative_matches
+            word_count, char_count,
+            counts['code'], counts['math'], counts['analysis'], counts['creative']
         )
-
-        # Estimate token output
         estimated_tokens = self._estimate_output_tokens(complexity, category)
 
         return TaskClassification(
@@ -215,10 +191,10 @@ class TaskClassifier:
             category=category,
             estimated_tokens=estimated_tokens,
             requires_reasoning=complexity in [TaskComplexity.COMPLEX, TaskComplexity.EXPERT],
-            requires_code=code_matches >= 1,
-            requires_math=math_matches >= 1,
+            requires_code=counts['code'] >= 1,
+            requires_math=counts['math'] >= 1,
             is_multi_turn=False,
-            confidence=0.8 if len(patterns_matched) > 0 else 0.5,
+            confidence=0.8 if patterns_matched else 0.5,
             patterns_matched=patterns_matched
         )
 

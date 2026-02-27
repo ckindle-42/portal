@@ -122,98 +122,58 @@ class LocalKnowledgeTool(BaseTool):
         except Exception as e:
             return self._error_response(str(e))
 
+    def _keyword_search(self, query: str, top_k: int) -> list[dict[str, Any]]:
+        """Fallback keyword search when sentence-transformers is unavailable."""
+        query_lower = query.lower()
+        return [
+            {"source": doc.get('source', 'unknown'), "content": doc['content'][:500], "score": 1.0}
+            for doc in LocalKnowledgeTool._documents
+            if query_lower in doc['content'].lower()
+        ][:top_k]
+
+    def _embedding_search(self, query: str, top_k: int) -> list[dict[str, Any]]:
+        """Semantic search using sentence-transformers + numpy cosine similarity."""
+        import numpy as np
+        from sentence_transformers import SentenceTransformer
+
+        if LocalKnowledgeTool._embeddings_model is None:
+            LocalKnowledgeTool._embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
+        model = LocalKnowledgeTool._embeddings_model
+
+        query_vec = np.array(model.encode([query])[0])
+        valid_docs = [d for d in LocalKnowledgeTool._documents if d.get('embedding')]
+        if not valid_docs:
+            return []
+
+        embedding_matrix = np.array([d['embedding'] for d in valid_docs])
+        embedding_norms = np.linalg.norm(embedding_matrix, axis=1, keepdims=True)
+        query_norm = np.linalg.norm(query_vec) or 1
+        embedding_norms = np.where(embedding_norms == 0, 1, embedding_norms)
+        scores = np.dot(embedding_matrix / embedding_norms, query_vec / query_norm)
+        top_indices = np.argsort(scores)[::-1][:top_k]
+
+        return [
+            {"source": valid_docs[i].get('source', 'unknown'),
+             "content": valid_docs[i]['content'][:500],
+             "score": float(scores[i])}
+            for i in top_indices
+        ]
+
     async def _search(self, query: str, top_k: int) -> dict[str, Any]:
-        """Search the knowledge base using cached embeddings"""
+        """Search the knowledge base using cached embeddings."""
         if not query:
             return self._error_response("Query is required")
-
         if not LocalKnowledgeTool._documents:
-            return self._success_response({
-                "message": "Knowledge base is empty",
-                "results": []
-            })
+            return self._success_response({"message": "Knowledge base is empty", "results": []})
 
-        # Try to use sentence-transformers for semantic search
         try:
-            import numpy as np
-            from sentence_transformers import SentenceTransformer
-
-            # Initialize model if needed
-            if LocalKnowledgeTool._embeddings_model is None:
-                LocalKnowledgeTool._embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-            model = LocalKnowledgeTool._embeddings_model
-
-            # Encode query once
-            query_embedding = model.encode([query])[0]
-
-            # Filter documents with valid embeddings
-            valid_docs = [
-                doc for doc in LocalKnowledgeTool._documents
-                if 'embedding' in doc and doc['embedding']
-            ]
-
-            if not valid_docs:
-                return self._success_response({
-                    "query": query,
-                    "results": []
-                })
-
-            # Vectorized similarity computation using NumPy matrix operations
-            # Pre-convert all embeddings to a single 2D matrix (much faster!)
-            embedding_matrix = np.array([doc['embedding'] for doc in valid_docs])
-            query_vec = np.array(query_embedding)
-
-            # Calculate all cosine similarities at once using matrix multiplication
-            # Normalize embeddings
-            embedding_norms = np.linalg.norm(embedding_matrix, axis=1, keepdims=True)
-            query_norm = np.linalg.norm(query_vec)
-
-            # Avoid division by zero
-            embedding_norms = np.where(embedding_norms == 0, 1, embedding_norms)
-            query_norm = query_norm if query_norm != 0 else 1
-
-            normalized_embeddings = embedding_matrix / embedding_norms
-            normalized_query = query_vec / query_norm
-
-            # Compute all similarities at once with vectorized dot product
-            scores = np.dot(normalized_embeddings, normalized_query)
-
-            # Get top k indices using argsort (much faster than sorting full list)
-            top_k_indices = np.argsort(scores)[::-1][:top_k]
-
-            # Build results from top k matches
-            results = [
-                {
-                    "source": valid_docs[idx].get('source', 'unknown'),
-                    "content": valid_docs[idx]['content'][:500],
-                    "score": float(scores[idx])
-                }
-                for idx in top_k_indices
-            ]
-
-            return self._success_response({
-                "query": query,
-                "results": results[:top_k]
-            })
-
+            results = self._embedding_search(query, top_k)
+            return self._success_response({"query": query, "results": results})
         except ImportError:
-            # Fallback to simple keyword search
-            results = []
-            query_lower = query.lower()
-
-            for doc in LocalKnowledgeTool._documents:
-                content_lower = doc['content'].lower()
-                if query_lower in content_lower:
-                    results.append({
-                        "source": doc.get('source', 'unknown'),
-                        "content": doc['content'][:500],
-                        "score": 1.0 if query_lower in content_lower else 0.0
-                    })
-
+            results = self._keyword_search(query, top_k)
             return self._success_response({
                 "query": query,
-                "results": results[:top_k],
+                "results": results,
                 "note": "Using keyword search (install sentence-transformers for semantic search)"
             })
 
