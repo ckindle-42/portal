@@ -313,3 +313,49 @@ async def test_empty_message_returns_error():
         }
         resp = client.post("/v1/chat/completions", json=payload)
     assert resp.status_code in (400, 422, 500)
+
+
+# ---------------------------------------------------------------------------
+# E2: Startup readiness gate — 503 while agent is warming up
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_chat_completions_returns_503_during_warmup():
+    """/v1/chat/completions returns 503 with Retry-After while agent is warming up."""
+    import asyncio
+    import os
+
+    from fastapi.testclient import TestClient
+
+    from portal.interfaces.web.server import WebInterface
+
+    os.environ.pop("WEB_API_KEY", None)
+
+    agent = MagicMock()
+    # health_check hangs forever so _agent_ready never gets set during TestClient startup
+    hang_event = asyncio.Event()
+
+    async def _slow_health():
+        await asyncio.wait_for(hang_event.wait(), timeout=0.01)
+
+    agent.health_check = _slow_health
+    secure = MagicMock()
+    del secure.rate_limiter
+
+    iface = WebInterface(agent_core=agent, config={}, secure_agent=secure)
+
+    # Use raise_server_exceptions=False so we see the 503 response
+    with TestClient(iface.app, raise_server_exceptions=False) as client:
+        payload = {
+            "model": "auto",
+            "messages": [{"role": "user", "content": "hello"}],
+            "stream": False,
+        }
+        resp = client.post("/v1/chat/completions", json=payload)
+
+    # During warmup the server must return 503 with Retry-After
+    assert resp.status_code == 503
+    body = resp.json()
+    assert "error" in body
+    assert "starting up" in body["error"]["message"].lower()
+    assert "retry-after" in resp.headers

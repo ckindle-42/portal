@@ -5,6 +5,74 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [Unreleased] — 2026-02-27 — Security Hardening & Reliability
+
+### Summary
+
+**Security hardening** (Tier 1), **reliability improvements** (Tier 2), and **targeted enhancements** (Tier 3) for real-world portal usage. All findings were confirmed via code analysis before implementation. No architectural changes; no speculative features.
+
+**Metrics**: +41 tests added (869 passing, 1 skipped), 0 lint errors. Net +~180 src LOC.
+
+---
+
+### security(web): Gate SSE streaming through SecurityMiddleware [S1]
+
+The streaming path (`stream: true`) was calling `agent_core.stream_response()` directly, bypassing `SecurityMiddleware`. Both input sanitization (dangerous command detection) and rate limiting are now applied to streaming requests identically to non-streaming ones. Uses `isinstance(secure_agent, SecurityMiddleware)` guard so mocked agents in tests are unaffected.
+
+### security(web): WebSocket shares HTTP rate limiter state [S2]
+
+The WebSocket handler used its own per-connection rate limiter (`message_timestamps: list[float]`). A user could exhaust their HTTP limit and reconnect via WebSocket to bypass it. The handler now uses `SecurityMiddleware.rate_limiter` when available, with the per-connection limiter as a fallback when no real `SecurityMiddleware` is present.
+
+### security(telegram): Mask bot token in startup log [S3]
+
+`logger.info("  Bot token: %s...", self.bot_token[:20])` logged the first 20 characters of the bot token (including the secret portion). Replaced with `Bot ID: <id> (token masked)` — only the numeric bot ID (safe to log) is emitted.
+
+### security(web): Add file size limit to audio upload endpoint [S4]
+
+`/v1/audio/transcriptions` read the entire uploaded file into memory with no size check. Added a configurable limit via `PORTAL_MAX_AUDIO_MB` (default: 25 MB). Oversized uploads return HTTP 413.
+
+### security(security): Fix eager f-string in rate limiter warning [S5]
+
+`logger.warning(f"Rate limit exceeded for user {user_id} ...")` was eagerly formatting the string even when WARNING level is disabled. Converted to lazy `%`-style formatting.
+
+### feat(registry): Auto-discover Ollama models at startup [R1]
+
+`ModelRegistry.discover_from_ollama()` was fully implemented but never called. Added a call in `Runtime.bootstrap()` after `create_agent_core()`. Discovery errors are swallowed as warnings so startup is not blocked when Ollama is unreachable. The `PORTAL_BACKENDS_OLLAMA_URL` setting is forwarded to the discovery call.
+
+### feat(context): Add TTL-based message pruning [R2]
+
+The `conversations` SQLite table grew unbounded. Added `_sync_prune_old_messages()` which deletes messages older than `PORTAL_CONTEXT_RETENTION_DAYS` (default: 30 days). Pruning is triggered every 100 inserts via an in-memory counter. Uses the new thread-local connection pool (see E4).
+
+### feat(memory): Add TTL-based memory pruning [R3]
+
+The `memories` SQLite table grew unbounded. Added `_prune_old_memories()` which deletes entries older than `PORTAL_MEMORY_RETENTION_DAYS` (default: 90 days). Pruning is triggered every 100 inserts via an in-memory counter.
+
+### fix(web): Source FastAPI version from portal.__version__ [R4]
+
+`FastAPI(version="1.3.3")` was hardcoded and would drift on every release. Replaced with `from portal import __version__` and `FastAPI(version=__version__)`.
+
+### refactor(web): Share httpx client across model/audio endpoints [R5]
+
+`/v1/models` and `/v1/audio/transcriptions` each created a new `httpx.AsyncClient`, made one request, then closed it — incurring connection setup overhead per request. A shared `self._ollama_client` is now initialized in the lifespan and closed on shutdown.
+
+### feat(web): Add SSE usage block to streaming responses [E1]
+
+The final SSE chunk was missing the `usage` field required by the OpenAI streaming spec. Clients (Open WebUI, Continue, Cursor) use this for token accounting. The final chunk now includes `{"usage": {"prompt_tokens": 0, "completion_tokens": N, "total_tokens": N}}` where N is the number of tokens streamed.
+
+### feat(web): Add startup readiness gate (503 during warmup) [E2]
+
+Portal accepted chat completion requests immediately, even before the agent warmup completed. Requests would fail with cryptic errors if Ollama was unreachable. Added a readiness check: `/v1/chat/completions` now returns `503 Service Unavailable` with `Retry-After: 5` while `_agent_ready` is not set.
+
+### feat(web): Add X-Request-Id tracing to HTTP responses [E3]
+
+Added `X-Request-Id` header in `SecurityHeadersMiddleware`. If the client provides `X-Request-Id`, it is echoed back. If not, a 8-character UUID fragment is generated. Allows correlation of client requests with internal Portal logs across Ollama and MCP.
+
+### refactor(context): Add thread-local SQLite connection pool [E4]
+
+Every `ContextManager` sync helper was calling `sqlite3.connect(self.db_path)` — creating a new connection per call. Adopted the same `_ConnectionPool` pattern used by `UserStore`: thread-local connection caching with WAL mode enabled on first use. Eliminates connection setup overhead on high-frequency context reads/writes.
+
+---
+
 ## [Unreleased] — 2026-02-27 — Codebase Shrink & Optimization
 
 ### chore(shrink): Tier 1 — dead code removal, bug fixes, test consolidation

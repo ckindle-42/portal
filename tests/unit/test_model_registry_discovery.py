@@ -191,3 +191,63 @@ class TestModelRegistryQueries:
         assert registry.get_model(model_id).available is False
         registry.update_availability(model_id, True)
         assert registry.get_model(model_id).available is True
+
+
+# ---------------------------------------------------------------------------
+# R1: Auto-discovery called during bootstrap
+# ---------------------------------------------------------------------------
+
+class TestBootstrapDiscovery:
+    """R1: discover_from_ollama must be invoked during Runtime.bootstrap()."""
+
+    @pytest.mark.asyncio
+    async def test_discover_from_ollama_called_at_bootstrap(self) -> None:
+        """Runtime.bootstrap() triggers Ollama model discovery."""
+        import os
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        os.environ.setdefault("PORTAL_ENV", "development")
+        os.environ.setdefault("PORTAL_BOOTSTRAP_API_KEY", "portal-dev-key")
+        os.environ.setdefault("MCP_API_KEY", "not-changeme")
+
+        from portal.routing.model_registry import ModelRegistry
+
+        # Patch discover_from_ollama to capture the call
+        discovery_called = []
+
+        async def mock_discover(self, base_url="http://localhost:11434", **kwargs):
+            discovery_called.append(base_url)
+            return []  # no new models discovered
+
+        with patch.object(ModelRegistry, "discover_from_ollama", mock_discover):
+            from portal.lifecycle import Runtime
+
+            runtime = Runtime()
+            # Patch create_agent_core and SecurityMiddleware to avoid real initialization
+            mock_agent_core = MagicMock()
+            mock_agent_core.model_registry = ModelRegistry()
+            mock_agent_core.cleanup = AsyncMock()
+
+            with (
+                patch("portal.lifecycle.create_agent_core", return_value=mock_agent_core),
+                patch("portal.lifecycle.SecurityMiddleware", return_value=MagicMock(cleanup=AsyncMock())),
+                patch("portal.lifecycle.load_settings") as mock_settings,
+            ):
+                settings = MagicMock()
+                settings.to_agent_config.return_value = {}
+                settings.security.mcp_api_key = "not-changeme"
+                settings.data_dir = MagicMock()
+                settings.data_dir.__truediv__ = lambda self, other: MagicMock()
+                # Provide a backends attribute with ollama_url
+                settings.backends = MagicMock()
+                settings.backends.ollama_url = "http://localhost:11434"
+                mock_settings.return_value = settings
+
+                try:
+                    await runtime.bootstrap()
+                except Exception:
+                    pass  # We only care that discover was called
+
+        assert len(discovery_called) >= 1, (
+            "discover_from_ollama was not called during bootstrap"
+        )

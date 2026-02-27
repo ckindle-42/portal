@@ -108,6 +108,18 @@ class Runtime:
         agent_core = create_agent_core(settings.to_agent_config())
         secure_agent = SecurityMiddleware(agent_core, enable_rate_limiting=True, enable_input_sanitization=True)
 
+        # Auto-discover live Ollama models and add them to the registry (R1)
+        try:
+            ollama_url = getattr(getattr(settings, "backends", None), "ollama_url", "http://localhost:11434")
+            newly_registered = await agent_core.model_registry.discover_from_ollama(
+                base_url=ollama_url,
+                mark_others_unavailable=False,
+            )
+            if newly_registered:
+                logger.info("Discovered %d Ollama model(s) at startup", len(newly_registered))
+        except Exception as _disc_err:
+            logger.warning("Ollama model discovery failed (will use static registry): %s", _disc_err)
+
         watchdog = None
         if self.enable_watchdog:
             from portal.observability.watchdog import Watchdog, WatchdogConfig

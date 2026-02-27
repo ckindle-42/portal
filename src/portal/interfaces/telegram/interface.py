@@ -145,7 +145,8 @@ class TelegramInterface:
 
         logger.info("=" * 60)
         logger.info("Telegram Interface ready!")
-        logger.info("  Bot token: %s...", self.bot_token[:20])
+        bot_id = self.bot_token.split(":")[0] if ":" in self.bot_token else "***"
+        logger.info("  Bot ID: %s (token masked)", bot_id)
         logger.info("  Authorized users: %s", len(self.authorized_user_ids))
         logger.info("  Dependency Injection: ✓")
         logger.info("=" * 60)

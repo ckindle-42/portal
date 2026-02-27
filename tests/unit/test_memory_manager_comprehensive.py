@@ -208,3 +208,74 @@ class TestMemorySnippet:
         s = MemorySnippet(text="data", score=0.95, source="mem0")
         assert s.score == 0.95
         assert s.source == "mem0"
+
+
+# ---------------------------------------------------------------------------
+# R3: TTL-based memory pruning
+# ---------------------------------------------------------------------------
+
+class TestMemoryPruning:
+    """R3: Old memory entries beyond the retention period must be pruned."""
+
+    @pytest.mark.asyncio
+    async def test_prune_removes_old_memories(self, tmp_path: Path) -> None:
+        """Memory entries with old created_at timestamps are deleted during prune."""
+        import sqlite3
+
+        mm = MemoryManager(db_path=tmp_path / "prune_test.db")
+
+        # Insert a memory directly with an old timestamp (100 days ago)
+        old_ts = "2025-10-01 00:00:00"  # definitely older than 90 day default
+        with sqlite3.connect(mm.db_path) as conn:
+            conn.execute(
+                "INSERT INTO memories (user_id, content, created_at) VALUES (?, ?, ?)",
+                ("prune_user", "very old memory", old_ts),
+            )
+            conn.commit()
+
+        import asyncio
+        deleted = await asyncio.to_thread(mm._prune_old_memories)
+        assert deleted >= 1
+
+        items = await mm.retrieve("prune_user", "old memory")
+        assert len(items) == 0
+
+    @pytest.mark.asyncio
+    async def test_prune_keeps_recent_memories(self, tmp_path: Path) -> None:
+        """Recent memories within the retention period are not pruned."""
+        mm = MemoryManager(db_path=tmp_path / "recent_test.db")
+        await mm.add_message("u1", "recent memory content")
+
+        import asyncio
+        deleted = await asyncio.to_thread(mm._prune_old_memories)
+        assert deleted == 0
+
+        items = await mm.retrieve("u1", "recent")
+        assert len(items) >= 1
+
+    @pytest.mark.asyncio
+    async def test_pruning_triggered_after_interval(self, tmp_path: Path) -> None:
+        """Pruning is triggered automatically after _PRUNE_INTERVAL inserts."""
+        import sqlite3
+
+        mm = MemoryManager(db_path=tmp_path / "auto_prune.db")
+
+        # Insert a very old memory directly
+        old_ts = "2025-01-01 00:00:00"
+        with sqlite3.connect(mm.db_path) as conn:
+            conn.execute(
+                "INSERT INTO memories (user_id, content, created_at) VALUES (?, ?, ?)",
+                ("prune_auto_user", "stale memory", old_ts),
+            )
+            conn.commit()
+
+        # Insert exactly _PRUNE_INTERVAL messages to trigger pruning
+        for i in range(mm._PRUNE_INTERVAL):
+            await mm.add_message("prune_auto_user", f"content {i}")
+
+        # After the interval, the stale memory should have been pruned
+        with sqlite3.connect(mm.db_path) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM memories WHERE content = 'stale memory'"
+            ).fetchone()
+        assert row[0] == 0, "Stale memory should have been pruned after _PRUNE_INTERVAL inserts"

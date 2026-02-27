@@ -8,6 +8,7 @@ import os
 import sqlite3
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -28,11 +29,16 @@ class MemoryManager:
     Prefers Mem0 when available and enabled, and falls back to local SQLite retrieval.
     """
 
+    # Pruning configuration
+    _PRUNE_INTERVAL = 100  # prune check every N inserts
+    _MAX_AGE_DAYS = int(os.getenv("PORTAL_MEMORY_RETENTION_DAYS", "90"))
+
     def __init__(self, db_path: str | Path | None = None) -> None:
         self.db_path = Path(db_path or os.getenv("PORTAL_MEMORY_DB", "data/memory.db"))
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.provider = os.getenv("PORTAL_MEMORY_PROVIDER", "auto").lower()
         self._mem0 = None
+        self._insert_count = 0
         self._init_db()
         self._init_provider()
 
@@ -81,11 +87,27 @@ class MemoryManager:
             await asyncio.to_thread(self._mem0.add, content, user_id=user_id)
             return
         await asyncio.to_thread(self._store_sqlite, user_id, content)
+        # Periodic pruning: remove memories older than retention period
+        self._insert_count += 1
+        if self._insert_count % self._PRUNE_INTERVAL == 0:
+            deleted = await asyncio.to_thread(self._prune_old_memories)
+            if deleted:
+                logger.info("Pruned %d old memories (>%d days)", deleted, self._MAX_AGE_DAYS)
 
     def _store_sqlite(self, user_id: str, content: str) -> None:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("INSERT INTO memories (user_id, content) VALUES (?, ?)", (user_id, content))
             conn.commit()
+
+    def _prune_old_memories(self) -> int:
+        """Delete memories older than the retention period. Returns count deleted."""
+        cutoff = (datetime.now(tz=UTC) - timedelta(days=self._MAX_AGE_DAYS)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("DELETE FROM memories WHERE created_at < ?", (cutoff,))
+            conn.commit()
+            return cursor.rowcount
 
     async def retrieve(self, user_id: str, query: str, limit: int = 5) -> list[MemorySnippet]:
         if self.provider == "mem0" and self._mem0 is not None:
