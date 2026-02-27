@@ -168,20 +168,24 @@ class Watchdog:
                 logger.error("Component %s failed", component.name,
                              consecutive_failures=component.health.consecutive_failures,
                              error=result.message)
-                if self.on_component_failed:
-                    try:
-                        self.on_component_failed(component.name, result.message)
-                    except Exception as e:
-                        logger.error("Error in failure callback: %s", e)
-                if (component.critical and self.config.restart_on_failure
-                        and component.health.consecutive_failures >= self.config.max_consecutive_failures):
-                    await self._restart_component(component)
+                await self._attempt_recovery(component, result.message)
 
         except Exception as e:
             component.health.state = ComponentState.FAILED
             component.health.consecutive_failures += 1
             component.health.last_error = str(e)
             logger.error("Health check failed for %s: %s", component.name, e, exc_info=True)
+
+    async def _attempt_recovery(self, component: MonitoredComponent, error_message: str) -> None:
+        """Invoke failure callback and restart if thresholds are met."""
+        if self.on_component_failed:
+            try:
+                self.on_component_failed(component.name, error_message)
+            except Exception as e:
+                logger.error("Error in failure callback: %s", e)
+        if (component.critical and self.config.restart_on_failure
+                and component.health.consecutive_failures >= self.config.max_consecutive_failures):
+            await self._restart_component(component)
 
     async def _restart_component(self, component: MonitoredComponent) -> None:
         if not component.restart_func:
