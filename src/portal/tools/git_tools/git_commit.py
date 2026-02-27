@@ -6,14 +6,9 @@ import logging
 from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.tools.git_tools._base import GIT_AVAILABLE, GitCommandError, open_repo
 
 logger = logging.getLogger(__name__)
-
-try:
-    from git import GitCommandError, InvalidGitRepositoryError, Repo
-    GIT_AVAILABLE = True
-except ImportError:
-    GIT_AVAILABLE = False
 
 
 class GitCommitTool(BaseTool):
@@ -67,13 +62,11 @@ class GitCommitTool(BaseTool):
         if not message:
             return self._error_response("Commit message is required")
 
+        repo, err = open_repo(repo_path)
+        if err:
+            return err
+
         try:
-            # Open repository
-            repo = Repo(repo_path)
-
-            if repo.bare:
-                return self._error_response("Repository is bare")
-
             # Add files if requested
             if add_all:
                 repo.git.add(A=True)
@@ -97,8 +90,6 @@ class GitCommitTool(BaseTool):
                 }
             )
 
-        except InvalidGitRepositoryError:
-            return self._error_response(f"Not a git repository: {repo_path}")
         except GitCommandError as e:
             return self._error_response(f"Git command failed: {e}")
         except Exception as e:

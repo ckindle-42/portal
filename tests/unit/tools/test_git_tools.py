@@ -62,7 +62,7 @@ class TestGitStatusTool:
         tool = GitStatusTool()
         mock_repo = _make_mock_repo()
 
-        with patch("portal.tools.git_tools.git_status.Repo", return_value=mock_repo):
+        with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute({"repo_path": str(mock_git_repo)})
 
         assert result["success"] is True
@@ -75,7 +75,7 @@ class TestGitStatusTool:
         tool = GitStatusTool()
 
         with patch(
-            "portal.tools.git_tools.git_status.Repo",
+            "portal.tools.git_tools._base.Repo",
             side_effect=InvalidGitRepositoryError("not a repo"),
         ):
             result = await tool.execute({"repo_path": str(temp_dir)})
@@ -96,7 +96,7 @@ class TestGitBranchTool:
         # active_branch comparison used in list action
         mock_repo.active_branch = mock_repo.branches[0]
 
-        with patch("portal.tools.git_tools.git_branch.Repo", return_value=mock_repo):
+        with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute({
                 "repo_path": str(mock_git_repo),
                 "action": "list",
@@ -114,7 +114,7 @@ class TestGitBranchTool:
         new_head.commit.hexsha = "def456789012"
         mock_repo.create_head.return_value = new_head
 
-        with patch("portal.tools.git_tools.git_branch.Repo", return_value=mock_repo):
+        with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute({
                 "repo_path": str(mock_git_repo),
                 "action": "create",
@@ -145,7 +145,7 @@ class TestGitCommitTool:
         mock_commit.stats.files = {"file.txt": {"insertions": 1, "deletions": 0}}
         mock_repo.index.commit.return_value = mock_commit
 
-        with patch("portal.tools.git_tools.git_commit.Repo", return_value=mock_repo):
+        with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute({
                 "repo_path": str(mock_git_repo),
                 "message": "Test commit",
@@ -166,7 +166,7 @@ class TestGitDiffTool:
         mock_repo.git.diff.return_value = "diff --git a/file.txt b/file.txt\n+new line"
         mock_repo.head.commit = MagicMock()
 
-        with patch("portal.tools.git_tools.git_diff.Repo", return_value=mock_repo):
+        with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute({"repo_path": str(mock_git_repo)})
 
         assert result["success"] is True
@@ -190,7 +190,7 @@ class TestGitLogTool:
         mock_commit.authored_date = datetime.datetime.now().timestamp()
         mock_repo.iter_commits.return_value = [mock_commit]
 
-        with patch("portal.tools.git_tools.git_log.Repo", return_value=mock_repo):
+        with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute({
                 "repo_path": str(mock_git_repo),
                 "max_count": 10,
@@ -209,7 +209,7 @@ class TestGitPushTool:
         tool = GitPushTool()
         mock_repo = _make_mock_repo()
 
-        with patch("portal.tools.git_tools.git_push.Repo", return_value=mock_repo):
+        with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute({
                 "repo_path": str(mock_git_repo),
                 "remote": "origin",
@@ -229,7 +229,7 @@ class TestGitPullTool:
         tool = GitPullTool()
         mock_repo = _make_mock_repo()
 
-        with patch("portal.tools.git_tools.git_pull.Repo", return_value=mock_repo):
+        with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute({
                 "repo_path": str(mock_git_repo),
                 "remote": "origin",
@@ -254,7 +254,7 @@ class TestGitMergeTool:
         feature_branch.name = "feature-branch"
         mock_repo.branches = [MagicMock(name="main"), feature_branch]
 
-        with patch("portal.tools.git_tools.git_merge.Repo", return_value=mock_repo):
+        with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute({
                 "repo_path": str(mock_git_repo),
                 "branch": "feature-branch",

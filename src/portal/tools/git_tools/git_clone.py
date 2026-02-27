@@ -6,14 +6,9 @@ import logging
 from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.tools.git_tools._base import GIT_AVAILABLE, GitCommandError, Repo
 
 logger = logging.getLogger(__name__)
-
-try:
-    from git import GitCommandError, Repo
-    GIT_AVAILABLE = True
-except ImportError:
-    GIT_AVAILABLE = False
 
 
 class GitCloneTool(BaseTool):

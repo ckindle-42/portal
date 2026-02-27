@@ -6,14 +6,9 @@ import logging
 from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.tools.git_tools._base import GIT_AVAILABLE, GitCommandError, open_repo
 
 logger = logging.getLogger(__name__)
-
-try:
-    from git import GitCommandError, InvalidGitRepositoryError, Repo
-    GIT_AVAILABLE = True
-except ImportError:
-    GIT_AVAILABLE = False
 
 
 class GitDiffTool(BaseTool):
@@ -64,13 +59,11 @@ class GitDiffTool(BaseTool):
         commit = parameters.get("commit")
         file_path = parameters.get("file_path")
 
+        repo, err = open_repo(repo_path)
+        if err:
+            return err
+
         try:
-            # Open repository
-            repo = Repo(repo_path)
-
-            if repo.bare:
-                return self._error_response("Repository is bare")
-
             # Determine what diff to show
             diff_text = ""
             diff_type = ""
@@ -108,8 +101,6 @@ class GitDiffTool(BaseTool):
                 }
             )
 
-        except InvalidGitRepositoryError:
-            return self._error_response(f"Not a git repository: {repo_path}")
         except GitCommandError as e:
             return self._error_response(f"Git command failed: {e}")
         except Exception as e:

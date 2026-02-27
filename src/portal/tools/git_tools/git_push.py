@@ -7,14 +7,9 @@ import logging
 from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.tools.git_tools._base import GIT_AVAILABLE, GitCommandError, open_repo
 
 logger = logging.getLogger(__name__)
-
-try:
-    from git import GitCommandError, InvalidGitRepositoryError, Repo
-    GIT_AVAILABLE = True
-except ImportError:
-    GIT_AVAILABLE = False
 
 
 class GitPushTool(BaseTool):
@@ -72,13 +67,11 @@ class GitPushTool(BaseTool):
         force = parameters.get("force", False)
         set_upstream = parameters.get("set_upstream", False)
 
+        repo, err = open_repo(repo_path)
+        if err:
+            return err
+
         try:
-            # Open repository
-            repo = Repo(repo_path)
-
-            if repo.bare:
-                return self._error_response("Repository is bare")
-
             # Get remote
             if remote_name not in [r.name for r in repo.remotes]:
                 return self._error_response(f"Remote '{remote_name}' not found")
@@ -124,8 +117,6 @@ class GitPushTool(BaseTool):
                 }
             )
 
-        except InvalidGitRepositoryError:
-            return self._error_response(f"Not a git repository: {repo_path}")
         except GitCommandError as e:
             return self._error_response(f"Git command failed: {e}")
         except Exception as e:
