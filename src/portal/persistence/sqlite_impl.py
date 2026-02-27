@@ -1,13 +1,4 @@
-"""
-SQLite Implementation of Repository Interfaces
-===============================================
-
-Production-ready SQLite implementations with:
-- Async support via asyncio.to_thread (consistent with context_manager.py)
-- Proper indexing for performance
-- Transaction support
-- Connection pooling
-"""
+"""SQLite implementations of ConversationRepository and KnowledgeRepository."""
 
 import asyncio
 import json
@@ -54,10 +45,6 @@ class _ConnectionPool:
 
 
 class SQLiteConversationRepository(ConversationRepository):
-    """
-    SQLite implementation of ConversationRepository.
-    Compatible with existing ContextManager schema.
-    """
 
     def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or Path("data") / "conversations.db"
@@ -116,13 +103,8 @@ class SQLiteConversationRepository(ConversationRepository):
         """)
         conn.commit()
 
-    # ------------------------------------------------------------------
-    # Private sync helpers (called via asyncio.to_thread)
-    # ------------------------------------------------------------------
-
     @staticmethod
     def _row_to_message(row: sqlite3.Row) -> "Message":
-        """Convert a sqlite3.Row to a Message dataclass."""
         return Message(
             role=row["role"],
             content=row["content"],
@@ -190,14 +172,6 @@ class SQLiteConversationRepository(ConversationRepository):
         rows = conn.execute(query, params).fetchall()
         return [self._row_to_message(row) for row in rows]
 
-    def _sync_get_messages_standalone(
-        self,
-        chat_id: str,
-        limit: int | None,
-        offset: int,
-    ) -> list[Message]:
-        conn = self._pool.get()
-        return self._sync_get_messages(conn, chat_id, limit, offset)
 
     def _sync_get_conversation(self, chat_id: str) -> Conversation | None:
         conn = self._pool.get()
@@ -343,10 +317,6 @@ class SQLiteConversationRepository(ConversationRepository):
 
         return stats
 
-    # ------------------------------------------------------------------
-    # Public async API
-    # ------------------------------------------------------------------
-
     async def create_conversation(self, chat_id: str, metadata: dict[str, Any] | None = None) -> None:
         """Create a new conversation"""
         await asyncio.to_thread(self._sync_create_conversation, chat_id, metadata)
@@ -368,7 +338,9 @@ class SQLiteConversationRepository(ConversationRepository):
         offset: int = 0
     ) -> list[Message]:
         """Retrieve messages from a conversation"""
-        return await asyncio.to_thread(self._sync_get_messages_standalone, chat_id, limit, offset)
+        return await asyncio.to_thread(
+            lambda: self._sync_get_messages(self._pool.get(), chat_id, limit, offset)
+        )
 
     async def get_conversation(self, chat_id: str) -> Conversation | None:
         """Get full conversation details"""
@@ -401,10 +373,6 @@ class SQLiteConversationRepository(ConversationRepository):
 
 
 class SQLiteKnowledgeRepository(KnowledgeRepository):
-    """
-    SQLite implementation of KnowledgeRepository.
-    Uses FTS5 for full-text search and numpy for vector similarity.
-    """
 
     def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or Path("data") / "knowledge.db"
@@ -452,10 +420,6 @@ class SQLiteKnowledgeRepository(KnowledgeRepository):
         # Index for metadata filtering
         conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at)")
         conn.commit()
-
-    # ------------------------------------------------------------------
-    # Private sync helpers (called via asyncio.to_thread)
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _row_to_document(row: sqlite3.Row) -> "Document":
