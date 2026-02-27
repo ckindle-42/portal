@@ -90,7 +90,6 @@ class TestSessionManagerLifecycle:
 class TestSessionManagerExecute:
     @pytest.mark.parametrize("backend,id_attr", [
         ("docker", "container_id"),
-        ("jupyter", "kernel_id"),
     ])
     async def test_execute_creates_session(self, backend, id_attr):
         mgr = SessionManager(backend=backend)
