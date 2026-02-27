@@ -18,6 +18,7 @@ UNIFIED_MEM_MB = Gauge("portal_unified_memory_usage_mb", "Unified memory usage i
 _start = time.time()
 _seen_users: set[str] = set()
 _requests = 0
+_MAX_SEEN_USERS = 10_000
 
 
 def mark_request(user_id: str) -> None:
@@ -25,7 +26,8 @@ def mark_request(user_id: str) -> None:
     _requests += 1
     elapsed_min = max((time.time() - _start) / 60.0, 1 / 60)
     REQUESTS_PER_MINUTE.set(_requests / elapsed_min)
-    _seen_users.add(user_id)
+    if len(_seen_users) < _MAX_SEEN_USERS:
+        _seen_users.add(user_id)
     ACTIVE_USERS.set(len(_seen_users))
 
 

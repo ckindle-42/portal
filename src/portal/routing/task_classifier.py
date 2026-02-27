@@ -165,21 +165,7 @@ class TaskClassifier:
         counts = self._match_all_patterns(query)
         patterns_matched.extend(f"{k}:{v}" for k, v in counts.items() if v > 0)
 
-        if counts['code'] >= 2:
-            category = TaskCategory.CODE
-        elif counts['math'] >= 2:
-            category = TaskCategory.MATH
-        elif counts['tool'] >= 1:
-            category = TaskCategory.TOOL_USE
-        elif counts['creative'] >= 2:
-            category = TaskCategory.CREATIVE
-        elif counts['analysis'] >= 2:
-            category = TaskCategory.ANALYSIS
-        elif any(p.search(query) for p in self._question_re):
-            category = TaskCategory.QUESTION
-        else:
-            category = TaskCategory.GENERAL
-
+        category = self._detect_category(counts, query)
         complexity = self._estimate_complexity(
             word_count, char_count,
             counts['code'], counts['math'], counts['analysis'], counts['creative']
@@ -197,6 +183,22 @@ class TaskClassifier:
             confidence=0.8 if patterns_matched else 0.5,
             patterns_matched=patterns_matched
         )
+
+    def _detect_category(self, counts: dict, query: str) -> "TaskCategory":
+        """Map pattern match counts to a task category."""
+        if counts['code'] >= 2:
+            return TaskCategory.CODE
+        if counts['math'] >= 2:
+            return TaskCategory.MATH
+        if counts['tool'] >= 1:
+            return TaskCategory.TOOL_USE
+        if counts['creative'] >= 2:
+            return TaskCategory.CREATIVE
+        if counts['analysis'] >= 2:
+            return TaskCategory.ANALYSIS
+        if any(p.search(query) for p in self._question_re):
+            return TaskCategory.QUESTION
+        return TaskCategory.GENERAL
 
     def _estimate_complexity(self, word_count: int, char_count: int,
                             code_matches: int, math_matches: int,

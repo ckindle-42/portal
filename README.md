@@ -20,7 +20,7 @@ Adding a 4th interface is ~50 lines of Python.
 
 | Target | Status |
 |--------|--------|
-| Apple M4 Pro (64GB) | Primary — full generation services |
+| Apple M4 Mac Mini Pro (64–128GB) | Primary — full generation services |
 | NVIDIA CUDA (Linux) | Supported — generation optional |
 | NVIDIA CUDA (WSL2) | Supported |
 

@@ -3,10 +3,10 @@ Session Manager - Stateful Code Execution
 ==========================================
 
 Manages persistent execution sessions for stateful code execution,
-similar to Jupyter notebooks or ChatGPT Code Interpreter.
+similar to ChatGPT Code Interpreter.
 
 Instead of spinning up a new container for every execution,
-maintains a persistent connection to a container/kernel where
+maintains a persistent connection to a Docker container where
 variables persist between calls.
 
 Features:
@@ -14,13 +14,12 @@ Features:
 - Variables persist between executions
 - Session isolation (different users don't share state)
 - Automatic cleanup of idle sessions
-- Support for both Docker containers and Jupyter kernels
+- Docker container-based execution
 
 Architecture:
     SessionManager
         ├─ Session (per chat_id)
-        │   ├─ Docker container OR
-        │   └─ Jupyter kernel
+        │   └─ Docker container
         └─ Cleanup task (idle session removal)
 """
 
@@ -37,12 +36,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecutionSession:
     """
-    Represents a persistent execution session
-
-    This could be backed by:
-    - A Docker container with persistent Python process
-    - A Jupyter kernel
-    - An IPython kernel
+    Represents a persistent execution session backed by a Docker container.
     """
     session_id: str
     chat_id: str
@@ -65,7 +59,7 @@ class ExecutionSession:
 
 class SessionManager:
     """
-    Manages stateful execution sessions
+    Manages stateful Docker execution sessions.
 
     Provides persistent execution environments where variables
     persist between executions.
@@ -93,7 +87,7 @@ class SessionManager:
         Args:
             idle_timeout_minutes: Minutes before idle session cleanup
             max_sessions: Maximum number of concurrent sessions
-            backend: Backend type ("docker" or "jupyter")
+            backend: Backend type (currently only "docker" is supported)
         """
         self.idle_timeout_minutes = idle_timeout_minutes
         self.max_sessions = max_sessions
@@ -153,11 +147,6 @@ class SessionManager:
                 - error: Error output (if any)
                 - result: Return value (if any)
                 - execution_count: Number of executions in this session
-
-        Example:
-            result = await manager.execute("chat_123", "x = 42")
-            result = await manager.execute("chat_123", "print(x)")
-            # Output: 42
         """
         # Get or create session
         session = await self._get_or_create_session(chat_id)
@@ -170,14 +159,9 @@ class SessionManager:
         )
 
         try:
-            # Execute code based on backend
-            if self.backend == "docker":
-                result = await self._execute_docker(session, code, timeout)
-            elif self.backend == "jupyter":
-                result = await self._execute_jupyter(session, code, timeout)
-            else:
+            if self.backend != "docker":
                 raise ValueError(f"Unknown backend: {self.backend}")
-
+            result = await self._execute_docker(session, code, timeout)
             session.execution_count += 1
             return result
 
@@ -211,12 +195,7 @@ class SessionManager:
             chat_id=chat_id
         )
 
-        # Initialize backend
-        if self.backend == "docker":
-            await self._init_docker_session(session)
-        elif self.backend == "jupyter":
-            await self._init_jupyter_session(session)
-
+        await self._init_docker_session(session)
         self._sessions[chat_id] = session
 
         logger.info(
@@ -245,19 +224,6 @@ class SessionManager:
         logger.debug("Initializing Docker session (placeholder)")
         session.container_id = f"placeholder-{session.session_id[:8]}"
 
-    async def _init_jupyter_session(self, session: ExecutionSession) -> None:
-        """
-        Initialize a Jupyter kernel for the session
-
-        This would:
-        1. Start a Jupyter kernel
-        2. Store kernel_id in session
-        3. Use jupyter_client to execute code
-        """
-        # Placeholder for Jupyter implementation
-        logger.debug("Initializing Jupyter session (placeholder)")
-        session.kernel_id = f"placeholder-{session.session_id[:8]}"
-
     async def _execute_docker(
         self,
         session: ExecutionSession,
@@ -273,28 +239,6 @@ class SessionManager:
         3. Return results
         """
         logger.debug("Executing via Docker (placeholder)")
-        return {
-            'output': f'Executed: {code[:50]}...',
-            'error': '',
-            'result': None,
-            'execution_count': session.execution_count + 1
-        }
-
-    async def _execute_jupyter(
-        self,
-        session: ExecutionSession,
-        code: str,
-        timeout: int
-    ) -> dict[str, Any]:
-        """
-        Execute code in a Jupyter kernel
-
-        Placeholder implementation - in a real system this would:
-        1. Use jupyter_client to execute code
-        2. Capture output
-        3. Return results
-        """
-        logger.debug("Executing via Jupyter (placeholder)")
         return {
             'output': f'Executed: {code[:50]}...',
             'error': '',
@@ -335,10 +279,6 @@ class SessionManager:
         if session.container_id:
             # docker stop/rm container
             logger.debug("Stopping Docker container (placeholder)")
-
-        if session.kernel_id:
-            # Shutdown Jupyter kernel
-            logger.debug("Shutting down Jupyter kernel (placeholder)")
 
         # Remove from sessions
         self._sessions.pop(session.chat_id, None)

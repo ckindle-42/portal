@@ -156,9 +156,6 @@ class ModelRegistry:
         """Get all models for a backend"""
         return [m for m in self.models.values() if m.backend == backend]
 
-    def get_models_by_capability(self, capability: ModelCapability) -> list[ModelMetadata]:
-        """Get models with specific capability"""
-        return [m for m in self.models.values() if capability in m.capabilities]
 
     def get_fastest_model(self, capability: ModelCapability | None = None) -> ModelMetadata | None:
         """Get fastest available model"""

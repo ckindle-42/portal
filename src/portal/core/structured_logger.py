@@ -146,10 +146,6 @@ class TraceContext:
         """Generate a unique trace ID"""
         return str(uuid.uuid4())[:8]  # Short UUID
 
-    @staticmethod
-    def get_current_trace_id() -> str | None:
-        """Get current trace ID from context"""
-        return _trace_id_var.get()
 
 
 # =============================================================================

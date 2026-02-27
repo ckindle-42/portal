@@ -139,23 +139,19 @@ class WordProcessorTool(BaseTool):
             )
 
         action = parameters.get("action", "").lower()
-
-        if action == "create":
-            return await self._create_document(parameters)
-        elif action == "add_heading":
-            return await self._add_heading(parameters)
-        elif action == "add_paragraph":
-            return await self._add_paragraph(parameters)
-        elif action == "add_table":
-            return await self._add_table(parameters)
-        elif action == "add_image":
-            return await self._add_image(parameters)
-        elif action == "read":
-            return await self._read_document(parameters)
-        elif action == "save":
-            return await self._save_document(parameters)
-        else:
+        dispatch = {
+            "create": self._create_document,
+            "add_heading": self._add_heading,
+            "add_paragraph": self._add_paragraph,
+            "add_table": self._add_table,
+            "add_image": self._add_image,
+            "read": self._read_document,
+            "save": self._save_document,
+        }
+        handler = dispatch.get(action)
+        if handler is None:
             return self._error_response(f"Unknown action: {action}")
+        return await handler(parameters)
 
     async def _create_document(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Create new Word document"""

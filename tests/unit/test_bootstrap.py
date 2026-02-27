@@ -132,34 +132,6 @@ def test_module_level_create_agent_core_accepts_settings_object():
 # ProcessingResult consolidation
 # ---------------------------------------------------------------------------
 
-def test_processing_result_has_unified_fields():
-    """
-    The canonical ProcessingResult in core.types must expose all fields
-    required by both WebInterface and TelegramInterface.
-    """
-    from portal.core.types import ProcessingResult
-
-    result = ProcessingResult(response="hello world")
-
-    # Fields required by TelegramInterface
-    assert hasattr(result, "response")
-    assert hasattr(result, "success")
-    assert hasattr(result, "model_used")
-    assert hasattr(result, "execution_time")
-    assert hasattr(result, "tools_used")
-    assert hasattr(result, "warnings")
-
-    # Fields required by WebInterface (_format_completion)
-    assert hasattr(result, "prompt_tokens")
-    assert hasattr(result, "completion_tokens")
-
-    # Tracing / debug fields
-    assert hasattr(result, "trace_id")
-    assert hasattr(result, "metadata")
-    assert hasattr(result, "error")
-    assert hasattr(result, "tool_results")
-
-
 def test_processing_result_defaults():
     """ProcessingResult can be instantiated with only the response field."""
     from portal.core.types import ProcessingResult

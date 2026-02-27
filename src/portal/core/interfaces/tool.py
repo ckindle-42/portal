@@ -82,6 +82,21 @@ class BaseTool(ABC):
         """
         pass
 
+    _TYPE_VALIDATORS: dict[str, tuple[type, ...]] = {
+        "string": (str,),
+        "int": (int,),
+        "float": (int, float),
+        "bool": (bool,),
+        "list": (list,),
+    }
+    _TYPE_MESSAGES: dict[str, str] = {
+        "string": "must be a string",
+        "int": "must be an integer",
+        "float": "must be a number",
+        "bool": "must be a boolean",
+        "list": "must be a list",
+    }
+
     def validate_parameters(self, parameters: dict[str, Any]) -> tuple[bool, str | None]:
         """
         Validate parameters against metadata
@@ -95,18 +110,10 @@ class BaseTool(ABC):
 
             if param.name in parameters:
                 value = parameters[param.name]
-
-                # Type validation
-                if param.param_type == "string" and not isinstance(value, str):
-                    return False, f"Parameter {param.name} must be a string"
-                elif param.param_type == "int" and not isinstance(value, int):
-                    return False, f"Parameter {param.name} must be an integer"
-                elif param.param_type == "float" and not isinstance(value, (int, float)):
-                    return False, f"Parameter {param.name} must be a number"
-                elif param.param_type == "bool" and not isinstance(value, bool):
-                    return False, f"Parameter {param.name} must be a boolean"
-                elif param.param_type == "list" and not isinstance(value, list):
-                    return False, f"Parameter {param.name} must be a list"
+                expected_types = self._TYPE_VALIDATORS.get(param.param_type)
+                if expected_types and not isinstance(value, expected_types):
+                    msg = self._TYPE_MESSAGES.get(param.param_type, f"must be of type {param.param_type}")
+                    return False, f"Parameter {param.name} {msg}"
 
         return True, None
 
@@ -122,23 +129,3 @@ class BaseTool(ABC):
         response.update(kwargs)
         return response
 
-    async def safe_execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
-        """
-        Execute with validation and error handling
-        """
-        # Validate parameters
-        valid, error = self.validate_parameters(parameters)
-        if not valid:
-            return self._error_response(error)
-
-        # Apply defaults
-        for param in self.metadata.parameters:
-            if param.name not in parameters and param.default is not None:
-                parameters[param.name] = param.default
-
-        # Execute
-        try:
-            return await self.execute(parameters)
-        except Exception as e:
-            logger.error("Tool %s execution error: %s", self.metadata.name, e)
-            return self._error_response(str(e))

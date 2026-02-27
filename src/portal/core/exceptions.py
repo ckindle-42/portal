@@ -69,26 +69,6 @@ class PortalError(Exception):
             'details': self.details
         }
 
-    def user_message(self) -> str:
-        """Get user-friendly error message based on error code"""
-        code_messages = {
-            ErrorCode.VALIDATION_ERROR: "Invalid input provided",
-            ErrorCode.INVALID_PARAMETERS: "Invalid parameters",
-            ErrorCode.UNAUTHORIZED: "Authentication required",
-            ErrorCode.POLICY_VIOLATION: "Security policy violation",
-            ErrorCode.RATE_LIMIT_EXCEEDED: "Rate limit exceeded. Please try again later",
-            ErrorCode.FORBIDDEN: "Access forbidden",
-            ErrorCode.MODEL_NOT_AVAILABLE: "AI model not available",
-            ErrorCode.MODEL_BUSY: "Model is busy. Please try again",
-            ErrorCode.BACKEND_UNAVAILABLE: "AI backend unavailable",
-            ErrorCode.TOOL_EXECUTION_FAILED: "Tool execution failed",
-            ErrorCode.PROCESSING_FAILED: "Processing failed",
-            ErrorCode.TIMEOUT: "Request timed out",
-            ErrorCode.INTERNAL_ERROR: "Internal server error",
-            ErrorCode.DATABASE_ERROR: "Database error",
-            ErrorCode.CONFIGURATION_ERROR: "Configuration error",
-        }
-        return f"Error {self.error_code}: {code_messages.get(self.error_code, self.message)}"
 
 
 class PolicyViolationError(PortalError):

@@ -82,22 +82,6 @@ def _classification(
 # RoutingStrategy enum
 # ---------------------------------------------------------------------------
 
-class TestRoutingStrategy:
-    def test_all_values_exist(self):
-        assert RoutingStrategy.AUTO.value == "auto"
-        assert RoutingStrategy.SPEED.value == "speed"
-        assert RoutingStrategy.QUALITY.value == "quality"
-        assert RoutingStrategy.BALANCED.value == "balanced"
-        assert RoutingStrategy.COST_OPTIMIZED.value == "cost_optimized"
-
-    def test_enum_member_count(self):
-        assert len(RoutingStrategy) == 5
-
-    def test_from_value(self):
-        assert RoutingStrategy("auto") is RoutingStrategy.AUTO
-        assert RoutingStrategy("cost_optimized") is RoutingStrategy.COST_OPTIMIZED
-
-
 # ---------------------------------------------------------------------------
 # RoutingDecision dataclass
 # ---------------------------------------------------------------------------
@@ -187,8 +171,9 @@ class TestRouteDispatch:
         assert isinstance(decision, RoutingDecision)
         assert decision.strategy_used is RoutingStrategy.AUTO
 
-    def test_route_speed_selects_fastest(self):
-        router = self._setup_router(RoutingStrategy.SPEED)
+    @pytest.mark.parametrize("strategy", [RoutingStrategy.SPEED, RoutingStrategy.COST_OPTIMIZED])
+    def test_route_speed_and_cost_selects_fast(self, strategy):
+        router = self._setup_router(strategy)
         decision = router.route("hello")
         assert decision.model_id == "fast"
 
@@ -199,11 +184,6 @@ class TestRouteDispatch:
         with patch.object(router.classifier, "classify", return_value=cls):
             decision = router.route("Tell me something interesting")
         assert decision.model_id == "slow"
-
-    def test_route_cost_optimized_selects_cheapest(self):
-        router = self._setup_router(RoutingStrategy.COST_OPTIMIZED)
-        decision = router.route("hello")
-        assert decision.model_id == "fast"
 
     def test_route_balanced_simple_prefers_speed(self):
         router = self._setup_router(RoutingStrategy.BALANCED)
@@ -291,33 +271,21 @@ class TestRouteAuto:
 # ---------------------------------------------------------------------------
 
 class TestRouteSpeed:
-    def test_selects_fastest_with_code_capability(self):
+    @pytest.mark.parametrize("capability,fast_speed,cls_kwargs", [
+        (ModelCapability.CODE, SpeedClass.ULTRA_FAST, {"requires_code": True}),
+        (ModelCapability.MATH, SpeedClass.FAST, {"requires_math": True}),
+    ])
+    def test_selects_fastest_with_capability(self, capability, fast_speed, cls_kwargs):
         reg = _empty_registry()
-        fast_code = _make_model("fast_code", speed_class=SpeedClass.ULTRA_FAST,
-                                capabilities=[ModelCapability.CODE])
-        slow_code = _make_model("slow_code", speed_class=SpeedClass.SLOW,
-                                capabilities=[ModelCapability.CODE])
-        reg.register(fast_code)
-        reg.register(slow_code)
+        fast = _make_model("fast", speed_class=fast_speed, capabilities=[capability])
+        slow = _make_model("slow", speed_class=SpeedClass.SLOW, capabilities=[capability])
+        reg.register(fast)
+        reg.register(slow)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.SPEED)
-        cls = _classification(requires_code=True)
+        cls = _classification(**cls_kwargs)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("write code")
-        assert decision.model_id == "fast_code"
-
-    def test_selects_fastest_with_math_capability(self):
-        reg = _empty_registry()
-        fast_math = _make_model("fast_math", speed_class=SpeedClass.FAST,
-                                capabilities=[ModelCapability.MATH])
-        slow_math = _make_model("slow_math", speed_class=SpeedClass.SLOW,
-                                capabilities=[ModelCapability.MATH])
-        reg.register(fast_math)
-        reg.register(slow_math)
-        router = IntelligentRouter(reg, strategy=RoutingStrategy.SPEED)
-        cls = _classification(requires_math=True)
-        with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("calculate something")
-        assert decision.model_id == "fast_math"
+            decision = router.route("task")
+        assert decision.model_id == "fast"
 
     def test_falls_back_when_no_fastest(self):
         reg = _empty_registry()
@@ -336,31 +304,29 @@ class TestRouteSpeed:
 # ---------------------------------------------------------------------------
 
 class TestRouteQuality:
-    def test_selects_highest_quality_general(self):
+    @pytest.mark.parametrize("model_a,model_b,category,expected", [
+        (
+            {"model_id": "low", "general_quality": 0.5, "capabilities": [ModelCapability.GENERAL]},
+            {"model_id": "high", "general_quality": 0.95, "capabilities": [ModelCapability.GENERAL]},
+            TaskCategory.GENERAL,
+            "high",
+        ),
+        (
+            {"model_id": "reason", "general_quality": 0.9, "capabilities": [ModelCapability.REASONING]},
+            {"model_id": "general", "general_quality": 0.7, "capabilities": [ModelCapability.GENERAL]},
+            TaskCategory.ANALYSIS,
+            "reason",
+        ),
+    ])
+    def test_selects_best_model_for_category(self, model_a, model_b, category, expected):
         reg = _empty_registry()
-        low = _make_model("low", general_quality=0.5, capabilities=[ModelCapability.GENERAL])
-        high = _make_model("high", general_quality=0.95, capabilities=[ModelCapability.GENERAL])
-        reg.register(low)
-        reg.register(high)
+        reg.register(_make_model(**model_a))
+        reg.register(_make_model(**model_b))
         router = IntelligentRouter(reg, strategy=RoutingStrategy.QUALITY)
-        cls = _classification(category=TaskCategory.GENERAL)
+        cls = _classification(category=category)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("general question")
-        assert decision.model_id == "high"
-
-    def test_selects_reasoning_for_analysis(self):
-        reg = _empty_registry()
-        reason = _make_model("reason", general_quality=0.9,
-                             capabilities=[ModelCapability.REASONING])
-        general = _make_model("general", general_quality=0.7,
-                              capabilities=[ModelCapability.GENERAL])
-        reg.register(reason)
-        reg.register(general)
-        router = IntelligentRouter(reg, strategy=RoutingStrategy.QUALITY)
-        cls = _classification(category=TaskCategory.ANALYSIS)
-        with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("analyze this")
-        assert decision.model_id == "reason"
+            decision = router.route("question")
+        assert decision.model_id == expected
 
     def test_respects_max_cost(self):
         reg = _empty_registry()

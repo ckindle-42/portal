@@ -40,8 +40,8 @@ from portal.core.exceptions import (
     RateLimitError,
     ValidationError,
 )
+from portal.core.interfaces.agent_interface import BaseInterface
 from portal.core.types import IncomingMessage, InterfaceType, ProcessingResult
-from portal.interfaces.base import BaseInterface
 from portal.observability.runtime_metrics import (
     TOKENS_PER_SECOND,
     TTFT_MS,

@@ -5,6 +5,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.3.4] — 2026-02-27 — Codebase Shrink & Optimization
+
+### Summary
+
+Dead-code removal, test consolidation, nesting reduction, and one bug fix. No new features or architectural changes. All removals were evidence-verified via import tracing before deletion.
+
+**Metrics**: ~500 src LOC removed, ~40 test LOC net reduction, 0 lint errors.
+
+### Removed
+
+- Unused core dependencies: `tiktoken`, `tenacity`, `rich`, `python-jose`
+- Stale documentation: `PULL_REQUEST.md`, `docs/ACTION_PROMPT_FOR_CODING_AGENT.md`, `docs/CODE_REVIEW_SUMMARY.md`, `docs/implementation_plan.md`
+- `src/portal/interfaces/base.py` re-export shim; both consumers (`slack/interface.py`, `web/server.py`) updated to import directly from `portal.core.interfaces.agent_interface`
+- Uncalled methods: `PortalError.user_message()`, `BaseTool.safe_execute()`, `TraceContext.get_current_trace_id()`, `ModelRegistry.get_models_by_capability()`, `RateLimiter.get_remaining()`
+- `ToolExecutionStats` dataclass and `tool_stats` tracking dict from `ToolRegistry`; five uncalled methods removed: `record_execution()`, `get_tool_stats()`, `get_all_stats()`, `get_failed_tools()`, `get_tools_by_category()`
+- Dead Jupyter scaffolding from `session_manager.py`: `_init_jupyter_session()`, `_execute_jupyter()`, and all `elif backend == "jupyter"` branches
+- Trivial/structural tests: `test_hitl_import_guard.py`, enum member-count tests, `hasattr`-only structural tests, and duplicate coverage consolidated into primary test files
+
+### Fixed
+
+- Unbounded `_seen_users` growth in `runtime_metrics.py` — set now capped at 10,000 entries via `_MAX_SEEN_USERS` guard
+
+### Refactored
+
+- Dispatch tables replace `if/elif` chains in `word_processor.py`, `powerpoint_processor.py`, `document_metadata_extractor.py`
+- Extracted helpers to reduce nesting: `_rerank_with_embeddings()` from `knowledge_base_sqlite._search()`, `_detect_category()` from `task_classifier.classify()`, `_attempt_recovery()` from `watchdog._check_component()`
+- `BaseTool.validate_parameters()` uses `_TYPE_VALIDATORS`/`_TYPE_MESSAGES` class dicts instead of `if/elif` chain
+- `ToolRegistry.get_tool()` return type tightened from `Any | None` to `BaseTool | None`
+- Consolidated test files: security edge-cases → `test_security.py`; MCP context preservation → `test_mcp_tool_loop.py`; pickle gating → `test_mcp_registry.py`
+- Parametrized repetitive tests in `test_intelligent_router.py`, `test_model_backends_comprehensive.py`, `test_watchdog.py`
+
+### Documentation
+
+- Removed internal review tags (`QUAL-3`, `ARCH-3`) from `ARCHITECTURE.md`
+- Updated README hardware table entry to "Apple M4 Mac Mini Pro (64–128GB)"
+
+---
+
 ## [Unreleased] — 2026-02-27 — Security Hardening & Reliability
 
 ### Summary

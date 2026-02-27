@@ -335,30 +335,7 @@ class EnhancedKnowledgeTool(BaseTool):
 
                 # If embeddings available, rerank using similarity
                 if EMBEDDINGS_AVAILABLE and fts_results:
-                    query_embedding = self._generate_embedding(query)
-                    if query_embedding:
-                        query_vec = self._deserialize_embedding(query_embedding)
-
-                        # Calculate similarities
-                        results_with_scores = []
-                        for row in fts_results:
-                            cursor.execute("SELECT embedding FROM documents WHERE id = ?", (row['id'],))
-                            embedding_row = cursor.fetchone()
-
-                            if embedding_row and embedding_row['embedding']:
-                                doc_vec = self._deserialize_embedding(embedding_row['embedding'])
-                                if doc_vec is not None:
-                                    # Cosine similarity
-                                    similarity = np.dot(doc_vec, query_vec) / (
-                                        np.linalg.norm(doc_vec) * np.linalg.norm(query_vec)
-                                    )
-                                    results_with_scores.append((row, similarity))
-
-                        # Sort by similarity and take top results
-                        results_with_scores.sort(key=lambda x: x[1], reverse=True)
-                        final_results = [row for row, _ in results_with_scores[:limit]]
-                    else:
-                        final_results = fts_results[:limit]
+                    final_results = self._rerank_with_embeddings(fts_results, query, limit, cursor)
                 else:
                     final_results = fts_results[:limit]
 
@@ -385,6 +362,26 @@ class EnhancedKnowledgeTool(BaseTool):
         except Exception as e:
             logger.error("Search failed: %s", e)
             return self._error_response(f"Search error: {e}")
+
+    def _rerank_with_embeddings(self, fts_results: list, query: str, limit: int, cursor) -> list:
+        """Rerank FTS results by cosine similarity to the query embedding."""
+        query_embedding = self._generate_embedding(query)
+        if not query_embedding:
+            return fts_results[:limit]
+        query_vec = self._deserialize_embedding(query_embedding)
+        results_with_scores = []
+        for row in fts_results:
+            cursor.execute("SELECT embedding FROM documents WHERE id = ?", (row['id'],))
+            embedding_row = cursor.fetchone()
+            if embedding_row and embedding_row['embedding']:
+                doc_vec = self._deserialize_embedding(embedding_row['embedding'])
+                if doc_vec is not None:
+                    similarity = np.dot(doc_vec, query_vec) / (
+                        np.linalg.norm(doc_vec) * np.linalg.norm(query_vec)
+                    )
+                    results_with_scores.append((row, similarity))
+        results_with_scores.sort(key=lambda x: x[1], reverse=True)
+        return [row for row, _ in results_with_scores[:limit]]
 
     async def _list_documents(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """List all documents"""

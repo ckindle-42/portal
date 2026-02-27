@@ -141,19 +141,15 @@ class TestOllamaGenerate:
         assert result.success and result.text == "Hello!" and result.tokens_generated == 10
 
     @pytest.mark.asyncio
-    async def test_http_error(self):
+    @pytest.mark.parametrize("patch_kwargs,expected_error", [
+        ({"return_value": _FakeSession(_FakeResponse(500, text_data="Error"))}, "500"),
+        ({"side_effect": ConnectionError("refused")}, "refused"),
+    ])
+    async def test_generate_failure(self, patch_kwargs, expected_error):
         backend = OllamaBackend()
-        fake_resp = _FakeResponse(500, text_data="Error")
-        with patch.object(backend, "_get_session", return_value=_FakeSession(fake_resp)):
+        with patch.object(backend, "_get_session", **patch_kwargs):
             result = await backend.generate("hi", "test-model")
-        assert not result.success and "500" in result.error
-
-    @pytest.mark.asyncio
-    async def test_exception_returns_failure(self):
-        backend = OllamaBackend()
-        with patch.object(backend, "_get_session", side_effect=ConnectionError("refused")):
-            result = await backend.generate("hi", "test-model")
-        assert not result.success and "refused" in result.error
+        assert not result.success and expected_error in result.error
 
     @pytest.mark.asyncio
     async def test_tool_calls_normalized(self):
@@ -228,18 +224,15 @@ class TestLMStudioGenerate:
         assert result.success and result.text == "Hi!" and result.tokens_generated == 5
 
     @pytest.mark.asyncio
-    async def test_http_error(self):
+    @pytest.mark.parametrize("patch_kwargs,expected_error", [
+        ({"return_value": _FakeSession(_FakeResponse(503, text_data="OL"))}, "503"),
+        ({"side_effect": TimeoutError("timeout")}, "timeout"),
+    ])
+    async def test_generate_failure(self, patch_kwargs, expected_error):
         backend = LMStudioBackend()
-        with patch.object(backend, "_get_session", return_value=_FakeSession(_FakeResponse(503, text_data="OL"))):
+        with patch.object(backend, "_get_session", **patch_kwargs):
             result = await backend.generate("hello", "lm-model")
-        assert not result.success and "503" in result.error
-
-    @pytest.mark.asyncio
-    async def test_exception_returns_failure(self):
-        backend = LMStudioBackend()
-        with patch.object(backend, "_get_session", side_effect=TimeoutError("timeout")):
-            result = await backend.generate("hello", "lm-model")
-        assert not result.success and "timeout" in result.error
+        assert not result.success and expected_error in result.error
 
 
 class TestLMStudioStream:
