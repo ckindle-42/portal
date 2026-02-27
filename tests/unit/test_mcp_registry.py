@@ -6,6 +6,7 @@ Uses unittest.mock to avoid real network calls.
 
 from __future__ import annotations
 
+import pickle
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -257,3 +258,59 @@ class TestMCPRegistryRetryLogic:
         assert result.status_code == 200
         assert len(attempts) == 2
         await registry.close()
+
+
+# ---------------------------------------------------------------------------
+# Pickle deserialization gating (merged from test_pickle_gating.py)
+# ---------------------------------------------------------------------------
+
+
+class TestPickleGating:
+    """Verify KnowledgeBaseSQLite pickle deserialization security gate."""
+
+    def _make_instance(self):
+        """Create an EnhancedKnowledgeTool instance (no DB needed for unit test)."""
+        import unittest.mock as mock
+
+        from portal.tools.knowledge.knowledge_base_sqlite import EnhancedKnowledgeTool
+        with mock.patch("sqlite3.connect"):
+            inst = EnhancedKnowledgeTool.__new__(EnhancedKnowledgeTool)
+            inst.conn = None
+            inst.db_path = ":memory:"
+        return inst
+
+    def _pickle_blob(self, arr) -> bytes:
+        return pickle.dumps(arr)
+
+    def test_default_returns_none_for_pickle_blob(self, monkeypatch):
+        """Without the env flag, pickle blobs must return None."""
+        np = pytest.importorskip("numpy")
+        monkeypatch.delenv("ALLOW_LEGACY_PICKLE_EMBEDDINGS", raising=False)
+        result = self._make_instance()._deserialize_embedding(self._pickle_blob(np.array([0.1, 0.2, 0.3])))
+        assert result is None
+
+    def test_flag_false_returns_none(self, monkeypatch):
+        np = pytest.importorskip("numpy")
+        monkeypatch.setenv("ALLOW_LEGACY_PICKLE_EMBEDDINGS", "false")
+        result = self._make_instance()._deserialize_embedding(self._pickle_blob(np.array([0.1, 0.2, 0.3])))
+        assert result is None
+
+    @pytest.mark.parametrize("flag_value", ["true", "1", "yes"])
+    def test_flag_enabled_loads_correctly(self, monkeypatch, flag_value):
+        np = pytest.importorskip("numpy")
+        monkeypatch.setenv("ALLOW_LEGACY_PICKLE_EMBEDDINGS", flag_value)
+        arr = np.array([1.0, 2.0, 3.0])
+        result = self._make_instance()._deserialize_embedding(self._pickle_blob(arr))
+        assert result is not None
+        np.testing.assert_allclose(result, arr)
+
+    def test_json_blob_always_works(self, monkeypatch):
+        import json
+
+        np = pytest.importorskip("numpy")
+        monkeypatch.delenv("ALLOW_LEGACY_PICKLE_EMBEDDINGS", raising=False)
+        arr = np.array([0.5, 0.6, 0.7])
+        json_blob = json.dumps(arr.tolist()).encode("utf-8")
+        result = self._make_instance()._deserialize_embedding(json_blob)
+        assert result is not None
+        np.testing.assert_allclose(result, arr)
