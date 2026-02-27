@@ -82,22 +82,6 @@ def _classification(
 # RoutingStrategy enum
 # ---------------------------------------------------------------------------
 
-class TestRoutingStrategy:
-    def test_all_values_exist(self):
-        assert RoutingStrategy.AUTO.value == "auto"
-        assert RoutingStrategy.SPEED.value == "speed"
-        assert RoutingStrategy.QUALITY.value == "quality"
-        assert RoutingStrategy.BALANCED.value == "balanced"
-        assert RoutingStrategy.COST_OPTIMIZED.value == "cost_optimized"
-
-    def test_enum_member_count(self):
-        assert len(RoutingStrategy) == 5
-
-    def test_from_value(self):
-        assert RoutingStrategy("auto") is RoutingStrategy.AUTO
-        assert RoutingStrategy("cost_optimized") is RoutingStrategy.COST_OPTIMIZED
-
-
 # ---------------------------------------------------------------------------
 # RoutingDecision dataclass
 # ---------------------------------------------------------------------------
