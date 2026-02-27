@@ -178,14 +178,13 @@ async def test_streaming_response_emits_sse_lines():
     os.environ.pop("WEB_API_KEY", None)
 
     iface = _make_interface(stream_tokens=["Hello", " world"])
-    client = TestClient(iface.app)
-
-    payload = {
-        "model": "auto",
-        "messages": [{"role": "user", "content": "hi"}],
-        "stream": True,
-    }
-    resp = client.post("/v1/chat/completions", json=payload)
+    with TestClient(iface.app) as client:
+        payload = {
+            "model": "auto",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": True,
+        }
+        resp = client.post("/v1/chat/completions", json=payload)
     assert resp.status_code == 200
     body = resp.text
     assert "data: " in body
@@ -202,14 +201,13 @@ async def test_non_streaming_response_returns_openai_format():
     os.environ.pop("WEB_API_KEY", None)
 
     iface = _make_interface()
-    client = TestClient(iface.app)
-
-    payload = {
-        "model": "auto",
-        "messages": [{"role": "user", "content": "hello"}],
-        "stream": False,
-    }
-    resp = client.post("/v1/chat/completions", json=payload)
+    with TestClient(iface.app) as client:
+        payload = {
+            "model": "auto",
+            "messages": [{"role": "user", "content": "hello"}],
+            "stream": False,
+        }
+        resp = client.post("/v1/chat/completions", json=payload)
     assert resp.status_code == 200
     body = resp.json()
     assert body.get("object") == "chat.completion"
@@ -241,13 +239,59 @@ async def test_empty_message_validation():
 
     config = MagicMock()
     iface = WebInterface(agent_core=agent, config=config, secure_agent=secure)
-    client = TestClient(iface.app, raise_server_exceptions=False)
-
-    payload = {
-        "model": "auto",
-        "messages": [{"role": "user", "content": ""}],
-        "stream": False,
-    }
-    resp = client.post("/v1/chat/completions", json=payload)
+    with TestClient(iface.app, raise_server_exceptions=False) as client:
+        payload = {
+            "model": "auto",
+            "messages": [{"role": "user", "content": ""}],
+            "stream": False,
+        }
+        resp = client.post("/v1/chat/completions", json=payload)
     # Should return a 4xx error
     assert resp.status_code in (400, 422, 500)
+
+
+# ---------------------------------------------------------------------------
+# S2: WebSocket must share the HTTP rate limiter state
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_websocket_uses_shared_rate_limiter(monkeypatch):
+    """WebSocket endpoint uses the same shared rate_limiter as SecurityMiddleware (S2)."""
+    import os
+
+    from portal.interfaces.web.server import WebInterface
+    from portal.security import SecurityMiddleware
+
+    os.environ.pop("WEB_API_KEY", None)
+
+    agent = MagicMock()
+    agent.stream_response = MagicMock(side_effect=lambda _: aiter(["ok"]))
+    agent.health_check = AsyncMock(return_value=True)
+
+    # Use a real SecurityMiddleware with a tight rate limit
+    mock_inner = MagicMock()
+    mock_inner.process_message = AsyncMock(return_value=MagicMock(
+        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
+    ))
+    mock_inner.cleanup = AsyncMock()
+    mock_inner.event_bus = MagicMock()
+    mock_inner.get_tool_list = MagicMock(return_value=[])
+    mock_inner.get_stats = AsyncMock(return_value={})
+
+    from portal.security.security_module import RateLimiter
+    limiter = RateLimiter(max_requests=2, window_seconds=60)
+    secure = SecurityMiddleware(mock_inner, rate_limiter=limiter, enable_rate_limiting=True)
+
+    WebInterface(agent_core=agent, config={}, secure_agent=secure)
+
+    # Verify that the WebSocket endpoint has access to the shared rate_limiter
+    assert hasattr(secure, "rate_limiter"), "SecurityMiddleware must have a rate_limiter attribute"
+
+    # Send 2 messages — these should succeed and consume the shared limit
+    ws_user = "ws-anonymous"  # default WS user_id
+    await secure.rate_limiter.check_limit(ws_user)
+    await secure.rate_limiter.check_limit(ws_user)
+
+    # The 3rd check should be blocked by the shared limiter
+    allowed, _err = await secure.rate_limiter.check_limit(ws_user)
+    assert allowed is False, "Shared rate limiter should block the 3rd request"

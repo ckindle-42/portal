@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+from portal import __version__
 from portal.agent.dispatcher import CentralDispatcher
 from portal.core.exceptions import (
     ModelNotAvailableError,
@@ -48,8 +49,13 @@ from portal.observability.runtime_metrics import (
     set_memory_stats,
 )
 from portal.security.auth import UserStore
+from portal.security.middleware import SecurityMiddleware
 
 logger = logging.getLogger(__name__)
+
+# Maximum audio upload size (configurable via env var, default 25 MB)
+_MAX_AUDIO_BYTES = int(os.getenv("PORTAL_MAX_AUDIO_MB", "25")) * 1024 * 1024
+
 
 class ChatMessage(BaseModel):
     role: str
@@ -80,7 +86,10 @@ def _bool_env(name: str, default: bool = False) -> bool:
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
+        # Echo or generate a request ID for distributed tracing
+        request_id = request.headers.get("X-Request-Id", str(uuid.uuid4())[:8])
         response = await call_next(request)
+        response.headers["X-Request-Id"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -103,6 +112,8 @@ class WebInterface(BaseInterface):
         self.config = config
         self.user_store = UserStore()
         self._server = None
+        # Shared HTTP client for Ollama/Whisper calls (avoids per-request connection overhead)
+        self._ollama_client: httpx.AsyncClient | None = None
         self.app = self._build_app()
 
     def _extract_user_id(self, request: Request) -> str:
@@ -144,6 +155,9 @@ class WebInterface(BaseInterface):
         @asynccontextmanager
         async def lifespan(app: FastAPI):
             """Async lifespan: warm up AgentCore in the background so startup is non-blocking."""
+            # Initialize shared HTTP client
+            self._ollama_client = httpx.AsyncClient(timeout=60.0)
+
             async def _warmup() -> None:
                 try:
                     if hasattr(self.agent_core, "health_check"):
@@ -158,8 +172,10 @@ class WebInterface(BaseInterface):
                 yield
             finally:
                 warmup_task.cancel()
+                if self._ollama_client is not None:
+                    await self._ollama_client.aclose()
 
-        app = FastAPI(title="Portal Web Interface", version="1.3.3", lifespan=lifespan)
+        app = FastAPI(title="Portal Web Interface", version=__version__, lifespan=lifespan)
         self._register_exception_handlers(app)
         self._register_middleware(app)
         self._register_routes(app, _agent_ready)
@@ -206,13 +222,21 @@ class WebInterface(BaseInterface):
         )
 
     def _register_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
-        self._register_chat_routes(app)
+        self._register_chat_routes(app, _agent_ready)
         self._register_utility_routes(app, _agent_ready)
         self._register_websocket_route(app)
 
-    def _register_chat_routes(self, app: FastAPI) -> None:
+    def _register_chat_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
         @app.post("/v1/chat/completions")
         async def chat_completions(payload: ChatCompletionRequest, request: Request, auth=Depends(self._auth_context)):
+            # Readiness gate: return 503 while agent is still warming up
+            if not _agent_ready.is_set():
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": {"message": "Portal is starting up. Please retry in a few seconds.", "type": "server_error"}},
+                    headers={"Retry-After": "5"},
+                )
+
             user_id = auth["user_id"]
             mark_request(user_id)
 
@@ -232,6 +256,16 @@ class WebInterface(BaseInterface):
             )
 
             if payload.stream:
+                # Security gate for streaming path — mirrors process_message() in SecurityMiddleware
+                if isinstance(self.secure_agent, SecurityMiddleware):
+                    from portal.security.security_module import InputSanitizer
+                    _sanitizer = InputSanitizer()
+                    _sanitized, _warnings = _sanitizer.sanitize_command(str(last_user_msg))
+                    if any("Dangerous pattern detected" in w for w in _warnings):
+                        raise ValidationError("Message blocked by security policy")
+                    _allowed, _err = await self.secure_agent.rate_limiter.check_limit(user_id)
+                    if not _allowed:
+                        raise RateLimitError(_err or "Rate limit exceeded", retry_after=60)
                 return StreamingResponse(
                     self._stream_response(incoming, selected_model, user_id),
                     media_type="text/event-stream",
@@ -254,19 +288,25 @@ class WebInterface(BaseInterface):
 
         @app.post("/v1/audio/transcriptions")
         async def audio_transcriptions(file: UploadFile = File(...), auth=Depends(self._auth_context)):
-            data = await file.read()
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                files = {"audio_file": (file.filename or "audio.wav", data, file.content_type or "application/octet-stream")}
-                resp = await client.post(os.getenv("WHISPER_URL", "http://localhost:10300/inference"), files=files)
-                out = resp.json()
+            # Read with size limit to prevent memory exhaustion (S4)
+            data = await file.read(_MAX_AUDIO_BYTES + 1)
+            if len(data) > _MAX_AUDIO_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Audio file exceeds {_MAX_AUDIO_BYTES // (1024 * 1024)}MB limit",
+                )
+            client = self._ollama_client or httpx.AsyncClient(timeout=60.0)
+            files = {"audio_file": (file.filename or "audio.wav", data, file.content_type or "application/octet-stream")}
+            resp = await client.post(os.getenv("WHISPER_URL", "http://localhost:10300/inference"), files=files)
+            out = resp.json()
             return {"text": out.get("text", "")}
 
         @app.get("/v1/models")
         async def list_models(auth=Depends(self._auth_context)):
             try:
-                async with httpx.AsyncClient(timeout=3.0) as client:
-                    resp = await client.get(f"{os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/tags")
-                    data = resp.json()
+                client = self._ollama_client or httpx.AsyncClient(timeout=3.0)
+                resp = await client.get(f"{os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/tags")
+                data = resp.json()
                 return {
                     "object": "list",
                     "data": [
@@ -339,6 +379,15 @@ class WebInterface(BaseInterface):
                     return
             await websocket.accept()
 
+            # Use shared rate limiter if available (S2: share state with HTTP rate limiter)
+            shared_rate_limiter = (
+                self.secure_agent.rate_limiter
+                if isinstance(self.secure_agent, SecurityMiddleware)
+                else None
+            )
+            ws_user_id = websocket.query_params.get("user_id", "ws-anonymous")
+
+            # Fallback per-connection rate limiter (used only when no shared limiter is present)
             ws_rate_limit = int(os.getenv("WS_RATE_LIMIT", "10"))
             ws_rate_window = float(os.getenv("WS_RATE_WINDOW", "60"))
             message_timestamps: list[float] = []
@@ -346,15 +395,23 @@ class WebInterface(BaseInterface):
             try:
                 while True:
                     data = await websocket.receive_json()
-                    now = time.time()
-                    message_timestamps = [ts for ts in message_timestamps if now - ts < ws_rate_window]
-                    if len(message_timestamps) >= ws_rate_limit:
-                        await websocket.send_json({
-                            "error": f"Rate limit exceeded ({ws_rate_limit} messages per {int(ws_rate_window)}s). Please wait.",
-                            "done": True,
-                        })
-                        continue
-                    message_timestamps.append(now)
+
+                    # Rate limiting: prefer shared limiter to prevent bypass via reconnect
+                    if shared_rate_limiter is not None:
+                        allowed, error_msg = await shared_rate_limiter.check_limit(ws_user_id)
+                        if not allowed:
+                            await websocket.send_json({"error": error_msg, "done": True})
+                            continue
+                    else:
+                        now = time.time()
+                        message_timestamps = [ts for ts in message_timestamps if now - ts < ws_rate_window]
+                        if len(message_timestamps) >= ws_rate_limit:
+                            await websocket.send_json({
+                                "error": f"Rate limit exceeded ({ws_rate_limit} messages per {int(ws_rate_window)}s). Please wait.",
+                                "done": True,
+                            })
+                            continue
+                        message_timestamps.append(now)
 
                     raw_text = data.get("message", "")
                     sanitized_text, warnings = sanitizer.sanitize_command(raw_text)
@@ -409,7 +466,19 @@ class WebInterface(BaseInterface):
             }
             yield f"data: {json.dumps(error_chunk)}\n\n"
 
-        final = {"id": chunk_id, "object": "chat.completion.chunk", "created": created, "model": model, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+        # Final chunk includes usage data for token accounting in clients (E1)
+        final = {
+            "id": chunk_id,
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+            "usage": {
+                "prompt_tokens": 0,  # not available during streaming
+                "completion_tokens": token_count,
+                "total_tokens": token_count,
+            },
+        }
         yield f"data: {json.dumps(final)}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -460,7 +529,6 @@ def create_app(agent_core=None, config: dict | None = None, secure_agent=None) -
         config = cfg
 
     if secure_agent is None:
-        from portal.security import SecurityMiddleware
         secure_agent = SecurityMiddleware(
             agent_core,
             enable_rate_limiting=True,

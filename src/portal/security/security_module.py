@@ -43,8 +43,8 @@ class RateLimiter:
             wait_time = int(user_requests[0] + self.window - now)
 
             logger.warning(
-                f"Rate limit exceeded for user {user_id} "
-                f"({len(user_requests)}/{self.max_requests} requests)"
+                "Rate limit exceeded for user %s (%d/%d requests)",
+                user_id, len(user_requests), self.max_requests,
             )
 
             self._dirty = True

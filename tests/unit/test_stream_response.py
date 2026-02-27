@@ -1,5 +1,7 @@
-"""Tests for AgentCore.stream_response()"""
+"""Tests for AgentCore.stream_response() and WebInterface._stream_response() SSE output."""
 
+import json
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -137,3 +139,110 @@ async def test_stream_response_does_not_save_empty_response():
         if call.kwargs.get('role') == 'assistant'
     ]
     assert len(assistant_saves) == 0
+
+
+# ---------------------------------------------------------------------------
+# E1: SSE usage block in final streaming chunk
+# ---------------------------------------------------------------------------
+
+
+async def _aiter(items):
+    for item in items:
+        yield item
+
+
+class TestSSEUsageBlock:
+    """E1: The final SSE chunk must include a 'usage' field with completion_tokens."""
+
+    @pytest.mark.asyncio
+    async def test_final_chunk_contains_usage(self) -> None:
+        """WebInterface._stream_response must emit a final chunk with usage data."""
+        os.environ.pop("WEB_API_KEY", None)
+
+        from fastapi.testclient import TestClient
+
+        from portal.interfaces.web.server import WebInterface
+
+        agent = MagicMock()
+        agent.stream_response = MagicMock(side_effect=lambda _: _aiter(["Hello", " world"]))
+        agent.health_check = AsyncMock(return_value=True)
+
+        secure = MagicMock()
+        secure.process_message = AsyncMock(return_value=MagicMock(
+            response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
+        ))
+        del secure.rate_limiter  # ensure no rate_limiter attribute
+
+        iface = WebInterface(agent_core=agent, config={}, secure_agent=secure)
+
+        with TestClient(iface.app) as client:
+            payload = {
+                "model": "auto",
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": True,
+            }
+            resp = client.post("/v1/chat/completions", json=payload)
+
+        assert resp.status_code == 200
+
+        # Parse all SSE lines
+        chunks = []
+        for line in resp.text.splitlines():
+            if line.startswith("data: ") and line != "data: [DONE]":
+                try:
+                    chunks.append(json.loads(line[6:]))
+                except json.JSONDecodeError:
+                    pass
+
+        # The final data chunk (last before [DONE]) must have a "usage" key
+        assert len(chunks) >= 1
+        final_chunk = chunks[-1]
+        assert "usage" in final_chunk, f"Final chunk missing 'usage': {final_chunk}"
+        usage = final_chunk["usage"]
+        assert "completion_tokens" in usage
+        assert "total_tokens" in usage
+        assert usage["completion_tokens"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_usage_token_count_matches_yielded_tokens(self) -> None:
+        """completion_tokens in usage block should equal the number of tokens streamed."""
+        os.environ.pop("WEB_API_KEY", None)
+
+        from fastapi.testclient import TestClient
+
+        from portal.interfaces.web.server import WebInterface
+
+        tokens = ["tok1", "tok2", "tok3"]
+        agent = MagicMock()
+        agent.stream_response = MagicMock(side_effect=lambda _: _aiter(tokens))
+        agent.health_check = AsyncMock(return_value=True)
+
+        secure = MagicMock()
+        secure.process_message = AsyncMock(return_value=MagicMock(
+            response="ok", model_used="auto", prompt_tokens=0, completion_tokens=3,
+        ))
+        del secure.rate_limiter
+
+        iface = WebInterface(agent_core=agent, config={}, secure_agent=secure)
+
+        with TestClient(iface.app) as client:
+            payload = {
+                "model": "auto",
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": True,
+            }
+            resp = client.post("/v1/chat/completions", json=payload)
+
+        assert resp.status_code == 200
+
+        chunks = []
+        for line in resp.text.splitlines():
+            if line.startswith("data: ") and line != "data: [DONE]":
+                try:
+                    chunks.append(json.loads(line[6:]))
+                except json.JSONDecodeError:
+                    pass
+
+        final_chunk = chunks[-1]
+        assert "usage" in final_chunk
+        assert final_chunk["usage"]["completion_tokens"] == len(tokens)
