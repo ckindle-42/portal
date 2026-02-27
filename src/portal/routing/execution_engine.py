@@ -298,17 +298,6 @@ class ExecutionEngine:
         logger.error("No models available for streaming")
         return
 
-    async def execute_parallel(self, queries: list[str],
-                              system_prompt: str | None = None) -> list[ExecutionResult]:
-        """Execute multiple queries in parallel"""
-
-        tasks = [
-            self.execute(query, system_prompt)
-            for query in queries
-        ]
-
-        return await asyncio.gather(*tasks, return_exceptions=True)
-
     async def close(self) -> None:
         """Close all backends"""
         for backend in self.backends.values():

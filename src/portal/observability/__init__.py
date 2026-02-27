@@ -41,8 +41,6 @@ from .health import (
     HealthCheckResult,
     HealthCheckSystem,
     HealthStatus,
-    JobQueueHealthCheck,
-    WorkerPoolHealthCheck,
     register_health_endpoints,
 )
 
@@ -60,8 +58,6 @@ __all__ = [
     'HealthCheckResult',
     'HealthStatus',
     'DatabaseHealthCheck',
-    'JobQueueHealthCheck',
-    'WorkerPoolHealthCheck',
     'register_health_endpoints',
 
     # Config watching

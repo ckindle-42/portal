@@ -104,46 +104,6 @@ class DatabaseHealthCheck(HealthCheckProvider):
                                      datetime.now(tz=UTC).isoformat())
 
 
-class JobQueueHealthCheck(HealthCheckProvider):
-    def __init__(self, job_repository: Any, max_pending: int = 1000) -> None:
-        self.job_repository = job_repository
-        self.max_pending = max_pending
-
-    async def check(self) -> HealthCheckResult:
-        try:
-            stats = await self.job_repository.get_stats()
-            pending = stats.get('status_counts', {}).get('pending', 0)
-            if pending > self.max_pending:
-                return HealthCheckResult(HealthStatus.DEGRADED,
-                                         f"Job queue degraded: {pending} pending jobs",
-                                         datetime.now(tz=UTC).isoformat(), details=stats)
-            return HealthCheckResult(HealthStatus.HEALTHY, "Job queue healthy",
-                                     datetime.now(tz=UTC).isoformat(), details=stats)
-        except Exception as e:
-            return HealthCheckResult(HealthStatus.UNHEALTHY, f"Job queue unhealthy: {e}",
-                                     datetime.now(tz=UTC).isoformat())
-
-
-class WorkerPoolHealthCheck(HealthCheckProvider):
-    def __init__(self, worker_pool: Any) -> None:
-        self.worker_pool = worker_pool
-
-    async def check(self) -> HealthCheckResult:
-        try:
-            if not self.worker_pool.is_running():
-                return HealthCheckResult(HealthStatus.UNHEALTHY, "Worker pool not running",
-                                         datetime.now(tz=UTC).isoformat())
-            stats = self.worker_pool.get_stats()
-            if stats.get('idle_workers', 0) == 0:
-                return HealthCheckResult(HealthStatus.DEGRADED, "All workers busy",
-                                         datetime.now(tz=UTC).isoformat(), details=stats)
-            return HealthCheckResult(HealthStatus.HEALTHY, "Worker pool healthy",
-                                     datetime.now(tz=UTC).isoformat(), details=stats)
-        except Exception as e:
-            return HealthCheckResult(HealthStatus.UNHEALTHY, f"Worker pool unhealthy: {e}",
-                                     datetime.now(tz=UTC).isoformat())
-
-
 def register_health_endpoints(app, health_system: HealthCheckSystem) -> None:
     """Register /health, /health/live, /health/ready endpoints with a FastAPI app."""
 

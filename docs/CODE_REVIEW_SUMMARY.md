@@ -1,5 +1,10 @@
 # Code Review & Modernization Summary – portal (Target: 10/10)
 
+> **Historical artifact** — recorded 2026-02-26 (v1.3.3 release). Metrics here
+> reflect the state after that session; current test counts and file counts have
+> changed in the 2026-02-27 shrink session. See `CHANGELOG.md` for up-to-date
+> metrics.
+
 **Date**: 2026-02-26
 **Version**: 1.3.2 → 1.3.3
 **Reviewer**: Elite Code Review & Modernization Agent
@@ -41,8 +46,7 @@ src/portal/
 ├── interfaces/     # Web (FastAPI), Telegram, Slack
 ├── memory/         # MemoryManager
 ├── middleware/      # HITL approval, tool confirmation
-├── observability/   # Health, metrics, watchdog, log rotation, tracer
-├── persistence/    # SQLite repositories
+├── observability/   # Health, metrics, watchdog, log rotation
 ├── protocols/mcp/  # MCP registry
 ├── routing/        # Router, execution engine, model backends
 ├── security/       # Auth, sandbox, middleware

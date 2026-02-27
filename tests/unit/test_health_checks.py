@@ -10,8 +10,6 @@ from portal.observability.health import (
     HealthCheckResult,
     HealthCheckSystem,
     HealthStatus,
-    JobQueueHealthCheck,
-    WorkerPoolHealthCheck,
 )
 
 _HCR = HealthCheckResult
@@ -151,59 +149,3 @@ class TestDatabaseHealthCheck:
         assert result.status == HealthStatus.UNHEALTHY and "refused" in result.message
 
 
-class TestJobQueueHealthCheck:
-    @pytest.mark.parametrize("pending,max_p,expected", [
-        (10, 1000, HealthStatus.HEALTHY),
-        (1000, 1000, HealthStatus.HEALTHY),   # at boundary = healthy
-        (1001, 1000, HealthStatus.DEGRADED),  # one over = degraded
-        (1500, 1000, HealthStatus.DEGRADED),
-    ])
-    async def test_queue_status(self, pending, max_p, expected):
-        repo = AsyncMock()
-        repo.get_stats.return_value = {"status_counts": {"pending": pending}}
-        result = await JobQueueHealthCheck(repo, max_pending=max_p).check()
-        assert result.status == expected
-
-    async def test_unhealthy_on_exception(self):
-        repo = AsyncMock()
-        repo.get_stats.side_effect = RuntimeError("queue down")
-        result = await JobQueueHealthCheck(repo).check()
-        assert result.status == HealthStatus.UNHEALTHY
-
-    @pytest.mark.parametrize("stats", [{"status_counts": {}}, {}])
-    async def test_missing_pending_defaults_healthy(self, stats):
-        repo = AsyncMock()
-        repo.get_stats.return_value = stats
-        result = await JobQueueHealthCheck(repo, max_pending=100).check()
-        assert result.status == HealthStatus.HEALTHY
-
-    def test_default_max_pending(self):
-        assert JobQueueHealthCheck(MagicMock()).max_pending == 1000
-
-
-class TestWorkerPoolHealthCheck:
-    async def test_healthy(self):
-        pool = MagicMock()
-        pool.is_running.return_value = True
-        pool.get_stats.return_value = {"idle_workers": 3, "total_workers": 5}
-        result = await WorkerPoolHealthCheck(pool).check()
-        assert result.status == HealthStatus.HEALTHY
-
-    async def test_unhealthy_not_running(self):
-        pool = MagicMock()
-        pool.is_running.return_value = False
-        result = await WorkerPoolHealthCheck(pool).check()
-        assert result.status == HealthStatus.UNHEALTHY and "not running" in result.message.lower()
-
-    async def test_degraded_all_busy(self):
-        pool = MagicMock()
-        pool.is_running.return_value = True
-        pool.get_stats.return_value = {"idle_workers": 0, "total_workers": 4}
-        result = await WorkerPoolHealthCheck(pool).check()
-        assert result.status == HealthStatus.DEGRADED
-
-    async def test_unhealthy_on_exception(self):
-        pool = MagicMock()
-        pool.is_running.side_effect = RuntimeError("exploded")
-        result = await WorkerPoolHealthCheck(pool).check()
-        assert result.status == HealthStatus.UNHEALTHY

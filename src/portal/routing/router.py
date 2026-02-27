@@ -12,6 +12,8 @@ import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
+from portal import __version__
+
 logger = logging.getLogger(__name__)
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
@@ -134,14 +136,14 @@ async def health() -> dict:
                 "ollama": "ok",
                 "model_count": len(models),
                 "default_model": DEFAULT_MODEL,
-                "version": "1.0.0",
+                "version": __version__,
             }
     except Exception as e:
         return {
             "status": "degraded",
             "ollama": f"unreachable: {e}",
             "default_model": DEFAULT_MODEL,
-            "version": "1.0.0",
+            "version": __version__,
         }
 
 

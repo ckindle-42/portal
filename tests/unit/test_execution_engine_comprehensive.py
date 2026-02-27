@@ -224,7 +224,7 @@ class TestGenerateStream:
         engine.backends["ollama"].is_available.return_value = True
         async def failing_stream(**kwargs):
             raise ConnectionError("fail")
-            yield  # noqa: unreachable
+            yield  # noqa: F704
         async def ok_stream(**kwargs):
             yield "ok"
         engine.backends["ollama"].generate_stream = failing_stream
@@ -239,19 +239,6 @@ class TestGenerateStream:
         engine.router.route.return_value = _make_routing_decision("nonexistent")
         tokens = [t async for t in engine.generate_stream("hello")]
         assert tokens == []
-
-
-class TestExecuteParallel:
-    @pytest.mark.asyncio
-    async def test_parallel_execution(self):
-        engine = _build_engine()
-        model = _make_model("m1")
-        engine.registry.register(model)
-        engine.router.route.return_value = _make_routing_decision("m1", model)
-        engine.backends["ollama"].is_available.return_value = True
-        engine.backends["ollama"].generate.return_value = _make_gen_result()
-        results = await engine.execute_parallel(["q1", "q2", "q3"])
-        assert len(results) == 3
 
 
 class TestHealthCheck:

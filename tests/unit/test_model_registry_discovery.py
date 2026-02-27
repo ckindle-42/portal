@@ -7,6 +7,11 @@ import pytest
 from portal.routing.model_registry import ModelCapability, ModelRegistry, SpeedClass
 
 
+def _model_id(ollama_name: str) -> str:
+    """Replicate the model_id derivation used in discover_from_ollama."""
+    return f"ollama_{ollama_name.replace(':', '_').replace('/', '_')}"
+
+
 class TestDiscoverFromOllama:
     @pytest.mark.asyncio
     async def test_registers_new_models(self) -> None:
@@ -80,6 +85,78 @@ class TestDiscoverFromOllama:
 
         assert newly == []
         assert len(registry.models) == initial_count
+
+    @pytest.mark.asyncio
+    async def test_does_not_duplicate_existing_models(self) -> None:
+        """Models already in the registry are not registered twice."""
+        import httpx
+
+        payload = {"models": [{"name": "qwen2.5:7b", "size": 5_000_000_000}]}
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = payload
+        mock_resp.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        registry = ModelRegistry()
+        with patch.object(httpx, "AsyncClient", return_value=mock_client):
+            first = await registry.discover_from_ollama()
+            second = await registry.discover_from_ollama()
+
+        assert len(first) == 1
+        assert len(second) == 0
+
+    @pytest.mark.asyncio
+    async def test_discover_sets_general_capability(self) -> None:
+        """Dynamically discovered models receive GENERAL capability by default."""
+        import httpx
+
+        payload = {"models": [{"name": "test-model:latest", "size": 1_000_000_000}]}
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = payload
+        mock_resp.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        registry = ModelRegistry()
+        with patch.object(httpx, "AsyncClient", return_value=mock_client):
+            await registry.discover_from_ollama()
+
+        mid = _model_id("test-model:latest")
+        model = registry.get_model(mid)
+        assert model is not None
+        assert ModelCapability.GENERAL in model.capabilities
+        assert model.backend == "ollama"
+        assert model.available is True
+
+    @pytest.mark.asyncio
+    async def test_discover_returns_only_new_model_ids(self) -> None:
+        """Return value contains only the newly registered model_ids."""
+        import httpx
+
+        payload = {
+            "models": [
+                {"name": "alpha:latest", "size": 1_000_000_000},
+                {"name": "beta:latest", "size": 2_000_000_000},
+            ]
+        }
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = payload
+        mock_resp.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        registry = ModelRegistry()
+        with patch.object(httpx, "AsyncClient", return_value=mock_client):
+            newly = await registry.discover_from_ollama()
+
+        assert set(newly) == {_model_id("alpha:latest"), _model_id("beta:latest")}
 
 
 class TestModelRegistryQueries:
