@@ -4,36 +4,15 @@ import importlib
 import inspect
 import logging
 import pkgutil
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib import metadata as importlib_metadata
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from portal.core.interfaces.tool import BaseTool
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ToolExecutionStats:
-    """Per-tool execution statistics."""
-
-    total_executions: int = 0
-    successful_executions: int = 0
-    failed_executions: int = 0
-    total_execution_time: float = 0.0
-    last_execution: datetime | None = None
-
-    @property
-    def success_rate(self) -> float:
-        if self.total_executions == 0:
-            return 0.0
-        return self.successful_executions / self.total_executions
-
-    @property
-    def average_execution_time(self) -> float:
-        if self.successful_executions == 0:
-            return 0.0
-        return self.total_execution_time / self.successful_executions
 
 
 class ToolRegistry:
@@ -41,11 +20,6 @@ class ToolRegistry:
 
     def __init__(self) -> None:
         self.tools: dict[str, Any] = {}
-        self.tool_categories: dict[str, list[str]] = {
-            'utility': [], 'data': [], 'web': [], 'audio': [],
-            'dev': [], 'automation': [], 'knowledge': [],
-        }
-        self.tool_stats: dict[str, ToolExecutionStats] = {}
         self.failed_tools: list[dict[str, str]] = []
 
     def discover_and_load(self) -> tuple[int, int]:
@@ -104,10 +78,7 @@ class ToolRegistry:
         self._validate_tool_metadata(tool_instance, class_name, source)
         tool_name = tool_instance.metadata.name
         self.tools[tool_name] = tool_instance
-        self.tool_stats[tool_name] = ToolExecutionStats()
-        category = tool_instance.metadata.category.value
-        self.tool_categories.setdefault(category, []).append(tool_name)
-        logger.info("Loaded tool: %s (%s) from %s", tool_name, category, source)
+        logger.info("Loaded tool: %s (%s) from %s", tool_name, tool_instance.metadata.category.value, source)
 
     def _validate_tool_metadata(self, tool_instance: Any, class_name: str, module_path: str) -> None:
         """Warn on legacy or invalid metadata formats."""
@@ -151,21 +122,17 @@ class ToolRegistry:
             logger.error("Error discovering entry_points: %s", e)
         return loaded, failed
 
-    def get_tool(self, name: str) -> Any | None:
+    def get_tool(self, name: str) -> "BaseTool | None":
         return self.tools.get(name)
 
     def get_all_tools(self) -> list[Any]:
         return list(self.tools.values())
 
-    def get_tools_by_category(self, category: str) -> list[Any]:
-        return [self.tools[n] for n in self.tool_categories.get(category, []) if n in self.tools]
-
     def get_tool_list(self) -> list[dict[str, Any]]:
-        """Return structured metadata + stats for all tools."""
+        """Return structured metadata for all tools."""
         result = []
         for tool in self.tools.values():
             md = tool.metadata
-            stats = self.tool_stats.get(md.name, ToolExecutionStats())
             result.append({
                 'name': md.name,
                 'description': md.description,
@@ -173,50 +140,16 @@ class ToolRegistry:
                 'requires_confirmation': md.requires_confirmation,
                 'version': md.version,
                 'async_capable': md.async_capable,
-                'stats': {
-                    'executions': stats.total_executions,
-                    'success_rate': stats.success_rate,
-                    'avg_time': stats.average_execution_time,
-                },
             })
         return result
 
-    def record_execution(self, tool_name: str, success: bool, execution_time: float) -> None:
-        """Record an execution attempt for stats tracking."""
-        stats = self.tool_stats.setdefault(tool_name, ToolExecutionStats())
-        stats.total_executions += 1
-        stats.last_execution = datetime.now(tz=UTC)
-        if success:
-            stats.successful_executions += 1
-            stats.total_execution_time += execution_time
-        else:
-            stats.failed_executions += 1
-
-    def get_tool_stats(self, tool_name: str) -> ToolExecutionStats | None:
-        return self.tool_stats.get(tool_name)
-
-    def get_all_stats(self) -> dict[str, ToolExecutionStats]:
-        return self.tool_stats.copy()
-
-    def get_failed_tools(self) -> list[dict[str, str]]:
-        return self.failed_tools.copy()
-
     def health_check(self) -> dict[str, Any]:
         """Return health status and degradation indicators."""
-        never_run, high_fail = [], []
-        for tool_name, stats in self.tool_stats.items():
-            if stats.total_executions == 0:
-                never_run.append(tool_name)
-            elif stats.total_executions >= 10 and stats.success_rate < 0.5:
-                high_fail.append({'name': tool_name, 'success_rate': stats.success_rate,
-                                   'executions': stats.total_executions})
-        status = 'degraded' if len(self.failed_tools) > 3 or high_fail else 'healthy'
+        status = 'degraded' if len(self.failed_tools) > 3 else 'healthy'
         return {
             'status': status,
             'total_tools': len(self.tools),
             'failed_loads': len(self.failed_tools),
-            'tools_never_executed': never_run,
-            'tools_high_failure_rate': high_fail,
             'timestamp': datetime.now(tz=UTC).isoformat(),
         }
 

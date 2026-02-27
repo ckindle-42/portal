@@ -27,8 +27,8 @@ from fastapi import HTTPException, Request
 from slack_sdk.web.async_client import AsyncWebClient
 
 from portal.agent.dispatcher import CentralDispatcher
+from portal.core.interfaces.agent_interface import BaseInterface
 from portal.core.types import IncomingMessage
-from portal.interfaces.base import BaseInterface
 
 logger = logging.getLogger(__name__)
 

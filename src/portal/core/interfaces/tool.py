@@ -122,23 +122,3 @@ class BaseTool(ABC):
         response.update(kwargs)
         return response
 
-    async def safe_execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
-        """
-        Execute with validation and error handling
-        """
-        # Validate parameters
-        valid, error = self.validate_parameters(parameters)
-        if not valid:
-            return self._error_response(error)
-
-        # Apply defaults
-        for param in self.metadata.parameters:
-            if param.name not in parameters and param.default is not None:
-                parameters[param.name] = param.default
-
-        # Execute
-        try:
-            return await self.execute(parameters)
-        except Exception as e:
-            logger.error("Tool %s execution error: %s", self.metadata.name, e)
-            return self._error_response(str(e))

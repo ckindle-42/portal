@@ -82,19 +82,6 @@ class RateLimiter:
         """
         return await asyncio.to_thread(self._check_limit_sync, user_id)
 
-    def get_remaining(self, user_id: str) -> int:
-        """Get remaining requests for user"""
-        now = time.time()
-        user_requests = self.requests[user_id]
-
-        # Count requests in current window
-        recent_requests = [
-            req for req in user_requests
-            if now - req < self.window
-        ]
-
-        return max(0, self.max_requests - len(recent_requests))
-
     def reset_user(self, user_id: str) -> None:
         """Reset rate limit for specific user"""
         self.requests[user_id] = []
