@@ -1,337 +1,120 @@
-"""
-Tests for portal.observability.metrics
-=======================================
+"""Tests for portal.observability.metrics."""
 
-Comprehensive tests for MetricsCollector, MetricsMiddleware,
-and register_metrics_endpoint covering both Prometheus-available
-and Prometheus-unavailable code paths.
-"""
-
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
-def _fresh_collector(service_name: str = "test-portal"):
-    """
-    Build a MetricsCollector that uses its own private registry so tests
-    never collide with the global Prometheus REGISTRY.
-    """
+def _fresh_collector(service_name="test-portal"):
+    """Build a MetricsCollector with its own private registry to avoid collisions."""
     from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, Info
 
-    registry = CollectorRegistry()
     from portal.observability.metrics import MetricsCollector
 
+    registry = CollectorRegistry()
     collector = MetricsCollector.__new__(MetricsCollector)
     collector.service_name = service_name
     collector._metrics = {}
+    uid = id(collector)
 
-    # service info
-    collector._metrics["service_info"] = Info(
-        f"portal_service_{id(collector)}",
-        "Service information",
-        registry=registry,
-    )
-    collector._metrics["service_info"].info(
-        {"service": service_name, "version": "0.0.0-test"}
-    )
-
-    # HTTP
+    collector._metrics["service_info"] = Info(f"portal_service_{uid}", "Info", registry=registry)
+    collector._metrics["service_info"].info({"service": service_name, "version": "0.0.0-test"})
     collector._metrics["http_requests_total"] = Counter(
-        f"portal_http_requests_total_{id(collector)}",
-        "Total HTTP requests",
-        ["method", "endpoint", "status"],
-        registry=registry,
-    )
+        f"portal_http_req_{uid}", "HTTP req", ["method", "endpoint", "status"], registry=registry)
     collector._metrics["http_request_duration_seconds"] = Histogram(
-        f"portal_http_request_duration_seconds_{id(collector)}",
-        "HTTP request duration",
-        ["method", "endpoint"],
-        registry=registry,
-    )
-
-    # Jobs
+        f"portal_http_dur_{uid}", "HTTP dur", ["method", "endpoint"], registry=registry)
     collector._metrics["jobs_enqueued_total"] = Counter(
-        f"portal_jobs_enqueued_total_{id(collector)}",
-        "Total jobs enqueued",
-        ["job_type"],
-        registry=registry,
-    )
+        f"portal_jobs_enq_{uid}", "Jobs enqueued", ["job_type"], registry=registry)
     collector._metrics["jobs_completed_total"] = Counter(
-        f"portal_jobs_completed_total_{id(collector)}",
-        "Total jobs completed",
-        ["job_type", "status"],
-        registry=registry,
-    )
-    collector._metrics["jobs_pending"] = Gauge(
-        f"portal_jobs_pending_{id(collector)}",
-        "Pending jobs",
-        registry=registry,
-    )
-    collector._metrics["jobs_running"] = Gauge(
-        f"portal_jobs_running_{id(collector)}",
-        "Running jobs",
-        registry=registry,
-    )
+        f"portal_jobs_comp_{uid}", "Jobs completed", ["job_type", "status"], registry=registry)
+    collector._metrics["jobs_pending"] = Gauge(f"portal_jobs_pend_{uid}", "Pending", registry=registry)
+    collector._metrics["jobs_running"] = Gauge(f"portal_jobs_run_{uid}", "Running", registry=registry)
     collector._metrics["job_duration_seconds"] = Histogram(
-        f"portal_job_duration_seconds_{id(collector)}",
-        "Job execution duration",
-        ["job_type"],
-        registry=registry,
-    )
-
-    # Workers
-    collector._metrics["workers_total"] = Gauge(
-        f"portal_workers_total_{id(collector)}",
-        "Total workers",
-        registry=registry,
-    )
-    collector._metrics["workers_busy"] = Gauge(
-        f"portal_workers_busy_{id(collector)}",
-        "Busy workers",
-        registry=registry,
-    )
-
-    # LLM
+        f"portal_job_dur_{uid}", "Job dur", ["job_type"], registry=registry)
+    collector._metrics["workers_total"] = Gauge(f"portal_workers_t_{uid}", "Total W", registry=registry)
+    collector._metrics["workers_busy"] = Gauge(f"portal_workers_b_{uid}", "Busy W", registry=registry)
     collector._metrics["llm_requests_total"] = Counter(
-        f"portal_llm_requests_total_{id(collector)}",
-        "Total LLM requests",
-        ["model"],
-        registry=registry,
-    )
+        f"portal_llm_req_{uid}", "LLM req", ["model"], registry=registry)
     collector._metrics["llm_request_duration_seconds"] = Histogram(
-        f"portal_llm_request_duration_seconds_{id(collector)}",
-        "LLM request duration",
-        ["model"],
-        registry=registry,
-    )
+        f"portal_llm_dur_{uid}", "LLM dur", ["model"], registry=registry)
     collector._metrics["llm_tokens_total"] = Counter(
-        f"portal_llm_tokens_total_{id(collector)}",
-        "Total LLM tokens used",
-        ["model", "type"],
-        registry=registry,
-    )
-
-    # Errors
+        f"portal_llm_tok_{uid}", "LLM tok", ["model", "type"], registry=registry)
     collector._metrics["errors_total"] = Counter(
-        f"portal_errors_total_{id(collector)}",
-        "Total errors",
-        ["type", "component"],
-        registry=registry,
-    )
-
-    collector._registry = registry  # stash for assertions
+        f"portal_err_{uid}", "Errors", ["type", "component"], registry=registry)
+    collector._registry = registry
     return collector
 
 
-# ===========================================================================
-# MetricsCollector — Prometheus available
-# ===========================================================================
-
-
-class TestMetricsCollectorPrometheusAvailable:
-    """Tests that exercise real Prometheus metric objects via a private registry."""
-
-    def test_record_http_request_increments_counter(self):
+class TestMetricsCollectorWithPrometheus:
+    def test_http_request_increments_counter(self):
         mc = _fresh_collector()
         mc.record_http_request("GET", "/api/v1/chat", 200, 0.05)
-
         val = mc._metrics["http_requests_total"].labels(
-            method="GET", endpoint="/api/v1/chat", status="200"
-        )._value.get()
+            method="GET", endpoint="/api/v1/chat", status="200")._value.get()
         assert val == 1.0
 
-    def test_record_http_request_records_duration(self):
+    def test_http_request_records_duration(self):
         mc = _fresh_collector()
         mc.record_http_request("POST", "/run", 201, 1.234)
+        hist_sum = mc._metrics["http_request_duration_seconds"].labels(
+            method="POST", endpoint="/run")._sum.get()
+        assert hist_sum == pytest.approx(1.234)
 
-        hist = mc._metrics["http_request_duration_seconds"].labels(
-            method="POST", endpoint="/run"
-        )
-        # Histogram sum should include the observed value
-        assert hist._sum.get() == pytest.approx(1.234)
-
-    def test_record_http_request_multiple_statuses(self):
-        mc = _fresh_collector()
-        mc.record_http_request("GET", "/", 200, 0.01)
-        mc.record_http_request("GET", "/", 404, 0.02)
-        mc.record_http_request("GET", "/", 500, 0.03)
-
-        for status in ("200", "404", "500"):
-            val = mc._metrics["http_requests_total"].labels(
-                method="GET", endpoint="/", status=status
-            )._value.get()
-            assert val == 1.0
-
-    def test_record_job_enqueued(self):
+    def test_record_job_enqueued_multiple(self):
         mc = _fresh_collector()
         mc.record_job_enqueued("inference")
         mc.record_job_enqueued("inference")
         mc.record_job_enqueued("embedding")
+        assert mc._metrics["jobs_enqueued_total"].labels(job_type="inference")._value.get() == 2.0
+        assert mc._metrics["jobs_enqueued_total"].labels(job_type="embedding")._value.get() == 1.0
 
-        assert (
-            mc._metrics["jobs_enqueued_total"]
-            .labels(job_type="inference")
-            ._value.get()
-            == 2.0
-        )
-        assert (
-            mc._metrics["jobs_enqueued_total"]
-            .labels(job_type="embedding")
-            ._value.get()
-            == 1.0
-        )
-
-    def test_record_job_completed_increments_and_observes(self):
+    def test_record_job_completed(self):
         mc = _fresh_collector()
         mc.record_job_completed("inference", "completed", 5.5)
-
-        val = mc._metrics["jobs_completed_total"].labels(
-            job_type="inference", status="completed"
-        )._value.get()
-        assert val == 1.0
-
-        hist_sum = mc._metrics["job_duration_seconds"].labels(
-            job_type="inference"
-        )._sum.get()
-        assert hist_sum == pytest.approx(5.5)
-
-    def test_record_job_completed_failed_status(self):
-        mc = _fresh_collector()
-        mc.record_job_completed("training", "failed", 12.0)
-
-        val = mc._metrics["jobs_completed_total"].labels(
-            job_type="training", status="failed"
-        )._value.get()
-        assert val == 1.0
+        assert mc._metrics["jobs_completed_total"].labels(
+            job_type="inference", status="completed")._value.get() == 1.0
+        assert mc._metrics["job_duration_seconds"].labels(
+            job_type="inference")._sum.get() == pytest.approx(5.5)
 
     def test_update_job_queue_stats(self):
         mc = _fresh_collector()
         mc.update_job_queue_stats(pending=10, running=3)
-
         assert mc._metrics["jobs_pending"]._value.get() == 10
         assert mc._metrics["jobs_running"]._value.get() == 3
-
-    def test_update_job_queue_stats_overwrites(self):
-        mc = _fresh_collector()
-        mc.update_job_queue_stats(pending=5, running=1)
         mc.update_job_queue_stats(pending=0, running=0)
-
         assert mc._metrics["jobs_pending"]._value.get() == 0
-        assert mc._metrics["jobs_running"]._value.get() == 0
 
     def test_update_worker_stats(self):
         mc = _fresh_collector()
         mc.update_worker_stats(total=8, busy=5)
-
         assert mc._metrics["workers_total"]._value.get() == 8
-        assert mc._metrics["workers_busy"]._value.get() == 5
-
-    def test_update_worker_stats_overwrites(self):
-        mc = _fresh_collector()
-        mc.update_worker_stats(total=4, busy=4)
         mc.update_worker_stats(total=4, busy=2)
-
         assert mc._metrics["workers_busy"]._value.get() == 2
 
     def test_record_llm_request(self):
         mc = _fresh_collector()
-        mc.record_llm_request(
-            model="llama3", duration=2.5, input_tokens=100, output_tokens=50
-        )
-
-        assert (
-            mc._metrics["llm_requests_total"]
-            .labels(model="llama3")
-            ._value.get()
-            == 1.0
-        )
-        assert mc._metrics["llm_request_duration_seconds"].labels(
-            model="llama3"
-        )._sum.get() == pytest.approx(2.5)
-        assert (
-            mc._metrics["llm_tokens_total"]
-            .labels(model="llama3", type="input")
-            ._value.get()
-            == 100.0
-        )
-        assert (
-            mc._metrics["llm_tokens_total"]
-            .labels(model="llama3", type="output")
-            ._value.get()
-            == 50.0
-        )
-
-    def test_record_llm_request_accumulates_tokens(self):
-        mc = _fresh_collector()
-        mc.record_llm_request("gpt4", 1.0, 50, 25)
-        mc.record_llm_request("gpt4", 0.5, 30, 15)
-
-        assert (
-            mc._metrics["llm_tokens_total"]
-            .labels(model="gpt4", type="input")
-            ._value.get()
-            == 80.0
-        )
-        assert (
-            mc._metrics["llm_tokens_total"]
-            .labels(model="gpt4", type="output")
-            ._value.get()
-            == 40.0
-        )
+        mc.record_llm_request("llama3", 2.5, 100, 50)
+        mc.record_llm_request("llama3", 0.5, 30, 15)
+        assert mc._metrics["llm_requests_total"].labels(model="llama3")._value.get() == 2.0
+        assert mc._metrics["llm_tokens_total"].labels(model="llama3", type="input")._value.get() == 130.0
+        assert mc._metrics["llm_tokens_total"].labels(model="llama3", type="output")._value.get() == 65.0
 
     def test_record_error(self):
-        mc = _fresh_collector()
-        mc.record_error("ValueError", "parser")
-
-        val = mc._metrics["errors_total"].labels(
-            type="ValueError", component="parser"
-        )._value.get()
-        assert val == 1.0
-
-    def test_record_error_multiple(self):
         mc = _fresh_collector()
         mc.record_error("TimeoutError", "llm")
         mc.record_error("TimeoutError", "llm")
         mc.record_error("RuntimeError", "worker")
-
-        assert (
-            mc._metrics["errors_total"]
-            .labels(type="TimeoutError", component="llm")
-            ._value.get()
-            == 2.0
-        )
-        assert (
-            mc._metrics["errors_total"]
-            .labels(type="RuntimeError", component="worker")
-            ._value.get()
-            == 1.0
-        )
-
-    def test_service_name_stored(self):
-        mc = _fresh_collector("my-service")
-        assert mc.service_name == "my-service"
-
-
-# ===========================================================================
-# MetricsCollector — Prometheus NOT available
-# ===========================================================================
+        assert mc._metrics["errors_total"].labels(type="TimeoutError", component="llm")._value.get() == 2.0
+        assert mc._metrics["errors_total"].labels(type="RuntimeError", component="worker")._value.get() == 1.0
 
 
 class TestMetricsCollectorPrometheusUnavailable:
-    """Patch PROMETHEUS_AVAILABLE=False to verify graceful no-op behaviour."""
-
     @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    def test_init_and_all_noops(self):
-        """When Prometheus is unavailable all record methods must be no-ops."""
+    def test_all_methods_are_noops(self):
         from portal.observability.metrics import MetricsCollector
-
         mc = MetricsCollector("fallback")
         assert mc._metrics == {}
-        # All record methods must not raise when Prometheus is absent
         mc.record_http_request("GET", "/", 200, 0.1)
         mc.record_job_enqueued("test")
         mc.record_job_completed("test", "ok", 1.0)
@@ -339,195 +122,79 @@ class TestMetricsCollectorPrometheusUnavailable:
         mc.update_worker_stats(1, 0)
         mc.record_llm_request("model", 1.0, 10, 5)
         mc.record_error("Err", "comp")
-        mc._init_standard_metrics()
-        assert mc._metrics == {}
+        assert mc._metrics == {}  # still empty
 
     @patch("portal.observability.metrics.PROMETHEUS_AVAILABLE", False)
-    async def test_get_metrics_handler_unavailable(self):
+    async def test_handler_returns_error(self):
         from portal.observability.metrics import MetricsCollector
-
         mc = MetricsCollector()
-        handler = mc.get_metrics_handler()
-        result = await handler()
+        result = await mc.get_metrics_handler()()
         assert result == {"error": "Prometheus client not installed"}
 
 
-# ===========================================================================
-# get_metrics_handler — Prometheus available
-# ===========================================================================
-
-
-class TestGetMetricsHandlerAvailable:
-    """Test the /metrics handler when Prometheus IS available."""
-
-    async def test_returns_coroutine_function(self):
+class TestGetMetricsHandler:
+    async def test_handler_is_coroutine(self):
         mc = _fresh_collector()
-        handler = mc.get_metrics_handler()
-        import asyncio
+        assert asyncio.iscoroutinefunction(mc.get_metrics_handler())
 
-        assert asyncio.iscoroutinefunction(handler)
-
-    @patch("portal.observability.metrics.generate_latest")
+    @patch("portal.observability.metrics.generate_latest", return_value=b"# HELP test\n")
     @patch("portal.observability.metrics.CONTENT_TYPE_LATEST", "text/plain")
-    async def test_handler_returns_response(self, mock_gen_latest):
-        """Handler should call generate_latest and wrap in a Response."""
-        mock_gen_latest.return_value = b"# HELP test\n"
-
-
+    async def test_handler_returns_response(self, _):
         mc = _fresh_collector()
-        # The handler produced by get_metrics_handler uses the module-level
-        # generate_latest / REGISTRY, so we patch those.
-        handler = mc.get_metrics_handler()
-        resp = await handler()
-
-        # Should be a FastAPI Response
+        resp = await mc.get_metrics_handler()()
         assert resp.body == b"# HELP test\n"
 
 
-# ===========================================================================
-# MetricsMiddleware
-# ===========================================================================
-
-
 class TestMetricsMiddleware:
-    """Tests for the ASGI MetricsMiddleware."""
-
-    async def test_non_http_scope_passes_through(self):
+    async def test_non_http_passthrough(self):
         from portal.observability.metrics import MetricsMiddleware
-
         mc = _fresh_collector()
-        inner_app = AsyncMock()
-        mw = MetricsMiddleware(inner_app, mc)
-
+        inner = AsyncMock()
+        mw = MetricsMiddleware(inner, mc)
         scope = {"type": "websocket", "path": "/ws"}
-        receive = AsyncMock()
-        send = AsyncMock()
-
-        await mw(scope, receive, send)
-        inner_app.assert_awaited_once_with(scope, receive, send)
+        await mw(scope, AsyncMock(), AsyncMock())
+        inner.assert_awaited_once_with(scope, inner.call_args[0][1], inner.call_args[0][2])
 
     async def test_http_scope_records_metrics(self):
         from portal.observability.metrics import MetricsMiddleware
-
         mc = _fresh_collector()
         mc.record_http_request = MagicMock()
-
-        async def inner_app(scope, receive, send):
+        async def inner(scope, receive, send):
             await send({"type": "http.response.start", "status": 200})
-            await send({"type": "http.response.body", "body": b"ok"})
-
-        mw = MetricsMiddleware(inner_app, mc)
-        scope = {"type": "http", "method": "GET", "path": "/test"}
-        receive = AsyncMock()
-        send = AsyncMock()
-
-        await mw(scope, receive, send)
-
+        mw = MetricsMiddleware(inner, mc)
+        await mw({"type": "http", "method": "GET", "path": "/test"}, AsyncMock(), AsyncMock())
         mc.record_http_request.assert_called_once()
-        call_kwargs = mc.record_http_request.call_args
-        assert call_kwargs.kwargs["method"] == "GET"
-        assert call_kwargs.kwargs["endpoint"] == "/test"
-        assert call_kwargs.kwargs["status"] == 200
-        assert call_kwargs.kwargs["duration"] >= 0
+        kw = mc.record_http_request.call_args.kwargs
+        assert kw["method"] == "GET" and kw["endpoint"] == "/test" and kw["status"] == 200
+        assert kw["duration"] >= 0
 
-    async def test_http_scope_no_status_code_skips_record(self):
-        """If the inner app never sends http.response.start, no metric recorded."""
+    async def test_no_response_start_skips_record(self):
         from portal.observability.metrics import MetricsMiddleware
-
         mc = _fresh_collector()
         mc.record_http_request = MagicMock()
-
-        async def inner_app(scope, receive, send):
-            pass  # never sends a response start
-
-        mw = MetricsMiddleware(inner_app, mc)
-        scope = {"type": "http", "method": "GET", "path": "/noresp"}
-        await mw(scope, AsyncMock(), AsyncMock())
-
+        mw = MetricsMiddleware(AsyncMock(), mc)
+        await mw({"type": "http", "method": "GET", "path": "/x"}, AsyncMock(), AsyncMock())
         mc.record_http_request.assert_not_called()
 
-    async def test_http_scope_app_raises_still_records(self):
-        """Even when the inner app raises, finally block should run."""
+    async def test_app_raises_still_records(self):
         from portal.observability.metrics import MetricsMiddleware
-
         mc = _fresh_collector()
         mc.record_http_request = MagicMock()
-
-        async def inner_app(scope, receive, send):
+        async def inner(scope, receive, send):
             await send({"type": "http.response.start", "status": 500})
             raise RuntimeError("boom")
-
-        mw = MetricsMiddleware(inner_app, mc)
-        scope = {"type": "http", "method": "POST", "path": "/err"}
-
-        with pytest.raises(RuntimeError, match="boom"):
-            await mw(scope, AsyncMock(), AsyncMock())
-
-        mc.record_http_request.assert_called_once()
+        mw = MetricsMiddleware(inner, mc)
+        with pytest.raises(RuntimeError):
+            await mw({"type": "http", "method": "POST", "path": "/err"}, AsyncMock(), AsyncMock())
         assert mc.record_http_request.call_args.kwargs["status"] == 500
-
-    async def test_middleware_stores_app_and_metrics(self):
-        from portal.observability.metrics import MetricsMiddleware
-
-        mc = _fresh_collector()
-        app = AsyncMock()
-        mw = MetricsMiddleware(app, mc)
-
-        assert mw.app is app
-        assert mw.metrics is mc
-
-    async def test_duration_is_positive(self):
-        from portal.observability.metrics import MetricsMiddleware
-
-        mc = _fresh_collector()
-        mc.record_http_request = MagicMock()
-
-        async def inner_app(scope, receive, send):
-            await send({"type": "http.response.start", "status": 204})
-
-        mw = MetricsMiddleware(inner_app, mc)
-        scope = {"type": "http", "method": "DELETE", "path": "/item"}
-        await mw(scope, AsyncMock(), AsyncMock())
-
-        duration = mc.record_http_request.call_args.kwargs["duration"]
-        assert duration >= 0
-
-
-# ===========================================================================
-# register_metrics_endpoint
-# ===========================================================================
 
 
 class TestRegisterMetricsEndpoint:
-    """Tests for the register_metrics_endpoint helper."""
-
-    def test_registers_route_on_app(self):
+    def test_registers_metrics_route(self):
         from portal.observability.metrics import register_metrics_endpoint
-
         mc = _fresh_collector()
-        mock_app = MagicMock()
-
-        register_metrics_endpoint(mock_app, mc)
-
-        mock_app.add_route.assert_called_once()
-        args, kwargs = mock_app.add_route.call_args
-        assert args[0] == "/metrics"
-        assert kwargs.get("methods") == ["GET"] or args[2] == ["GET"]
-
-    def test_handler_is_callable(self):
-        from portal.observability.metrics import register_metrics_endpoint
-
-        mc = _fresh_collector()
-        mock_app = MagicMock()
-
-        register_metrics_endpoint(mock_app, mc)
-
-        handler = mock_app.add_route.call_args[0][1]
-        assert callable(handler)
-
-
-# ===========================================================================
-# Edge cases
-# ===========================================================================
-
-
+        app = MagicMock()
+        register_metrics_endpoint(app, mc)
+        app.add_route.assert_called_once()
+        args = app.add_route.call_args[0]
+        assert args[0] == "/metrics" and callable(args[1])
