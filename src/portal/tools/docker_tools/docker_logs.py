@@ -6,14 +6,9 @@ import logging
 from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.tools.docker_tools._base import DOCKER_AVAILABLE, docker
 
 logger = logging.getLogger(__name__)
-
-try:
-    import docker
-    DOCKER_AVAILABLE = True
-except ImportError:
-    DOCKER_AVAILABLE = False
 
 
 class DockerLogsTool(BaseTool):

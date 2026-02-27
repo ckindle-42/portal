@@ -13,6 +13,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 **Metrics**: +41 tests added (869 passing, 1 skipped), 0 lint errors. Net +~180 src LOC.
 
+### refactor(tools): Consolidate git tool boilerplate [R4]
+
+All 9 git tool files (`git_branch`, `git_clone`, `git_commit`, `git_diff`, `git_log`,
+`git_merge`, `git_pull`, `git_push`, `git_status`) repeated an identical 5-line try/except
+GitPython import block, a `GIT_AVAILABLE` guard, and a `Repo()`/bare-check/`InvalidGitRepositoryError`
+handler. Centralized in `src/portal/tools/git_tools/_base.py`. Each tool now imports
+`GIT_AVAILABLE`, `GitCommandError`, and `open_repo()` from the shared module. Test patch
+targets updated from per-tool `XXX.Repo` to `_base.Repo` (correct call site).
+Net LOC reduction: ~100 lines.
+
+### refactor(tools): Consolidate docker tool boilerplate [R5]
+
+4 of 5 docker SDK tools (`docker_ps`, `docker_logs`, `docker_run`, `docker_stop`) repeated an
+identical 4-line try/except Docker import block. Centralized in
+`src/portal/tools/docker_tools/_base.py`. Each SDK tool imports `DOCKER_AVAILABLE` and `docker`
+from the shared module. `docker_compose.py` is unchanged (subprocess-based, no SDK dependency).
+Net LOC reduction: ~30 lines.
+
 ---
 
 ### security(web): Gate SSE streaming through SecurityMiddleware [S1]
