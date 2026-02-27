@@ -25,27 +25,27 @@ class GitMergeTool(BaseTool):
                     name="repo_path",
                     param_type="string",
                     description="Path to repository (default: current directory)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="branch",
                     param_type="string",
                     description="Branch to merge into current branch",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="no_ff",
                     param_type="bool",
                     description="Create merge commit even if fast-forward possible",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="message",
                     param_type="string",
                     description="Custom merge commit message",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -84,9 +84,9 @@ class GitMergeTool(BaseTool):
             # Build merge arguments
             merge_args = [branch_name]
             if no_ff:
-                merge_args.extend(['--no-ff'])
+                merge_args.extend(["--no-ff"])
             if message:
-                merge_args.extend(['-m', message])
+                merge_args.extend(["-m", message])
 
             # Execute merge
             logger.info("Merging %s into %s", branch_name, current_branch)
@@ -105,8 +105,8 @@ class GitMergeTool(BaseTool):
                         "merged_branch": branch_name,
                         "old_commit": current_commit,
                         "new_commit": new_commit,
-                        "fast_forward": was_ff
-                    }
+                        "fast_forward": was_ff,
+                    },
                 )
             except GitCommandError as e:
                 if "CONFLICT" in str(e):

@@ -53,16 +53,16 @@ class DocumentMetadataExtractorTool(BaseTool):
                     name="file_path",
                     param_type="string",
                     description="Path to document file",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="detailed",
                     param_type="boolean",
                     description="Include detailed metadata (default: False)",
                     required=False,
-                    default=False
-                )
-            ]
+                    default=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -106,13 +106,10 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "size_mb": round(stat.st_size / (1024 * 1024), 2),
                 "created": datetime.fromtimestamp(stat.st_ctime).isoformat(),
                 "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                "format": suffix[1:]
+                "format": suffix[1:],
             }
 
-            return self._success_response(
-                result=metadata,
-                metadata={"file_type": suffix[1:]}
-            )
+            return self._success_response(result=metadata, metadata={"file_type": suffix[1:]})
 
         except Exception as e:
             logger.error("Metadata extraction error: %s", e)
@@ -138,7 +135,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "subject": info.get("/Subject", ""),
                 "creator": info.get("/Creator", ""),
                 "producer": info.get("/Producer", ""),
-                "keywords": info.get("/Keywords", "")
+                "keywords": info.get("/Keywords", ""),
             }
 
             # Creation/modification dates
@@ -154,7 +151,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                     {
                         "number": i + 1,
                         "width": float(page.mediabox.width),
-                        "height": float(page.mediabox.height)
+                        "height": float(page.mediabox.height),
                     }
                     for i, page in enumerate(reader.pages[:5])  # First 5 pages
                 ]
@@ -185,7 +182,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "comments": props.comments or "",
                 "category": props.category or "",
                 "created": props.created.isoformat() if props.created else "",
-                "modified": props.modified.isoformat() if props.modified else ""
+                "modified": props.modified.isoformat() if props.modified else "",
             }
 
             # Content statistics
@@ -194,7 +191,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                     "paragraphs": len(doc.paragraphs),
                     "tables": len(doc.tables),
                     "sections": len(doc.sections),
-                    "styles": len(doc.styles)
+                    "styles": len(doc.styles),
                 }
 
             return metadata
@@ -223,13 +220,13 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "category": props.category or "",
                 "created": props.created.isoformat() if props.created else "",
                 "modified": props.modified.isoformat() if props.modified else "",
-                "slides": len(prs.slides)
+                "slides": len(prs.slides),
             }
 
             if detailed:
                 metadata["slide_dimensions"] = {
                     "width": prs.slide_width,
-                    "height": prs.slide_height
+                    "height": prs.slide_height,
                 }
 
             return metadata
@@ -257,15 +254,12 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "keywords": props.keywords or "",
                 "created": props.created.isoformat() if props.created else "",
                 "modified": props.modified.isoformat() if props.modified else "",
-                "sheets": wb.sheetnames
+                "sheets": wb.sheetnames,
             }
 
             if detailed:
                 metadata["sheet_details"] = {
-                    sheet: {
-                        "rows": ws.max_row,
-                        "columns": ws.max_column
-                    }
+                    sheet: {"rows": ws.max_row, "columns": ws.max_column}
                     for sheet, ws in [(name, wb[name]) for name in wb.sheetnames]
                 }
 
@@ -293,7 +287,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "mode": img.mode,
                 "width": img.width,
                 "height": img.height,
-                "megapixels": round((img.width * img.height) / 1_000_000, 2)
+                "megapixels": round((img.width * img.height) / 1_000_000, 2),
             }
 
             # EXIF data
@@ -332,7 +326,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                 "type": "Audio",
                 "format": audio.mime[0] if audio.mime else "Unknown",
                 "length_seconds": round(audio.info.length, 2) if audio.info else 0,
-                "bitrate": audio.info.bitrate if hasattr(audio.info, 'bitrate') else "Unknown"
+                "bitrate": audio.info.bitrate if hasattr(audio.info, "bitrate") else "Unknown",
             }
 
             # Tags

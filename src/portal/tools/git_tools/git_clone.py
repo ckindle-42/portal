@@ -25,27 +25,27 @@ class GitCloneTool(BaseTool):
                     name="url",
                     param_type="string",
                     description="Repository URL (HTTPS or SSH)",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="destination",
                     param_type="string",
                     description="Destination directory (default: repo name)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="branch",
                     param_type="string",
                     description="Branch to clone (default: default branch)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="depth",
                     param_type="int",
                     description="Clone depth for shallow clone",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -77,8 +77,8 @@ class GitCloneTool(BaseTool):
                     "url": url,
                     "path": str(repo.working_dir),
                     "branch": repo.active_branch.name,
-                    "commit": repo.head.commit.hexsha[:8]
-                }
+                    "commit": repo.head.commit.hexsha[:8],
+                },
             )
 
         except GitCommandError as e:

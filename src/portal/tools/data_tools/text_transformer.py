@@ -21,22 +21,22 @@ class TextTransformerTool(BaseTool):
                     name="content",
                     param_type="string",
                     description="Input text to transform",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="from_format",
                     param_type="string",
                     description="Source format (json, yaml, xml, toml)",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="to_format",
                     param_type="string",
                     description="Target format (json, yaml, xml, toml)",
-                    required=True
-                )
+                    required=True,
+                ),
             ],
-            examples=["Convert JSON to YAML: {...}"]
+            examples=["Convert JSON to YAML: {...}"],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -59,11 +59,7 @@ class TextTransformerTool(BaseTool):
             if output is None:
                 return self._error_response(f"Failed to serialize to {to_fmt}")
 
-            return self._success_response({
-                "converted": output,
-                "from": from_fmt,
-                "to": to_fmt
-            })
+            return self._success_response({"converted": output, "from": from_fmt, "to": to_fmt})
 
         except Exception as e:
             return self._error_response(str(e))
@@ -75,12 +71,15 @@ class TextTransformerTool(BaseTool):
                 return json.loads(content)
             elif fmt == "yaml":
                 import yaml
+
                 return yaml.safe_load(content)
             elif fmt == "xml":
                 import xmltodict
+
                 return xmltodict.parse(content)
             elif fmt == "toml":
                 import toml
+
                 return toml.loads(content)
             else:
                 return None
@@ -94,12 +93,15 @@ class TextTransformerTool(BaseTool):
                 return json.dumps(data, indent=2)
             elif fmt == "yaml":
                 import yaml
+
                 return yaml.dump(data, default_flow_style=False)
             elif fmt == "xml":
                 import xmltodict
+
                 return xmltodict.unparse(data, pretty=True)
             elif fmt == "toml":
                 import toml
+
                 return toml.dumps(data)
             else:
                 return None

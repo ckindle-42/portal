@@ -25,27 +25,27 @@ class GitBranchTool(BaseTool):
                     name="repo_path",
                     param_type="string",
                     description="Path to repository (default: current directory)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="action",
                     param_type="string",
                     description="Action: list, create, delete, checkout (default: list)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="branch_name",
                     param_type="string",
                     description="Branch name (for create/delete/checkout)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="force",
                     param_type="bool",
                     description="Force operation (for delete)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -76,8 +76,8 @@ class GitBranchTool(BaseTool):
                     result="Branches:\n" + "\n".join(branches),
                     metadata={
                         "current": repo.active_branch.name,
-                        "branches": [b.name for b in repo.branches]
-                    }
+                        "branches": [b.name for b in repo.branches],
+                    },
                 )
 
             elif action == "create":
@@ -88,7 +88,7 @@ class GitBranchTool(BaseTool):
                 new_branch = repo.create_head(branch_name)
                 return self._success_response(
                     result=f"Created branch: {branch_name}",
-                    metadata={"branch": branch_name, "commit": new_branch.commit.hexsha[:8]}
+                    metadata={"branch": branch_name, "commit": new_branch.commit.hexsha[:8]},
                 )
 
             elif action == "delete":
@@ -99,7 +99,7 @@ class GitBranchTool(BaseTool):
                 repo.delete_head(branch_name, force=force)
                 return self._success_response(
                     result=f"Deleted branch: {branch_name}",
-                    metadata={"branch": branch_name, "forced": force}
+                    metadata={"branch": branch_name, "forced": force},
                 )
 
             elif action == "checkout":
@@ -109,12 +109,13 @@ class GitBranchTool(BaseTool):
                 # Checkout branch
                 repo.git.checkout(branch_name)
                 return self._success_response(
-                    result=f"Switched to branch: {branch_name}",
-                    metadata={"branch": branch_name}
+                    result=f"Switched to branch: {branch_name}", metadata={"branch": branch_name}
                 )
 
             else:
-                return self._error_response(f"Unknown action: {action}. Use list, create, delete, or checkout")
+                return self._error_response(
+                    f"Unknown action: {action}. Use list, create, delete, or checkout"
+                )
 
         except GitCommandError as e:
             return self._error_response(f"Git command failed: {e}")

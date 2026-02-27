@@ -25,9 +25,9 @@ class GitStatusTool(BaseTool):
                     name="repo_path",
                     param_type="string",
                     description="Path to repository (default: current directory)",
-                    required=False
+                    required=False,
                 )
-            ]
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -57,8 +57,10 @@ class GitStatusTool(BaseTool):
             try:
                 tracking_branch = repo.active_branch.tracking_branch()
                 if tracking_branch:
-                    ahead = len(list(repo.iter_commits(f'{tracking_branch}..{repo.active_branch}')))
-                    behind = len(list(repo.iter_commits(f'{repo.active_branch}..{tracking_branch}')))
+                    ahead = len(list(repo.iter_commits(f"{tracking_branch}..{repo.active_branch}")))
+                    behind = len(
+                        list(repo.iter_commits(f"{repo.active_branch}..{tracking_branch}"))
+                    )
                     status_info["ahead"] = ahead
                     status_info["behind"] = behind
                     status_info["tracking"] = tracking_branch.name
@@ -86,10 +88,7 @@ class GitStatusTool(BaseTool):
                 if status_info["untracked"]:
                     summary_parts.append(f"{len(status_info['untracked'])} file(s) untracked")
 
-            return self._success_response(
-                result="\n".join(summary_parts),
-                metadata=status_info
-            )
+            return self._success_response(result="\n".join(summary_parts), metadata=status_info)
 
         except GitCommandError as e:
             return self._error_response(f"Git command failed: {e}")

@@ -29,7 +29,10 @@ class TestHelpers:
         assert isinstance(v, str)
         assert len(v) > 0
 
-    @patch("portal.config.settings.metadata.version", side_effect=importlib_metadata.PackageNotFoundError)
+    @patch(
+        "portal.config.settings.metadata.version",
+        side_effect=importlib_metadata.PackageNotFoundError,
+    )
     def test_project_version_fallback(self, mock_meta):
         v = _project_version()
         assert v == "0.0.0-dev"
@@ -151,9 +154,7 @@ class TestSettings:
 
     def test_to_agent_config(self):
         s = Settings(
-            models={
-                "test": ModelConfig(name="test", backend="ollama", speed_class="fast")
-            },
+            models={"test": ModelConfig(name="test", backend="ollama", speed_class="fast")},
             interfaces=InterfacesConfig(web=WebConfig()),
         )
         config = s.to_agent_config()
@@ -162,10 +163,14 @@ class TestSettings:
 
     def test_from_yaml(self, tmp_path):
         config_file = tmp_path / "portal.yaml"
-        config_file.write_text(yaml.dump({
-            "project_name": "TestPortal",
-            "interfaces": {"web": {"port": 9090}},
-        }))
+        config_file.write_text(
+            yaml.dump(
+                {
+                    "project_name": "TestPortal",
+                    "interfaces": {"web": {"port": 9090}},
+                }
+            )
+        )
         s = Settings.from_yaml(config_file)
         assert s.project_name == "TestPortal"
         assert s.interfaces.web.port == 9090

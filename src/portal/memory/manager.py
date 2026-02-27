@@ -96,7 +96,9 @@ class MemoryManager:
 
     def _store_sqlite(self, user_id: str, content: str) -> None:
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("INSERT INTO memories (user_id, content) VALUES (?, ?)", (user_id, content))
+            conn.execute(
+                "INSERT INTO memories (user_id, content) VALUES (?, ?)", (user_id, content)
+            )
             conn.commit()
 
     def _prune_old_memories(self) -> int:
@@ -112,9 +114,15 @@ class MemoryManager:
     async def retrieve(self, user_id: str, query: str, limit: int = 5) -> list[MemorySnippet]:
         if self.provider == "mem0" and self._mem0 is not None:
             try:
-                result = await asyncio.to_thread(self._mem0.search, query=query, user_id=user_id, limit=limit)
+                result = await asyncio.to_thread(
+                    self._mem0.search, query=query, user_id=user_id, limit=limit
+                )
                 return [
-                    MemorySnippet(text=item.get("memory", ""), score=float(item.get("score", 0.0)), source="mem0")
+                    MemorySnippet(
+                        text=item.get("memory", ""),
+                        score=float(item.get("score", 0.0)),
+                        source="mem0",
+                    )
                     for item in result or []
                     if item.get("memory")
                 ]

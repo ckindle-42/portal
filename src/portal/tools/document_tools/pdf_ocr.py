@@ -14,6 +14,7 @@ try:
     import pytesseract
     from pdf2image import convert_from_path
     from PIL import Image  # noqa: F401
+
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
@@ -28,22 +29,18 @@ class PDFOCRTool(BaseTool):
             description="Extract text from PDF files using OCR",
             category=ToolCategory.DATA,
             parameters={
-                "pdf_path": {
-                    "type": "string",
-                    "required": True,
-                    "description": "Path to PDF file"
-                },
+                "pdf_path": {"type": "string", "required": True, "description": "Path to PDF file"},
                 "language": {
                     "type": "string",
                     "required": False,
-                    "description": "OCR language (default: eng)"
+                    "description": "OCR language (default: eng)",
                 },
                 "dpi": {
                     "type": "integer",
                     "required": False,
-                    "description": "Image DPI for conversion (default: 300)"
-                }
-            }
+                    "description": "Image DPI for conversion (default: 300)",
+                },
+            },
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -80,8 +77,8 @@ class PDFOCRTool(BaseTool):
                 metadata={
                     "pages": len(text_pages),
                     "characters": len(full_text),
-                    "language": language
-                }
+                    "language": language,
+                },
             )
 
         except Exception as e:

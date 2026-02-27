@@ -13,6 +13,7 @@ _P = "portal.tools.document_processing.powerpoint_processor"
 
 def _make_tool():
     from portal.tools.document_processing.powerpoint_processor import PowerPointProcessorTool
+
     return PowerPointProcessorTool()
 
 
@@ -30,11 +31,14 @@ def _pptx_patches(available=True, prs=None, prs_exc=None):
 class TestPowerPointProcessorMetadata:
     def test_metadata(self):
         from portal.tools.document_processing.powerpoint_processor import PowerPointProcessorTool
+
         meta = _make_tool().metadata
         assert meta.name == "powerpoint_processor"
         assert meta.category == ToolCategory.UTILITY
         assert meta.version == "1.0.0"
-        assert {"action", "file_path", "chart_data", "chart_type"} <= {p.name for p in meta.parameters}
+        assert {"action", "file_path", "chart_data", "chart_type"} <= {
+            p.name for p in meta.parameters
+        }
         assert "title" in PowerPointProcessorTool.LAYOUTS
         assert "blank" in PowerPointProcessorTool.LAYOUTS
 
@@ -76,10 +80,18 @@ class TestCreatePresentation:
     @pytest.mark.asyncio
     async def test_create_success(self, temp_dir):
         mock_prs = self._mock_prs()
-        with patch(f"{_P}.PPTX_AVAILABLE", True), patch(f"{_P}.Presentation", return_value=mock_prs):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", return_value=mock_prs),
+        ):
             result = await _make_tool().execute(
-                {"action": "create", "file_path": str(temp_dir / "out.pptx"),
-                 "title": "My Deck", "content": "Subtitle"})
+                {
+                    "action": "create",
+                    "file_path": str(temp_dir / "out.pptx"),
+                    "title": "My Deck",
+                    "content": "Subtitle",
+                }
+            )
         assert result["success"] is True
         assert result["result"]["slides"] == 1
         mock_prs.save.assert_called_once()
@@ -87,17 +99,28 @@ class TestCreatePresentation:
     @pytest.mark.asyncio
     async def test_create_without_subtitle(self, temp_dir):
         mock_prs = self._mock_prs(num_placeholders=1)
-        with patch(f"{_P}.PPTX_AVAILABLE", True), patch(f"{_P}.Presentation", return_value=mock_prs):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", return_value=mock_prs),
+        ):
             result = await _make_tool().execute(
-                {"action": "create", "file_path": str(temp_dir / "no_sub.pptx"), "title": "Title Only"})
+                {
+                    "action": "create",
+                    "file_path": str(temp_dir / "no_sub.pptx"),
+                    "title": "Title Only",
+                }
+            )
         assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_create_exception(self, temp_dir):
-        with patch(f"{_P}.PPTX_AVAILABLE", True), \
-             patch(f"{_P}.Presentation", side_effect=OSError("disk full")):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", side_effect=OSError("disk full")),
+        ):
             result = await _make_tool().execute(
-                {"action": "create", "file_path": str(temp_dir / "fail.pptx")})
+                {"action": "create", "file_path": str(temp_dir / "fail.pptx")}
+            )
         assert result["success"] is False
         assert "Creation error" in result["error"]
 
@@ -109,7 +132,8 @@ class TestAddSlide:
     async def test_file_not_found(self, temp_dir):
         with patch(f"{_P}.PPTX_AVAILABLE", True):
             result = await _make_tool().execute(
-                {"action": "add_slide", "file_path": str(temp_dir / "nope.pptx"), "title": "Slide"})
+                {"action": "add_slide", "file_path": str(temp_dir / "nope.pptx"), "title": "Slide"}
+            )
         assert result["success"] is False
         assert "not found" in result["error"]
 
@@ -126,19 +150,30 @@ class TestAddSlide:
         body_ph.placeholder_format.type = 2
         mock_slide.placeholders = [body_ph]
         mock_slide.shapes.title = MagicMock()
-        with patch(f"{_P}.PPTX_AVAILABLE", True), patch(f"{_P}.Presentation", return_value=mock_prs):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", return_value=mock_prs),
+        ):
             result = await _make_tool().execute(
-                {"action": "add_slide", "file_path": str(pptx_file),
-                 "title": "Points", "bullet_points": ["A", "B"]})
+                {
+                    "action": "add_slide",
+                    "file_path": str(pptx_file),
+                    "title": "Points",
+                    "bullet_points": ["A", "B"],
+                }
+            )
         assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_add_slide_exception(self, temp_dir):
         (temp_dir / "test.pptx").write_bytes(b"placeholder")
-        with patch(f"{_P}.PPTX_AVAILABLE", True), \
-             patch(f"{_P}.Presentation", side_effect=ValueError("bad")):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", side_effect=ValueError("bad")),
+        ):
             result = await _make_tool().execute(
-                {"action": "add_slide", "file_path": str(temp_dir / "test.pptx")})
+                {"action": "add_slide", "file_path": str(temp_dir / "test.pptx")}
+            )
         assert result["success"] is False
         assert "Add slide error" in result["error"]
 
@@ -150,8 +185,12 @@ class TestAddImage:
     async def test_file_not_found(self, temp_dir):
         with patch(f"{_P}.PPTX_AVAILABLE", True):
             result = await _make_tool().execute(
-                {"action": "add_image", "file_path": str(temp_dir / "no.pptx"),
-                 "image_path": str(temp_dir / "img.png")})
+                {
+                    "action": "add_image",
+                    "file_path": str(temp_dir / "no.pptx"),
+                    "image_path": str(temp_dir / "img.png"),
+                }
+            )
         assert result["success"] is False
 
     @pytest.mark.asyncio
@@ -159,8 +198,12 @@ class TestAddImage:
         (temp_dir / "test.pptx").write_bytes(b"placeholder")
         with patch(f"{_P}.PPTX_AVAILABLE", True):
             result = await _make_tool().execute(
-                {"action": "add_image", "file_path": str(temp_dir / "test.pptx"),
-                 "image_path": str(temp_dir / "nope.png")})
+                {
+                    "action": "add_image",
+                    "file_path": str(temp_dir / "test.pptx"),
+                    "image_path": str(temp_dir / "nope.png"),
+                }
+            )
         assert result["success"] is False
         assert "Image not found" in result["error"]
 
@@ -173,10 +216,14 @@ class TestAddImage:
         mock_prs = MagicMock()
         mock_prs.slides.__len__ = lambda self: 1
         mock_prs.slides.__getitem__ = MagicMock(return_value=MagicMock())
-        with patch(f"{_P}.PPTX_AVAILABLE", True), patch(f"{_P}.Presentation", return_value=mock_prs), \
-             patch(f"{_P}.Inches", side_effect=lambda v: int(v * 914400)):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", return_value=mock_prs),
+            patch(f"{_P}.Inches", side_effect=lambda v: int(v * 914400)),
+        ):
             result = await _make_tool().execute(
-                {"action": "add_image", "file_path": str(pptx_file), "image_path": str(img_file)})
+                {"action": "add_image", "file_path": str(pptx_file), "image_path": str(img_file)}
+            )
         assert result["success"] is True
         assert "image_added" in result["result"]
 
@@ -188,11 +235,19 @@ class TestAddImage:
         img_file.write_bytes(b"PNG")
         mock_prs = MagicMock()
         mock_prs.slides.__len__ = lambda self: 1
-        with patch(f"{_P}.PPTX_AVAILABLE", True), patch(f"{_P}.Presentation", return_value=mock_prs), \
-             patch(f"{_P}.Inches", side_effect=lambda v: int(v * 914400)):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", return_value=mock_prs),
+            patch(f"{_P}.Inches", side_effect=lambda v: int(v * 914400)),
+        ):
             result = await _make_tool().execute(
-                {"action": "add_image", "file_path": str(pptx_file),
-                 "image_path": str(img_file), "slide_index": 99})
+                {
+                    "action": "add_image",
+                    "file_path": str(pptx_file),
+                    "image_path": str(img_file),
+                    "slide_index": 99,
+                }
+            )
         assert result["success"] is False
         assert "out of range" in result["error"]
 
@@ -206,8 +261,12 @@ class TestAddChart:
     async def test_file_not_found(self, temp_dir):
         with patch(f"{_P}.PPTX_AVAILABLE", True):
             result = await _make_tool().execute(
-                {"action": "add_chart", "file_path": str(temp_dir / "no.pptx"),
-                 "chart_data": self._chart_data})
+                {
+                    "action": "add_chart",
+                    "file_path": str(temp_dir / "no.pptx"),
+                    "chart_data": self._chart_data,
+                }
+            )
         assert result["success"] is False
 
     @pytest.mark.asyncio
@@ -215,7 +274,8 @@ class TestAddChart:
         (temp_dir / "test.pptx").write_bytes(b"placeholder")
         with patch(f"{_P}.PPTX_AVAILABLE", True):
             result = await _make_tool().execute(
-                {"action": "add_chart", "file_path": str(temp_dir / "test.pptx")})
+                {"action": "add_chart", "file_path": str(temp_dir / "test.pptx")}
+            )
         assert result["success"] is False
         assert "No chart data" in result["error"]
 
@@ -227,16 +287,24 @@ class TestAddChart:
         mock_prs = MagicMock()
         mock_prs.slides.__len__ = lambda self: 1
         mock_prs.slides.__getitem__ = MagicMock(return_value=MagicMock())
-        with patch(f"{_P}.PPTX_AVAILABLE", True), patch(f"{_P}.Presentation", return_value=mock_prs), \
-             patch(f"{_P}.CategoryChartData", return_value=MagicMock()), \
-             patch(f"{_P}.Inches", side_effect=lambda v: int(v * 914400)), \
-             patch(f"{_P}.XL_CHART_TYPE") as mock_ct:
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", return_value=mock_prs),
+            patch(f"{_P}.CategoryChartData", return_value=MagicMock()),
+            patch(f"{_P}.Inches", side_effect=lambda v: int(v * 914400)),
+            patch(f"{_P}.XL_CHART_TYPE") as mock_ct,
+        ):
             mock_ct.COLUMN_CLUSTERED = 1
             mock_ct.LINE = 2
             mock_ct.PIE = 3
             result = await _make_tool().execute(
-                {"action": "add_chart", "file_path": str(pptx_file),
-                 "chart_type": chart_type, "chart_data": self._chart_data})
+                {
+                    "action": "add_chart",
+                    "file_path": str(pptx_file),
+                    "chart_type": chart_type,
+                    "chart_data": self._chart_data,
+                }
+            )
         assert result["success"] is True
 
     @pytest.mark.asyncio
@@ -245,12 +313,20 @@ class TestAddChart:
         pptx_file.write_bytes(b"placeholder")
         mock_prs = MagicMock()
         mock_prs.slides.__getitem__ = MagicMock(return_value=MagicMock())
-        with patch(f"{_P}.PPTX_AVAILABLE", True), patch(f"{_P}.Presentation", return_value=mock_prs), \
-             patch(f"{_P}.CategoryChartData", return_value=MagicMock()), \
-             patch(f"{_P}.Inches", side_effect=lambda v: int(v * 914400)):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", return_value=mock_prs),
+            patch(f"{_P}.CategoryChartData", return_value=MagicMock()),
+            patch(f"{_P}.Inches", side_effect=lambda v: int(v * 914400)),
+        ):
             result = await _make_tool().execute(
-                {"action": "add_chart", "file_path": str(pptx_file),
-                 "chart_type": "radar", "chart_data": {"categories": ["A"], "series": [{"name": "s", "values": [1]}]}})
+                {
+                    "action": "add_chart",
+                    "file_path": str(pptx_file),
+                    "chart_type": "radar",
+                    "chart_data": {"categories": ["A"], "series": [{"name": "s", "values": [1]}]},
+                }
+            )
         assert result["success"] is False
         assert "Unknown chart type" in result["error"]
 
@@ -262,7 +338,8 @@ class TestReadPresentation:
     async def test_file_not_found(self, temp_dir):
         with patch(f"{_P}.PPTX_AVAILABLE", True):
             result = await _make_tool().execute(
-                {"action": "read", "file_path": str(temp_dir / "no.pptx")})
+                {"action": "read", "file_path": str(temp_dir / "no.pptx")}
+            )
         assert result["success"] is False
 
     @pytest.mark.asyncio
@@ -279,7 +356,10 @@ class TestReadPresentation:
         mock_prs = MagicMock()
         mock_prs.slides.__iter__ = MagicMock(return_value=iter([mock_slide]))
         mock_prs.slides.__len__ = MagicMock(return_value=1)
-        with patch(f"{_P}.PPTX_AVAILABLE", True), patch(f"{_P}.Presentation", return_value=mock_prs):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", return_value=mock_prs),
+        ):
             result = await _make_tool().execute({"action": "read", "file_path": str(pptx_file)})
         assert result["success"] is True
         assert result["result"]["slides"][0]["title"] == "Title Text"
@@ -296,7 +376,10 @@ class TestReadPresentation:
         mock_prs = MagicMock()
         mock_prs.slides.__iter__ = MagicMock(return_value=iter([mock_slide]))
         mock_prs.slides.__len__ = MagicMock(return_value=1)
-        with patch(f"{_P}.PPTX_AVAILABLE", True), patch(f"{_P}.Presentation", return_value=mock_prs):
+        with (
+            patch(f"{_P}.PPTX_AVAILABLE", True),
+            patch(f"{_P}.Presentation", return_value=mock_prs),
+        ):
             result = await _make_tool().execute({"action": "read", "file_path": str(pptx_file)})
         assert result["success"] is True
         assert result["result"]["slides"][0]["notes"] == ""
@@ -308,7 +391,8 @@ class TestSavePresentation:
     async def test_file_not_found(self, temp_dir):
         with patch(f"{_P}.PPTX_AVAILABLE", True):
             result = await _make_tool().execute(
-                {"action": "save", "file_path": str(temp_dir / "no.pptx")})
+                {"action": "save", "file_path": str(temp_dir / "no.pptx")}
+            )
         assert result["success"] is False
 
     @pytest.mark.asyncio

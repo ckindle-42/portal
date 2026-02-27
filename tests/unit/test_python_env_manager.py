@@ -71,14 +71,18 @@ class TestPythonEnvManagerInstall:
     @pytest.mark.asyncio
     async def test_install_no_packages(self, tmp_path):
         tool = PythonEnvManagerTool()
-        result = await tool.execute({"action": "install", "env_path": str(tmp_path), "packages": []})
+        result = await tool.execute(
+            {"action": "install", "env_path": str(tmp_path), "packages": []}
+        )
         assert result["success"] is False
         assert "No packages" in result["error"]
 
     @pytest.mark.asyncio
     async def test_install_no_pip(self, tmp_path):
         tool = PythonEnvManagerTool()
-        result = await tool.execute({"action": "install", "env_path": str(tmp_path), "packages": ["numpy"]})
+        result = await tool.execute(
+            {"action": "install", "env_path": str(tmp_path), "packages": ["numpy"]}
+        )
         assert result["success"] is False
         assert "pip not found" in result["error"]
 
@@ -91,9 +95,13 @@ class TestPythonEnvManagerInstall:
         pip_path = pip_dir / "pip"
         pip_path.touch()
 
-        mock_subprocess.run.return_value = MagicMock(returncode=0, stdout="Successfully installed numpy")
+        mock_subprocess.run.return_value = MagicMock(
+            returncode=0, stdout="Successfully installed numpy"
+        )
         tool = PythonEnvManagerTool()
-        result = await tool.execute({"action": "install", "env_path": str(tmp_path), "packages": ["numpy"]})
+        result = await tool.execute(
+            {"action": "install", "env_path": str(tmp_path), "packages": ["numpy"]}
+        )
         assert result["success"] is True
 
     @pytest.mark.asyncio
@@ -105,7 +113,9 @@ class TestPythonEnvManagerInstall:
 
         mock_subprocess.run.return_value = MagicMock(returncode=1, stderr="Could not find")
         tool = PythonEnvManagerTool()
-        result = await tool.execute({"action": "install", "env_path": str(tmp_path), "packages": ["badpkg"]})
+        result = await tool.execute(
+            {"action": "install", "env_path": str(tmp_path), "packages": ["badpkg"]}
+        )
         assert result["success"] is False
 
 
@@ -144,7 +154,9 @@ class TestPythonEnvManagerFreeze:
         pip_dir.mkdir()
         (pip_dir / "pip").touch()
 
-        mock_subprocess.run.return_value = MagicMock(returncode=0, stdout="numpy==1.24.0\npandas==2.0.0")
+        mock_subprocess.run.return_value = MagicMock(
+            returncode=0, stdout="numpy==1.24.0\npandas==2.0.0"
+        )
         tool = PythonEnvManagerTool()
         result = await tool.execute({"action": "freeze", "env_path": str(tmp_path)})
         assert result["success"] is True

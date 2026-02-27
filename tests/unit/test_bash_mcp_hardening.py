@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_client():
     """Import app after patching redis so tests run without a Redis server."""
     import importlib
@@ -42,8 +43,8 @@ def _make_client():
 # Tests
 # ---------------------------------------------------------------------------
 
-class TestBashMCPHardening:
 
+class TestBashMCPHardening:
     def setup_method(self):
         self.client, self.module, self.mock_r = _make_client()
 

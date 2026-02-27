@@ -12,9 +12,9 @@ from portal.security.middleware import SecurityMiddleware
 def mock_agent_core():
     """Mock AgentCore for SecurityMiddleware tests."""
     core = AsyncMock()
-    core.process_message = AsyncMock(return_value=MagicMock(
-        success=True, response="ok", warnings=[]
-    ))
+    core.process_message = AsyncMock(
+        return_value=MagicMock(success=True, response="ok", warnings=[])
+    )
     return core
 
 
@@ -88,7 +88,9 @@ async def test_safe_message_not_blocked(middleware, mock_agent_core):
 async def test_rate_limiting_enforced(tmp_path):
     """When rate limiting is enabled, excessive requests are blocked."""
     core = AsyncMock()
-    core.process_message = AsyncMock(return_value=MagicMock(success=True, response="ok", warnings=[]))
+    core.process_message = AsyncMock(
+        return_value=MagicMock(success=True, response="ok", warnings=[])
+    )
 
     from portal.core.exceptions import RateLimitError
     from portal.security.security_module import RateLimiter
@@ -109,16 +111,20 @@ async def test_rate_limiting_enforced(tmp_path):
 
     # First request should go through
     result = await mw.process_message(
-        chat_id="chat1", message="hello", interface="web",
-        user_context={"user_id": "user_rate_test"}
+        chat_id="chat1",
+        message="hello",
+        interface="web",
+        user_context={"user_id": "user_rate_test"},
     )
     assert result.success is True
 
     # Second request should be blocked
     with pytest.raises(RateLimitError):
         await mw.process_message(
-            chat_id="chat1", message="hello again", interface="web",
-            user_context={"user_id": "user_rate_test"}
+            chat_id="chat1",
+            message="hello again",
+            interface="web",
+            user_context={"user_id": "user_rate_test"},
         )
 
 
@@ -132,8 +138,10 @@ async def test_no_user_id_skips_rate_limit(mock_agent_core):
     )
     # Should not raise even with rate limiting enabled
     result = await mw.process_message(
-        chat_id="chat1", message="hello", interface="web",
-        user_context={}  # No user_id
+        chat_id="chat1",
+        message="hello",
+        interface="web",
+        user_context={},  # No user_id
     )
     assert result.success is True
 
@@ -246,6 +254,8 @@ async def test_warnings_appended_to_result_no_existing():
 async def test_custom_max_message_length():
     """Custom max_message_length is respected."""
     core = AsyncMock()
-    mw = SecurityMiddleware(core, enable_rate_limiting=False, enable_input_sanitization=False, max_message_length=20)
+    mw = SecurityMiddleware(
+        core, enable_rate_limiting=False, enable_input_sanitization=False, max_message_length=20
+    )
     with pytest.raises(ValidationError, match="maximum length"):
         await mw.process_message("chat1", "x" * 21, "web")

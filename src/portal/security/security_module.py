@@ -21,13 +21,16 @@ logger = logging.getLogger(__name__)
 class RateLimiter:
     """Per-user sliding-window rate limiter. Persists state to prevent restart-bypass attacks."""
 
-    def __init__(self, max_requests: int = 30, window_seconds: int = 60,
-                 persist_path: Path | None = None):
+    def __init__(
+        self, max_requests: int = 30, window_seconds: int = 60, persist_path: Path | None = None
+    ):
         self.max_requests = max_requests
         self.window = window_seconds
         self.requests: dict[str, list[float]] = defaultdict(list)
         self.violations: dict[str, int] = defaultdict(int)
-        self.persist_path = persist_path or Path(os.getenv('RATE_LIMIT_DATA_DIR', 'data')) / 'rate_limits.json'
+        self.persist_path = (
+            persist_path or Path(os.getenv("RATE_LIMIT_DATA_DIR", "data")) / "rate_limits.json"
+        )
         self._dirty = False
         self._last_save = time.time()
         self._save_interval = 5.0
@@ -44,7 +47,9 @@ class RateLimiter:
 
             logger.warning(
                 "Rate limit exceeded for user %s (%d/%d requests)",
-                user_id, len(user_requests), self.max_requests,
+                user_id,
+                len(user_requests),
+                self.max_requests,
             )
 
             self._dirty = True
@@ -57,7 +62,7 @@ class RateLimiter:
 
         # Add current request
         user_requests.append(now)
-        self.requests[user_id] = user_requests[-self.max_requests:]
+        self.requests[user_id] = user_requests[-self.max_requests :]
 
         # Evict expired users to prevent unbounded memory growth
         self._evict_expired_users()
@@ -100,16 +105,13 @@ class RateLimiter:
         now = time.time()
         user_requests = self.requests[user_id]
 
-        recent_requests = [
-            req for req in user_requests
-            if now - req < self.window
-        ]
+        recent_requests = [req for req in user_requests if now - req < self.window]
 
         return {
-            'total_requests': len(user_requests),
-            'recent_requests': len(recent_requests),
-            'remaining': self.max_requests - len(recent_requests),
-            'violations': self.violations[user_id]
+            "total_requests": len(user_requests),
+            "recent_requests": len(recent_requests),
+            "remaining": self.max_requests - len(recent_requests),
+            "violations": self.violations[user_id],
         }
 
     def _evict_expired_users(self) -> None:
@@ -117,8 +119,7 @@ class RateLimiter:
         now = time.time()
         for user_id in list(self.requests.keys()):
             self.requests[user_id] = [
-                req for req in self.requests[user_id]
-                if now - req < self.window
+                req for req in self.requests[user_id] if now - req < self.window
             ]
             if not self.requests[user_id]:
                 del self.requests[user_id]
@@ -132,16 +133,14 @@ class RateLimiter:
             return
 
         try:
-            with open(self.persist_path, encoding='utf-8') as f:
+            with open(self.persist_path, encoding="utf-8") as f:
                 data = json.load(f)
 
             # Keep string keys (user_ids are stored as strings)
-            self.requests = defaultdict(list, {
-                k: v for k, v in data.get('requests', {}).items()
-            })
-            self.violations = defaultdict(int, {
-                k: v for k, v in data.get('violations', {}).items()
-            })
+            self.requests = defaultdict(list, {k: v for k, v in data.get("requests", {}).items()})
+            self.violations = defaultdict(
+                int, {k: v for k, v in data.get("violations", {}).items()}
+            )
 
             # Clean up old requests outside the window
             self._evict_expired_users()
@@ -150,7 +149,7 @@ class RateLimiter:
 
         except json.JSONDecodeError as e:
             logger.error("Failed to decode rate limit state (corrupt file): %s", e)
-            bak_path = self.persist_path.with_suffix('.json.bak')
+            bak_path = self.persist_path.with_suffix(".json.bak")
             try:
                 self.persist_path.rename(bak_path)
                 logger.warning("Renamed corrupt rate_limits.json to %s for inspection", bak_path)
@@ -169,20 +168,18 @@ class RateLimiter:
 
             # Prepare data for serialization
             data = {
-                'requests': {str(k): v for k, v in self.requests.items()},
-                'violations': {str(k): v for k, v in self.violations.items()},
-                'timestamp': time.time()
+                "requests": {str(k): v for k, v in self.requests.items()},
+                "violations": {str(k): v for k, v in self.violations.items()},
+                "timestamp": time.time(),
             }
 
             # Atomic write pattern (same as knowledge base)
             temp_fd, temp_path = tempfile.mkstemp(
-                dir=self.persist_path.parent,
-                prefix='.rate_limits_tmp_',
-                suffix='.json'
+                dir=self.persist_path.parent, prefix=".rate_limits_tmp_", suffix=".json"
             )
 
             try:
-                with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
+                with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2)
                     f.flush()
                     os.fsync(f.fileno())
@@ -205,29 +202,25 @@ class InputSanitizer:
     # Dangerous command patterns
     DANGEROUS_PATTERNS = [
         # Destructive commands
-        (r'\brm\s+(-rf|-fr)\s+/', 'Recursive delete from root'),
-        (r'\brm\s+(-rf|-fr)\s+\*', 'Recursive delete all'),
-        (r'\bdd\s+.*of=/dev/', 'Direct disk write'),
-        (r':\(\)\{.*:\|:&\};:', 'Fork bomb'),
-        (r'\bmkfs\.', 'Filesystem format'),
-        (r'\bshred\b', 'Secure file deletion'),
-
+        (r"\brm\s+(-rf|-fr)\s+/", "Recursive delete from root"),
+        (r"\brm\s+(-rf|-fr)\s+\*", "Recursive delete all"),
+        (r"\bdd\s+.*of=/dev/", "Direct disk write"),
+        (r":\(\)\{.*:\|:&\};:", "Fork bomb"),
+        (r"\bmkfs\.", "Filesystem format"),
+        (r"\bshred\b", "Secure file deletion"),
         # Privilege escalation
-        (r'\bsudo\s+rm\s+-rf\s+/', 'Sudo destructive delete'),
-        (r'\bsudo\s+chmod\s+777\s+/', 'Sudo permission change'),
-
+        (r"\bsudo\s+rm\s+-rf\s+/", "Sudo destructive delete"),
+        (r"\bsudo\s+chmod\s+777\s+/", "Sudo permission change"),
         # Network dangerous
-        (r'\bcurl.*\|\s*(bash|sh)', 'Curl to shell execution'),
-        (r'\bwget.*\|\s*(bash|sh)', 'Wget to shell execution'),
-        (r'\bnc\s+-[el]', 'Netcat backdoor'),
-
+        (r"\bcurl.*\|\s*(bash|sh)", "Curl to shell execution"),
+        (r"\bwget.*\|\s*(bash|sh)", "Wget to shell execution"),
+        (r"\bnc\s+-[el]", "Netcat backdoor"),
         # Data exfiltration
-        (r'>\s*/dev/tcp/', 'Network redirect'),
-        (r'\bscp\s+.*@', 'Remote copy'),
-
+        (r">\s*/dev/tcp/", "Network redirect"),
+        (r"\bscp\s+.*@", "Remote copy"),
         # System modification
-        (r'>\s*/etc/', 'System config modification'),
-        (r'>\s*/boot/', 'Boot config modification'),
+        (r">\s*/etc/", "System config modification"),
+        (r">\s*/boot/", "Boot config modification"),
     ]
 
     # SQL injection patterns
@@ -241,10 +234,10 @@ class InputSanitizer:
 
     # Path traversal patterns
     PATH_TRAVERSAL_PATTERNS = [
-        r'\.\./+',
-        r'\.\.\\+',
-        r'%2e%2e/',
-        r'%2e%2e\\',
+        r"\.\./+",
+        r"\.\.\\+",
+        r"%2e%2e/",
+        r"%2e%2e\\",
     ]
 
     @staticmethod
@@ -293,7 +286,7 @@ class InputSanitizer:
 
         # Check for absolute paths to sensitive directories
         path_obj = Path(decoded_path).resolve()
-        sensitive_dirs = [Path('/etc'), Path('/boot'), Path('/sys'), Path('/proc'), Path('/dev')]
+        sensitive_dirs = [Path("/etc"), Path("/boot"), Path("/sys"), Path("/proc"), Path("/dev")]
 
         for sensitive_dir in sensitive_dirs:
             try:
@@ -349,18 +342,20 @@ class InputSanitizer:
         """
         # Basic URL validation
         url_pattern = re.compile(
-            r'^https?://'  # http:// or https://
-            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain
-            r'localhost|'  # localhost
-            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # IP
-            r'(?::\d+)?'  # optional port
-            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+            r"^https?://"  # http:// or https://
+            r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|"  # domain
+            r"localhost|"  # localhost
+            r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # IP
+            r"(?::\d+)?"  # optional port
+            r"(?:/?|[/?]\S+)$",
+            re.IGNORECASE,
+        )
 
         if not url_pattern.match(url):
             return False, "Invalid URL format"
 
         # Check for suspicious URLs
-        suspicious_domains = ['bit.ly', 'tinyurl.com']  # Can be expanded
+        suspicious_domains = ["bit.ly", "tinyurl.com"]  # Can be expanded
         for domain in suspicious_domains:
             if domain in url.lower():
                 return False, f"Suspicious URL shortener detected: {domain}"
@@ -379,18 +374,18 @@ class InputSanitizer:
             Sanitized filename
         """
         # Remove path separators
-        filename = filename.replace('/', '_').replace('\\', '_')
+        filename = filename.replace("/", "_").replace("\\", "_")
 
         # Remove parent directory references
-        filename = filename.replace('..', '')
+        filename = filename.replace("..", "")
 
         # Remove special characters
-        filename = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+        filename = re.sub(r"[^a-zA-Z0-9._-]", "_", filename)
 
         # Limit length
         if len(filename) > 255:
-            name, ext = filename.rsplit('.', 1) if '.' in filename else (filename, '')
-            filename = name[:250] + ('.' + ext if ext else '')
+            name, ext = filename.rsplit(".", 1) if "." in filename else (filename, "")
+            filename = name[:250] + ("." + ext if ext else "")
 
         return filename
 
@@ -432,5 +427,3 @@ class InputSanitizer:
             ['ls', '-la', "'my file.txt'"]
         """
         return [shlex.quote(arg) for arg in args]
-
-

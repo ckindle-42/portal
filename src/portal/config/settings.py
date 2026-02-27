@@ -49,6 +49,7 @@ def _is_weak_secret(value: str) -> bool:
 
 class ModelConfig(BaseModel):
     """Configuration for a single model"""
+
     name: str = Field(..., description="Model name/identifier")
     backend: str = Field(..., description="Backend type (ollama, mlx, etc.)")
     capabilities: list[str] = Field(default_factory=list, description="Model capabilities")
@@ -56,23 +57,33 @@ class ModelConfig(BaseModel):
     context_window: int | None = Field(None, description="Maximum context window size")
     max_tokens: int | None = Field(None, description="Maximum output tokens")
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class SecurityConfig(BaseModel):
     """Security and rate limiting configuration"""
+
     rate_limit_enabled: bool = Field(True, description="Enable rate limiting")
     rate_limit_requests: int = Field(20, ge=1, description="Max requests per rate-limit window")
     max_requests_per_minute: int = Field(20, ge=1, le=1000, description="Max requests per minute")
     max_requests_per_hour: int = Field(100, ge=1, le=10000, description="Max requests per hour")
     max_file_size_mb: int = Field(10, ge=1, le=1000, description="Max file size in MB")
-    max_message_length: int = Field(10000, ge=100, le=1000000, description="Maximum message length in characters")
-    allowed_commands: list[str] = Field(default_factory=list, description="Whitelist of allowed shell commands (empty = none allowed, secure by default)")
+    max_message_length: int = Field(
+        10000, ge=100, le=1000000, description="Maximum message length in characters"
+    )
+    allowed_commands: list[str] = Field(
+        default_factory=list,
+        description="Whitelist of allowed shell commands (empty = none allowed, secure by default)",
+    )
     sandbox_enabled: bool = Field(False, description="Enable Docker sandboxing for code execution")
-    require_approval_for_high_risk: bool = Field(False, description="Require human approval for high-risk actions")
-    mcp_api_key: str | None = Field(None, description="MCP server API key (must not be a placeholder in production)")
+    require_approval_for_high_risk: bool = Field(
+        False, description="Require human approval for high-risk actions"
+    )
+    mcp_api_key: str | None = Field(
+        None, description="MCP server API key (must not be a placeholder in production)"
+    )
 
-    @field_validator('mcp_api_key')
+    @field_validator("mcp_api_key")
     @classmethod
     def validate_mcp_api_key(cls, v: str | None) -> str | None:
         if v is None:
@@ -85,11 +96,11 @@ class SecurityConfig(BaseModel):
         if _is_weak_secret(v):
             raise ValueError(
                 f"MCP_API_KEY is too weak (minimum {_SECRET_MIN_LENGTH} characters "
-                "with reasonable entropy). Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                'with reasonable entropy). Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
         return v
 
-    @field_validator('max_requests_per_minute')
+    @field_validator("max_requests_per_minute")
     @classmethod
     def validate_rate_limits(cls, v: int, info) -> int:
         """Ensure rate limits are reasonable"""
@@ -97,7 +108,7 @@ class SecurityConfig(BaseModel):
             raise ValueError("Rate limit must be at least 1")
         return v
 
-    @field_validator('sandbox_enabled')
+    @field_validator("sandbox_enabled")
     @classmethod
     def validate_docker_socket(cls, v: bool) -> bool:
         """Validate Docker socket accessibility when sandbox is enabled"""
@@ -122,42 +133,48 @@ class SecurityConfig(BaseModel):
 
         return v
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class TelegramConfig(BaseModel):
     """Telegram interface configuration"""
+
     bot_token: str = Field(..., description="Telegram bot token from BotFather")
-    authorized_users: list[int] = Field(default_factory=list, description="List of authorized Telegram user IDs")
+    authorized_users: list[int] = Field(
+        default_factory=list, description="List of authorized Telegram user IDs"
+    )
     enable_group_chat: bool = Field(False, description="Allow bot in group chats")
     enable_inline_mode: bool = Field(False, description="Enable inline query mode")
     webhook_url: str | None = Field(None, description="Webhook URL for receiving updates")
 
-    @field_validator('bot_token')
+    @field_validator("bot_token")
     @classmethod
     def validate_token(cls, v: str) -> str:
         """Validate bot token format"""
-        if not v or v.startswith('your_'):
+        if not v or v.startswith("your_"):
             raise ValueError("Invalid bot token. Get one from @BotFather")
         if _is_placeholder(v):
             raise ValueError(
                 "TELEGRAM_BOT_TOKEN is still set to a placeholder value. "
                 "Set a real token from @BotFather."
             )
-        if ':' not in v:
+        if ":" not in v:
             raise ValueError("Bot token must be in format: 123456:ABC-DEF...")
         return v
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class SlackConfig(BaseModel):
     """Slack interface configuration"""
+
     bot_token: str = Field(..., description="Slack bot token (xoxb-...)")
     signing_secret: str = Field(..., description="Slack signing secret for request verification")
-    channel_whitelist: list[str] = Field(default_factory=list, description="Channels the bot responds in (empty = all)")
+    channel_whitelist: list[str] = Field(
+        default_factory=list, description="Channels the bot responds in (empty = all)"
+    )
 
-    @field_validator('signing_secret')
+    @field_validator("signing_secret")
     @classmethod
     def validate_signing_secret(cls, v: str) -> str:
         if _is_placeholder(v):
@@ -172,11 +189,12 @@ class SlackConfig(BaseModel):
             )
         return v
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class WebConfig(BaseModel):
     """Web interface configuration"""
+
     host: str = Field("0.0.0.0", description="Host to bind to")
     port: int = Field(8081, ge=1, le=65535, description="Port to bind to")
     enable_websocket: bool = Field(True, description="Enable WebSocket support")
@@ -185,71 +203,86 @@ class WebConfig(BaseModel):
     ssl_cert: Path | None = Field(None, description="Path to SSL certificate")
     ssl_key: Path | None = Field(None, description="Path to SSL key")
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class InterfacesConfig(BaseModel):
     """Configuration for all interfaces"""
+
     telegram: TelegramConfig | None = None
     slack: SlackConfig | None = None
     web: WebConfig | None = None
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class BackendsConfig(BaseModel):
     """LLM backend configuration"""
+
     ollama_url: str = Field("http://localhost:11434", description="Ollama API URL")
     mlx_enabled: bool = Field(False, description="Enable Apple MLX backend")
     default_backend: str = Field("ollama", description="Default backend to use")
     timeout_seconds: int = Field(300, ge=1, le=3600, description="Request timeout in seconds")
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class ToolsConfig(BaseModel):
     """Tools configuration"""
+
     enabled_categories: list[str] = Field(
         default_factory=lambda: ["utility", "dev", "data", "web"],
-        description="Enabled tool categories"
+        description="Enabled tool categories",
     )
     disabled_tools: list[str] = Field(default_factory=list, description="Specific tools to disable")
-    mcp_servers: dict[str, Any] = Field(default_factory=dict, description="MCP server configurations")
+    mcp_servers: dict[str, Any] = Field(
+        default_factory=dict, description="MCP server configurations"
+    )
     browser_headless: bool = Field(True, description="Run browser automation in headless mode")
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class ContextConfig(BaseModel):
     """Context management configuration"""
-    max_context_messages: int = Field(100, ge=1, le=10000, description="Maximum messages to keep in context")
-    context_window_strategy: str = Field("sliding", description="Context window strategy (sliding, summary)")
-    auto_summarize_threshold: int = Field(50, ge=1, description="Messages before auto-summarization")
+
+    max_context_messages: int = Field(
+        100, ge=1, le=10000, description="Maximum messages to keep in context"
+    )
+    context_window_strategy: str = Field(
+        "sliding", description="Context window strategy (sliding, summary)"
+    )
+    auto_summarize_threshold: int = Field(
+        50, ge=1, description="Messages before auto-summarization"
+    )
     persist_context: bool = Field(True, description="Persist context to SQLite")
     context_db_path: str = Field("data/context.db", description="Path to context database")
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class LoggingConfig(BaseModel):
     """Logging configuration"""
+
     level: str = Field("INFO", description="Log level (DEBUG, INFO, WARNING, ERROR)")
     format: str = Field("json", description="Log format (json, text)")
     output_file: Path | None = Field(None, description="Log file path")
     enable_trace_ids: bool = Field(True, description="Enable trace IDs for request tracking")
-    verbose: bool = Field(False, description="Enable verbose output (e.g., routing info in responses)")
+    verbose: bool = Field(
+        False, description="Enable verbose output (e.g., routing info in responses)"
+    )
 
-    @field_validator('level')
+    @field_validator("level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:
         """Validate log level"""
-        valid_levels = {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'}
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         v_upper = v.upper()
         if v_upper not in valid_levels:
             raise ValueError(f"Log level must be one of: {', '.join(valid_levels)}")
         return v_upper
 
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
 
 class Settings(BaseSettings):
@@ -283,9 +316,9 @@ class Settings(BaseSettings):
     logs_dir: Path = Field(Path("logs"), description="Logs directory")
 
     model_config = ConfigDict(
-        env_prefix='PORTAL_',
-        env_nested_delimiter='__',
-        extra='allow',
+        env_prefix="PORTAL_",
+        env_nested_delimiter="__",
+        extra="allow",
         validate_assignment=True,
     )
 
@@ -329,7 +362,7 @@ class Settings(BaseSettings):
         self.logs_dir.mkdir(parents=True, exist_ok=True)
 
         # Create screenshots directory if tools are enabled
-        if 'browser' in self.tools.enabled_categories:
+        if "browser" in self.tools.enabled_categories:
             Path("screenshots").mkdir(exist_ok=True)
 
     def validate_required_config(self) -> list[str]:
@@ -365,13 +398,13 @@ class Settings(BaseSettings):
         This converts the relevant settings into the dict format they consume.
         """
         return {
-            'routing_strategy': 'AUTO',
-            'max_context_messages': self.context.max_context_messages,
-            'ollama_base_url': self.backends.ollama_url,
-            'circuit_breaker_enabled': True,
-            'circuit_breaker_threshold': 3,
-            'circuit_breaker_timeout': 60,
-            'circuit_breaker_half_open_calls': 1,
+            "routing_strategy": "AUTO",
+            "max_context_messages": self.context.max_context_messages,
+            "ollama_base_url": self.backends.ollama_url,
+            "circuit_breaker_enabled": True,
+            "circuit_breaker_threshold": 3,
+            "circuit_breaker_timeout": 60,
+            "circuit_breaker_half_open_calls": 1,
         }
 
 
@@ -408,16 +441,16 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
 
 
 __all__ = [
-    'Settings',
-    'ModelConfig',
-    'SecurityConfig',
-    'TelegramConfig',
-    'SlackConfig',
-    'WebConfig',
-    'InterfacesConfig',
-    'BackendsConfig',
-    'ToolsConfig',
-    'ContextConfig',
-    'LoggingConfig',
-    'load_settings',
+    "Settings",
+    "ModelConfig",
+    "SecurityConfig",
+    "TelegramConfig",
+    "SlackConfig",
+    "WebConfig",
+    "InterfacesConfig",
+    "BackendsConfig",
+    "ToolsConfig",
+    "ContextConfig",
+    "LoggingConfig",
+    "load_settings",
 ]

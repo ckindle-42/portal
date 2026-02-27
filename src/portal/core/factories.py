@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from portal.protocols.mcp.mcp_registry import MCPRegistry
     from portal.tools import ToolRegistry
 
-logger = get_logger('Factories')
+logger = get_logger("Factories")
 
 
 def create_model_registry(config: dict[str, Any]) -> ModelRegistry:  # noqa: ARG001
@@ -27,11 +27,13 @@ def create_model_registry(config: dict[str, Any]) -> ModelRegistry:  # noqa: ARG
 
 def create_router(model_registry: ModelRegistry, config: dict[str, Any]) -> IntelligentRouter:
     """Return an IntelligentRouter configured from *config*."""
-    strategy_name = config.get('routing_strategy', 'AUTO').upper()
+    strategy_name = config.get("routing_strategy", "AUTO").upper()
     routing_strategy = getattr(RoutingStrategy, strategy_name, RoutingStrategy.AUTO)
-    model_preferences = config.get('model_preferences', {})
+    model_preferences = config.get("model_preferences", {})
     logger.info("Creating IntelligentRouter", strategy=routing_strategy.value)
-    return IntelligentRouter(model_registry, strategy=routing_strategy, model_preferences=model_preferences)
+    return IntelligentRouter(
+        model_registry, strategy=routing_strategy, model_preferences=model_preferences
+    )
 
 
 def create_execution_engine(
@@ -41,39 +43,39 @@ def create_execution_engine(
 ) -> ExecutionEngine:
     """Return an ExecutionEngine with backend/circuit-breaker config."""
     backend_config = {
-        'ollama_base_url': config.get('ollama_base_url', 'http://localhost:11434'),
-        'lmstudio_base_url': config.get('lmstudio_base_url', 'http://localhost:1234/v1'),
-        'circuit_breaker_enabled': config.get('circuit_breaker_enabled', True),
-        'circuit_breaker_threshold': config.get('circuit_breaker_threshold', 3),
-        'circuit_breaker_timeout': config.get('circuit_breaker_timeout', 60),
-        'circuit_breaker_half_open_calls': config.get('circuit_breaker_half_open_calls', 1),
+        "ollama_base_url": config.get("ollama_base_url", "http://localhost:11434"),
+        "lmstudio_base_url": config.get("lmstudio_base_url", "http://localhost:1234/v1"),
+        "circuit_breaker_enabled": config.get("circuit_breaker_enabled", True),
+        "circuit_breaker_threshold": config.get("circuit_breaker_threshold", 3),
+        "circuit_breaker_timeout": config.get("circuit_breaker_timeout", 60),
+        "circuit_breaker_half_open_calls": config.get("circuit_breaker_half_open_calls", 1),
     }
     logger.info(
         "Creating ExecutionEngine",
-        ollama_url=backend_config['ollama_base_url'],
-        circuit_breaker=backend_config['circuit_breaker_enabled'],
+        ollama_url=backend_config["ollama_base_url"],
+        circuit_breaker=backend_config["circuit_breaker_enabled"],
     )
     return ExecutionEngine(model_registry, router, backend_config)
 
 
 def create_context_manager(config: dict[str, Any]) -> ContextManager:
     """Return a ContextManager with configured message limit."""
-    max_messages = config.get('max_context_messages', 50)
+    max_messages = config.get("max_context_messages", 50)
     logger.info("Creating ContextManager", max_messages=max_messages)
     return ContextManager(max_context_messages=max_messages)
 
 
 def create_event_bus_instance(config: dict[str, Any]) -> EventBus:
     """Return an EventBus with optional history enabled."""
-    enable_history = config.get('event_bus_enable_history', False)
-    max_history = config.get('event_bus_max_history', 1000)
+    enable_history = config.get("event_bus_enable_history", False)
+    max_history = config.get("event_bus_max_history", 1000)
     logger.info("Creating EventBus", enable_history=enable_history, max_history=max_history)
     return EventBus(enable_history=enable_history, max_history=max_history)
 
 
 def create_prompt_manager(config: dict[str, Any]) -> PromptManager:
     """Return a PromptManager, optionally loading from *prompts_dir*."""
-    prompts_dir = config.get('prompts_dir')
+    prompts_dir = config.get("prompts_dir")
     logger.info("Creating PromptManager", prompts_dir=prompts_dir)
     return PromptManager(prompts_dir=prompts_dir)
 
@@ -113,10 +115,14 @@ class DependencyContainer:
         if transport == "mcpo":
             mcpo_url = getattr(mcp_config, "mcpo_url", "http://localhost:9000")
             mcpo_api_key = getattr(mcp_config, "mcpo_api_key", "") or None
-            await registry.register(name="core", url=mcpo_url, transport="openapi", api_key=mcpo_api_key)
+            await registry.register(
+                name="core", url=mcpo_url, transport="openapi", api_key=mcpo_api_key
+            )
 
         scrapling_url = getattr(mcp_config, "scrapling_url", "http://localhost:8900")
-        await registry.register(name="scrapling", url=scrapling_url + "/mcp", transport="streamable-http")
+        await registry.register(
+            name="scrapling", url=scrapling_url + "/mcp", transport="streamable-http"
+        )
         self.mcp_registry = registry
         return registry
 
@@ -126,21 +132,21 @@ class DependencyContainer:
 
         deps = self.get_all()
         if mcp_registry is not None:
-            deps['mcp_registry'] = mcp_registry
+            deps["mcp_registry"] = mcp_registry
         return AgentCore(**deps)
 
     def get_all(self) -> dict[str, Any]:
         """Return all dependencies as a flat dict suitable for AgentCore(**deps)."""
         return {
-            'model_registry': self.model_registry,
-            'router': self.router,
-            'execution_engine': self.execution_engine,
-            'context_manager': self.context_manager,
-            'event_bus': self.event_bus,
-            'prompt_manager': self.prompt_manager,
-            'tool_registry': self.tool_registry,
-            'config': self.config,
-            'mcp_registry': self.mcp_registry,
+            "model_registry": self.model_registry,
+            "router": self.router,
+            "execution_engine": self.execution_engine,
+            "context_manager": self.context_manager,
+            "event_bus": self.event_bus,
+            "prompt_manager": self.prompt_manager,
+            "tool_registry": self.tool_registry,
+            "config": self.config,
+            "mcp_registry": self.mcp_registry,
         }
 
 

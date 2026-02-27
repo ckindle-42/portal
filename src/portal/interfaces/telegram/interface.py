@@ -65,7 +65,7 @@ class TelegramInterface:
     - settings: Application settings (for telegram, security, tools config)
     """
 
-    def __init__(self, agent_core: 'AgentCore', settings: 'Settings') -> None:
+    def __init__(self, agent_core: "AgentCore", settings: "Settings") -> None:
         """
         Initialize Telegram interface with injected dependencies
 
@@ -100,17 +100,20 @@ class TelegramInterface:
         else:
             # Fallback: try to get from environment (backward compatibility)
             import os
-            user_id_str = os.getenv('TELEGRAM_USER_ID')
+
+            user_id_str = os.getenv("TELEGRAM_USER_ID")
             if user_id_str:
                 self.authorized_user_ids = {int(user_id_str)}
             else:
-                raise ValueError("No authorized user IDs configured. Set authorized_users in config.")
+                raise ValueError(
+                    "No authorized user IDs configured. Set authorized_users in config."
+                )
 
         # Initialize rate limiter from security config
         security_config = settings.security
         self.rate_limiter = RateLimiter(
             max_requests=security_config.rate_limit_requests,
-            window_seconds=60  # 1 minute window
+            window_seconds=60,  # 1 minute window
         )
 
         # Initialize confirmation middleware if enabled
@@ -121,15 +124,19 @@ class TelegramInterface:
             logger.info("Initializing Tool Confirmation Middleware...")
 
             # Admin chat ID is the first authorized user
-            self.admin_chat_id = list(self.authorized_user_ids)[0] if self.authorized_user_ids else None
+            self.admin_chat_id = (
+                list(self.authorized_user_ids)[0] if self.authorized_user_ids else None
+            )
 
             if not self.admin_chat_id:
-                logger.warning("Cannot enable confirmation middleware: no authorized users configured")
+                logger.warning(
+                    "Cannot enable confirmation middleware: no authorized users configured"
+                )
             else:
                 self.confirmation_middleware = ToolConfirmationMiddleware(
                     event_bus=self.agent_core.event_bus,
                     confirmation_sender=self._send_confirmation_request,
-                    default_timeout=300  # 5 minutes default
+                    default_timeout=300,  # 5 minutes default
                 )
 
                 # Inject middleware into agent core
@@ -179,10 +186,9 @@ class TelegramInterface:
         """
         try:
             # Format tool parameters for display
-            params_str = "\n".join([
-                f"  • {key}: {value}"
-                for key, value in request.parameters.items()
-            ])
+            params_str = "\n".join(
+                [f"  • {key}: {value}" for key, value in request.parameters.items()]
+            )
 
             message = (
                 f"⚠️ **Tool Confirmation Required**\n\n"
@@ -199,13 +205,11 @@ class TelegramInterface:
             keyboard = [
                 [
                     InlineKeyboardButton(
-                        "✅ Approve",
-                        callback_data=f"confirm_approve:{request.confirmation_id}"
+                        "✅ Approve", callback_data=f"confirm_approve:{request.confirmation_id}"
                     ),
                     InlineKeyboardButton(
-                        "❌ Deny",
-                        callback_data=f"confirm_deny:{request.confirmation_id}"
-                    )
+                        "❌ Deny", callback_data=f"confirm_deny:{request.confirmation_id}"
+                    ),
                 ]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -214,32 +218,26 @@ class TelegramInterface:
             await self.application.bot.send_message(
                 chat_id=self.admin_chat_id,
                 text=message,
-                parse_mode='Markdown',
-                reply_markup=reply_markup
+                parse_mode="Markdown",
+                reply_markup=reply_markup,
             )
 
             logger.info(
                 "Confirmation request sent to admin: %s",
                 request.confirmation_id,
                 extra={
-                    'tool_name': request.tool_name,
-                    'confirmation_id': request.confirmation_id,
-                    'admin_chat_id': self.admin_chat_id
-                }
+                    "tool_name": request.tool_name,
+                    "confirmation_id": request.confirmation_id,
+                    "admin_chat_id": self.admin_chat_id,
+                },
             )
 
         except Exception as e:
-            logger.error(
-                "Failed to send confirmation request: %s",
-                e,
-                exc_info=True
-            )
+            logger.error("Failed to send confirmation request: %s", e, exc_info=True)
             raise
 
     async def _handle_confirmation_callback(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
         """
         Handle confirmation approval/denial callbacks
@@ -260,13 +258,12 @@ class TelegramInterface:
             return
 
         try:
-            action, confirmation_id = callback_data.split(':', 1)
+            action, confirmation_id = callback_data.split(":", 1)
 
             if action == "confirm_approve":
                 # Approve the confirmation
                 success = self.confirmation_middleware.approve(
-                    confirmation_id,
-                    approver_id=str(query.from_user.id)
+                    confirmation_id, approver_id=str(query.from_user.id)
                 )
 
                 if success:
@@ -274,21 +271,20 @@ class TelegramInterface:
                         f"✅ **Tool Execution Approved**\n\n"
                         f"Confirmation ID: `{confirmation_id}`\n\n"
                         f"The tool will now be executed.",
-                        parse_mode='Markdown'
+                        parse_mode="Markdown",
                     )
                     logger.info("Tool execution approved: %s", confirmation_id)
                 else:
                     await query.edit_message_text(
                         "⚠️ **Confirmation Not Found**\n\n"
                         "The confirmation may have already been processed or expired.",
-                        parse_mode='Markdown'
+                        parse_mode="Markdown",
                     )
 
             elif action == "confirm_deny":
                 # Deny the confirmation
                 success = self.confirmation_middleware.deny(
-                    confirmation_id,
-                    denier_id=str(query.from_user.id)
+                    confirmation_id, denier_id=str(query.from_user.id)
                 )
 
                 if success:
@@ -296,14 +292,14 @@ class TelegramInterface:
                         f"❌ **Tool Execution Denied**\n\n"
                         f"Confirmation ID: `{confirmation_id}`\n\n"
                         f"The tool execution has been cancelled.",
-                        parse_mode='Markdown'
+                        parse_mode="Markdown",
                     )
                     logger.info("Tool execution denied: %s", confirmation_id)
                 else:
                     await query.edit_message_text(
                         "⚠️ **Confirmation Not Found**\n\n"
                         "The confirmation may have already been processed or expired.",
-                        parse_mode='Markdown'
+                        parse_mode="Markdown",
                     )
 
         except ValueError:
@@ -336,7 +332,7 @@ class TelegramInterface:
             "Just send me a message to get started!"
         )
 
-        await update.message.reply_text(welcome, parse_mode='Markdown')
+        await update.message.reply_text(welcome, parse_mode="Markdown")
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /help command"""
@@ -356,7 +352,7 @@ class TelegramInterface:
             "I'll automatically select the best model and tools to help you!"
         )
 
-        await update.message.reply_text(help_text, parse_mode='Markdown')
+        await update.message.reply_text(help_text, parse_mode="Markdown")
 
     async def tools_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /tools command"""
@@ -371,7 +367,7 @@ class TelegramInterface:
         # Group by category
         by_category = {}
         for tool in tools:
-            cat = tool['category']
+            cat = tool["category"]
             if cat not in by_category:
                 by_category[cat] = []
             by_category[cat].append(tool)
@@ -379,11 +375,11 @@ class TelegramInterface:
         for category, cat_tools in sorted(by_category.items()):
             message += f"**{category.upper()}:**\n"
             for tool in cat_tools:
-                confirm = "🔒" if tool['requires_confirmation'] else ""
+                confirm = "🔒" if tool["requires_confirmation"] else ""
                 message += f"  • {confirm} {tool['name']}: {tool['description']}\n"
             message += "\n"
 
-        await update.message.reply_text(message, parse_mode='Markdown')
+        await update.message.reply_text(message, parse_mode="Markdown")
 
     async def stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /stats command"""
@@ -402,10 +398,10 @@ class TelegramInterface:
             "**By Interface:**\n"
         )
 
-        for interface, count in stats['by_interface'].items():
+        for interface, count in stats["by_interface"].items():
             message += f"  • {interface}: {count}\n"
 
-        await update.message.reply_text(message, parse_mode='Markdown')
+        await update.message.reply_text(message, parse_mode="Markdown")
 
     async def health_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /health command"""
@@ -427,7 +423,7 @@ class TelegramInterface:
             "All systems operational! 🚀"
         )
 
-        await update.message.reply_text(health, parse_mode='Markdown')
+        await update.message.reply_text(health, parse_mode="Markdown")
 
     # ========================================================================
     # MESSAGE HANDLER
@@ -462,7 +458,7 @@ class TelegramInterface:
                 chat_id=chat_id,
                 message=message,
                 interface=InterfaceType.TELEGRAM,
-                user_context={'user_id': user_id},
+                user_context={"user_id": user_id},
             )
 
             # Show warnings if any
@@ -475,14 +471,12 @@ class TelegramInterface:
 
             # Add footer with model info if verbose mode
             # (verbose_routing would be in logging config or a future feature flag)
-            verbose_routing = getattr(self.settings.logging, 'verbose', False) or \
-                             getattr(self.settings, 'verbose_routing', False)
+            verbose_routing = getattr(self.settings.logging, "verbose", False) or getattr(
+                self.settings, "verbose_routing", False
+            )
 
             if verbose_routing:
-                footer = (
-                    f"\n\n_Model: {result.model_used} "
-                    f"({result.execution_time:.2f}s)"
-                )
+                footer = f"\n\n_Model: {result.model_used} ({result.execution_time:.2f}s)"
                 if result.tools_used:
                     footer += f" | Tools: {', '.join(result.tools_used)}"
                 footer += "_"
@@ -491,17 +485,15 @@ class TelegramInterface:
             # Send response (handle long messages)
             if len(response_text) > 4096:
                 # Split into chunks
-                chunks = [response_text[i:i+4000] for i in range(0, len(response_text), 4000)]
+                chunks = [response_text[i : i + 4000] for i in range(0, len(response_text), 4000)]
                 for chunk in chunks:
-                    await update.message.reply_text(chunk, parse_mode='Markdown')
+                    await update.message.reply_text(chunk, parse_mode="Markdown")
             else:
-                await update.message.reply_text(response_text, parse_mode='Markdown')
+                await update.message.reply_text(response_text, parse_mode="Markdown")
 
         except Exception as e:
             logger.error("Error handling message: %s", e, exc_info=True)
-            await update.message.reply_text(
-                f"⚠️ Error processing your request: {str(e)}"
-            )
+            await update.message.reply_text(f"⚠️ Error processing your request: {str(e)}")
 
     # ========================================================================
     # STARTUP & RUN
@@ -526,8 +518,7 @@ class TelegramInterface:
         if self.confirmation_middleware:
             self.application.add_handler(
                 CallbackQueryHandler(
-                    self._handle_confirmation_callback,
-                    pattern=r"^confirm_(approve|deny):"
+                    self._handle_confirmation_callback, pattern=r"^confirm_(approve|deny):"
                 )
             )
             logger.info("Confirmation callback handler registered")

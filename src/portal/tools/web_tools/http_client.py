@@ -18,39 +18,36 @@ class HTTPClientTool(BaseTool):
             requires_confirmation=True,  # Network operations need confirmation
             parameters=[
                 ToolParameter(
-                    name="url",
-                    param_type="string",
-                    description="Target URL",
-                    required=True
+                    name="url", param_type="string", description="Target URL", required=True
                 ),
                 ToolParameter(
                     name="method",
                     param_type="string",
                     description="HTTP method: GET, POST, PUT, DELETE",
                     required=False,
-                    default="GET"
+                    default="GET",
                 ),
                 ToolParameter(
                     name="headers",
                     param_type="string",
                     description="JSON string of headers",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="body",
                     param_type="string",
                     description="Request body (JSON string for POST/PUT)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="timeout",
                     param_type="int",
                     description="Timeout in seconds",
                     required=False,
-                    default=30
-                )
+                    default=30,
+                ),
             ],
-            examples=["GET https://api.example.com/data"]
+            examples=["GET https://api.example.com/data"],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -88,7 +85,7 @@ class HTTPClientTool(BaseTool):
                 request_kwargs = {
                     "url": url,
                     "headers": headers,
-                    "timeout": aiohttp.ClientTimeout(total=timeout)
+                    "timeout": aiohttp.ClientTimeout(total=timeout),
                 }
 
                 if body:
@@ -107,11 +104,15 @@ class HTTPClientTool(BaseTool):
                     except Exception:
                         response_body = await response.text()
 
-                    return self._success_response({
-                        "status": status,
-                        "headers": {k: v for k, v in list(response_headers.items())[:10]},
-                        "body": response_body if len(str(response_body)) < 5000 else str(response_body)[:5000] + "..."
-                    })
+                    return self._success_response(
+                        {
+                            "status": status,
+                            "headers": {k: v for k, v in list(response_headers.items())[:10]},
+                            "body": response_body
+                            if len(str(response_body)) < 5000
+                            else str(response_body)[:5000] + "...",
+                        }
+                    )
 
         except ImportError:
             return self._error_response("aiohttp not installed. Run: pip install aiohttp")

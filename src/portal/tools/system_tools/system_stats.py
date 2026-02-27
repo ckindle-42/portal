@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
@@ -29,16 +30,18 @@ class SystemStatsTool(BaseTool):
                     name="detailed",
                     param_type="bool",
                     description="Include detailed per-core/disk stats",
-                    required=False
+                    required=False,
                 )
-            ]
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Get system stats"""
 
         if not PSUTIL_AVAILABLE:
-            return self._error_response("psutil not installed. Run: pip install psutil or pip install portal[automation]")
+            return self._error_response(
+                "psutil not installed. Run: pip install psutil or pip install portal[automation]"
+            )
 
         detailed = parameters.get("detailed", False)
 
@@ -51,35 +54,28 @@ class SystemStatsTool(BaseTool):
             mem = psutil.virtual_memory()
 
             # Disk
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
 
             result = {
-                "cpu": {
-                    "percent": cpu_percent,
-                    "count": cpu_count
-                },
+                "cpu": {"percent": cpu_percent, "count": cpu_count},
                 "memory": {
                     "total_gb": round(mem.total / (1024**3), 2),
                     "used_gb": round(mem.used / (1024**3), 2),
                     "available_gb": round(mem.available / (1024**3), 2),
-                    "percent": mem.percent
+                    "percent": mem.percent,
                 },
                 "disk": {
                     "total_gb": round(disk.total / (1024**3), 2),
                     "used_gb": round(disk.used / (1024**3), 2),
                     "free_gb": round(disk.free / (1024**3), 2),
-                    "percent": disk.percent
-                }
+                    "percent": disk.percent,
+                },
             }
 
             if detailed:
                 result["cpu"]["per_core"] = psutil.cpu_percent(interval=1, percpu=True)
                 result["disk"]["partitions"] = [
-                    {
-                        "device": p.device,
-                        "mountpoint": p.mountpoint,
-                        "fstype": p.fstype
-                    }
+                    {"device": p.device, "mountpoint": p.mountpoint, "fstype": p.fstype}
                     for p in psutil.disk_partitions()
                 ]
 

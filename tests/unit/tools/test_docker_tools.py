@@ -46,8 +46,10 @@ class TestDockerPSTool:
         tool = DockerPSTool()
         mock_client, _ = _make_mock_docker_client()
 
-        with patch("portal.tools.docker_tools.docker_ps.DOCKER_AVAILABLE", True), \
-             patch("portal.tools.docker_tools.docker_ps.docker") as mock_docker_mod:
+        with (
+            patch("portal.tools.docker_tools.docker_ps.DOCKER_AVAILABLE", True),
+            patch("portal.tools.docker_tools.docker_ps.docker") as mock_docker_mod,
+        ):
             mock_docker_mod.from_env.return_value = mock_client
             tool.client = mock_client
             result = await tool.execute({})
@@ -79,16 +81,20 @@ class TestDockerRunTool:
         tool = DockerRunTool()
         mock_client, mock_container = _make_mock_docker_client()
 
-        with patch("portal.tools.docker_tools.docker_run.DOCKER_AVAILABLE", True), \
-             patch("portal.tools.docker_tools.docker_run.docker") as mock_docker_mod:
+        with (
+            patch("portal.tools.docker_tools.docker_run.DOCKER_AVAILABLE", True),
+            patch("portal.tools.docker_tools.docker_run.docker") as mock_docker_mod,
+        ):
             mock_docker_mod.from_env.return_value = mock_client
             mock_docker_mod.errors.ImageNotFound = Exception
             mock_docker_mod.errors.APIError = Exception
             tool.client = mock_client
-            result = await tool.execute({
-                "image": "nginx:latest",
-                "name": "test-nginx",
-            })
+            result = await tool.execute(
+                {
+                    "image": "nginx:latest",
+                    "name": "test-nginx",
+                }
+            )
 
         assert result["success"] is True
 
@@ -105,14 +111,18 @@ class TestDockerStopTool:
         mock_client, mock_container = _make_mock_docker_client()
         mock_container.name = "test-container"
 
-        with patch("portal.tools.docker_tools.docker_stop.DOCKER_AVAILABLE", True), \
-             patch("portal.tools.docker_tools.docker_stop.docker") as mock_docker_mod:
+        with (
+            patch("portal.tools.docker_tools.docker_stop.DOCKER_AVAILABLE", True),
+            patch("portal.tools.docker_tools.docker_stop.docker") as mock_docker_mod,
+        ):
             mock_docker_mod.from_env.return_value = mock_client
             mock_docker_mod.errors.NotFound = type("NotFound", (Exception,), {})
             tool.client = mock_client
-            result = await tool.execute({
-                "containers": ["test-container"],
-            })
+            result = await tool.execute(
+                {
+                    "containers": ["test-container"],
+                }
+            )
 
         assert result["success"] is True
 
@@ -130,15 +140,19 @@ class TestDockerLogsTool:
         mock_container.name = "test-container"
         mock_container.short_id = "abc123"
 
-        with patch("portal.tools.docker_tools.docker_logs.DOCKER_AVAILABLE", True), \
-             patch("portal.tools.docker_tools.docker_logs.docker") as mock_docker_mod:
+        with (
+            patch("portal.tools.docker_tools.docker_logs.DOCKER_AVAILABLE", True),
+            patch("portal.tools.docker_tools.docker_logs.docker") as mock_docker_mod,
+        ):
             mock_docker_mod.from_env.return_value = mock_client
             mock_docker_mod.errors.NotFound = type("NotFound", (Exception,), {})
             tool.client = mock_client
-            result = await tool.execute({
-                "container": "test-container",
-                "tail": 50,
-            })
+            result = await tool.execute(
+                {
+                    "container": "test-container",
+                    "tail": 50,
+                }
+            )
 
         assert result["success"] is True
         assert "logs" in result or "result" in result
@@ -160,12 +174,16 @@ class TestDockerComposeTool:
         mock_process.communicate = AsyncMock(return_value=(b"Creating container", b""))
         mock_process.returncode = 0
 
-        with patch("asyncio.create_subprocess_exec", new_callable=AsyncMock, return_value=mock_process):
-            result = await tool.execute({
-                "action": "up",
-                "compose_file": str(compose_file),
-                "detach": True,
-            })
+        with patch(
+            "asyncio.create_subprocess_exec", new_callable=AsyncMock, return_value=mock_process
+        ):
+            result = await tool.execute(
+                {
+                    "action": "up",
+                    "compose_file": str(compose_file),
+                    "detach": True,
+                }
+            )
 
         assert result["success"] is True
 
@@ -181,10 +199,14 @@ class TestDockerComposeTool:
         mock_process.communicate = AsyncMock(return_value=(b"Stopping containers", b""))
         mock_process.returncode = 0
 
-        with patch("asyncio.create_subprocess_exec", new_callable=AsyncMock, return_value=mock_process):
-            result = await tool.execute({
-                "action": "down",
-                "compose_file": str(compose_file),
-            })
+        with patch(
+            "asyncio.create_subprocess_exec", new_callable=AsyncMock, return_value=mock_process
+        ):
+            result = await tool.execute(
+                {
+                    "action": "down",
+                    "compose_file": str(compose_file),
+                }
+            )
 
         assert result["success"] is True

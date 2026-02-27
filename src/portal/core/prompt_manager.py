@@ -69,7 +69,7 @@ class PromptManager:
         template_path = self.prompts_dir / f"{template_name}.md"
 
         try:
-            with open(template_path, encoding='utf-8') as f:
+            with open(template_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Update cache
@@ -86,9 +86,7 @@ class PromptManager:
             return ""
 
     def build_system_prompt(
-        self,
-        interface: str = "unknown",
-        user_preferences: dict | None = None
+        self, interface: str = "unknown", user_preferences: dict | None = None
     ) -> str:
         """
         Build a complete system prompt
@@ -103,7 +101,7 @@ class PromptManager:
         user_preferences = user_preferences or {}
 
         # Start with base prompt — fall back to hardcoded default
-        base = self.load_template('base_system')
+        base = self.load_template("base_system")
         if not base.strip():
             logger.warning("Base system prompt template missing or empty, using built-in fallback")
             base = _DEFAULT_SYSTEM_PROMPT
@@ -116,17 +114,16 @@ class PromptManager:
             parts.append(interface_prompt)
 
         # Add preference-specific prompts
-        if user_preferences.get('verbose'):
-            parts.append(self.load_template('preferences/verbose'))
-        elif user_preferences.get('terse'):
-            parts.append(self.load_template('preferences/terse'))
+        if user_preferences.get("verbose"):
+            parts.append(self.load_template("preferences/verbose"))
+        elif user_preferences.get("terse"):
+            parts.append(self.load_template("preferences/terse"))
 
         # Add custom context if provided
-        if user_preferences.get('custom_context'):
-            parts.append(user_preferences['custom_context'])
+        if user_preferences.get("custom_context"):
+            parts.append(user_preferences["custom_context"])
 
         # Combine all parts
         prompt = "\n\n".join(part for part in parts if part)
 
         return prompt
-

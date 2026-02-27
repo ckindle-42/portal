@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 # Try to import sentence transformers
 try:
     from sentence_transformers import SentenceTransformer
+
     EMBEDDINGS_AVAILABLE = True
 except ImportError:
     EMBEDDINGS_AVAILABLE = False
@@ -72,7 +73,7 @@ class EnhancedKnowledgeTool(BaseTool):
         # Load embeddings model (lazy load)
         if EMBEDDINGS_AVAILABLE and EnhancedKnowledgeTool._embeddings_model is None:
             logger.info("Loading embeddings model...")
-            EnhancedKnowledgeTool._embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
+            EnhancedKnowledgeTool._embeddings_model = SentenceTransformer("all-MiniLM-L6-v2")
             logger.info("Embeddings model loaded")
 
     def _get_metadata(self) -> ToolMetadata:
@@ -87,46 +88,46 @@ class EnhancedKnowledgeTool(BaseTool):
                     name="action",
                     param_type="string",
                     description="Action: add, search, list, delete, stats, migrate",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="query",
                     param_type="string",
                     description="Search query (for search action)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="path",
                     param_type="string",
                     description="File path (for add action)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="content",
                     param_type="string",
                     description="Text content (for add action)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="doc_id",
                     param_type="integer",
                     description="Document ID (for delete action)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="limit",
                     param_type="integer",
                     description="Number of results (for search/list)",
                     required=False,
-                    default=5
+                    default=5,
                 ),
                 ToolParameter(
                     name="metadata",
                     param_type="object",
                     description="Document metadata (tags, author, etc.)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     def _init_database(self) -> None:
@@ -198,7 +199,7 @@ class EnhancedKnowledgeTool(BaseTool):
             # Generate embedding
             embedding = EnhancedKnowledgeTool._embeddings_model.encode([text[:1000]])[0]
             # Serialize as JSON bytes (safe alternative to pickle)
-            return json.dumps(embedding.tolist()).encode('utf-8')
+            return json.dumps(embedding.tolist()).encode("utf-8")
         except Exception as e:
             logger.error("Embedding generation failed: %s", e)
             return None
@@ -206,9 +207,13 @@ class EnhancedKnowledgeTool(BaseTool):
     def _deserialize_embedding(self, blob: bytes) -> np.ndarray | None:
         """Deserialize embedding from blob"""
         try:
-            return np.array(json.loads(blob.decode('utf-8') if isinstance(blob, bytes) else blob))
+            return np.array(json.loads(blob.decode("utf-8") if isinstance(blob, bytes) else blob))
         except (json.JSONDecodeError, UnicodeDecodeError):
-            if os.getenv("ALLOW_LEGACY_PICKLE_EMBEDDINGS", "false").lower() not in ("1", "true", "yes"):
+            if os.getenv("ALLOW_LEGACY_PICKLE_EMBEDDINGS", "false").lower() not in (
+                "1",
+                "true",
+                "yes",
+            ):
                 logger.error(
                     "Legacy pickle-serialized embedding detected but ALLOW_LEGACY_PICKLE_EMBEDDINGS "
                     "is disabled. Re-index documents to migrate to JSON encoding."
@@ -216,6 +221,7 @@ class EnhancedKnowledgeTool(BaseTool):
                 return None
             try:
                 import pickle
+
                 logger.warning(
                     "Loading embedding serialized with pickle (deprecated). "
                     "Re-save this document to migrate to JSON encoding."
@@ -265,7 +271,7 @@ class EnhancedKnowledgeTool(BaseTool):
                 if not file_path.exists():
                     return self._error_response(f"File not found: {path}")
 
-                content = file_path.read_text(encoding='utf-8')
+                content = file_path.read_text(encoding="utf-8")
                 source = str(file_path)
             except Exception as e:
                 return self._error_response(f"Failed to read file: {e}")
@@ -282,25 +288,21 @@ class EnhancedKnowledgeTool(BaseTool):
 
                 now = datetime.now(tz=UTC).isoformat()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT OR REPLACE INTO documents
                     (source, content, embedding, metadata, added_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    source,
-                    content,
-                    embedding_blob,
-                    json.dumps(metadata),
-                    now,
-                    now
-                ))
+                """,
+                    (source, content, embedding_blob, json.dumps(metadata), now, now),
+                )
 
                 doc_id = cursor.lastrowid
                 conn.commit()
 
             return self._success_response(
                 result={"doc_id": doc_id, "source": source},
-                metadata={"content_length": len(content)}
+                metadata={"content_length": len(content)},
             )
 
         except Exception as e:
@@ -321,7 +323,8 @@ class EnhancedKnowledgeTool(BaseTool):
                 cursor = conn.cursor()
 
                 # First try full-text search (fast)
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT d.id, d.source, d.content, d.metadata, d.added_at,
                            bm25(documents_fts) as rank
                     FROM documents_fts
@@ -329,7 +332,9 @@ class EnhancedKnowledgeTool(BaseTool):
                     WHERE documents_fts MATCH ?
                     ORDER BY rank
                     LIMIT ?
-                """, (query, limit * 2))  # Get more for reranking
+                """,
+                    (query, limit * 2),
+                )  # Get more for reranking
 
                 fts_results = cursor.fetchall()
 
@@ -342,21 +347,25 @@ class EnhancedKnowledgeTool(BaseTool):
                 # Format results
                 documents = []
                 for row in final_results:
-                    documents.append({
-                        "id": row['id'],
-                        "source": row['source'],
-                        "content": row['content'][:500] + "..." if len(row['content']) > 500 else row['content'],
-                        "metadata": json.loads(row['metadata']) if row['metadata'] else {},
-                        "added_at": row['added_at']
-                    })
+                    documents.append(
+                        {
+                            "id": row["id"],
+                            "source": row["source"],
+                            "content": row["content"][:500] + "..."
+                            if len(row["content"]) > 500
+                            else row["content"],
+                            "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
+                            "added_at": row["added_at"],
+                        }
+                    )
 
                 return self._success_response(
                     result=documents,
                     metadata={
                         "query": query,
                         "results_count": len(documents),
-                        "method": "fts5_vector" if EMBEDDINGS_AVAILABLE else "fts5"
-                    }
+                        "method": "fts5_vector" if EMBEDDINGS_AVAILABLE else "fts5",
+                    },
                 )
 
         except Exception as e:
@@ -371,10 +380,10 @@ class EnhancedKnowledgeTool(BaseTool):
         query_vec = self._deserialize_embedding(query_embedding)
         results_with_scores = []
         for row in fts_results:
-            cursor.execute("SELECT embedding FROM documents WHERE id = ?", (row['id'],))
+            cursor.execute("SELECT embedding FROM documents WHERE id = ?", (row["id"],))
             embedding_row = cursor.fetchone()
-            if embedding_row and embedding_row['embedding']:
-                doc_vec = self._deserialize_embedding(embedding_row['embedding'])
+            if embedding_row and embedding_row["embedding"]:
+                doc_vec = self._deserialize_embedding(embedding_row["embedding"])
                 if doc_vec is not None:
                     similarity = np.dot(doc_vec, query_vec) / (
                         np.linalg.norm(doc_vec) * np.linalg.norm(query_vec)
@@ -392,24 +401,29 @@ class EnhancedKnowledgeTool(BaseTool):
             with self._get_connection() as conn:
                 cursor = conn.cursor()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT id, source,
                            substr(content, 1, 200) as preview,
                            metadata, added_at
                     FROM documents
                     ORDER BY added_at DESC
                     LIMIT ?
-                """, (limit,))
+                """,
+                    (limit,),
+                )
 
                 documents = []
                 for row in cursor.fetchall():
-                    documents.append({
-                        "id": row['id'],
-                        "source": row['source'],
-                        "preview": row['preview'] + "...",
-                        "metadata": json.loads(row['metadata']) if row['metadata'] else {},
-                        "added_at": row['added_at']
-                    })
+                    documents.append(
+                        {
+                            "id": row["id"],
+                            "source": row["source"],
+                            "preview": row["preview"] + "...",
+                            "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
+                            "added_at": row["added_at"],
+                        }
+                    )
 
                 return self._success_response(result=documents)
 
@@ -435,9 +449,7 @@ class EnhancedKnowledgeTool(BaseTool):
 
                 conn.commit()
 
-            return self._success_response(
-                result={"deleted_id": doc_id}
-            )
+            return self._success_response(result={"deleted_id": doc_id})
 
         except Exception as e:
             return self._error_response(f"Delete error: {e}")
@@ -474,7 +486,7 @@ class EnhancedKnowledgeTool(BaseTool):
                         "database_size_mb": db_size / (1024 * 1024),
                         "recent_additions_7d": recent_additions,
                         "embeddings_enabled": EMBEDDINGS_AVAILABLE,
-                        "database_path": str(EnhancedKnowledgeTool._db_path)
+                        "database_path": str(EnhancedKnowledgeTool._db_path),
                     }
                 )
 
@@ -495,7 +507,7 @@ class EnhancedKnowledgeTool(BaseTool):
             with open(json_path) as f:
                 data = json.load(f)
 
-            documents = data.get('documents', [])
+            documents = data.get("documents", [])
 
             migrated = 0
             failed = 0
@@ -503,15 +515,17 @@ class EnhancedKnowledgeTool(BaseTool):
             for doc in documents:
                 try:
                     # Add to SQLite
-                    result = await self._add_document({
-                        "content": doc.get('content', ''),
-                        "metadata": {
-                            "source": doc.get('source', 'unknown'),
-                            "migrated_from_json": True
+                    result = await self._add_document(
+                        {
+                            "content": doc.get("content", ""),
+                            "metadata": {
+                                "source": doc.get("source", "unknown"),
+                                "migrated_from_json": True,
+                            },
                         }
-                    })
+                    )
 
-                    if result['success']:
+                    if result["success"]:
                         migrated += 1
                     else:
                         failed += 1
@@ -521,11 +535,7 @@ class EnhancedKnowledgeTool(BaseTool):
                     failed += 1
 
             return self._success_response(
-                result={
-                    "migrated": migrated,
-                    "failed": failed,
-                    "total": len(documents)
-                }
+                result={"migrated": migrated, "failed": failed, "total": len(documents)}
             )
 
         except Exception as e:

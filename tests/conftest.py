@@ -191,30 +191,14 @@ def pytest_configure(config):
         import portal  # noqa: F401
     except ImportError:
         print(
-            "\n"
-            "=" * 70 + "\n"
-            " Portal package not installed.\n"
-            " Run: pip install -e '.[dev]'\n"
-            "=" * 70,
+            "\n=" * 70 + "\n Portal package not installed.\n Run: pip install -e '.[dev]'\n=" * 70,
             file=sys.stderr,
         )
         raise SystemExit(1)
 
-    config.addinivalue_line(
-        "markers", "unit: Fast unit tests with no external dependencies"
-    )
-    config.addinivalue_line(
-        "markers", "integration: Integration tests requiring external services"
-    )
-    config.addinivalue_line(
-        "markers", "e2e: End-to-end tests for full workflows"
-    )
-    config.addinivalue_line(
-        "markers", "slow: Tests that take more than 5 seconds"
-    )
-    config.addinivalue_line(
-        "markers", "requires_docker: Tests requiring Docker"
-    )
-    config.addinivalue_line(
-        "markers", "requires_llm: Tests requiring LLM backend"
-    )
+    config.addinivalue_line("markers", "unit: Fast unit tests with no external dependencies")
+    config.addinivalue_line("markers", "integration: Integration tests requiring external services")
+    config.addinivalue_line("markers", "e2e: End-to-end tests for full workflows")
+    config.addinivalue_line("markers", "slow: Tests that take more than 5 seconds")
+    config.addinivalue_line("markers", "requires_docker: Tests requiring Docker")
+    config.addinivalue_line("markers", "requires_llm: Tests requiring LLM backend")

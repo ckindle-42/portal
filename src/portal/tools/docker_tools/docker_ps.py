@@ -28,15 +28,15 @@ class DockerPSTool(BaseTool):
                     name="all",
                     param_type="bool",
                     description="Show all containers (default: running only)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="filters",
                     param_type="object",
                     description="Filter containers",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -56,18 +56,17 @@ class DockerPSTool(BaseTool):
 
             result = []
             for container in containers:
-                result.append({
-                    "id": container.short_id,
-                    "name": container.name,
-                    "image": container.image.tags[0] if container.image.tags else "unknown",
-                    "status": container.status,
-                    "ports": container.ports
-                })
+                result.append(
+                    {
+                        "id": container.short_id,
+                        "name": container.name,
+                        "image": container.image.tags[0] if container.image.tags else "unknown",
+                        "status": container.status,
+                        "ports": container.ports,
+                    }
+                )
 
-            return self._success_response(
-                result=result,
-                metadata={"count": len(result)}
-            )
+            return self._success_response(result=result, metadata={"count": len(result)})
 
         except Exception as e:
             return self._error_response(f"Docker PS failed: {str(e)}")

@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 # Check Docker availability
 try:
     import docker
+
     DOCKER_AVAILABLE = True
 except ImportError:
     DOCKER_AVAILABLE = False
@@ -79,12 +80,7 @@ class SandboxConfig:
 
         if self.packages is None:
             # Default packages
-            self.packages = [
-                "numpy",
-                "pandas",
-                "requests",
-                "matplotlib"
-            ]
+            self.packages = ["numpy", "pandas", "requests", "matplotlib"]
 
 
 class DockerPythonSandbox:
@@ -135,7 +131,7 @@ class DockerPythonSandbox:
 FROM python:{self.config.python_version}-slim
 
 # Install common packages
-RUN pip install --no-cache-dir {' '.join(self.packages)}
+RUN pip install --no-cache-dir {" ".join(self.packages)}
 
 # Create non-root user
 RUN useradd -m -u 1000 sandbox && \\
@@ -160,10 +156,7 @@ CMD ["python3"]
 
                 logger.info("Building Docker image...")
                 self.docker_client.images.build(
-                    path=str(tmpdir),
-                    tag=self.image_name,
-                    rm=True,
-                    forcerm=True
+                    path=str(tmpdir), tag=self.image_name, rm=True, forcerm=True
                 )
                 logger.info("Image built: %s", self.image_name)
 
@@ -174,23 +167,23 @@ CMD ["python3"]
     def _prepare_container(self, code: str, container_id: str) -> dict[str, Any]:
         """Build container config dict for a code execution run."""
         config: dict[str, Any] = {
-            'image': self.image_name,
-            'command': ['python3', '-c', code],
-            'name': f'sandbox_{container_id}',
-            'detach': True,
-            'auto_remove': True,
-            'mem_limit': self.config.memory_limit,
-            'cpu_quota': self.config.cpu_quota,
-            'nano_cpus': self.config.nano_cpus,
-            'pids_limit': self.config.pids_limit,
-            'security_opt': ['no-new-privileges'] if self.config.no_new_privileges else [],
-            'cap_drop': self.config.drop_capabilities,
-            'read_only': self.config.read_only,
-            'tmpfs': {'/tmp': f'size={self.config.tmpfs_size}'},
-            'network_mode': 'none',
+            "image": self.image_name,
+            "command": ["python3", "-c", code],
+            "name": f"sandbox_{container_id}",
+            "detach": True,
+            "auto_remove": True,
+            "mem_limit": self.config.memory_limit,
+            "cpu_quota": self.config.cpu_quota,
+            "nano_cpus": self.config.nano_cpus,
+            "pids_limit": self.config.pids_limit,
+            "security_opt": ["no-new-privileges"] if self.config.no_new_privileges else [],
+            "cap_drop": self.config.drop_capabilities,
+            "read_only": self.config.read_only,
+            "tmpfs": {"/tmp": f"size={self.config.tmpfs_size}"},
+            "network_mode": "none",
         }
         if not self.config.network_disabled:
-            config['network_mode'] = 'bridge'
+            config["network_mode"] = "bridge"
         return config
 
     def _run_container(self, container_config: dict[str, Any], timeout: int) -> tuple[Any, int]:
@@ -198,30 +191,33 @@ CMD ["python3"]
         container = self.docker_client.containers.run(**container_config)
         try:
             result = container.wait(timeout=timeout)
-            exit_code = result['StatusCode']
+            exit_code = result["StatusCode"]
         except Exception as e:
             logger.warning("Container execution timeout or error: %s", e)
             container.kill()
             exit_code = -1
         return container, exit_code
 
-    def _collect_output(self, container: Any, exit_code: int,
-                        container_id: str, start_time: float) -> dict[str, Any]:
+    def _collect_output(
+        self, container: Any, exit_code: int, container_id: str, start_time: float
+    ) -> dict[str, Any]:
         """Read container logs and assemble the result dict."""
         import time
-        stdout = container.logs().decode('utf-8', errors='replace')
+
+        stdout = container.logs().decode("utf-8", errors="replace")
         return {
-            'success': exit_code == 0,
-            'stdout': stdout,
-            'stderr': '',
-            'exit_code': exit_code,
-            'execution_time': time.time() - start_time,
-            'container_id': container_id,
+            "success": exit_code == 0,
+            "stdout": stdout,
+            "stderr": "",
+            "exit_code": exit_code,
+            "execution_time": time.time() - start_time,
+            "container_id": container_id,
         }
 
     async def execute_code(self, code: str, timeout: int | None = None) -> dict[str, Any]:
         """Execute Python code in an isolated Docker sandbox."""
         import time
+
         start_time = time.time()
         timeout = timeout or self.config.timeout_seconds
         container_id = str(uuid.uuid4())[:8]
@@ -234,12 +230,12 @@ CMD ["python3"]
         except Exception as e:
             logger.error("Sandbox execution error: %s", e)
             return {
-                'success': False,
-                'stdout': '',
-                'stderr': str(e),
-                'exit_code': -1,
-                'execution_time': time.time() - start_time,
-                'container_id': container_id,
+                "success": False,
+                "stdout": "",
+                "stderr": str(e),
+                "exit_code": -1,
+                "execution_time": time.time() - start_time,
+                "container_id": container_id,
             }
         finally:
             if container:
@@ -248,11 +244,7 @@ CMD ["python3"]
                 except Exception:
                     pass
 
-    async def execute_script(
-        self,
-        script_path: str,
-        timeout: int | None = None
-    ) -> dict[str, Any]:
+    async def execute_script(self, script_path: str, timeout: int | None = None) -> dict[str, Any]:
         """Execute Python script from file"""
 
         try:
@@ -260,12 +252,12 @@ CMD ["python3"]
             return await self.execute_code(script_content, timeout)
         except Exception as e:
             return {
-                'success': False,
-                'stdout': '',
-                'stderr': f"Failed to read script: {e}",
-                'exit_code': -1,
-                'execution_time': 0,
-                'container_id': 'N/A'
+                "success": False,
+                "stdout": "",
+                "stderr": f"Failed to read script: {e}",
+                "exit_code": -1,
+                "execution_time": 0,
+                "container_id": "N/A",
             }
 
     def cleanup(self) -> None:
@@ -277,6 +269,7 @@ CMD ["python3"]
 # ============================================================================
 # TOOL INTEGRATION
 # ============================================================================
+
 
 class DockerPythonExecutionTool(BaseTool):
     """
@@ -313,25 +306,23 @@ class DockerPythonExecutionTool(BaseTool):
                     name="code",
                     param_type="string",
                     description="Python code to execute",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="timeout",
                     param_type="integer",
                     description="Execution timeout in seconds (default: 30)",
                     required=False,
-                    default=30
-                )
-            ]
+                    default=30,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute code in sandbox"""
 
         if not DOCKER_AVAILABLE or not DockerPythonExecutionTool._sandbox:
-            return self._error_response(
-                "Docker sandbox not available. Install: pip install docker"
-            )
+            return self._error_response("Docker sandbox not available. Install: pip install docker")
 
         code = parameters.get("code")
         timeout = parameters.get("timeout", 30)
@@ -340,36 +331,31 @@ class DockerPythonExecutionTool(BaseTool):
             return self._error_response("No code provided")
 
         # Execute in sandbox
-        result = await DockerPythonExecutionTool._sandbox.execute_code(
-            code=code,
-            timeout=timeout
-        )
+        result = await DockerPythonExecutionTool._sandbox.execute_code(code=code, timeout=timeout)
 
-        if result['success']:
+        if result["success"]:
             return self._success_response(
                 result={
-                    'output': result['stdout'],
-                    'execution_time': f"{result['execution_time']:.2f}s"
+                    "output": result["stdout"],
+                    "execution_time": f"{result['execution_time']:.2f}s",
                 },
                 metadata={
-                    'container_id': result['container_id'],
-                    'exit_code': result['exit_code'],
-                    'security': 'Docker sandbox'
-                }
+                    "container_id": result["container_id"],
+                    "exit_code": result["exit_code"],
+                    "security": "Docker sandbox",
+                },
             )
         else:
             return self._error_response(
                 f"Execution failed:\n{result['stderr']}\n{result['stdout']}",
-                metadata={
-                    'exit_code': result['exit_code'],
-                    'container_id': result['container_id']
-                }
+                metadata={"exit_code": result["exit_code"], "container_id": result["container_id"]},
             )
 
 
 # ============================================================================
 # DOCKERFILE GENERATOR
 # ============================================================================
+
 
 class DockerfileGenerator:
     """Generate custom Dockerfiles for different use cases"""
@@ -418,4 +404,3 @@ CMD ["python3"]
 # ============================================================================
 # USAGE EXAMPLES
 # ============================================================================
-

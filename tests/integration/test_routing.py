@@ -2,6 +2,7 @@
 Integration test for model router.
 Requires: Router running at localhost:8000.
 """
+
 import httpx
 import pytest
 
@@ -22,7 +23,11 @@ async def test_router_dry_run_coding():
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             "http://localhost:8000/api/dry-run",
-            json={"messages": [{"role": "user", "content": "write a python function to reverse a string"}]},
+            json={
+                "messages": [
+                    {"role": "user", "content": "write a python function to reverse a string"}
+                ]
+            },
         )
         assert resp.status_code == 200
         data = resp.json()

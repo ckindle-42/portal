@@ -18,9 +18,11 @@ from portal.observability.watchdog import (
 
 class TestMonitoredComponent:
     def test_init(self):
-        hc = AsyncMock(return_value=HealthCheckResult(
-            status=HealthStatus.HEALTHY, message="ok", timestamp="now"
-        ))
+        hc = AsyncMock(
+            return_value=HealthCheckResult(
+                status=HealthStatus.HEALTHY, message="ok", timestamp="now"
+            )
+        )
         comp = MonitoredComponent(name="worker", health_check=hc, critical=True)
         assert comp.name == "worker"
         assert comp.critical is True
@@ -107,19 +109,28 @@ class TestWatchdog:
     # ── _check_component ─────────────────────────────────────────────
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("input_status,initial_state,expected_state,expected_failures", [
-        (HealthStatus.HEALTHY, ComponentState.DEGRADED, ComponentState.HEALTHY, 0),
-        (HealthStatus.DEGRADED, ComponentState.HEALTHY, ComponentState.DEGRADED, 1),
-    ])
+    @pytest.mark.parametrize(
+        "input_status,initial_state,expected_state,expected_failures",
+        [
+            (HealthStatus.HEALTHY, ComponentState.DEGRADED, ComponentState.HEALTHY, 0),
+            (HealthStatus.DEGRADED, ComponentState.HEALTHY, ComponentState.DEGRADED, 1),
+        ],
+    )
     @patch("portal.observability.watchdog.logger")
     @patch("portal.observability.watchdog.psutil.Process")
-    async def test_check_component_state_transition(self, mock_process, mock_logger,
-                                                    input_status, initial_state,
-                                                    expected_state, expected_failures):
+    async def test_check_component_state_transition(
+        self,
+        mock_process,
+        mock_logger,
+        input_status,
+        initial_state,
+        expected_state,
+        expected_failures,
+    ):
         wd = Watchdog()
-        hc = AsyncMock(return_value=HealthCheckResult(
-            status=input_status, message="msg", timestamp="now"
-        ))
+        hc = AsyncMock(
+            return_value=HealthCheckResult(status=input_status, message="msg", timestamp="now")
+        )
         wd.register_component("comp", hc)
         comp = wd._components["comp"]
         comp.health.state = initial_state
@@ -133,9 +144,11 @@ class TestWatchdog:
     async def test_check_component_unhealthy_triggers_restart(self, mock_process, mock_logger):
         cfg = WatchdogConfig(max_consecutive_failures=1, restart_backoff_seconds=0)
         wd = Watchdog(config=cfg)
-        hc = AsyncMock(return_value=HealthCheckResult(
-            status=HealthStatus.UNHEALTHY, message="down", timestamp="now"
-        ))
+        hc = AsyncMock(
+            return_value=HealthCheckResult(
+                status=HealthStatus.UNHEALTHY, message="down", timestamp="now"
+            )
+        )
         restart_fn = AsyncMock()
         wd.register_component("comp", hc, restart_func=restart_fn, critical=True)
         comp = wd._components["comp"]
@@ -151,9 +164,11 @@ class TestWatchdog:
             config=WatchdogConfig(max_consecutive_failures=10),
             on_component_failed=on_fail,
         )
-        hc = AsyncMock(return_value=HealthCheckResult(
-            status=HealthStatus.UNHEALTHY, message="err", timestamp="now"
-        ))
+        hc = AsyncMock(
+            return_value=HealthCheckResult(
+                status=HealthStatus.UNHEALTHY, message="err", timestamp="now"
+            )
+        )
         wd.register_component("comp", hc)
         await wd._check_component(wd._components["comp"])
         on_fail.assert_called_once_with("comp", "err")
@@ -265,10 +280,13 @@ class TestWatchdog:
     # ── _check_system_resources ──────────────────────────────────────
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("rss_mb,memory_pct,cpu_pct", [
-        (100, 10.0, 5.0),
-        (8000, 95.0, 5.0),
-    ])
+    @pytest.mark.parametrize(
+        "rss_mb,memory_pct,cpu_pct",
+        [
+            (100, 10.0, 5.0),
+            (8000, 95.0, 5.0),
+        ],
+    )
     @patch("portal.observability.watchdog.psutil.Process")
     async def test_check_system_resources(self, mock_process, rss_mb, memory_pct, cpu_pct):
         mock_proc = MagicMock()
@@ -304,9 +322,11 @@ class TestWatchdogHealthCheck:
 
         wd = Watchdog()
         wd._running = True
-        hc_func = AsyncMock(return_value=HealthCheckResult(
-            status=HealthStatus.HEALTHY, message="ok", timestamp="now"
-        ))
+        hc_func = AsyncMock(
+            return_value=HealthCheckResult(
+                status=HealthStatus.HEALTHY, message="ok", timestamp="now"
+            )
+        )
         wd.register_component("comp", hc_func)
         whc = WatchdogHealthCheck(wd)
         result = await whc.check()

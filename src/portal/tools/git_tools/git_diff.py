@@ -25,27 +25,27 @@ class GitDiffTool(BaseTool):
                     name="repo_path",
                     param_type="string",
                     description="Path to repository (default: current directory)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="staged",
                     param_type="bool",
                     description="Show staged changes (default: False)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="commit",
                     param_type="string",
                     description="Compare with specific commit",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="file_path",
                     param_type="string",
                     description="Show diff for specific file only",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -84,21 +84,20 @@ class GitDiffTool(BaseTool):
             if not diff_text:
                 return self._success_response(
                     result=f"No {diff_type.lower()} to display",
-                    metadata={"diff_type": diff_type, "has_changes": False}
+                    metadata={"diff_type": diff_type, "has_changes": False},
                 )
 
             # Truncate if too long for Telegram
             max_length = 3000
             if len(diff_text) > max_length:
-                diff_text = diff_text[:max_length] + f"\n\n... (truncated, {len(diff_text) - max_length} more chars)"
+                diff_text = (
+                    diff_text[:max_length]
+                    + f"\n\n... (truncated, {len(diff_text) - max_length} more chars)"
+                )
 
             return self._success_response(
                 result=f"{diff_type}:\n\n```diff\n{diff_text}\n```",
-                metadata={
-                    "diff_type": diff_type,
-                    "has_changes": True,
-                    "length": len(diff_text)
-                }
+                metadata={"diff_type": diff_type, "has_changes": True, "length": len(diff_text)},
             )
 
         except GitCommandError as e:

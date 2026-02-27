@@ -19,12 +19,14 @@ class TestJobSchedulerTool:
         """Test scheduling a recurring job"""
         tool = JobSchedulerTool()
 
-        result = await tool.execute({
-            "operation": "schedule",
-            "name": "test_job",
-            "schedule": "0 9 * * *",  # Daily at 9 AM
-            "command": "echo 'test'"
-        })
+        result = await tool.execute(
+            {
+                "operation": "schedule",
+                "name": "test_job",
+                "schedule": "0 9 * * *",  # Daily at 9 AM
+                "command": "echo 'test'",
+            }
+        )
 
         assert result["success"] is True or result["success"] is False
         # Implementation may vary
@@ -34,9 +36,7 @@ class TestJobSchedulerTool:
         """Test listing scheduled jobs"""
         tool = JobSchedulerTool()
 
-        result = await tool.execute({
-            "action": "list"
-        })
+        result = await tool.execute({"action": "list"})
 
         assert result["success"] is True
         assert "jobs" in result or "result" in result
@@ -46,10 +46,7 @@ class TestJobSchedulerTool:
         """Test canceling a scheduled job"""
         tool = JobSchedulerTool()
 
-        result = await tool.execute({
-            "operation": "cancel",
-            "job_id": "test_job_id"
-        })
+        result = await tool.execute({"operation": "cancel", "job_id": "test_job_id"})
 
         # May succeed or fail depending on whether job exists
         assert "success" in result
@@ -65,15 +62,9 @@ class TestShellSafetyTool:
         tool = ShellSafetyTool()
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout="safe output",
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout="safe output", stderr="")
 
-            result = await tool.execute({
-                "command": "echo 'hello world'"
-            })
+            result = await tool.execute({"command": "echo 'hello world'"})
 
             assert result["success"] is True
 
@@ -89,9 +80,7 @@ class TestShellSafetyTool:
         ]
 
         for cmd in dangerous_commands:
-            result = await tool.execute({
-                "command": cmd
-            })
+            result = await tool.execute({"command": cmd})
 
             # Should either block or warn
             assert "success" in result
@@ -103,9 +92,6 @@ class TestShellSafetyTool:
         """Test command safety validation"""
         tool = ShellSafetyTool()
 
-        result = await tool.execute({
-            "command": "ls -la",
-            "validate_only": True
-        })
+        result = await tool.execute({"command": "ls -la", "validate_only": True})
 
         assert result["success"] is True

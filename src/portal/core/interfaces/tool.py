@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class ToolCategory(Enum):
     """Tool categories"""
+
     UTILITY = "utility"
     DATA = "data"
     WEB = "web"
@@ -25,6 +26,7 @@ class ToolCategory(Enum):
 @dataclass
 class ToolParameter:
     """Tool parameter definition"""
+
     name: str
     param_type: str  # string, int, float, bool, list
     description: str
@@ -35,6 +37,7 @@ class ToolParameter:
 @dataclass
 class ToolMetadata:
     """Tool metadata"""
+
     name: str
     description: str
     category: ToolCategory
@@ -112,7 +115,9 @@ class BaseTool(ABC):
                 value = parameters[param.name]
                 expected_types = self._TYPE_VALIDATORS.get(param.param_type)
                 if expected_types and not isinstance(value, expected_types):
-                    msg = self._TYPE_MESSAGES.get(param.param_type, f"must be of type {param.param_type}")
+                    msg = self._TYPE_MESSAGES.get(
+                        param.param_type, f"must be of type {param.param_type}"
+                    )
                     return False, f"Parameter {param.name} {msg}"
 
         return True, None
@@ -128,4 +133,3 @@ class BaseTool(ABC):
         response = {"success": False, "error": error}
         response.update(kwargs)
         return response
-

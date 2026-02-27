@@ -15,6 +15,7 @@ def _make_web_interface(enable_security: bool = True):
     secure_agent = None
     if enable_security:
         from portal.security import SecurityMiddleware
+
         # Use a real SecurityMiddleware but with mocked rate limiter
         mock_core_for_security = MagicMock()
         mock_core_for_security.process_message = AsyncMock()
@@ -45,6 +46,7 @@ class TestStreamSecurityGate:
 
         # Simulate the security gate check directly
         from portal.security.security_module import InputSanitizer
+
         sanitizer = InputSanitizer()
         _, warnings = sanitizer.sanitize_command(dangerous_msg)
 

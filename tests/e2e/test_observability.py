@@ -28,10 +28,11 @@ class DummyHealthCheck(HealthCheckProvider):
 
     async def check(self) -> HealthCheckResult:
         from datetime import datetime
+
         return HealthCheckResult(
             status=self.status,
             message=f"Dummy check: {self.status.value}",
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
 
 
@@ -48,8 +49,8 @@ async def test_health_check_system():
     # Check health
     result = await system.check_health()
 
-    assert result['status'] == HealthStatus.HEALTHY.value
-    assert 'service_a' in result['checks']
+    assert result["status"] == HealthStatus.HEALTHY.value
+    assert "service_a" in result["checks"]
     print(f"  ✓ Overall status: {result['status']}")
     print(f"  ✓ Checks: {list(result['checks'].keys())}")
 
@@ -57,14 +58,14 @@ async def test_health_check_system():
     system.add_provider("service_b", DummyHealthCheck(HealthStatus.DEGRADED))
 
     result = await system.check_health()
-    assert result['status'] == HealthStatus.DEGRADED.value
+    assert result["status"] == HealthStatus.DEGRADED.value
     print(f"  ✓ Status with degraded component: {result['status']}")
 
     # Add unhealthy check
     system.add_provider("service_c", DummyHealthCheck(HealthStatus.UNHEALTHY))
 
     result = await system.check_health()
-    assert result['status'] == HealthStatus.UNHEALTHY.value
+    assert result["status"] == HealthStatus.UNHEALTHY.value
     print(f"  ✓ Status with unhealthy component: {result['status']}")
 
     print("  ✅ Health check system test passed!")
@@ -78,25 +79,25 @@ async def test_liveness_readiness():
 
     # Liveness should always be healthy (service is alive)
     liveness = await system.check_liveness()
-    assert liveness['status'] == HealthStatus.HEALTHY.value
+    assert liveness["status"] == HealthStatus.HEALTHY.value
     print(f"  ✓ Liveness: {liveness['status']}")
 
     # Readiness with all healthy
     system.add_provider("db", DummyHealthCheck(HealthStatus.HEALTHY))
     readiness = await system.check_readiness()
-    assert readiness['ready'] is True
+    assert readiness["ready"] is True
     print(f"  ✓ Readiness (healthy): {readiness['ready']}")
 
     # Readiness with degraded (still ready)
     system.add_provider("cache", DummyHealthCheck(HealthStatus.DEGRADED))
     readiness = await system.check_readiness()
-    assert readiness['ready'] is True
+    assert readiness["ready"] is True
     print(f"  ✓ Readiness (degraded): {readiness['ready']}")
 
     # Readiness with unhealthy (not ready)
     system.add_provider("critical", DummyHealthCheck(HealthStatus.UNHEALTHY))
     readiness = await system.check_readiness()
-    assert readiness['ready'] is False
+    assert readiness["ready"] is False
     print(f"  ✓ Readiness (unhealthy): {readiness['ready']}")
 
     print("  ✅ Liveness/readiness test passed!")
@@ -107,7 +108,7 @@ async def test_config_watcher():
     print("\n🔄 Test 3: Config Hot-Reloading")
 
     # Create temp config file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         config_file = Path(f.name)
         json.dump({"version": 1, "setting": "initial"}, f)
 
@@ -122,7 +123,7 @@ async def test_config_watcher():
     # Create watcher
     watcher = ConfigWatcher(
         config_file=config_file,
-        check_interval=0.5  # Check every 0.5s for testing
+        check_interval=0.5,  # Check every 0.5s for testing
     )
     watcher.add_callback(on_change)
     print("  ✓ Created config watcher")
@@ -135,7 +136,7 @@ async def test_config_watcher():
     await asyncio.sleep(0.2)
 
     # Modify config
-    with open(config_file, 'w') as f:
+    with open(config_file, "w") as f:
         json.dump({"version": 2, "setting": "updated"}, f)
     print("  ✓ Modified config file")
 
@@ -148,8 +149,8 @@ async def test_config_watcher():
 
     # Verify callback was called
     assert len(changes) > 0, "Config change callback was not called"
-    assert changes[0]['version'] == 2
-    assert changes[0]['setting'] == "updated"
+    assert changes[0]["version"] == 2
+    assert changes[0]["setting"] == "updated"
     print(f"  ✓ Config change detected: {len(changes)} change(s)")
 
     # Cleanup
@@ -163,7 +164,7 @@ async def test_config_validation():
     print("\n✅ Test 4: Config Validation")
 
     # Create temp config file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         config_file = Path(f.name)
         json.dump({"value": 10}, f)
 
@@ -176,14 +177,10 @@ async def test_config_validation():
 
     # Validator that only accepts value < 100
     def validator(config):
-        return config.get('value', 0) < 100
+        return config.get("value", 0) < 100
 
     # Create watcher with validator
-    watcher = ConfigWatcher(
-        config_file=config_file,
-        check_interval=0.5,
-        validator=validator
-    )
+    watcher = ConfigWatcher(config_file=config_file, check_interval=0.5, validator=validator)
     watcher.add_callback(on_change)
     await watcher.start()
     print("  ✓ Watcher with validator started")
@@ -192,22 +189,22 @@ async def test_config_validation():
     await asyncio.sleep(0.2)
 
     # Try valid change
-    with open(config_file, 'w') as f:
+    with open(config_file, "w") as f:
         json.dump({"value": 50}, f)
     await asyncio.sleep(1.0)
 
     assert len(changes) > 0
-    assert changes[-1]['value'] == 50
+    assert changes[-1]["value"] == 50
     print("  ✓ Valid config change accepted")
 
     # Try invalid change
-    with open(config_file, 'w') as f:
+    with open(config_file, "w") as f:
         json.dump({"value": 200}, f)  # > 100, should be rejected
     await asyncio.sleep(1.0)
 
     # Should still have old value
     current_config = watcher.get_current_config()
-    assert current_config['value'] == 50  # Not 200
+    assert current_config["value"] == 50  # Not 200
     print("  ✓ Invalid config change rejected")
 
     await watcher.stop()
@@ -253,18 +250,21 @@ async def test_observability_imports():
             ConfigWatcher,
             HealthCheckSystem,
         )
+
         print("  ✓ Can import HealthCheckSystem")
         print("  ✓ Can import ConfigWatcher")
 
         # Try optional imports
         try:
             from portal.observability import setup_telemetry  # noqa: F401
+
             print("  ✓ Can import setup_telemetry")
         except ImportError as e:
             print(f"  ⚠️  Tracer import warning: {e}")
 
         try:
             from portal.observability import MetricsCollector  # noqa: F401
+
             print("  ✓ Can import MetricsCollector")
         except ImportError as e:
             print(f"  ⚠️  Metrics import warning: {e}")
@@ -302,6 +302,7 @@ async def main():
             print(f"\n❌ FAILED: {test.__name__}")
             print(f"   Error: {e}")
             import traceback
+
             traceback.print_exc()
             failed += 1
 

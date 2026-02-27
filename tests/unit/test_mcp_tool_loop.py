@@ -40,7 +40,9 @@ def _make_core_with_mcp(config=None):
     mock_mcp_registry = AsyncMock()
 
     with patch("portal.core.agent_core.MemoryManager"):
-        with patch("portal.core.agent_core.HITLApprovalMiddleware", side_effect=Exception("no redis")):
+        with patch(
+            "portal.core.agent_core.HITLApprovalMiddleware", side_effect=Exception("no redis")
+        ):
             core = AgentCore(
                 model_registry=mock_model_registry,
                 router=mock_router,
@@ -192,7 +194,9 @@ async def test_mcp_loop_no_mcp_registry_skips_tools():
     mock_event_bus.publish = AsyncMock()
 
     with patch("portal.core.agent_core.MemoryManager"):
-        with patch("portal.core.agent_core.HITLApprovalMiddleware", side_effect=Exception("no redis")):
+        with patch(
+            "portal.core.agent_core.HITLApprovalMiddleware", side_effect=Exception("no redis")
+        ):
             core = AgentCore(
                 model_registry=mock_model_registry,
                 router=mock_router,
@@ -230,6 +234,7 @@ async def test_mcp_loop_no_mcp_registry_skips_tools():
 # ---------------------------------------------------------------------------
 # Context preservation on final execution (merged from test_mcp_context_preservation.py)
 # ---------------------------------------------------------------------------
+
 
 def _make_core_for_context_preservation():
     """AgentCore with MCP registry that verifies context accumulation."""

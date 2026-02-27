@@ -21,24 +21,24 @@ class AudioTranscribeTool(BaseTool):
                     name="audio_files",
                     param_type="list",
                     description="List of audio file paths",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="model_size",
                     param_type="string",
                     description="Model size: tiny, base, small, medium, large",
                     required=False,
-                    default="base"
+                    default="base",
                 ),
                 ToolParameter(
                     name="language",
                     param_type="string",
                     description="Language code (e.g., 'en', 'es') or 'auto'",
                     required=False,
-                    default="auto"
-                )
+                    default="auto",
+                ),
             ],
-            examples=["Transcribe audio.mp3"]
+            examples=["Transcribe audio.mp3"],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -60,28 +60,26 @@ class AudioTranscribeTool(BaseTool):
                 results = []
                 for audio_path in audio_files:
                     if not os.path.exists(audio_path):
-                        results.append({
-                            "file": audio_path,
-                            "success": False,
-                            "error": "File not found"
-                        })
+                        results.append(
+                            {"file": audio_path, "success": False, "error": "File not found"}
+                        )
                         continue
 
                     segments, info = model.transcribe(
-                        audio_path,
-                        language=None if language == "auto" else language,
-                        beam_size=5
+                        audio_path, language=None if language == "auto" else language, beam_size=5
                     )
 
                     text = " ".join([segment.text for segment in segments])
 
-                    results.append({
-                        "file": audio_path,
-                        "success": True,
-                        "text": text,
-                        "language": info.language,
-                        "duration": info.duration
-                    })
+                    results.append(
+                        {
+                            "file": audio_path,
+                            "success": True,
+                            "text": text,
+                            "language": info.language,
+                            "duration": info.duration,
+                        }
+                    )
 
                 return self._success_response(results)
 
@@ -93,21 +91,21 @@ class AudioTranscribeTool(BaseTool):
                     results = []
                     for audio_path in audio_files:
                         if not os.path.exists(audio_path):
-                            results.append({
-                                "file": audio_path,
-                                "success": False,
-                                "error": "File not found"
-                            })
+                            results.append(
+                                {"file": audio_path, "success": False, "error": "File not found"}
+                            )
                             continue
 
                         result = mlx_whisper.transcribe(audio_path)
 
-                        results.append({
-                            "file": audio_path,
-                            "success": True,
-                            "text": result.get("text", ""),
-                            "language": result.get("language", "unknown")
-                        })
+                        results.append(
+                            {
+                                "file": audio_path,
+                                "success": True,
+                                "text": result.get("text", ""),
+                                "language": result.get("language", "unknown"),
+                            }
+                        )
 
                     return self._success_response(results)
 

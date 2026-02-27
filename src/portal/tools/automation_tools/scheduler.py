@@ -25,34 +25,31 @@ class JobSchedulerTool(BaseTool):
                     name="action",
                     param_type="string",
                     description="Action: create, list, delete, pause, resume",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="job_id",
                     param_type="string",
                     description="Job ID (for delete/pause/resume)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
-                    name="name",
-                    param_type="string",
-                    description="Job name",
-                    required=False
+                    name="name", param_type="string", description="Job name", required=False
                 ),
                 ToolParameter(
                     name="schedule",
                     param_type="string",
                     description="Cron expression or interval (e.g., '*/5 * * * *' or '5m')",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="command",
                     param_type="string",
                     description="Command or task to execute",
-                    required=False
-                )
+                    required=False,
+                ),
             ],
-            examples=["Schedule backup every hour"]
+            examples=["Schedule backup every hour"],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -99,23 +96,17 @@ class JobSchedulerTool(BaseTool):
             "created_at": datetime.now(tz=UTC).isoformat(),
             "last_run": None,
             "next_run": self._calculate_next_run(schedule),
-            "run_count": 0
+            "run_count": 0,
         }
 
         JobSchedulerTool._jobs[job_id] = job
 
-        return self._success_response({
-            "message": f"Job created: {name}",
-            "job": job
-        })
+        return self._success_response({"message": f"Job created: {name}", "job": job})
 
     async def _list_jobs(self) -> dict[str, Any]:
         """List all jobs"""
         jobs = list(JobSchedulerTool._jobs.values())
-        return self._success_response({
-            "total": len(jobs),
-            "jobs": jobs
-        })
+        return self._success_response({"total": len(jobs), "jobs": jobs})
 
     async def _delete_job(self, job_id: str | None) -> dict[str, Any]:
         """Delete a job"""
@@ -123,10 +114,7 @@ class JobSchedulerTool(BaseTool):
             return self._error_response(f"Job not found: {job_id}")
 
         job = JobSchedulerTool._jobs.pop(job_id)
-        return self._success_response({
-            "message": f"Job deleted: {job['name']}",
-            "job_id": job_id
-        })
+        return self._success_response({"message": f"Job deleted: {job['name']}", "job_id": job_id})
 
     async def _pause_job(self, job_id: str | None) -> dict[str, Any]:
         """Pause a job"""
@@ -134,10 +122,9 @@ class JobSchedulerTool(BaseTool):
             return self._error_response(f"Job not found: {job_id}")
 
         JobSchedulerTool._jobs[job_id]["status"] = "paused"
-        return self._success_response({
-            "message": f"Job paused: {JobSchedulerTool._jobs[job_id]['name']}",
-            "job_id": job_id
-        })
+        return self._success_response(
+            {"message": f"Job paused: {JobSchedulerTool._jobs[job_id]['name']}", "job_id": job_id}
+        )
 
     async def _resume_job(self, job_id: str | None) -> dict[str, Any]:
         """Resume a paused job"""
@@ -145,10 +132,9 @@ class JobSchedulerTool(BaseTool):
             return self._error_response(f"Job not found: {job_id}")
 
         JobSchedulerTool._jobs[job_id]["status"] = "active"
-        return self._success_response({
-            "message": f"Job resumed: {JobSchedulerTool._jobs[job_id]['name']}",
-            "job_id": job_id
-        })
+        return self._success_response(
+            {"message": f"Job resumed: {JobSchedulerTool._jobs[job_id]['name']}", "job_id": job_id}
+        )
 
     def _calculate_next_run(self, schedule: str) -> str:
         """Calculate next run time from a cron expression or interval shorthand.
@@ -160,23 +146,34 @@ class JobSchedulerTool(BaseTool):
         now = datetime.now(tz=UTC)
 
         # Handle interval shorthand (e.g., '5m', '1h', '30s')
-        if schedule and schedule[-1] in ('s', 'm', 'h') and schedule[:-1].isdigit():
+        if schedule and schedule[-1] in ("s", "m", "h") and schedule[:-1].isdigit():
             from datetime import timedelta
+
             value = int(schedule[:-1])
             unit = schedule[-1]
-            deltas = {'s': timedelta(seconds=value), 'm': timedelta(minutes=value), 'h': timedelta(hours=value)}
+            deltas = {
+                "s": timedelta(seconds=value),
+                "m": timedelta(minutes=value),
+                "h": timedelta(hours=value),
+            }
             return (now + deltas[unit]).isoformat()
 
         # Handle basic cron: extract minute field for simple next-run estimate
         parts = schedule.strip().split()
         if len(parts) >= 5:
             minute_field = parts[0]
-            if minute_field.startswith('*/') and minute_field[2:].isdigit():
+            if minute_field.startswith("*/") and minute_field[2:].isdigit():
                 from datetime import timedelta
+
                 interval = int(minute_field[2:])
                 minutes_until = interval - (now.minute % interval)
-                return (now + timedelta(minutes=minutes_until)).replace(second=0, microsecond=0).isoformat()
+                return (
+                    (now + timedelta(minutes=minutes_until))
+                    .replace(second=0, microsecond=0)
+                    .isoformat()
+                )
 
         # Fallback: next run in 1 hour
         from datetime import timedelta
+
         return (now + timedelta(hours=1)).isoformat()

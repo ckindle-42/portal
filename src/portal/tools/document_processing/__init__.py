@@ -19,9 +19,9 @@ from .powerpoint_processor import PowerPointProcessorTool
 from .word_processor import WordProcessorTool
 
 __all__ = [
-    'WordProcessorTool',
-    'ExcelProcessorTool',
-    'PowerPointProcessorTool',
-    'PandocConverterTool',
-    'DocumentMetadataExtractorTool',
+    "WordProcessorTool",
+    "ExcelProcessorTool",
+    "PowerPointProcessorTool",
+    "PandocConverterTool",
+    "DocumentMetadataExtractorTool",
 ]

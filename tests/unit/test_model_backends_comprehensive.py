@@ -74,28 +74,40 @@ class _FakeSession:
 
 class TestGenerationResult:
     def test_defaults(self):
-        r = GenerationResult(text="hi", tokens_generated=5, time_ms=100.0, model_id="m", success=True)
+        r = GenerationResult(
+            text="hi", tokens_generated=5, time_ms=100.0, model_id="m", success=True
+        )
         assert r.error is None and r.tool_calls is None
 
     def test_failure_with_error(self):
-        r = GenerationResult(text="", tokens_generated=0, time_ms=50.0, model_id="m",
-                             success=False, error="timeout")
+        r = GenerationResult(
+            text="", tokens_generated=0, time_ms=50.0, model_id="m", success=False, error="timeout"
+        )
         assert not r.success and r.error == "timeout"
 
     def test_with_tool_calls(self):
         calls = [{"tool": "clock", "arguments": {}}]
-        r = GenerationResult(text="", tokens_generated=0, time_ms=10.0, model_id="m",
-                             success=True, tool_calls=calls)
+        r = GenerationResult(
+            text="", tokens_generated=0, time_ms=10.0, model_id="m", success=True, tool_calls=calls
+        )
         assert r.tool_calls == calls
 
 
 class TestBuildChatMessages:
-    @pytest.mark.parametrize("prompt,system,messages,expected_start,expected_len", [
-        ("hello", None, None, [{"role": "user", "content": "hello"}], 1),
-        ("hello", "Be helpful", None, {"role": "system", "content": "Be helpful"}, 2),
-        ("ignored", None, [{"role": "user", "content": "q1"}, {"role": "assistant", "content": "a1"}],
-         [{"role": "user", "content": "q1"}, {"role": "assistant", "content": "a1"}], 2),
-    ])
+    @pytest.mark.parametrize(
+        "prompt,system,messages,expected_start,expected_len",
+        [
+            ("hello", None, None, [{"role": "user", "content": "hello"}], 1),
+            ("hello", "Be helpful", None, {"role": "system", "content": "Be helpful"}, 2),
+            (
+                "ignored",
+                None,
+                [{"role": "user", "content": "q1"}, {"role": "assistant", "content": "a1"}],
+                [{"role": "user", "content": "q1"}, {"role": "assistant", "content": "a1"}],
+                2,
+            ),
+        ],
+    )
     def test_build_messages(self, prompt, system, messages, expected_start, expected_len):
         result = BaseHTTPBackend._build_chat_messages(prompt, system, messages)
         assert len(result) == expected_len
@@ -111,12 +123,15 @@ class TestBuildChatMessages:
 
 
 class TestNormalizeToolCalls:
-    @pytest.mark.parametrize("raw,expected_tool", [
-        ([{"function": {"name": "f1", "arguments": {"a": 1}}}], "f1"),
-        ([{"function": {"name": "f1", "arguments": {}}, "server": "s1"}], "f1"),
-        ([{"tool": "t1", "arguments": {}}], "t1"),
-        ([{"function": {"arguments": {}}, "name": "fallback"}], "fallback"),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected_tool",
+        [
+            ([{"function": {"name": "f1", "arguments": {"a": 1}}}], "f1"),
+            ([{"function": {"name": "f1", "arguments": {}}, "server": "s1"}], "f1"),
+            ([{"tool": "t1", "arguments": {}}], "t1"),
+            ([{"function": {"arguments": {}}, "name": "fallback"}], "fallback"),
+        ],
+    )
     def test_normalize_variants(self, raw, expected_tool):
         result = OllamaBackend._normalize_tool_calls(raw)
         assert result[0]["tool"] == expected_tool
@@ -135,16 +150,21 @@ class TestOllamaGenerate:
     @pytest.mark.asyncio
     async def test_successful_generation(self):
         backend = OllamaBackend()
-        fake_resp = _FakeResponse(200, {"message": {"content": "Hello!", "tool_calls": None}, "eval_count": 10})
+        fake_resp = _FakeResponse(
+            200, {"message": {"content": "Hello!", "tool_calls": None}, "eval_count": 10}
+        )
         with patch.object(backend, "_get_session", return_value=_FakeSession(fake_resp)):
             result = await backend.generate("hi", "test-model")
         assert result.success and result.text == "Hello!" and result.tokens_generated == 10
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("patch_kwargs,expected_error", [
-        ({"return_value": _FakeSession(_FakeResponse(500, text_data="Error"))}, "500"),
-        ({"side_effect": ConnectionError("refused")}, "refused"),
-    ])
+    @pytest.mark.parametrize(
+        "patch_kwargs,expected_error",
+        [
+            ({"return_value": _FakeSession(_FakeResponse(500, text_data="Error"))}, "500"),
+            ({"side_effect": ConnectionError("refused")}, "refused"),
+        ],
+    )
     async def test_generate_failure(self, patch_kwargs, expected_error):
         backend = OllamaBackend()
         with patch.object(backend, "_get_session", **patch_kwargs):
@@ -155,7 +175,9 @@ class TestOllamaGenerate:
     async def test_tool_calls_normalized(self):
         backend = OllamaBackend()
         tool_calls_raw = [{"function": {"name": "calc", "arguments": {"x": 1}}}]
-        fake_resp = _FakeResponse(200, {"message": {"content": "", "tool_calls": tool_calls_raw}, "eval_count": 0})
+        fake_resp = _FakeResponse(
+            200, {"message": {"content": "", "tool_calls": tool_calls_raw}, "eval_count": 0}
+        )
         with patch.object(backend, "_get_session", return_value=_FakeSession(fake_resp)):
             result = await backend.generate("calc 1+1", "test-model")
         assert result.success and result.tool_calls[0]["tool"] == "calc"
@@ -166,7 +188,9 @@ class TestOllamaStream:
     async def test_successful_stream(self):
         backend = OllamaBackend()
         lines = [json.dumps({"message": {"content": t}}).encode() for t in ["Hello", " world"]]
-        with patch.object(backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, lines=lines))):
+        with patch.object(
+            backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, lines=lines))
+        ):
             tokens = [t async for t in backend.generate_stream("hi", "test-model")]
         assert tokens == ["Hello", " world"]
 
@@ -174,7 +198,9 @@ class TestOllamaStream:
     async def test_invalid_json_skipped(self):
         backend = OllamaBackend()
         lines = [b"bad json", json.dumps({"message": {"content": "ok"}}).encode()]
-        with patch.object(backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, lines=lines))):
+        with patch.object(
+            backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, lines=lines))
+        ):
             tokens = [t async for t in backend.generate_stream("hi", "test-model")]
         assert tokens == ["ok"]
 
@@ -219,15 +245,20 @@ class TestLMStudioGenerate:
     async def test_successful_generation(self):
         backend = LMStudioBackend()
         data = {"choices": [{"message": {"content": "Hi!"}}], "usage": {"completion_tokens": 5}}
-        with patch.object(backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, data))):
+        with patch.object(
+            backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, data))
+        ):
             result = await backend.generate("hello", "lm-model")
         assert result.success and result.text == "Hi!" and result.tokens_generated == 5
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("patch_kwargs,expected_error", [
-        ({"return_value": _FakeSession(_FakeResponse(503, text_data="OL"))}, "503"),
-        ({"side_effect": TimeoutError("timeout")}, "timeout"),
-    ])
+    @pytest.mark.parametrize(
+        "patch_kwargs,expected_error",
+        [
+            ({"return_value": _FakeSession(_FakeResponse(503, text_data="OL"))}, "503"),
+            ({"side_effect": TimeoutError("timeout")}, "timeout"),
+        ],
+    )
     async def test_generate_failure(self, patch_kwargs, expected_error):
         backend = LMStudioBackend()
         with patch.object(backend, "_get_session", **patch_kwargs):
@@ -242,9 +273,11 @@ class TestLMStudioStream:
         lines = [
             b'data: {"choices": [{"delta": {"content": "Hello"}}]}\n',
             b'data: {"choices": [{"delta": {"content": " world"}}]}\n',
-            b'data: [DONE]\n',
+            b"data: [DONE]\n",
         ]
-        with patch.object(backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, lines=lines))):
+        with patch.object(
+            backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, lines=lines))
+        ):
             tokens = [t async for t in backend.generate_stream("hi", "lm-model")]
         assert tokens == ["Hello", " world"]
 
@@ -260,7 +293,9 @@ class TestLMStudioAvailability:
     async def test_available_and_list_models(self):
         backend = LMStudioBackend()
         data = {"data": [{"id": "model-a"}, {"id": "model-b"}]}
-        with patch.object(backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, data))):
+        with patch.object(
+            backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, data))
+        ):
             assert await backend.is_available()
             models = await backend.list_models()
         assert models == ["model-a", "model-b"]
@@ -297,8 +332,9 @@ class TestMLXBackend:
     @pytest.mark.asyncio
     async def test_stream_yields_chunks(self):
         backend = MLXBackend()
-        fake = GenerationResult(text="A" * 120, tokens_generated=10, time_ms=100.0,
-                                model_id="test", success=True)
+        fake = GenerationResult(
+            text="A" * 120, tokens_generated=10, time_ms=100.0, model_id="test", success=True
+        )
         with patch.object(backend, "generate", new_callable=AsyncMock, return_value=fake):
             chunks = [c async for c in backend.generate_stream("hi", "test-model")]
         assert len(chunks) == 3 and "".join(chunks) == "A" * 120
@@ -306,8 +342,14 @@ class TestMLXBackend:
     @pytest.mark.asyncio
     async def test_stream_yields_nothing_on_failure(self):
         backend = MLXBackend()
-        fake = GenerationResult(text="", tokens_generated=0, time_ms=50.0,
-                                model_id="test", success=False, error="mlx error")
+        fake = GenerationResult(
+            text="",
+            tokens_generated=0,
+            time_ms=50.0,
+            model_id="test",
+            success=False,
+            error="mlx error",
+        )
         with patch.object(backend, "generate", new_callable=AsyncMock, return_value=fake):
             assert [c async for c in backend.generate_stream("hi", "test-model")] == []
 
@@ -355,9 +397,12 @@ class TestBaseHTTPBackendSession:
 
 
 class TestURLConstruction:
-    @pytest.mark.parametrize("backend_cls,url,expected", [
-        (OllamaBackend, "http://host:11434/", "http://host:11434"),
-        (LMStudioBackend, "http://host:1234/v1/", "http://host:1234/v1"),
-    ])
+    @pytest.mark.parametrize(
+        "backend_cls,url,expected",
+        [
+            (OllamaBackend, "http://host:11434/", "http://host:11434"),
+            (LMStudioBackend, "http://host:1234/v1/", "http://host:1234/v1"),
+        ],
+    )
     def test_strips_trailing_slash(self, backend_cls, url, expected):
         assert backend_cls(base_url=url).base_url == expected

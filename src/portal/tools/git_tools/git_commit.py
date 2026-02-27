@@ -25,27 +25,24 @@ class GitCommitTool(BaseTool):
                     name="repo_path",
                     param_type="string",
                     description="Path to repository (default: current directory)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
-                    name="message",
-                    param_type="string",
-                    description="Commit message",
-                    required=True
+                    name="message", param_type="string", description="Commit message", required=True
                 ),
                 ToolParameter(
                     name="add_all",
                     param_type="bool",
                     description="Add all modified files before committing (default: False)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="files",
                     param_type="list",
                     description="Specific files to add before committing",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -86,8 +83,8 @@ class GitCommitTool(BaseTool):
                     "commit": commit.hexsha[:8],
                     "message": message,
                     "author": f"{commit.author.name} <{commit.author.email}>",
-                    "files_changed": len(commit.stats.files)
-                }
+                    "files_changed": len(commit.stats.files),
+                },
             )
 
         except GitCommandError as e:

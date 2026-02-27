@@ -25,8 +25,9 @@ class CircuitState(Enum):
 class CircuitBreaker:
     """Prevents retrying repeatedly failing backends (circuit breaker pattern)."""
 
-    def __init__(self, failure_threshold: int = 3, recovery_timeout: int = 60,
-                 half_open_max_calls: int = 1):
+    def __init__(
+        self, failure_threshold: int = 3, recovery_timeout: int = 60, half_open_max_calls: int = 1
+    ):
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
         self.half_open_max_calls = half_open_max_calls
@@ -75,10 +76,16 @@ class CircuitBreaker:
         if state == CircuitState.HALF_OPEN:
             self.states[backend_id] = CircuitState.OPEN
             logger.warning("Circuit breaker for %s: HALF_OPEN -> OPEN (test failed)", backend_id)
-        elif state == CircuitState.CLOSED and self.failure_counts[backend_id] >= self.failure_threshold:
+        elif (
+            state == CircuitState.CLOSED
+            and self.failure_counts[backend_id] >= self.failure_threshold
+        ):
             self.states[backend_id] = CircuitState.OPEN
-            logger.warning("Circuit breaker for %s: CLOSED -> OPEN (%s failures)",
-                           backend_id, self.failure_counts[backend_id])
+            logger.warning(
+                "Circuit breaker for %s: CLOSED -> OPEN (%s failures)",
+                backend_id,
+                self.failure_counts[backend_id],
+            )
 
     def get_state(self, backend_id: str) -> CircuitState:
         """Get current circuit state for backend"""
@@ -95,6 +102,7 @@ class CircuitBreaker:
 @dataclass
 class ExecutionResult:
     """Result from query execution"""
+
     success: bool
     response: str
     model_used: str
@@ -109,30 +117,36 @@ class ExecutionResult:
 class ExecutionEngine:
     """Executes queries with intelligent routing, fallback chains, and circuit breaker."""
 
-    def __init__(self, registry: ModelRegistry, router: IntelligentRouter,
-                 config: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        registry: ModelRegistry,
+        router: IntelligentRouter,
+        config: dict[str, Any] | None = None,
+    ):
         self.registry = registry
         self.router = router
         self.config = config or {}
         self.backends = {
-            'ollama': OllamaBackend(
-                base_url=self.config.get('ollama_base_url', 'http://localhost:11434')
+            "ollama": OllamaBackend(
+                base_url=self.config.get("ollama_base_url", "http://localhost:11434")
             ),
-            'lmstudio': LMStudioBackend(
-                base_url=self.config.get('lmstudio_base_url', 'http://localhost:1234/v1')
+            "lmstudio": LMStudioBackend(
+                base_url=self.config.get("lmstudio_base_url", "http://localhost:1234/v1")
             ),
-            'mlx': MLXBackend(
-                model_path=self.config.get('mlx_model_path')
-            )
+            "mlx": MLXBackend(model_path=self.config.get("mlx_model_path")),
         }
 
-        self.timeout_seconds = self.config.get('timeout_seconds', 60)
-        self.circuit_breaker_enabled = self.config.get('circuit_breaker_enabled', True)
-        self.circuit_breaker = CircuitBreaker(
-            failure_threshold=self.config.get('circuit_breaker_threshold', 3),
-            recovery_timeout=self.config.get('circuit_breaker_timeout', 60),
-            half_open_max_calls=self.config.get('circuit_breaker_half_open_calls', 1)
-        ) if self.circuit_breaker_enabled else None
+        self.timeout_seconds = self.config.get("timeout_seconds", 60)
+        self.circuit_breaker_enabled = self.config.get("circuit_breaker_enabled", True)
+        self.circuit_breaker = (
+            CircuitBreaker(
+                failure_threshold=self.config.get("circuit_breaker_threshold", 3),
+                recovery_timeout=self.config.get("circuit_breaker_timeout", 60),
+                half_open_max_calls=self.config.get("circuit_breaker_half_open_calls", 1),
+            )
+            if self.circuit_breaker_enabled
+            else None
+        )
 
         logger.info(
             "ExecutionEngine initialized: circuit_breaker=%s, timeout=%ss",
@@ -154,10 +168,15 @@ class ExecutionEngine:
             return False
         return True
 
-    async def execute(self, query: str, system_prompt: str | None = None,
-                     max_tokens: int = 2048, temperature: float = 0.7,
-                     max_cost: float = 1.0,
-                     messages: list[dict[str, Any]] | None = None) -> ExecutionResult:
+    async def execute(
+        self,
+        query: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        max_cost: float = 1.0,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> ExecutionResult:
         """Execute query with routing and fallback. Returns ExecutionResult."""
         start_time = time.time()
         decision = self.router.route(query, max_cost)
@@ -178,19 +197,25 @@ class ExecutionEngine:
                     fallbacks_used += 1
                     continue
                 result = await self._execute_with_timeout(
-                    backend=backend, model=model, query=query,
-                    system_prompt=system_prompt, max_tokens=max_tokens,
-                    temperature=temperature, messages=messages,
+                    backend=backend,
+                    model=model,
+                    query=query,
+                    system_prompt=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    messages=messages,
                 )
                 if result.success:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_success(model.backend)
                     return ExecutionResult(
-                        success=True, response=result.text,
+                        success=True,
+                        response=result.text,
                         model_used=model.display_name,
                         execution_time_ms=(time.time() - start_time) * 1000,
                         tokens_generated=result.tokens_generated,
-                        routing_decision=decision, fallbacks_used=fallbacks_used,
+                        routing_decision=decision,
+                        fallbacks_used=fallbacks_used,
                         tool_calls=result.tool_calls or [],
                     )
                 if self.circuit_breaker:
@@ -206,17 +231,26 @@ class ExecutionEngine:
                 logger.error("Error with model %s: %s", model_id, e)
 
         return ExecutionResult(
-            success=False, response="", model_used="none",
+            success=False,
+            response="",
+            model_used="none",
             execution_time_ms=(time.time() - start_time) * 1000,
-            tokens_generated=0, routing_decision=decision,
+            tokens_generated=0,
+            routing_decision=decision,
             fallbacks_used=fallbacks_used,
             error=f"All models failed. Last error: {last_error}",
         )
 
-    async def _execute_with_timeout(self, backend, model: ModelMetadata,
-                                   query: str, system_prompt: str | None,
-                                   max_tokens: int, temperature: float,
-                                   messages: list[dict[str, Any]] | None = None) -> GenerationResult:
+    async def _execute_with_timeout(
+        self,
+        backend,
+        model: ModelMetadata,
+        query: str,
+        system_prompt: str | None,
+        max_tokens: int,
+        temperature: float,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> GenerationResult:
         """Execute with timeout handling"""
 
         try:
@@ -229,7 +263,7 @@ class ExecutionEngine:
                     temperature=temperature,
                     messages=messages,
                 ),
-                timeout=self.timeout_seconds
+                timeout=self.timeout_seconds,
             )
             return result
 
@@ -240,7 +274,7 @@ class ExecutionEngine:
                 time_ms=self.timeout_seconds * 1000,
                 model_id=model.model_id,
                 success=False,
-                error=f"Timeout after {self.timeout_seconds}s"
+                error=f"Timeout after {self.timeout_seconds}s",
             )
 
     async def generate_stream(
@@ -301,7 +335,7 @@ class ExecutionEngine:
     async def close(self) -> None:
         """Close all backends"""
         for backend in self.backends.values():
-            if hasattr(backend, 'close'):
+            if hasattr(backend, "close"):
                 await backend.close()
 
     async def health_check(self) -> dict[str, Any]:
@@ -309,18 +343,20 @@ class ExecutionEngine:
         health = {}
         for name, backend in self.backends.items():
             try:
-                info: dict[str, Any] = {'available': await backend.is_available()}
+                info: dict[str, Any] = {"available": await backend.is_available()}
                 if self.circuit_breaker:
-                    info['circuit_state'] = self.circuit_breaker.get_state(name).value
-                    info['failure_count'] = self.circuit_breaker.failure_counts[name]
+                    info["circuit_state"] = self.circuit_breaker.get_state(name).value
+                    info["failure_count"] = self.circuit_breaker.failure_counts[name]
                 else:
-                    info['circuit_state'] = 'disabled'
+                    info["circuit_state"] = "disabled"
                 health[name] = info
             except Exception as e:
                 health[name] = {
-                    'available': False,
-                    'circuit_state': self.circuit_breaker.get_state(name).value if self.circuit_breaker else 'disabled',
-                    'error': str(e),
+                    "available": False,
+                    "circuit_state": self.circuit_breaker.get_state(name).value
+                    if self.circuit_breaker
+                    else "disabled",
+                    "error": str(e),
                 }
                 logger.error("Health check failed for %s: %s", name, e)
         return health
@@ -328,14 +364,14 @@ class ExecutionEngine:
     def get_circuit_breaker_status(self) -> dict[str, Any]:
         """Get circuit breaker status for all backends."""
         if not self.circuit_breaker:
-            return {'enabled': False, 'backends': {n: {'state': 'disabled'} for n in self.backends}}
+            return {"enabled": False, "backends": {n: {"state": "disabled"} for n in self.backends}}
         return {
-            'enabled': True,
-            'backends': {
+            "enabled": True,
+            "backends": {
                 name: {
-                    'state': self.circuit_breaker.get_state(name).value,
-                    'failure_count': self.circuit_breaker.failure_counts[name],
-                    'last_failure_time': self.circuit_breaker.last_failure_times.get(name),
+                    "state": self.circuit_breaker.get_state(name).value,
+                    "failure_count": self.circuit_breaker.failure_counts[name],
+                    "last_failure_time": self.circuit_breaker.last_failure_times.get(name),
                 }
                 for name in self.backends
             },

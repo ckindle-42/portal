@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import pyperclip
+
     CLIPBOARD_AVAILABLE = True
 except ImportError:
     CLIPBOARD_AVAILABLE = False
@@ -30,14 +31,14 @@ class ClipboardManagerTool(BaseTool):
                     "type": "string",
                     "required": True,
                     "options": ["read", "write", "clear"],
-                    "description": "Clipboard action"
+                    "description": "Clipboard action",
                 },
                 "content": {
                     "type": "string",
                     "required": False,
-                    "description": "Content to write (for write action)"
-                }
-            }
+                    "description": "Content to write (for write action)",
+                },
+            },
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -51,17 +52,14 @@ class ClipboardManagerTool(BaseTool):
         try:
             if action == "read":
                 content = pyperclip.paste()
-                return self._success_response(
-                    result=content,
-                    metadata={"length": len(content)}
-                )
+                return self._success_response(result=content, metadata={"length": len(content)})
 
             elif action == "write":
                 content = parameters.get("content", "")
                 pyperclip.copy(content)
                 return self._success_response(
                     result=f"Wrote {len(content)} characters to clipboard",
-                    metadata={"length": len(content)}
+                    metadata={"length": len(content)},
                 )
 
             elif action == "clear":

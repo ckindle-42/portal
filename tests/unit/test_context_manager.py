@@ -144,6 +144,7 @@ class TestMessageMetadata:
 class TestMessageDataclass:
     def test_to_dict(self) -> None:
         from portal.core.context_manager import Message
+
         msg = Message(role="user", content="hi", timestamp="t", interface="web", metadata={})
         d = msg.to_dict()
         assert d["role"] == "user"
@@ -162,6 +163,7 @@ class TestConcurrency:
 # ---------------------------------------------------------------------------
 # R2: TTL-based message pruning
 # ---------------------------------------------------------------------------
+
 
 class TestMessagePruning:
     """R2: Old messages beyond the retention period must be pruned."""
@@ -228,6 +230,7 @@ class TestMessagePruning:
 
         # After the interval, the stale message should have been pruned
         import sqlite3 as _sqlite3
+
         with _sqlite3.connect(ctx.db_path) as conn:
             row = conn.execute(
                 "SELECT COUNT(*) FROM conversations WHERE content = 'stale'"

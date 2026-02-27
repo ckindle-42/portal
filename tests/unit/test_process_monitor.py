@@ -135,6 +135,7 @@ class TestProcessMonitorInfo:
     @pytest.mark.asyncio
     async def test_info_not_found(self, mock_psutil):
         import psutil
+
         mock_psutil.Process.side_effect = psutil.NoSuchProcess(999)
         mock_psutil.NoSuchProcess = psutil.NoSuchProcess
         mock_psutil.AccessDenied = psutil.AccessDenied
@@ -166,6 +167,7 @@ class TestProcessMonitorKill:
     @pytest.mark.asyncio
     async def test_kill_force(self, mock_psutil):
         import psutil
+
         mock_proc = MagicMock()
         mock_proc.name.return_value = "stubborn"
         mock_proc.terminate.return_value = None
@@ -191,6 +193,7 @@ class TestProcessMonitorKill:
     @pytest.mark.asyncio
     async def test_kill_not_found(self, mock_psutil):
         import psutil
+
         mock_psutil.Process.side_effect = psutil.NoSuchProcess(999)
         mock_psutil.NoSuchProcess = psutil.NoSuchProcess
         mock_psutil.AccessDenied = psutil.AccessDenied

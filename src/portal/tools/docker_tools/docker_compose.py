@@ -26,39 +26,39 @@ class DockerComposeTool(BaseTool):
                     name="action",
                     param_type="string",
                     description="Action: up, down, ps, logs, restart",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="compose_file",
                     param_type="string",
                     description="Path to docker-compose.yml (default: ./docker-compose.yml)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="project_name",
                     param_type="string",
                     description="Project name (default: directory name)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="services",
                     param_type="list",
                     description="Specific services to target",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="detach",
                     param_type="bool",
                     description="Run in background (for 'up', default: True)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="build",
                     param_type="bool",
                     description="Build images before starting (for 'up', default: False)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -72,7 +72,9 @@ class DockerComposeTool(BaseTool):
         build = parameters.get("build", False)
 
         if action not in ["up", "down", "ps", "logs", "restart"]:
-            return self._error_response(f"Unknown action: {action}. Use: up, down, ps, logs, restart")
+            return self._error_response(
+                f"Unknown action: {action}. Use: up, down, ps, logs, restart"
+            )
 
         if not os.path.exists(compose_file):
             return self._error_response(f"Compose file not found: {compose_file}")
@@ -102,18 +104,16 @@ class DockerComposeTool(BaseTool):
                 cmd.extend(services)
 
             # Execute command asynchronously
-            logger.info("Running: %s", ' '.join(cmd))
+            logger.info("Running: %s", " ".join(cmd))
 
             process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
 
             stdout, stderr = await process.communicate()
 
-            output = stdout.decode('utf-8', errors='replace')
-            error = stderr.decode('utf-8', errors='replace')
+            output = stdout.decode("utf-8", errors="replace")
+            error = stderr.decode("utf-8", errors="replace")
 
             # Combine output
             result_text = output if output else error
@@ -134,8 +134,8 @@ class DockerComposeTool(BaseTool):
                     "action": action,
                     "compose_file": compose_file,
                     "project_name": project_name,
-                    "exit_code": process.returncode
-                }
+                    "exit_code": process.returncode,
+                },
             )
 
         except FileNotFoundError:

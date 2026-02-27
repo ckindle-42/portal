@@ -108,7 +108,7 @@ class TestLogRotator:
         await rotator.rotate()
         gz_files = list(tmp_path.glob("*.gz"))
         assert len(gz_files) == 1
-        with gzip.open(gz_files[0], 'rb') as f:
+        with gzip.open(gz_files[0], "rb") as f:
             assert f.read() == b"compress me"
 
     @pytest.mark.asyncio
@@ -140,7 +140,7 @@ class TestLogRotator:
         src.write_text("hello world")
         LogRotator._compress_file(src, dst)
         assert dst.exists()
-        with gzip.open(dst, 'rb') as f:
+        with gzip.open(dst, "rb") as f:
             assert f.read() == b"hello world"
 
     # ── _cleanup_old_logs ────────────────────────────────────────────
@@ -157,6 +157,7 @@ class TestLogRotator:
             f.write_text(f"old {i}")
             # Stagger mtime
             import os
+
             os.utime(f, (time.time() - (4 - i) * 60, time.time() - (4 - i) * 60))
 
         await rotator._cleanup_old_logs()
@@ -187,16 +188,16 @@ class TestLogRotator:
         log_file.write_text("some data")
         rotator = LogRotator(log_file=log_file)
         status = rotator.get_status()
-        assert status['running'] is False
-        assert status['current_size_bytes'] > 0
-        assert 'size_utilization_percent' in status
-        assert status['strategy'] == 'both'
+        assert status["running"] is False
+        assert status["current_size_bytes"] > 0
+        assert "size_utilization_percent" in status
+        assert status["strategy"] == "both"
 
     def test_get_status_file_missing(self, tmp_path):
         log_file = tmp_path / "missing.log"
         rotator = LogRotator(log_file=log_file)
         status = rotator.get_status()
-        assert status['current_size_bytes'] == 0
+        assert status["current_size_bytes"] == 0
 
     # ── start / stop ─────────────────────────────────────────────────
 
@@ -243,8 +244,13 @@ class TestRotatingStructuredLogHandler:
         handler.setFormatter(logging.Formatter("%(message)s"))
         handler._file_handler.setFormatter(logging.Formatter("%(message)s"))
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg="test message", args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="test message",
+            args=(),
+            exc_info=None,
         )
         handler.emit(record)
         handler.close()

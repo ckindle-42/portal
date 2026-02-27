@@ -33,9 +33,7 @@ class TestDocumentMetadataExtractorTool:
         test_file.write_bytes(b"%PDF-1.4 dummy")
 
         # With PyPDF2 installed, tool may fail gracefully on invalid PDF bytes — that's OK
-        result = await tool.execute({
-            "file_path": str(test_file)
-        })
+        result = await tool.execute({"file_path": str(test_file)})
 
         assert "success" in result
 
@@ -51,15 +49,13 @@ class TestExcelProcessorTool:
 
         output_file = temp_dir / "test.xlsx"
 
-        result = await tool.execute({
-            "action": "write",
-            "file_path": str(output_file),
-            "data": [
-                ["Name", "Age"],
-                ["Alice", 30],
-                ["Bob", 25]
-            ]
-        })
+        result = await tool.execute(
+            {
+                "action": "write",
+                "file_path": str(output_file),
+                "data": [["Name", "Age"], ["Alice", 30], ["Bob", 25]],
+            }
+        )
 
         assert result["success"] is True or "error" in result
 
@@ -71,6 +67,7 @@ class TestExcelProcessorTool:
 
         # Create a real Excel file using openpyxl so the tool can read it
         import openpyxl
+
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.append(["Name", "Age"])
@@ -78,10 +75,7 @@ class TestExcelProcessorTool:
         excel_file = temp_dir / "test.xlsx"
         wb.save(str(excel_file))
 
-        result = await tool.execute({
-            "action": "read",
-            "file_path": str(excel_file)
-        })
+        result = await tool.execute({"action": "read", "file_path": str(excel_file)})
 
         assert "success" in result
 
@@ -103,12 +97,14 @@ class TestPandocConverterTool:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
-            result = await tool.execute({
-                "input_file": str(input_file),
-                "output_file": str(output_file),
-                "from_format": "markdown",
-                "to_format": "pdf"
-            })
+            result = await tool.execute(
+                {
+                    "input_file": str(input_file),
+                    "output_file": str(output_file),
+                    "from_format": "markdown",
+                    "to_format": "pdf",
+                }
+            )
 
             assert result["success"] is True or "error" in result
 
@@ -120,10 +116,12 @@ class TestPandocConverterTool:
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
-            result = await tool.execute({
-                "input_file": str(temp_dir / "input.md"),
-                "output_file": str(temp_dir / "output.pdf")
-            })
+            result = await tool.execute(
+                {
+                    "input_file": str(temp_dir / "input.md"),
+                    "output_file": str(temp_dir / "output.pdf"),
+                }
+            )
 
             assert result["success"] is False
 
@@ -139,11 +137,13 @@ class TestPowerPointProcessorTool:
 
         output_file = temp_dir / "presentation.pptx"
 
-        result = await tool.execute({
-            "action": "create",
-            "file_path": str(output_file),
-            "title": "Test Presentation",
-        })
+        result = await tool.execute(
+            {
+                "action": "create",
+                "file_path": str(output_file),
+                "title": "Test Presentation",
+            }
+        )
 
         assert result["success"] is True or "error" in result
 
@@ -159,11 +159,13 @@ class TestWordProcessorTool:
 
         output_file = temp_dir / "document.docx"
 
-        result = await tool.execute({
-            "action": "create",
-            "file_path": str(output_file),
-            "title": "Test Document",
-        })
+        result = await tool.execute(
+            {
+                "action": "create",
+                "file_path": str(output_file),
+                "title": "Test Document",
+            }
+        )
 
         assert result["success"] is True or "error" in result
 
@@ -175,15 +177,13 @@ class TestWordProcessorTool:
 
         # Create a real docx file using python-docx
         from docx import Document
+
         doc = Document()
         doc.add_paragraph("Test content")
         doc_file = temp_dir / "test.docx"
         doc.save(str(doc_file))
 
-        result = await tool.execute({
-            "action": "read",
-            "file_path": str(doc_file)
-        })
+        result = await tool.execute({"action": "read", "file_path": str(doc_file)})
 
         assert "success" in result
 
@@ -197,6 +197,7 @@ class TestPDFOCRTool:
         """Test extracting text from PDF — requires Tesseract OCR binary and pdf2image/poppler"""
         try:
             import pytesseract
+
             pytesseract.get_tesseract_version()
         except Exception:
             pytest.skip(
@@ -208,8 +209,10 @@ class TestPDFOCRTool:
         pdf_file = temp_dir / "test.pdf"
         pdf_file.write_bytes(b"%PDF-1.4 dummy")
 
-        result = await tool.execute({
-            "pdf_path": str(pdf_file),
-        })
+        result = await tool.execute(
+            {
+                "pdf_path": str(pdf_file),
+            }
+        )
 
         assert "success" in result

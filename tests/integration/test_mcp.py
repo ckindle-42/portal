@@ -2,6 +2,7 @@
 Integration test for MCP protocol layer.
 Requires: mcpo running at localhost:9000.
 """
+
 import pytest
 
 
@@ -34,5 +35,6 @@ async def test_mcp_tool_list():
 
     # These tools must be present
     for expected in ["read_file", "write_file", "search_nodes", "read_query"]:
-        assert any(expected in name for name in tool_names), \
+        assert any(expected in name for name in tool_names), (
             f"Expected MCP tool '{expected}' not found in: {tool_names}"
+        )

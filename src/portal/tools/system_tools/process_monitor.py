@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
@@ -30,33 +31,33 @@ class ProcessMonitorTool(BaseTool):
                     name="action",
                     param_type="string",
                     description="Action: list, search, info, kill (default: list)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="query",
                     param_type="string",
                     description="Search query for process name (for search action)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="pid",
                     param_type="int",
                     description="Process ID (for info/kill actions)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="sort_by",
                     param_type="string",
                     description="Sort by: cpu, memory, name (default: cpu)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="limit",
                     param_type="int",
                     description="Limit number of results (default: 10)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -91,7 +92,9 @@ class ProcessMonitorTool(BaseTool):
                 return await self._kill_process(pid)
 
             else:
-                return self._error_response(f"Unknown action: {action}. Use: list, search, info, kill")
+                return self._error_response(
+                    f"Unknown action: {action}. Use: list, search, info, kill"
+                )
 
         except Exception as e:
             return self._error_response(f"Process monitoring failed: {str(e)}")
@@ -100,25 +103,27 @@ class ProcessMonitorTool(BaseTool):
         """List top processes"""
         processes = []
 
-        for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+        for proc in psutil.process_iter(["pid", "name", "cpu_percent", "memory_percent"]):
             try:
                 pinfo = proc.info
-                processes.append({
-                    'pid': pinfo['pid'],
-                    'name': pinfo['name'],
-                    'cpu': pinfo['cpu_percent'] or 0,
-                    'memory': pinfo['memory_percent'] or 0
-                })
+                processes.append(
+                    {
+                        "pid": pinfo["pid"],
+                        "name": pinfo["name"],
+                        "cpu": pinfo["cpu_percent"] or 0,
+                        "memory": pinfo["memory_percent"] or 0,
+                    }
+                )
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
         # Sort processes
         if sort_by == "memory":
-            processes.sort(key=lambda x: x['memory'], reverse=True)
+            processes.sort(key=lambda x: x["memory"], reverse=True)
         elif sort_by == "name":
-            processes.sort(key=lambda x: x['name'])
+            processes.sort(key=lambda x: x["name"])
         else:  # default to cpu
-            processes.sort(key=lambda x: x['cpu'], reverse=True)
+            processes.sort(key=lambda x: x["cpu"], reverse=True)
 
         # Limit results
         top_processes = processes[:limit]
@@ -127,8 +132,7 @@ class ProcessMonitorTool(BaseTool):
         result_lines = [f"Top {limit} processes (by {sort_by}):\n"]
         for p in top_processes:
             result_lines.append(
-                f"PID {p['pid']}: {p['name']}\n"
-                f"  CPU: {p['cpu']:.1f}% | Memory: {p['memory']:.1f}%"
+                f"PID {p['pid']}: {p['name']}\n  CPU: {p['cpu']:.1f}% | Memory: {p['memory']:.1f}%"
             )
 
         return self._success_response(
@@ -136,8 +140,8 @@ class ProcessMonitorTool(BaseTool):
             metadata={
                 "total_processes": len(processes),
                 "showing": len(top_processes),
-                "sort_by": sort_by
-            }
+                "sort_by": sort_by,
+            },
         )
 
     async def _search_processes(self, query: str, limit: int) -> dict[str, Any]:
@@ -145,23 +149,25 @@ class ProcessMonitorTool(BaseTool):
         matches = []
         query_lower = query.lower()
 
-        for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+        for proc in psutil.process_iter(["pid", "name", "cpu_percent", "memory_percent"]):
             try:
                 pinfo = proc.info
-                if query_lower in pinfo['name'].lower():
-                    matches.append({
-                        'pid': pinfo['pid'],
-                        'name': pinfo['name'],
-                        'cpu': pinfo['cpu_percent'] or 0,
-                        'memory': pinfo['memory_percent'] or 0
-                    })
+                if query_lower in pinfo["name"].lower():
+                    matches.append(
+                        {
+                            "pid": pinfo["pid"],
+                            "name": pinfo["name"],
+                            "cpu": pinfo["cpu_percent"] or 0,
+                            "memory": pinfo["memory_percent"] or 0,
+                        }
+                    )
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
         if not matches:
             return self._success_response(
                 result=f"No processes found matching '{query}'",
-                metadata={"query": query, "matches": 0}
+                metadata={"query": query, "matches": 0},
             )
 
         # Limit results
@@ -171,8 +177,7 @@ class ProcessMonitorTool(BaseTool):
         result_lines = [f"Processes matching '{query}' ({len(matches)} found):\n"]
         for p in limited_matches:
             result_lines.append(
-                f"PID {p['pid']}: {p['name']}\n"
-                f"  CPU: {p['cpu']:.1f}% | Memory: {p['memory']:.1f}%"
+                f"PID {p['pid']}: {p['name']}\n  CPU: {p['cpu']:.1f}% | Memory: {p['memory']:.1f}%"
             )
 
         return self._success_response(
@@ -180,8 +185,8 @@ class ProcessMonitorTool(BaseTool):
             metadata={
                 "query": query,
                 "total_matches": len(matches),
-                "showing": len(limited_matches)
-            }
+                "showing": len(limited_matches),
+            },
         )
 
     async def _process_info(self, pid: int) -> dict[str, Any]:
@@ -199,7 +204,7 @@ class ProcessMonitorTool(BaseTool):
                     "memory_percent": proc.memory_percent(),
                     "memory_mb": proc.memory_info().rss / 1024 / 1024,
                     "num_threads": proc.num_threads(),
-                    "create_time": proc.create_time()
+                    "create_time": proc.create_time(),
                 }
 
             # Try to get additional info (may fail for some processes)
@@ -215,7 +220,10 @@ class ProcessMonitorTool(BaseTool):
 
             # Format output
             import datetime
-            create_time = datetime.datetime.fromtimestamp(info["create_time"]).strftime('%Y-%m-%d %H:%M:%S')
+
+            create_time = datetime.datetime.fromtimestamp(info["create_time"]).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
 
             result = (
                 f"Process Information:\n\n"
@@ -230,10 +238,7 @@ class ProcessMonitorTool(BaseTool):
                 f"Command: {info['cmdline'][:100]}"
             )
 
-            return self._success_response(
-                result=result,
-                metadata=info
-            )
+            return self._success_response(result=result, metadata=info)
 
         except psutil.NoSuchProcess:
             return self._error_response(f"Process {pid} not found")
@@ -254,14 +259,14 @@ class ProcessMonitorTool(BaseTool):
                 proc.wait(timeout=3)
                 return self._success_response(
                     result=f"Process {pid} ({name}) terminated successfully",
-                    metadata={"pid": pid, "name": name}
+                    metadata={"pid": pid, "name": name},
                 )
             except psutil.TimeoutExpired:
                 # Force kill if termination failed
                 proc.kill()
                 return self._success_response(
                     result=f"Process {pid} ({name}) forcefully killed",
-                    metadata={"pid": pid, "name": name, "forced": True}
+                    metadata={"pid": pid, "name": name, "forced": True},
                 )
 
         except psutil.NoSuchProcess:

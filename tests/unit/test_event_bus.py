@@ -47,8 +47,11 @@ class TestEventBus:
         bus = EventBus()
         events_a, events_b = [], []
 
-        async def handler_a(data): events_a.append(data)
-        async def handler_b(data): events_b.append(data)
+        async def handler_a(data):
+            events_a.append(data)
+
+        async def handler_b(data):
+            events_b.append(data)
 
         bus.subscribe(EventType.PROCESSING_COMPLETED, handler_a)
         bus.subscribe(EventType.PROCESSING_COMPLETED, handler_b)
@@ -78,8 +81,11 @@ class TestEventBus:
         bus = EventBus()
         started_events, completed_events = [], []
 
-        async def started_handler(data): started_events.append(data)
-        async def completed_handler(data): completed_events.append(data)
+        async def started_handler(data):
+            started_events.append(data)
+
+        async def completed_handler(data):
+            completed_events.append(data)
 
         bus.subscribe(EventType.PROCESSING_STARTED, started_handler)
         bus.subscribe(EventType.PROCESSING_COMPLETED, completed_handler)
@@ -92,12 +98,15 @@ class TestEventBus:
     async def test_unsubscribe_unknown_callback_is_safe(self):
         bus = EventBus()
 
-        async def handler(event: Event) -> None: pass
+        async def handler(event: Event) -> None:
+            pass
 
         bus.unsubscribe(EventType.PROCESSING_STARTED, handler)  # Never registered
         bus.subscribe(EventType.PROCESSING_STARTED, handler)
 
-        async def other_handler(event: Event) -> None: pass
+        async def other_handler(event: Event) -> None:
+            pass
+
         bus.unsubscribe(EventType.PROCESSING_STARTED, other_handler)
 
 
@@ -128,7 +137,8 @@ class TestEventEmitter:
         bus = EventBus()
         events = []
 
-        async def handler(data): events.append(data)
+        async def handler(data):
+            events.append(data)
 
         bus.subscribe(EventType.PROCESSING_STARTED, handler)
         emitter = EventEmitter(bus)

@@ -20,23 +20,20 @@ class MockTool(BaseTool):
                     name="required_param",
                     param_type="string",
                     description="A required parameter",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="optional_param",
                     param_type="int",
                     description="An optional parameter",
                     required=False,
-                    default=42
-                )
-            ]
+                    default=42,
+                ),
+            ],
         )
 
     async def execute(self, parameters):
-        return self._success_response(
-            result="Mock execution successful",
-            metadata=parameters
-        )
+        return self._success_response(result="Mock execution successful", metadata=parameters)
 
 
 class TestBaseTool:
@@ -56,10 +53,7 @@ class TestBaseTool:
         """Test parameter validation passes with valid input"""
         tool = MockTool()
 
-        valid_params = {
-            "required_param": "test_value",
-            "optional_param": 100
-        }
+        valid_params = {"required_param": "test_value", "optional_param": 100}
 
         is_valid, error = tool.validate_parameters(valid_params)
         assert is_valid

@@ -1,6 +1,7 @@
 """
 Portal CLI — portal up | down | doctor | logs
 """
+
 import socket
 import subprocess
 import sys
@@ -60,10 +61,12 @@ def up(minimal: bool, skip_port_check: bool, profile: str | None) -> None:
             (11434, "ollama"),
         ]
         if not minimal:
-            required_ports.extend([
-                (6379, "redis"),
-                (6333, "qdrant"),
-            ])
+            required_ports.extend(
+                [
+                    (6379, "redis"),
+                    (6333, "qdrant"),
+                ]
+            )
         errors = _check_ports_available(required_ports)
         if errors:
             click.echo("Port conflict detected:\n" + "\n".join(errors), err=True)
@@ -97,7 +100,10 @@ def down() -> None:
     subprocess.run(["pkill", "-f", "mcpo"], check=False)
 
     if result.returncode != 0:
-        click.echo("Warning: launcher shutdown returned non-zero exit code; fallback cleanup executed.", err=True)
+        click.echo(
+            "Warning: launcher shutdown returned non-zero exit code; fallback cleanup executed.",
+            err=True,
+        )
         sys.exit(result.returncode)
 
 
@@ -107,6 +113,7 @@ def doctor() -> None:
     import asyncio
 
     from portal.observability.health import run_health_check
+
     asyncio.run(run_health_check())
 
 

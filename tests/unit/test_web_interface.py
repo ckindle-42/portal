@@ -20,9 +20,14 @@ def _make_interface(stream_tokens=None):
     agent.health_check = AsyncMock(return_value=True)
 
     secure = MagicMock()
-    secure.process_message = AsyncMock(return_value=MagicMock(
-        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
-    ))
+    secure.process_message = AsyncMock(
+        return_value=MagicMock(
+            response="ok",
+            model_used="auto",
+            prompt_tokens=0,
+            completion_tokens=1,
+        )
+    )
     # No rate_limiter on the mock — tests that need it set it explicitly
     del secure.rate_limiter
 
@@ -43,9 +48,11 @@ class TestAudioSizeLimit:
         import importlib
 
         import portal.interfaces.web.server as srv
+
         importlib.reload(srv)
 
         from portal.interfaces.web.server import WebInterface
+
         agent = MagicMock()
         agent.health_check = AsyncMock(return_value=True)
         iface = WebInterface(agent_core=agent, config={}, secure_agent=None)
@@ -69,6 +76,7 @@ class TestAudioSizeLimit:
         import importlib
 
         import portal.interfaces.web.server as srv
+
         importlib.reload(srv)
 
         from portal.interfaces.web.server import WebInterface

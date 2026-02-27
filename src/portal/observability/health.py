@@ -25,10 +25,10 @@ class HealthCheckResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            'status': self.status.value,
-            'message': self.message,
-            'timestamp': self.timestamp,
-            'details': self.details or {},
+            "status": self.status.value,
+            "message": self.message,
+            "timestamp": self.timestamp,
+            "details": self.details or {},
         }
 
 
@@ -62,7 +62,9 @@ class HealthCheckSystem:
         all_checks: dict[str, Any] = {**self._providers, **self._check_functions}
         for name, source in all_checks.items():
             try:
-                result = await (source.check() if isinstance(source, HealthCheckProvider) else source())
+                result = await (
+                    source.check() if isinstance(source, HealthCheckProvider) else source()
+                )
                 checks[name] = result.to_dict()
                 if result.status == HealthStatus.UNHEALTHY:
                     overall = HealthStatus.UNHEALTHY
@@ -71,23 +73,34 @@ class HealthCheckSystem:
             except Exception as e:
                 logger.exception("Health check failed for %s: %s", name, e)
                 checks[name] = {
-                    'status': HealthStatus.UNHEALTHY.value,
-                    'message': f"Check failed: {e}",
-                    'timestamp': datetime.now(tz=UTC).isoformat(),
+                    "status": HealthStatus.UNHEALTHY.value,
+                    "message": f"Check failed: {e}",
+                    "timestamp": datetime.now(tz=UTC).isoformat(),
                 }
                 overall = HealthStatus.UNHEALTHY
 
-        return {'status': overall.value, 'checks': checks, 'timestamp': datetime.now(tz=UTC).isoformat()}
+        return {
+            "status": overall.value,
+            "checks": checks,
+            "timestamp": datetime.now(tz=UTC).isoformat(),
+        }
 
     async def check_liveness(self) -> dict[str, Any]:
-        return {'status': HealthStatus.HEALTHY.value, 'message': 'Service is alive',
-                'timestamp': datetime.now(tz=UTC).isoformat()}
+        return {
+            "status": HealthStatus.HEALTHY.value,
+            "message": "Service is alive",
+            "timestamp": datetime.now(tz=UTC).isoformat(),
+        }
 
     async def check_readiness(self) -> dict[str, Any]:
         result = await self.check_health()
-        is_ready = result['status'] in (HealthStatus.HEALTHY.value, HealthStatus.DEGRADED.value)
-        return {'status': result['status'], 'ready': is_ready,
-                'checks': result['checks'], 'timestamp': result['timestamp']}
+        is_ready = result["status"] in (HealthStatus.HEALTHY.value, HealthStatus.DEGRADED.value)
+        return {
+            "status": result["status"],
+            "ready": is_ready,
+            "checks": result["checks"],
+            "timestamp": result["timestamp"],
+        }
 
 
 class DatabaseHealthCheck(HealthCheckProvider):
@@ -97,11 +110,16 @@ class DatabaseHealthCheck(HealthCheckProvider):
     async def check(self) -> HealthCheckResult:
         try:
             stats = await self.repository.get_stats()
-            return HealthCheckResult(HealthStatus.HEALTHY, "Database connection healthy",
-                                     datetime.now(tz=UTC).isoformat(), details=stats)
+            return HealthCheckResult(
+                HealthStatus.HEALTHY,
+                "Database connection healthy",
+                datetime.now(tz=UTC).isoformat(),
+                details=stats,
+            )
         except Exception as e:
-            return HealthCheckResult(HealthStatus.UNHEALTHY, f"Database unhealthy: {e}",
-                                     datetime.now(tz=UTC).isoformat())
+            return HealthCheckResult(
+                HealthStatus.UNHEALTHY, f"Database unhealthy: {e}", datetime.now(tz=UTC).isoformat()
+            )
 
 
 def register_health_endpoints(app, health_system: HealthCheckSystem) -> None:
@@ -125,6 +143,7 @@ def register_health_endpoints(app, health_system: HealthCheckSystem) -> None:
 async def run_health_check() -> None:
     """CLI health check — prints status of all Portal components."""
     import httpx
+
     checks = [
         ("Ollama", "http://localhost:11434/api/tags"),
         ("Router", "http://localhost:8000/health"),

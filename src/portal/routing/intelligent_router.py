@@ -9,6 +9,7 @@ from .task_classifier import TaskCategory, TaskClassification, TaskClassifier, T
 
 logger = logging.getLogger(__name__)
 
+
 class RoutingStrategy(Enum):
     AUTO = "auto"
     SPEED = "speed"
@@ -51,7 +52,9 @@ class IntelligentRouter:
             RoutingStrategy.QUALITY: lambda c: self._route_quality(c, max_cost),
             RoutingStrategy.BALANCED: lambda c: self._route_balanced(c, max_cost),
         }
-        model = strategy_dispatch.get(self.strategy, lambda c: self._route_auto(c, max_cost))(classification)
+        model = strategy_dispatch.get(self.strategy, lambda c: self._route_auto(c, max_cost))(
+            classification
+        )
         return RoutingDecision(
             model_id=model.model_id,
             model_metadata=model,
@@ -64,10 +67,12 @@ class IntelligentRouter:
     def _route_auto(self, classification: TaskClassification, max_cost: float) -> ModelMetadata:
         """Automatic balanced routing using configurable model preferences."""
         if classification.category == TaskCategory.CODE and classification.requires_code:
-            preferred = self.model_preferences.get('code', [])
+            preferred = self.model_preferences.get("code", [])
         else:
             complexity_key = classification.complexity.value.lower()
-            preferred = self.model_preferences.get(complexity_key, self.model_preferences.get('simple', []))
+            preferred = self.model_preferences.get(
+                complexity_key, self.model_preferences.get("simple", [])
+            )
 
         for model_id in preferred:
             model = self.registry.get_model(model_id)
@@ -85,8 +90,10 @@ class IntelligentRouter:
 
     def _route_speed(self, classification: TaskClassification) -> ModelMetadata:
         """Route for maximum speed."""
-        capability = ModelCapability.CODE if classification.requires_code else (
-            ModelCapability.MATH if classification.requires_math else None
+        capability = (
+            ModelCapability.CODE
+            if classification.requires_code
+            else (ModelCapability.MATH if classification.requires_math else None)
         )
         fastest = self.registry.get_fastest_model(capability)
         return fastest if fastest else self._get_any_available_model()
@@ -126,10 +133,16 @@ class IntelligentRouter:
                 return code_capable[0]
         return available[0]
 
-    def _build_fallback_chain(self, primary: ModelMetadata, classification: TaskClassification) -> list[str]:  # noqa: ARG002
+    def _build_fallback_chain(
+        self, primary: ModelMetadata, classification: TaskClassification
+    ) -> list[str]:  # noqa: ARG002
         """Build fallback model chain (up to 3, sorted by quality descending)."""
         available = sorted(
-            (m for m in self.registry.get_all_models() if m.available and m.model_id != primary.model_id),
+            (
+                m
+                for m in self.registry.get_all_models()
+                if m.available and m.model_id != primary.model_id
+            ),
             key=lambda m: m.general_quality,
             reverse=True,
         )
@@ -148,20 +161,26 @@ class IntelligentRouter:
     def _verify_model_preferences(self) -> None:
         """Warn if any preferred model IDs are absent from the registry."""
         missing = [
-            m_id for tier in self.model_preferences.values()
-            for m_id in tier if not self.registry.get_model(m_id)
+            m_id
+            for tier in self.model_preferences.values()
+            for m_id in tier
+            if not self.registry.get_model(m_id)
         ]
         if missing:
             logger.warning(
                 "Routing preferences reference %d missing model(s): %s%s.",
-                len(missing), ", ".join(missing[:3]), "..." if len(missing) > 3 else "",
+                len(missing),
+                ", ".join(missing[:3]),
+                "..." if len(missing) > 3 else "",
             )
 
     def _generate_reasoning(self, model: ModelMetadata, classification: TaskClassification) -> str:
         """Generate human-readable reasoning for the routing decision."""
-        return " | ".join([
-            f"Task: {classification.complexity.value} complexity",
-            f"Category: {classification.category.value}",
-            f"Selected: {model.display_name}",
-            f"Speed: {model.speed_class.value}",
-        ])
+        return " | ".join(
+            [
+                f"Task: {classification.complexity.value} complexity",
+                f"Category: {classification.category.value}",
+                f"Selected: {model.display_name}",
+                f"Speed: {model.speed_class.value}",
+            ]
+        )

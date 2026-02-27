@@ -7,9 +7,12 @@ from typing import Any
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
 
 _SAFE_OPS = {
-    ast.Add: operator.add, ast.Sub: operator.sub,
-    ast.Mult: operator.mul, ast.Div: operator.truediv,
-    ast.Pow: operator.pow, ast.USub: operator.neg,
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Pow: operator.pow,
+    ast.USub: operator.neg,
 }
 
 
@@ -18,8 +21,13 @@ def _safe_eval(expr: str, x: "np.ndarray") -> "np.ndarray":  # type: ignore[name
     import numpy as np
 
     _SAFE_FUNCS = {
-        "sin": np.sin, "cos": np.cos, "tan": np.tan,
-        "log": np.log, "exp": np.exp, "sqrt": np.sqrt, "abs": np.abs,
+        "sin": np.sin,
+        "cos": np.cos,
+        "tan": np.tan,
+        "log": np.log,
+        "exp": np.exp,
+        "sqrt": np.sqrt,
+        "abs": np.abs,
     }
     _SAFE_CONSTS = {"pi": np.pi, "e": np.e}
 
@@ -64,24 +72,24 @@ class MathVisualizerTool(BaseTool):
                     name="expression",
                     param_type="string",
                     description="Math expression (use x as variable, e.g., 'x**2 + 2*x')",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="x_range",
                     param_type="list",
                     description="X-axis range [min, max]",
                     required=False,
-                    default=[-10, 10]
+                    default=[-10, 10],
                 ),
                 ToolParameter(
                     name="title",
                     param_type="string",
                     description="Plot title",
                     required=False,
-                    default="Function Plot"
-                )
+                    default="Function Plot",
+                ),
             ],
-            examples=["Plot x**2 from -5 to 5"]
+            examples=["Plot x**2 from -5 to 5"],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -89,7 +97,8 @@ class MathVisualizerTool(BaseTool):
         try:
             import matplotlib
             import numpy as np
-            matplotlib.use('Agg')  # Non-interactive backend
+
+            matplotlib.use("Agg")  # Non-interactive backend
             import matplotlib.pyplot as plt
 
             expression = parameters.get("expression", "x")
@@ -106,24 +115,26 @@ class MathVisualizerTool(BaseTool):
 
             # Create plot
             fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot(x, y, 'b-', linewidth=2)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
+            ax.plot(x, y, "b-", linewidth=2)
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
             ax.set_title(title)
             ax.grid(True, alpha=0.3)
-            ax.axhline(y=0, color='k', linewidth=0.5)
-            ax.axvline(x=0, color='k', linewidth=0.5)
+            ax.axhline(y=0, color="k", linewidth=0.5)
+            ax.axvline(x=0, color="k", linewidth=0.5)
 
             # Save to file
             output_path = f"plot_{hash(expression) % 100000}.png"
-            plt.savefig(output_path, dpi=150, bbox_inches='tight')
+            plt.savefig(output_path, dpi=150, bbox_inches="tight")
             plt.close()
 
-            return self._success_response({
-                "message": f"Plot created for: {expression}",
-                "file_path": output_path,
-                "x_range": x_range
-            })
+            return self._success_response(
+                {
+                    "message": f"Plot created for: {expression}",
+                    "file_path": output_path,
+                    "x_range": x_range,
+                }
+            )
 
         except ImportError as e:
             return self._error_response(f"Required library not installed: {e}")

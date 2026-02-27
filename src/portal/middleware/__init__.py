@@ -12,8 +12,4 @@ from portal.middleware.tool_confirmation_middleware import (
     ToolConfirmationMiddleware,
 )
 
-__all__ = [
-    'ToolConfirmationMiddleware',
-    'ConfirmationRequest',
-    'ConfirmationStatus'
-]
+__all__ = ["ToolConfirmationMiddleware", "ConfirmationRequest", "ConfirmationStatus"]

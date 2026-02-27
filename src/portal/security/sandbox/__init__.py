@@ -11,5 +11,5 @@ Components:
 from .docker_sandbox import DockerPythonSandbox
 
 __all__ = [
-    'DockerPythonSandbox',
+    "DockerPythonSandbox",
 ]

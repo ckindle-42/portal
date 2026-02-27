@@ -8,16 +8,10 @@ Modularized interface packages for better organization:
 - slack/:    Slack Events API interface
 """
 
-from portal.core.interfaces.agent_interface import (
-    BaseInterface,
-    Message,
-    Response,
-)
+from portal.core.interfaces.agent_interface import BaseInterface
 from portal.interfaces.web import WebInterface
 
 __all__ = [
-    'BaseInterface',
-    'Message',
-    'Response',
-    'WebInterface',
+    "BaseInterface",
+    "WebInterface",
 ]

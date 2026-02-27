@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class ModelCapability(Enum):
     """Model capabilities"""
+
     GENERAL = "general"
     CODE = "code"
     MATH = "math"
@@ -23,16 +24,18 @@ class ModelCapability(Enum):
 
 class SpeedClass(Enum):
     """Speed classification for models"""
+
     ULTRA_FAST = "ultra_fast"  # <0.5s
-    FAST = "fast"              # 0.5-1.5s
-    MEDIUM = "medium"          # 1.5-3s
-    SLOW = "slow"              # 3-5s
-    VERY_SLOW = "very_slow"    # >5s
+    FAST = "fast"  # 0.5-1.5s
+    MEDIUM = "medium"  # 1.5-3s
+    SLOW = "slow"  # 3-5s
+    VERY_SLOW = "very_slow"  # >5s
 
 
 @dataclass
 class ModelMetadata:
     """Complete model metadata"""
+
     model_id: str
     backend: str  # ollama, lmstudio, mlx
     display_name: str
@@ -85,60 +88,159 @@ class ModelRegistry:
         S = SpeedClass
 
         _defaults: list[dict] = [
-            dict(model_id="ollama_qwen25_05b", backend="ollama", display_name="Qwen2.5 0.5B",
-                 parameters="0.5B", quantization="Q4_K_M",
-                 capabilities=[C.GENERAL, C.SPEED], speed_class=S.ULTRA_FAST,
-                 context_window=32768, tokens_per_second=200, ram_required_gb=1,
-                 general_quality=0.5, code_quality=0.3, reasoning_quality=0.3,
-                 cost=0.05, api_model_name="qwen2.5:0.5b-instruct-q4_K_M"),
-            dict(model_id="ollama_qwen25_1.5b", backend="ollama", display_name="Qwen2.5 1.5B",
-                 parameters="1.5B", quantization="Q4_K_M",
-                 capabilities=[C.GENERAL, C.SPEED], speed_class=S.ULTRA_FAST,
-                 context_window=32768, tokens_per_second=150, ram_required_gb=2,
-                 general_quality=0.6, code_quality=0.4, reasoning_quality=0.4,
-                 cost=0.1, api_model_name="qwen2.5:1.5b-instruct-q4_K_M"),
-            dict(model_id="ollama_qwen25_7b", backend="ollama", display_name="Qwen2.5 7B",
-                 parameters="7B", quantization="Q4_K_M",
-                 capabilities=[C.GENERAL, C.CODE, C.MATH], speed_class=S.FAST,
-                 context_window=32768, tokens_per_second=80, ram_required_gb=6,
-                 general_quality=0.8, code_quality=0.75, reasoning_quality=0.7,
-                 cost=0.3, api_model_name="qwen2.5:7b-instruct-q4_K_M"),
-            dict(model_id="ollama_qwen25_14b", backend="ollama", display_name="Qwen2.5 14B",
-                 parameters="14B", quantization="Q4_K_M",
-                 capabilities=[C.GENERAL, C.CODE, C.MATH, C.REASONING], speed_class=S.MEDIUM,
-                 context_window=32768, tokens_per_second=45, ram_required_gb=10,
-                 general_quality=0.85, code_quality=0.85, reasoning_quality=0.85,
-                 cost=0.5, api_model_name="qwen2.5:14b-instruct-q4_K_M"),
-            dict(model_id="ollama_qwen25_32b", backend="ollama", display_name="Qwen2.5 32B",
-                 parameters="32B", quantization="Q4_K_M",
-                 capabilities=[C.GENERAL, C.CODE, C.MATH, C.REASONING], speed_class=S.SLOW,
-                 context_window=32768, tokens_per_second=25, ram_required_gb=20,
-                 general_quality=0.9, code_quality=0.9, reasoning_quality=0.9,
-                 cost=0.7, api_model_name="qwen2.5:32b-instruct-q4_K_M"),
-            dict(model_id="ollama_qwen25_coder", backend="ollama", display_name="Qwen2.5 Coder 7B",
-                 parameters="7B", quantization="Q4_K_M",
-                 capabilities=[C.CODE, C.GENERAL], speed_class=S.FAST,
-                 context_window=32768, tokens_per_second=75, ram_required_gb=6,
-                 general_quality=0.7, code_quality=0.9, reasoning_quality=0.7,
-                 cost=0.3, api_model_name="qwen2.5-coder:7b-instruct-q4_K_M"),
-            dict(model_id="ollama_deepseek_coder", backend="ollama", display_name="DeepSeek Coder 16B",
-                 parameters="16B", quantization="Q4_K_M",
-                 capabilities=[C.CODE, C.REASONING], speed_class=S.MEDIUM,
-                 context_window=16384, tokens_per_second=40, ram_required_gb=12,
-                 general_quality=0.7, code_quality=0.95, reasoning_quality=0.8,
-                 cost=0.5, api_model_name="deepseek-coder:16b-instruct-q4_K_M"),
-            dict(model_id="ollama_llava", backend="ollama", display_name="LLaVA 7B",
-                 parameters="7B", quantization="Q4_K_M",
-                 capabilities=[C.VISION, C.GENERAL], speed_class=S.MEDIUM,
-                 context_window=4096, tokens_per_second=50, ram_required_gb=8,
-                 general_quality=0.7, code_quality=0.4, reasoning_quality=0.6,
-                 cost=0.4, api_model_name="llava:7b"),
-            dict(model_id="ollama_llama32_3b", backend="ollama", display_name="Llama 3.2 3B",
-                 parameters="3B", quantization="Q4_K_M",
-                 capabilities=[C.GENERAL, C.SPEED], speed_class=S.FAST,
-                 context_window=8192, tokens_per_second=100, ram_required_gb=3,
-                 general_quality=0.65, code_quality=0.5, reasoning_quality=0.55,
-                 cost=0.15, api_model_name="llama3.2:3b-instruct-q4_K_M"),
+            dict(
+                model_id="ollama_qwen25_05b",
+                backend="ollama",
+                display_name="Qwen2.5 0.5B",
+                parameters="0.5B",
+                quantization="Q4_K_M",
+                capabilities=[C.GENERAL, C.SPEED],
+                speed_class=S.ULTRA_FAST,
+                context_window=32768,
+                tokens_per_second=200,
+                ram_required_gb=1,
+                general_quality=0.5,
+                code_quality=0.3,
+                reasoning_quality=0.3,
+                cost=0.05,
+                api_model_name="qwen2.5:0.5b-instruct-q4_K_M",
+            ),
+            dict(
+                model_id="ollama_qwen25_1.5b",
+                backend="ollama",
+                display_name="Qwen2.5 1.5B",
+                parameters="1.5B",
+                quantization="Q4_K_M",
+                capabilities=[C.GENERAL, C.SPEED],
+                speed_class=S.ULTRA_FAST,
+                context_window=32768,
+                tokens_per_second=150,
+                ram_required_gb=2,
+                general_quality=0.6,
+                code_quality=0.4,
+                reasoning_quality=0.4,
+                cost=0.1,
+                api_model_name="qwen2.5:1.5b-instruct-q4_K_M",
+            ),
+            dict(
+                model_id="ollama_qwen25_7b",
+                backend="ollama",
+                display_name="Qwen2.5 7B",
+                parameters="7B",
+                quantization="Q4_K_M",
+                capabilities=[C.GENERAL, C.CODE, C.MATH],
+                speed_class=S.FAST,
+                context_window=32768,
+                tokens_per_second=80,
+                ram_required_gb=6,
+                general_quality=0.8,
+                code_quality=0.75,
+                reasoning_quality=0.7,
+                cost=0.3,
+                api_model_name="qwen2.5:7b-instruct-q4_K_M",
+            ),
+            dict(
+                model_id="ollama_qwen25_14b",
+                backend="ollama",
+                display_name="Qwen2.5 14B",
+                parameters="14B",
+                quantization="Q4_K_M",
+                capabilities=[C.GENERAL, C.CODE, C.MATH, C.REASONING],
+                speed_class=S.MEDIUM,
+                context_window=32768,
+                tokens_per_second=45,
+                ram_required_gb=10,
+                general_quality=0.85,
+                code_quality=0.85,
+                reasoning_quality=0.85,
+                cost=0.5,
+                api_model_name="qwen2.5:14b-instruct-q4_K_M",
+            ),
+            dict(
+                model_id="ollama_qwen25_32b",
+                backend="ollama",
+                display_name="Qwen2.5 32B",
+                parameters="32B",
+                quantization="Q4_K_M",
+                capabilities=[C.GENERAL, C.CODE, C.MATH, C.REASONING],
+                speed_class=S.SLOW,
+                context_window=32768,
+                tokens_per_second=25,
+                ram_required_gb=20,
+                general_quality=0.9,
+                code_quality=0.9,
+                reasoning_quality=0.9,
+                cost=0.7,
+                api_model_name="qwen2.5:32b-instruct-q4_K_M",
+            ),
+            dict(
+                model_id="ollama_qwen25_coder",
+                backend="ollama",
+                display_name="Qwen2.5 Coder 7B",
+                parameters="7B",
+                quantization="Q4_K_M",
+                capabilities=[C.CODE, C.GENERAL],
+                speed_class=S.FAST,
+                context_window=32768,
+                tokens_per_second=75,
+                ram_required_gb=6,
+                general_quality=0.7,
+                code_quality=0.9,
+                reasoning_quality=0.7,
+                cost=0.3,
+                api_model_name="qwen2.5-coder:7b-instruct-q4_K_M",
+            ),
+            dict(
+                model_id="ollama_deepseek_coder",
+                backend="ollama",
+                display_name="DeepSeek Coder 16B",
+                parameters="16B",
+                quantization="Q4_K_M",
+                capabilities=[C.CODE, C.REASONING],
+                speed_class=S.MEDIUM,
+                context_window=16384,
+                tokens_per_second=40,
+                ram_required_gb=12,
+                general_quality=0.7,
+                code_quality=0.95,
+                reasoning_quality=0.8,
+                cost=0.5,
+                api_model_name="deepseek-coder:16b-instruct-q4_K_M",
+            ),
+            dict(
+                model_id="ollama_llava",
+                backend="ollama",
+                display_name="LLaVA 7B",
+                parameters="7B",
+                quantization="Q4_K_M",
+                capabilities=[C.VISION, C.GENERAL],
+                speed_class=S.MEDIUM,
+                context_window=4096,
+                tokens_per_second=50,
+                ram_required_gb=8,
+                general_quality=0.7,
+                code_quality=0.4,
+                reasoning_quality=0.6,
+                cost=0.4,
+                api_model_name="llava:7b",
+            ),
+            dict(
+                model_id="ollama_llama32_3b",
+                backend="ollama",
+                display_name="Llama 3.2 3B",
+                parameters="3B",
+                quantization="Q4_K_M",
+                capabilities=[C.GENERAL, C.SPEED],
+                speed_class=S.FAST,
+                context_window=8192,
+                tokens_per_second=100,
+                ram_required_gb=3,
+                general_quality=0.65,
+                code_quality=0.5,
+                reasoning_quality=0.55,
+                cost=0.15,
+                api_model_name="llama3.2:3b-instruct-q4_K_M",
+            ),
         ]
 
         for spec in _defaults:
@@ -156,7 +258,6 @@ class ModelRegistry:
         """Get all models for a backend"""
         return [m for m in self.models.values() if m.backend == backend]
 
-
     def get_fastest_model(self, capability: ModelCapability | None = None) -> ModelMetadata | None:
         """Get fastest available model"""
         candidates = [m for m in self.models.values() if m.available]
@@ -173,17 +274,20 @@ class ModelRegistry:
             SpeedClass.FAST: 1,
             SpeedClass.MEDIUM: 2,
             SpeedClass.SLOW: 3,
-            SpeedClass.VERY_SLOW: 4
+            SpeedClass.VERY_SLOW: 4,
         }
 
-        return min(candidates, key=lambda m: (speed_order[m.speed_class],
-                                              -(m.tokens_per_second or 0)))
+        return min(
+            candidates, key=lambda m: (speed_order[m.speed_class], -(m.tokens_per_second or 0))
+        )
 
-    def get_best_quality_model(self, capability: ModelCapability,
-                               max_cost: float = 1.0) -> ModelMetadata | None:
+    def get_best_quality_model(
+        self, capability: ModelCapability, max_cost: float = 1.0
+    ) -> ModelMetadata | None:
         """Get highest quality model within cost constraint"""
         candidates = [
-            m for m in self.models.values()
+            m
+            for m in self.models.values()
             if capability in m.capabilities and m.available and m.cost <= max_cost
         ]
 
@@ -260,7 +364,9 @@ class ModelRegistry:
             if model_id not in self.models:
                 size_bytes: int = entry.get("size", 0)
                 params_b = size_bytes / 1e9
-                params_label = f"{params_b:.0f}B" if params_b >= 1 else f"{size_bytes // 1_000_000}M"
+                params_label = (
+                    f"{params_b:.0f}B" if params_b >= 1 else f"{size_bytes // 1_000_000}M"
+                )
 
                 metadata = ModelMetadata(
                     model_id=model_id,
@@ -290,5 +396,7 @@ class ModelRegistry:
                     model.available = False
 
         if newly_registered:
-            logger.info("Registered %d new Ollama model(s): %s", len(newly_registered), newly_registered)
+            logger.info(
+                "Registered %d new Ollama model(s): %s", len(newly_registered), newly_registered
+            )
         return newly_registered

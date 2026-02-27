@@ -26,12 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Check Pandoc availability
 try:
-    result = subprocess.run(
-        ["pandoc", "--version"],
-        capture_output=True,
-        text=True,
-        timeout=2
-    )
+    result = subprocess.run(["pandoc", "--version"], capture_output=True, text=True, timeout=2)
     PANDOC_AVAILABLE = result.returncode == 0
 except Exception:
     PANDOC_AVAILABLE = False
@@ -90,60 +85,60 @@ class PandocConverterTool(BaseTool):
                     name="input_file",
                     param_type="string",
                     description="Path to input document",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="output_file",
                     param_type="string",
                     description="Path to output document (extension determines format)",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="from_format",
                     param_type="string",
                     description="Input format (auto-detected if not specified)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="to_format",
                     param_type="string",
                     description="Output format (auto-detected from extension if not specified)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="template",
                     param_type="string",
                     description="Template name for branded output (optional)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="metadata",
                     param_type="object",
                     description="Document metadata (title, author, date, etc.)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="toc",
                     param_type="boolean",
                     description="Include table of contents (default: False)",
                     required=False,
-                    default=False
+                    default=False,
                 ),
                 ToolParameter(
                     name="standalone",
                     param_type="boolean",
                     description="Produce standalone document with headers (default: True)",
                     required=False,
-                    default=True
+                    default=True,
                 ),
                 ToolParameter(
                     name="pdf_engine",
                     param_type="string",
                     description="PDF engine: pdflatex, xelatex, lualatex, wkhtmltopdf (default: pdflatex)",
                     required=False,
-                    default="pdflatex"
-                )
-            ]
+                    default="pdflatex",
+                ),
+            ],
         )
 
     def _install_default_templates(self) -> None:
@@ -242,23 +237,23 @@ $body$
                 metadata=metadata,
                 toc=toc,
                 standalone=standalone,
-                pdf_engine=pdf_engine
+                pdf_engine=pdf_engine,
             )
 
             # Execute conversion
-            logger.info("Converting %s (%s) → %s (%s)", input_file, from_format, output_file, to_format)
-            logger.debug("Command: %s", ' '.join(cmd))
+            logger.info(
+                "Converting %s (%s) → %s (%s)", input_file, from_format, output_file, to_format
+            )
+            logger.debug("Command: %s", " ".join(cmd))
 
             result = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
 
             stdout, stderr = await result.communicate()
 
             if result.returncode != 0:
-                error_msg = stderr.decode('utf-8', errors='replace')
+                error_msg = stderr.decode("utf-8", errors="replace")
                 return self._error_response(f"Pandoc conversion failed:\n{error_msg}")
 
             # Verify output
@@ -271,14 +266,14 @@ $body$
                 result={
                     "output_file": str(output_file),
                     "output_size": output_size,
-                    "output_size_mb": round(output_size / (1024 * 1024), 2)
+                    "output_size_mb": round(output_size / (1024 * 1024), 2),
                 },
                 metadata={
                     "from_format": from_format,
                     "to_format": to_format,
                     "template": template or "default",
-                    "toc_included": toc
-                }
+                    "toc_included": toc,
+                },
             )
 
         except Exception as e:
@@ -295,7 +290,7 @@ $body$
         metadata: dict[str, str],
         toc: bool,
         standalone: bool,
-        pdf_engine: str
+        pdf_engine: str,
     ) -> list[str]:
         """Build Pandoc command with all options"""
 
@@ -334,7 +329,7 @@ $body$
     def _detect_format(self, extension: str) -> str | None:
         """Detect Pandoc format from file extension"""
 
-        extension = extension.lower().lstrip('.')
+        extension = extension.lower().lstrip(".")
 
         for format_name, extensions in self.SUPPORTED_FORMATS.items():
             if extension in extensions:

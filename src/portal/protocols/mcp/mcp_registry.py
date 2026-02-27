@@ -40,7 +40,9 @@ class MCPRegistry:
             except (httpx.ConnectError, httpx.TimeoutException, httpx.RemoteProtocolError) as exc:
                 last_exc = exc
                 if delay is not None:
-                    logger.debug("MCP request attempt %d failed (%s); retrying in %.1fs", attempt, exc, delay)
+                    logger.debug(
+                        "MCP request attempt %d failed (%s); retrying in %.1fs", attempt, exc, delay
+                    )
                     await asyncio.sleep(delay)
                 else:
                     logger.warning("MCP request failed after %d attempts: %s", attempt, exc)
@@ -72,11 +74,7 @@ class MCPRegistry:
             return False
 
         headers = self._auth_headers(server)
-        url = (
-            f"{server['url']}/openapi.json"
-            if server["transport"] == "openapi"
-            else server["url"]
-        )
+        url = f"{server['url']}/openapi.json" if server["transport"] == "openapi" else server["url"]
         try:
             resp = await self._request("GET", url, headers=headers, timeout=5.0)
             return resp.status_code < 500
@@ -100,22 +98,28 @@ class MCPRegistry:
         headers = self._auth_headers(server)
         try:
             if server["transport"] == "openapi":
-                resp = await self._request("GET", f"{server['url']}/openapi.json", headers=headers, timeout=10.0)
+                resp = await self._request(
+                    "GET", f"{server['url']}/openapi.json", headers=headers, timeout=10.0
+                )
                 resp.raise_for_status()
                 spec = resp.json()
                 tools = []
                 for path, methods in spec.get("paths", {}).items():
                     for method, details in methods.items():
                         if method in ("get", "post"):
-                            tools.append({
-                                "name": details.get("operationId", path.strip("/")),
-                                "description": details.get("summary", ""),
-                                "path": path,
-                                "method": method,
-                            })
+                            tools.append(
+                                {
+                                    "name": details.get("operationId", path.strip("/")),
+                                    "description": details.get("summary", ""),
+                                    "path": path,
+                                    "method": method,
+                                }
+                            )
                 return tools
             else:
-                resp = await self._request("GET", f"{server['url']}/tools", headers=headers, timeout=10.0)
+                resp = await self._request(
+                    "GET", f"{server['url']}/tools", headers=headers, timeout=10.0
+                )
                 if resp.status_code == 200:
                     return resp.json().get("tools", [])
                 return []
@@ -132,7 +136,7 @@ class MCPRegistry:
         """
         Execute a tool on the named MCP server.
 
-        QUAL-3 NOTE — mcpo endpoint format (needs live verification):
+        NOTE — mcpo endpoint format (needs live verification):
         For openapi transport the URL is constructed as:
             POST {server_url}/{tool_name}
         e.g. POST http://localhost:9000/read_file
@@ -142,7 +146,7 @@ class MCPRegistry:
         the mounted sub-URL (http://localhost:9000/filesystem) so
         that {server_url}/{tool_name} resolves correctly.
         Verify against a live mcpo instance before enabling MCP tool
-        dispatch in production (see QUAL-3 in the quality review).
+        dispatch in production.
         """
         server = self._servers.get(server_name)
         if not server:
