@@ -41,15 +41,18 @@ The CI pipeline (`ci.yml`) runs all three on every push and PR.
 
 ## Reproducible Builds
 
-For a fully reproducible install (pinned transitive deps), use `pip-compile`:
+Portal uses [uv](https://docs.astral.sh/uv/) for dependency management. The lock
+file `uv.lock` pins all transitive dependencies:
 
 ```bash
-pip install pip-tools
-pip-compile pyproject.toml --output-file requirements.lock
-pip install -r requirements.lock
+uv lock              # regenerate lock from pyproject.toml
+uv sync              # install from lock
 ```
 
-Commit `requirements.lock` if reproducibility across machines matters for your deployment.
+Alternatively, for pip-based workflows:
+```bash
+pip install -e ".[dev]"
+```
 
 ## Commit Style
 

@@ -17,7 +17,7 @@ Portal is a **local-first AI platform** that runs entirely on user hardware. It 
 
 ---
 
-## Tech Stack & Tooling (Accurate as of v1.3.3)
+## Tech Stack & Tooling
 
 | Tool | Command | Notes |
 |------|---------|-------|
@@ -46,13 +46,12 @@ src/portal/
 ├── memory/           # MemoryManager (Mem0 or SQLite)
 ├── middleware/       # HITL approval, tool confirmation
 ├── observability/    # Health checks, Prometheus metrics, watchdog, log rotation
-├── persistence/      # ⚠️  DEAD MODULE — never imported by production code
 ├── protocols/mcp/    # MCPRegistry for MCP server connections
 ├── routing/          # IntelligentRouter, ExecutionEngine, ModelRegistry, proxy router
 ├── security/         # Auth, rate limiting, input sanitization, Docker sandbox
-└── tools/            # 33 auto-discovered MCP-compatible tools
+└── tools/            # Auto-discovered MCP-compatible tools
 
-tests/                # 937 tests (unit + integration + e2e)
+tests/                # Unit + integration + e2e tests
 hardware/             # Platform-specific launch scripts (used by cli.py)
 deploy/web-ui/        # LibreChat and OpenWebUI deployment configs
 mcp/                  # MCP server configs and helper scripts
@@ -63,16 +62,16 @@ scripts/              # Utility scripts (release, bootstrap, MCP servers)
 
 ## Architectural Knowledge (Read Before Making Changes)
 
-These facts have been verified via import tracing and are critical to avoid breaking things or wasting effort:
+These facts prevent wasted effort and accidental breakage:
 
-**Dead code (confirmed, safe to remove):**
-- `src/portal/persistence/` — entire module (931 LOC). Never imported outside itself. The app uses `ContextManager` and `MemoryManager` instead.
-- `src/portal/observability/tracer.py` — never imported by any production code.
-- `ContextNotFoundError`, `ModelQuotaExceededError` in `exceptions.py` — defined but never raised.
-- `set_trace_id()`, `get_trace_id()` in `structured_logger.py` — never called.
-- `run_with_lifecycle()` in `lifecycle.py` — never called.
-- `execute_parallel()` in `execution_engine.py` — no production callers.
-- `JobQueueHealthCheck`, `WorkerPoolHealthCheck` in `health.py` — speculative, no callers.
+**Removed in the 2026-02-27 shrink (do not re-add):**
+- `src/portal/persistence/` — entire module was dead (never imported). App uses `ContextManager` + `MemoryManager`.
+- `src/portal/observability/tracer.py` — was never imported by production code.
+- `ContextNotFoundError`, `ModelQuotaExceededError` — were never raised anywhere.
+- `set_trace_id()`, `get_trace_id()` — were never called.
+- `run_with_lifecycle()` — was never called.
+- `execute_parallel()` — had no production callers.
+- `JobQueueHealthCheck`, `WorkerPoolHealthCheck` — were speculative (no job queue exists).
 
 **Actively used (do NOT delete or "consolidate"):**
 - `hardware/` — platform-specific launchers referenced by `cli.py` and `launch.sh`.
@@ -81,12 +80,6 @@ These facts have been verified via import tracing and are critical to avoid brea
 - `conftest.py` (root) — shared pytest fixtures, not a duplicate of `tests/conftest.py`.
 - `mcp/` — MCP server configurations used by the platform.
 - This file (`CLAUDE.md`) — authoritative config for Claude Code sessions.
-
-**Known bugs:**
-- `routing/router.py` health endpoint hardcodes `"version": "1.0.0"` — should use `portal.__version__`.
-- `tools/dev_tools/session_manager.py` uses deprecated `datetime.utcnow()` (4 occurrences).
-- `pyproject.toml` lists `PyPDF2` (deprecated) — should be `pypdf`.
-- `requests` is a core dependency but never imported — only `httpx`/`aiohttp` are used.
 
 ---
 
@@ -104,7 +97,7 @@ For normal tasks (bug fixes, feature work, refactoring):
 
 ### Audit / Shrink Sessions (When Explicitly Requested)
 
-Only when Chris asks for a full audit or debt removal session:
+Only when the user asks for a full audit or debt removal session:
 
 1. Full file inventory + dependency tracing.
 2. Identify dead code with **evidence** (grep, import analysis — never assume).

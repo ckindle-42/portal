@@ -18,7 +18,7 @@ Features:
 - EXIF data for images
 - ID3 tags for audio
 
-Install: pip install PyPDF2 python-docx python-pptx openpyxl Pillow mutagen
+Install: pip install pypdf python-docx python-pptx openpyxl Pillow mutagen
 """
 
 import logging
