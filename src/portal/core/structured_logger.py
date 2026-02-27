@@ -169,17 +169,3 @@ def get_logger(component: str) -> StructuredLogger:
     return StructuredLogger(component)
 
 
-def set_trace_id(trace_id: str) -> None:
-    """
-    Manually set trace_id for current context
-
-    Args:
-        trace_id: Trace ID to set
-    """
-    _trace_id_var.set(trace_id)
-
-
-def get_trace_id() -> str | None:
-    """Get current trace ID"""
-    return _trace_id_var.get()
-

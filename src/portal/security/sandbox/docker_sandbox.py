@@ -171,99 +171,66 @@ CMD ["python3"]
             logger.error("Failed to build image: %s", e)
             raise
 
-    async def execute_code(
-        self,
-        code: str,
-        timeout: int | None = None
-    ) -> dict[str, Any]:
-        """
-        Execute Python code in sandbox
+    def _prepare_container(self, code: str, container_id: str) -> dict[str, Any]:
+        """Build container config dict for a code execution run."""
+        config: dict[str, Any] = {
+            'image': self.image_name,
+            'command': ['python3', '-c', code],
+            'name': f'sandbox_{container_id}',
+            'detach': True,
+            'auto_remove': True,
+            'mem_limit': self.config.memory_limit,
+            'cpu_quota': self.config.cpu_quota,
+            'nano_cpus': self.config.nano_cpus,
+            'pids_limit': self.config.pids_limit,
+            'security_opt': ['no-new-privileges'] if self.config.no_new_privileges else [],
+            'cap_drop': self.config.drop_capabilities,
+            'read_only': self.config.read_only,
+            'tmpfs': {'/tmp': f'size={self.config.tmpfs_size}'},
+            'network_mode': 'none',
+        }
+        if not self.config.network_disabled:
+            config['network_mode'] = 'bridge'
+        return config
 
-        Args:
-            code: Python code to execute
-            timeout: Execution timeout (overrides config)
+    def _run_container(self, container_config: dict[str, Any], timeout: int) -> tuple[Any, int]:
+        """Start container and wait for exit; returns (container, exit_code)."""
+        container = self.docker_client.containers.run(**container_config)
+        try:
+            result = container.wait(timeout=timeout)
+            exit_code = result['StatusCode']
+        except Exception as e:
+            logger.warning("Container execution timeout or error: %s", e)
+            container.kill()
+            exit_code = -1
+        return container, exit_code
 
-        Returns:
-            {
-                'success': bool,
-                'stdout': str,
-                'stderr': str,
-                'exit_code': int,
-                'execution_time': float,
-                'container_id': str
-            }
-        """
+    def _collect_output(self, container: Any, exit_code: int,
+                        container_id: str, start_time: float) -> dict[str, Any]:
+        """Read container logs and assemble the result dict."""
+        import time
+        stdout = container.logs().decode('utf-8', errors='replace')
+        return {
+            'success': exit_code == 0,
+            'stdout': stdout,
+            'stderr': '',
+            'exit_code': exit_code,
+            'execution_time': time.time() - start_time,
+            'container_id': container_id,
+        }
 
+    async def execute_code(self, code: str, timeout: int | None = None) -> dict[str, Any]:
+        """Execute Python code in an isolated Docker sandbox."""
         import time
         start_time = time.time()
-
         timeout = timeout or self.config.timeout_seconds
         container_id = str(uuid.uuid4())[:8]
         container = None
 
         try:
-            # Create container config
-            container_config = {
-                'image': self.image_name,
-                'command': ['python3', '-c', code],
-                'name': f'sandbox_{container_id}',
-                'detach': True,
-                'auto_remove': True,  # Auto-cleanup
-
-                # Resource limits
-                'mem_limit': self.config.memory_limit,
-                'cpu_quota': self.config.cpu_quota,
-                'nano_cpus': self.config.nano_cpus,
-                'pids_limit': self.config.pids_limit,
-
-                # Security options
-                'security_opt': ['no-new-privileges'] if self.config.no_new_privileges else [],
-                'cap_drop': self.config.drop_capabilities,
-                'read_only': self.config.read_only,
-
-                # Filesystem
-                'tmpfs': {'/tmp': f'size={self.config.tmpfs_size}'},
-
-                # Network isolation (always enforced)
-                'network_mode': 'none',
-            }
-
-            # Conditionally override network if explicitly allowed
-            if not self.config.network_disabled:
-                container_config['network_mode'] = 'bridge'
-
-            # Create and start container
-            container = self.docker_client.containers.run(**container_config)
-
-            # Wait for completion with timeout
-            try:
-                result = container.wait(timeout=timeout)
-                exit_code = result['StatusCode']
-            except Exception as e:
-                # Timeout or other error
-                logger.warning("Container execution timeout or error: %s", e)
-                container.kill()
-                exit_code = -1
-
-            # Get logs
-            logs = container.logs()
-            output = logs.decode('utf-8', errors='replace')
-
-            # Split stdout/stderr (simplified)
-            stdout = output
-            stderr = ""
-
-            execution_time = time.time() - start_time
-
-            return {
-                'success': exit_code == 0,
-                'stdout': stdout,
-                'stderr': stderr,
-                'exit_code': exit_code,
-                'execution_time': execution_time,
-                'container_id': container_id
-            }
-
+            container_config = self._prepare_container(code, container_id)
+            container, exit_code = self._run_container(container_config, timeout)
+            return self._collect_output(container, exit_code, container_id, start_time)
         except Exception as e:
             logger.error("Sandbox execution error: %s", e)
             return {
@@ -272,11 +239,9 @@ CMD ["python3"]
                 'stderr': str(e),
                 'exit_code': -1,
                 'execution_time': time.time() - start_time,
-                'container_id': container_id
+                'container_id': container_id,
             }
-
         finally:
-            # Cleanup (container auto-removes, but be safe)
             if container:
                 try:
                     container.remove(force=True)

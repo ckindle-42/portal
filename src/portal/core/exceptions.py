@@ -23,7 +23,6 @@ class ErrorCode(IntEnum):
     # 1xxx: Client Errors
     VALIDATION_ERROR = 1001
     INVALID_PARAMETERS = 1002
-    CONTEXT_NOT_FOUND = 1003
 
     # 2xxx: Security Errors
     UNAUTHORIZED = 2001
@@ -33,7 +32,6 @@ class ErrorCode(IntEnum):
 
     # 3xxx: Resource Errors
     MODEL_NOT_AVAILABLE = 3001
-    MODEL_QUOTA_EXCEEDED = 3002
     MODEL_BUSY = 3003
     BACKEND_UNAVAILABLE = 3004
 
@@ -76,13 +74,11 @@ class PortalError(Exception):
         code_messages = {
             ErrorCode.VALIDATION_ERROR: "Invalid input provided",
             ErrorCode.INVALID_PARAMETERS: "Invalid parameters",
-            ErrorCode.CONTEXT_NOT_FOUND: "Conversation not found",
             ErrorCode.UNAUTHORIZED: "Authentication required",
             ErrorCode.POLICY_VIOLATION: "Security policy violation",
             ErrorCode.RATE_LIMIT_EXCEEDED: "Rate limit exceeded. Please try again later",
             ErrorCode.FORBIDDEN: "Access forbidden",
             ErrorCode.MODEL_NOT_AVAILABLE: "AI model not available",
-            ErrorCode.MODEL_QUOTA_EXCEEDED: "Model quota exceeded",
             ErrorCode.MODEL_BUSY: "Model is busy. Please try again",
             ErrorCode.BACKEND_UNAVAILABLE: "AI backend unavailable",
             ErrorCode.TOOL_EXECUTION_FAILED: "Tool execution failed",
@@ -100,13 +96,6 @@ class PolicyViolationError(PortalError):
 
     def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.POLICY_VIOLATION, details)
-
-
-class ModelQuotaExceededError(PortalError):
-    """Raised when model quota or rate limit is exceeded"""
-
-    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
-        super().__init__(message, ErrorCode.MODEL_QUOTA_EXCEEDED, details)
 
 
 class ModelNotAvailableError(PortalError):
@@ -137,13 +126,6 @@ class RateLimitError(PortalError):
     def __init__(self, message: str, retry_after: int, details: dict[str, Any] | None = None) -> None:
         super().__init__(message, ErrorCode.RATE_LIMIT_EXCEEDED, details)
         self.retry_after = retry_after
-
-
-class ContextNotFoundError(PortalError):
-    """Raised when conversation context is not found"""
-
-    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
-        super().__init__(message, ErrorCode.CONTEXT_NOT_FOUND, details)
 
 
 class ValidationError(PortalError):

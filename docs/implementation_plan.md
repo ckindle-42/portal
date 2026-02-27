@@ -1,5 +1,9 @@
 # Portal Enhancement Implementation Plan
 
+> **Status: COMPLETE** — All items below were implemented as of v1.3.3. This
+> file is retained as a historical record; refer to `CHANGELOG.md` for current
+> state.
+
 1. Add unified long-term memory module at `portal/memory` with Mem0-first provider selection and SQLite fallback.
 2. Inject memory retrieval into AgentCore before model execution for all interfaces.
 3. Add OpenAI-compatible endpoint enhancements (`/v1/chat/completions`, streaming, vision auto-model, `/v1/audio/transcriptions`).

@@ -117,9 +117,9 @@ class DocumentMetadataExtractorTool(BaseTool):
         """Extract PDF metadata"""
 
         try:
-            from PyPDF2 import PdfReader
+            from pypdf import PdfReader
         except ImportError:
-            return {"error": "PyPDF2 not installed"}
+            return {"error": "pypdf not installed"}
 
         try:
             reader = PdfReader(str(file_path))

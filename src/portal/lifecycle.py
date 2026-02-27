@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import os
 import signal
-import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -299,25 +298,3 @@ class Runtime:
         return bool(self.context and self.context.accepting_work and not self._shutdown_in_progress)
 
 
-async def run_with_lifecycle(
-    main_task: Callable[[RuntimeContext], None],
-    config_path: str | None = None
-):
-    """
-    Run an application with proper lifecycle management.
-
-    Args:
-        main_task: Async function that runs the main application logic
-        config_path: Optional path to configuration file
-    """
-    runtime = Runtime(config_path)
-
-    try:
-        context = await runtime.bootstrap()
-        await main_task(context)
-        await runtime.wait_for_shutdown()
-    except Exception as e:
-        logger.error("Fatal error: %s", e, exc_info=True)
-        sys.exit(1)
-    finally:
-        await runtime.shutdown()

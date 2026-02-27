@@ -1,5 +1,9 @@
 # ACTION_PROMPT_FOR_CODING_AGENT.md
 
+> **Superseded** — This document described the 2026-02-27 shrink session task
+> list. All tasks in that session have been completed and committed. See
+> `CHANGELOG.md` for the recorded outcomes.
+
 ## Project Context
 
 Portal is a local-first AI platform (Python 3.11+, FastAPI, Pydantic v2) with
