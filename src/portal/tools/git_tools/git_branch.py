@@ -6,14 +6,9 @@ import logging
 from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.tools.git_tools._base import GIT_AVAILABLE, GitCommandError, open_repo
 
 logger = logging.getLogger(__name__)
-
-try:
-    from git import GitCommandError, InvalidGitRepositoryError, Repo
-    GIT_AVAILABLE = True
-except ImportError:
-    GIT_AVAILABLE = False
 
 
 class GitBranchTool(BaseTool):
@@ -64,13 +59,11 @@ class GitBranchTool(BaseTool):
         branch_name = parameters.get("branch_name")
         force = parameters.get("force", False)
 
+        repo, err = open_repo(repo_path)
+        if err:
+            return err
+
         try:
-            # Open repository
-            repo = Repo(repo_path)
-
-            if repo.bare:
-                return self._error_response("Repository is bare")
-
             if action == "list":
                 # List all branches
                 branches = []
@@ -123,8 +116,6 @@ class GitBranchTool(BaseTool):
             else:
                 return self._error_response(f"Unknown action: {action}. Use list, create, delete, or checkout")
 
-        except InvalidGitRepositoryError:
-            return self._error_response(f"Not a git repository: {repo_path}")
         except GitCommandError as e:
             return self._error_response(f"Git command failed: {e}")
         except Exception as e:
