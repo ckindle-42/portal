@@ -358,14 +358,6 @@ module load time.
 
 ---
 
-### Persistence (`src/portal/persistence/`)
-
-| Implementation | Notes |
-|----------------|-------|
-| `SQLiteImpl` | Default; per-conversation history in `data/context.db` |
-
----
-
 ### CLI (`src/portal/cli.py`)
 
 Entry point: `portal` (registered in `pyproject.toml`).
@@ -471,7 +463,6 @@ portal/
 │   │   └── tool_confirmation_middleware.py
 │   ├── security/
 │   ├── observability/
-│   ├── persistence/
 │   └── tools/
 ├── tests/
 │   ├── conftest.py             shared fixtures + pytest configuration
@@ -509,7 +500,7 @@ portal/
 | `portal doctor` structured output | Phase 3 |
 
 ### v1.3.3 Code Health Drive (Feb 2026)
-- Massive test coverage explosion: 49% → 70%+ (372 → 1089+ tests)
+- Test coverage expansion: 49% → 70%+ (372 → 828 tests after shrink rationalization)
 - Refactored agent_core.py: extracted 7 helpers from 3 oversized methods
 - Added return type hints to 230+ functions across entire codebase
 - Converted 171 f-string logging calls to lazy % formatting
