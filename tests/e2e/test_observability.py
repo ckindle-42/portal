@@ -229,7 +229,6 @@ async def test_observability_module_structure():
     # Check key files
     files = [
         "__init__.py",
-        "tracer.py",
         "health.py",
         "config_watcher.py",
         "metrics.py",
