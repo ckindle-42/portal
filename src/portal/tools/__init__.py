@@ -97,32 +97,36 @@ class ToolRegistry:
         """Warn on legacy or invalid metadata formats."""
         metadata = tool_instance.metadata
         if hasattr(metadata, "parameters"):
-            params = metadata.parameters
-            if isinstance(params, dict):
-                logger.warning(
-                    "Legacy dict parameters in %s (%s); expected List[ToolParameter]",
-                    class_name,
-                    module_path,
-                )
-            elif isinstance(params, list):
-                from portal.core.interfaces.tool import ToolParameter
-
-                for idx, param in enumerate(params):
-                    if not isinstance(param, ToolParameter):
-                        logger.warning(
-                            "Non-ToolParameter at index %s in %s (%s)", idx, class_name, module_path
-                        )
-            else:
-                logger.warning(
-                    "Invalid parameters type %s in %s (%s)",
-                    type(params).__name__,
-                    class_name,
-                    module_path,
-                )
+            self._validate_params(metadata.parameters, class_name, module_path)
         for field in ("name", "description", "category"):
             if not hasattr(metadata, field):
                 logger.warning(
                     "Missing metadata field '%s' in %s (%s)", field, class_name, module_path
+                )
+
+    def _validate_params(self, params: Any, class_name: str, module_path: str) -> None:
+        """Warn on legacy or invalid parameter formats."""
+        if isinstance(params, dict):
+            logger.warning(
+                "Legacy dict parameters in %s (%s); expected List[ToolParameter]",
+                class_name,
+                module_path,
+            )
+            return
+        if not isinstance(params, list):
+            logger.warning(
+                "Invalid parameters type %s in %s (%s)",
+                type(params).__name__,
+                class_name,
+                module_path,
+            )
+            return
+        from portal.core.interfaces.tool import ToolParameter
+
+        for idx, param in enumerate(params):
+            if not isinstance(param, ToolParameter):
+                logger.warning(
+                    "Non-ToolParameter at index %s in %s (%s)", idx, class_name, module_path
                 )
 
     def _discover_entry_point_tools(self) -> tuple[int, int]:

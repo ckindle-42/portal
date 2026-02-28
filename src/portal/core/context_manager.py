@@ -11,29 +11,14 @@ import json
 import logging
 import os
 import sqlite3
-import threading
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from portal.core.db import ConnectionPool
+
 logger = logging.getLogger(__name__)
-
-
-class _ConnectionPool:
-    """Thread-local SQLite connection cache for context manager."""
-
-    def __init__(self, db_path: Path) -> None:
-        self._db_path = db_path
-        self._local = threading.local()
-
-    def get(self) -> sqlite3.Connection:
-        conn = getattr(self._local, "conn", None)
-        if conn is None:
-            conn = sqlite3.connect(self._db_path)
-            conn.execute("PRAGMA journal_mode=WAL")
-            self._local.conn = conn
-        return conn
 
 
 @dataclass
@@ -82,7 +67,7 @@ class ContextManager:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Thread-local connection pool (E4)
-        self._pool = _ConnectionPool(self.db_path)
+        self._pool = ConnectionPool(self.db_path)
 
         # Initialize database (synchronous; called from __init__)
         self._init_db()

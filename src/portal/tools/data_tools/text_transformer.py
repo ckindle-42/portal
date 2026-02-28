@@ -69,20 +69,19 @@ class TextTransformerTool(BaseTool):
         try:
             if fmt == "json":
                 return json.loads(content)
-            elif fmt == "yaml":
+            if fmt == "yaml":
                 import yaml
 
                 return yaml.safe_load(content)
-            elif fmt == "xml":
+            if fmt == "xml":
                 import xmltodict
 
                 return xmltodict.parse(content)
-            elif fmt == "toml":
+            if fmt == "toml":
                 import toml
 
                 return toml.loads(content)
-            else:
-                return None
+            return None
         except Exception:
             return None
 
@@ -91,19 +90,18 @@ class TextTransformerTool(BaseTool):
         try:
             if fmt == "json":
                 return json.dumps(data, indent=2)
-            elif fmt == "yaml":
+            if fmt == "yaml":
                 import yaml
 
                 return yaml.dump(data, default_flow_style=False)
-            elif fmt == "xml":
+            if fmt == "xml":
                 import xmltodict
 
                 return xmltodict.unparse(data, pretty=True)
-            elif fmt == "toml":
+            if fmt == "toml":
                 import toml
 
                 return toml.dumps(data)
-            else:
-                return None
+            return None
         except Exception:
             return None

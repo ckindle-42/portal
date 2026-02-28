@@ -72,6 +72,23 @@ Dead-code removal, test consolidation, nesting reduction, and one bug fix across
 
 ---
 
+### Round 3 Addendum — 2026-02-28 — Final Polish
+
+#### Removed (Round 3)
+
+- `PortalRuntime.wait_for_shutdown()` from `lifecycle.py` — zero callers confirmed via grep
+- Stale `setup_telemetry` try/except block from `tests/e2e/test_observability.py` — `setup_telemetry` was removed when opentelemetry deps were deleted; block always hit the except branch
+
+#### Refactored (Round 3)
+
+- `observability/__init__.py`: replaced 71-LOC eager barrel import with 8-line docstring; all consumers already import directly from submodules
+- `_ConnectionPool` deduplicated: private copies in `context_manager.py` and `user_store.py` replaced with shared `portal.core.db.ConnectionPool` (configurable pragmas)
+- `routing/model_registry.py`: 9-model hardcoded catalog (~155 LOC) moved to `default_models.json`; `_register_default_models()` replaced with 10-line JSON loader
+- 9 functions flattened from nesting=5 to nesting≤4 using early-return and dispatch-table patterns across 8 tool files (`csv_analyzer`, `text_transformer`, `file_compressor`, `local_knowledge`, `excel_processor`, `word_processor`, `powerpoint_processor`, `tools/__init__`)
+- Verification: `mcp_registry.list_tools()` intentionally remains at nesting=5 (data-shape-driven traversal)
+
+---
+
 ## [Unreleased] — 2026-02-27 — Security Hardening & Reliability
 
 ### Summary

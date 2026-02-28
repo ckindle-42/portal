@@ -295,13 +295,7 @@ class WordProcessorTool(BaseTool):
 
             # Add headers
             if headers:
-                header_cells = table.rows[0].cells
-                for idx, header in enumerate(headers):
-                    header_cells[idx].text = str(header)
-                    # Bold headers
-                    for paragraph in header_cells[idx].paragraphs:
-                        for run in paragraph.runs:
-                            run.font.bold = True
+                self._apply_bold_headers(table.rows[0].cells, headers)
 
             # Add data
             start_row = 1 if headers else 0
@@ -320,6 +314,14 @@ class WordProcessorTool(BaseTool):
         except Exception as e:
             logger.error("Word add table error: %s", e)
             return self._error_response(f"Add table error: {e}")
+
+    def _apply_bold_headers(self, header_cells: Any, headers: list[Any]) -> None:
+        """Set text and bold style on header cells."""
+        for idx, header in enumerate(headers):
+            header_cells[idx].text = str(header)
+            for paragraph in header_cells[idx].paragraphs:
+                for run in paragraph.runs:
+                    run.font.bold = True
 
     async def _add_image(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Add image to document"""

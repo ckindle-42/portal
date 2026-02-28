@@ -187,10 +187,6 @@ class Runtime:
         signal.signal(signal.SIGTERM, signal_handler)
         logger.debug("Signal handlers registered")
 
-    async def wait_for_shutdown(self):
-        """Wait for shutdown signal."""
-        await self._shutdown_event.wait()
-
     async def shutdown(self):
         """Graceful shutdown: drain tasks, stop components, run callbacks, cleanup."""
         if not self._initialized:
