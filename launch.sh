@@ -613,6 +613,62 @@ show_status() {
     echo ""
 }
 
+# ─── Switch web UI ────────────────────────────────────────────────────────────
+switch_ui() {
+    local env_file="$PORTAL_ROOT/.env"
+    if [ ! -f "$env_file" ]; then
+        echo "ERROR: .env not found. Run 'bash launch.sh up' first."
+        exit 1
+    fi
+
+    local new_ui="${1:-}"
+    if [ -z "$new_ui" ]; then
+        echo "Which web UI do you want?"
+        echo "  1) Open WebUI  (recommended, full-featured)"
+        echo "  2) LibreChat   (multi-provider, plugin ecosystem)"
+        echo ""
+        read -rp "Choice [1]: " ui_choice
+        case "${ui_choice:-1}" in
+            2|librechat|LibreChat) new_ui="librechat" ;;
+            *) new_ui="openwebui" ;;
+        esac
+    fi
+
+    # Validate
+    case "$new_ui" in
+        openwebui|librechat) ;;
+        *) echo "ERROR: Unknown UI '$new_ui'. Options: openwebui, librechat"; exit 1 ;;
+    esac
+
+    # Source current config to find old UI
+    set -a; source "$env_file"; set +a
+    local old_ui="${WEB_UI:-openwebui}"
+
+    if [ "$old_ui" = "$new_ui" ]; then
+        echo "Already using $new_ui. Nothing to change."
+        return
+    fi
+
+    echo "Switching: $old_ui → $new_ui"
+
+    # Stop old UI stack and remove volumes
+    local old_dir="$PORTAL_ROOT/deploy/web-ui/$old_ui"
+    if [ -d "$old_dir" ] && docker info &>/dev/null; then
+        echo "[docker] stopping $old_ui stack..."
+        (cd "$old_dir" && docker compose down -v) 2>/dev/null || true
+    fi
+
+    # Update .env
+    local tmp_file
+    tmp_file=$(mktemp)
+    sed "s|^WEB_UI=.*|WEB_UI=$new_ui|" "$env_file" > "$tmp_file"
+    mv "$tmp_file" "$env_file"
+
+    echo ""
+    echo "Done. Web UI set to: $new_ui"
+    echo "Restart to apply: bash launch.sh down && bash launch.sh up"
+}
+
 # ─── Reset secrets ────────────────────────────────────────────────────────────
 reset_secrets() {
     local env_file="$PORTAL_ROOT/.env"
@@ -648,8 +704,9 @@ reset_secrets() {
 COMMAND="${1:-up}"
 MINIMAL="false"
 PROFILE_OVERRIDE=""
+SUBARG=""
 
-# Parse flags
+# Parse flags and capture first positional sub-argument
 shift || true
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -660,6 +717,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         --profile=*)
             PROFILE_OVERRIDE="${1#--profile=}"
+            ;;
+        *)
+            if [ -z "$SUBARG" ]; then
+                SUBARG="$1"
+            fi
             ;;
     esac
     shift || true
@@ -723,7 +785,7 @@ case "$COMMAND" in
         ;;
 
     logs)
-        tail_logs "${1:-portal-api}"
+        tail_logs "${SUBARG:-portal-api}"
         ;;
 
     status)
@@ -732,6 +794,10 @@ case "$COMMAND" in
 
     reset-secrets)
         reset_secrets
+        ;;
+
+    switch-ui)
+        switch_ui "$SUBARG"
         ;;
 
     *)
@@ -746,6 +812,7 @@ case "$COMMAND" in
         echo "  logs [service]                 Tail a service log"
         echo "  status                         One-line service overview"
         echo "  reset-secrets                  Rotate all auto-generated keys"
+        echo "  switch-ui [name]               Switch web UI (openwebui or librechat)"
         echo ""
         echo "Hardware profiles: m4-mac | linux-bare | linux-wsl2"
         echo "  Use PORTAL_HARDWARE=<profile> env var or --profile flag to override detection."
