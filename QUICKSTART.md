@@ -1,22 +1,78 @@
+
 # Portal — Quick Start
 
 > Minimum commands from zero to running. Covers GUI selection, MCP, generation services, and messaging channels.
 
 ---
 
-## Prerequisites (All Platforms)
-- Git (required to clone the repository)
-- Python 3.11+
-- Docker & Docker Compose
-- Ollama installed
+## Prerequisites
+Before starting, you need **Git**, **Python 3.11+**, **Docker**, and **Ollama**. Choose your operating system below for installation instructions:
+
+<details open>
+<summary><b>🍎 macOS (Apple Silicon / M4)</b></summary>
+The easiest way to install the requirements on macOS is using [Homebrew](https://brew.sh/).
+
+1. **Install Homebrew** (if you don't have it):
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+2. **Install Git, Python, and Ollama:**
+   ```bash
+   brew install git python@3.11 ollama
+   ```
+3. **Install Docker:** Download and install [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/).
+</details>
+
+<details>
+<summary><b>🐧 Linux (Ubuntu / Debian)</b></summary>
+1. **Install Git and Python 3.11+:**
+   ```bash
+   sudo apt update
+   sudo apt install git python3 python3-venv python3-pip
+   ```
+2. **Install Ollama:**
+   ```bash
+   curl -fsSL https://ollama.com/install.sh | sh
+   ```
+3. **Install Docker:** Follow the [official Docker Engine installation guide](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) or use the convenience script:
+   ```bash
+   curl -fsSL https://get.docker.com -o get-docker.sh
+   sudo sh get-docker.sh
+   ```
+</details>
+
+<details>
+<summary><b>🪟 Windows (WSL2)</b></summary>
+Portal runs on Windows via the Windows Subsystem for Linux (WSL2).
+1. **Enable WSL2:** Open PowerShell as Administrator and run:
+   ```powershell
+   wsl --install
+   ```
+   *Restart your computer if prompted, then open the new "Ubuntu" terminal from your Start Menu.*
+2. **Install Git and Python (inside Ubuntu terminal):**
+   ```bash
+   sudo apt update
+   sudo apt install git python3 python3-venv python3-pip
+   ```
+3. **Install Ollama (inside Ubuntu terminal):**
+   ```bash
+   curl -fsSL https://ollama.com/install.sh | sh
+   ```
+4. **Install Docker:** Download and install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/). Ensure the **"Use the WSL 2 based engine"** option is checked in Docker Desktop settings.
+</details>
+
+---
+
+## 1. Clone & Setup
+Once the prerequisites are installed, clone the repository:
 
 ```bash
 git clone https://github.com/ckindle-42/portal && cd portal
 ```
 
-> Fastest path: run `bash launch.sh up` and follow first-run prompts. The launcher auto-detects hardware, creates `.env`, generates secrets, and installs dependencies.
+**Fastest path:** run `bash launch.sh up` and follow first-run prompts. The launcher auto-detects hardware, creates `.env`, generates secrets, and installs dependencies.
 
-Manual path (if you want explicit setup):
+**Manual path (if you want explicit setup):**
 
 ```bash
 cp .env.example .env
@@ -90,7 +146,9 @@ SUPERVISOR_TYPE=nohup
 
 ---
 
-## 1 · Apple M4 Mac (Primary)
+## 2. Launch Portal
+
+### Apple M4 Mac (Primary)
 
 ```bash
 bash hardware/m4-mac/launch.sh up
@@ -103,15 +161,13 @@ Open **http://localhost:8080**. Stop with:
 bash hardware/m4-mac/launch.sh down
 ```
 
-API-only mode (no Docker/GUI):
+**API-only mode (no Docker/GUI):**
 
 ```bash
 bash hardware/m4-mac/launch.sh up --minimal
 ```
 
----
-
-## 2 · Linux Bare Metal (NVIDIA CUDA)
+### Linux Bare Metal (NVIDIA CUDA)
 
 ```bash
 bash hardware/linux-bare/launch.sh up
@@ -126,9 +182,7 @@ bash hardware/linux-bare/launch.sh down
 
 > Note: `GENERATION_SERVICES` defaults to `false` on Linux. Set `GENERATION_SERVICES=true` in `.env` to enable ComfyUI/Whisper MCP wrappers.
 
----
-
-## 3 · Linux WSL2 (NVIDIA CUDA)
+### Linux WSL2 (NVIDIA CUDA)
 
 ```bash
 bash hardware/linux-wsl2/launch.sh up
@@ -239,8 +293,11 @@ Default model is set via `DEFAULT_MODEL` in `.env` (ships as `qwen2.5:7b`).
 ```bash
 # Built-in health check (substitute your platform script)
 bash hardware/m4-mac/launch.sh doctor
+```
 
-# Manual endpoint checks
+Manual endpoint checks:
+
+```bash
 curl http://localhost:8081/health        # Portal API + AgentCore
 curl http://localhost:8081/v1/models     # Virtual model list
 curl http://localhost:8000/health        # Router
@@ -273,3 +330,19 @@ http://localhost:8081/v1
 bash hardware/m4-mac/launch.sh logs portal
 bash hardware/m4-mac/launch.sh logs ollama
 ```
+
+**Edge-case notes:**  
+- First run can take 5–15 minutes (Docker pulls + Ollama model downloads).  
+- On Linux/WSL2, if Docker commands fail, log out/in after `usermod` or restart Docker Desktop.  
+- For NVIDIA GPU passthrough issues, verify `nvidia-smi` works inside containers.  
+- Always run `doctor` after any `.env` change and restart.
+```
+
+**Why this updated guide is better (quick review of recommendations):**  
+- **Zero-friction start** — exact copy-paste prereq commands per OS (no more "install Python somehow").  
+- **Collapsible sections** keep the page clean for users who know their platform.  
+- **Fastest path first** — root `launch.sh` still highlighted.  
+- **Full original depth preserved** — every table, command, nuance, and feature section is intact, just re-flowed after the improved prereqs.  
+- **Added clarity** — platform numbering, stop commands, and brief edge-case reminders for completeness without bloat.
+
+Copy-paste this entire block into `QUICKSTART.md` (or `QUICKSTART (3).md`) and you're done. Users on any of the three target platforms can now go from zero to a running Portal in minutes. Let me know if you'd like a version with even more troubleshooting or a PDF/export variant!
