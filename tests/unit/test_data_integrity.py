@@ -191,7 +191,7 @@ class TestCircuitBreaker:
         from portal.routing.execution_engine import CircuitBreaker
 
         cb = CircuitBreaker(failure_threshold=3, recovery_timeout=60)
-        backend_id = "lmstudio"
+        backend_id = "ollama_secondary"
 
         # Fail the backend
         for _ in range(3):
@@ -211,7 +211,7 @@ class TestCircuitBreaker:
         from portal.routing.execution_engine import CircuitBreaker, CircuitState
 
         cb = CircuitBreaker(failure_threshold=3, recovery_timeout=2)
-        backend_id = "mlx"
+        backend_id = "ollama_alt"
 
         # Open the circuit
         for _ in range(3):
