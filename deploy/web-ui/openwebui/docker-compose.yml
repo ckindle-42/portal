@@ -11,7 +11,7 @@ services:
   # Caddy — reverse proxy and static file server
   # -----------------------------------------------------------------------
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.9-alpine
     container_name: portal-caddy
     restart: unless-stopped
     ports:
@@ -37,7 +37,7 @@ services:
   # Open WebUI — browser chat UI
   # -----------------------------------------------------------------------
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:v0.8.5
     container_name: portal-open-webui
     restart: unless-stopped
     volumes:
