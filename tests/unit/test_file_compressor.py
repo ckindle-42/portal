@@ -27,12 +27,14 @@ class TestFileCompressorCompress:
         archive = str(tmp_path / "out.zip")
 
         tool = FileCompressorTool()
-        result = await tool.execute({
-            "action": "compress",
-            "files": [str(f1), str(f2)],
-            "archive_path": archive,
-            "format": "zip",
-        })
+        result = await tool.execute(
+            {
+                "action": "compress",
+                "files": [str(f1), str(f2)],
+                "archive_path": archive,
+                "format": "zip",
+            }
+        )
         assert result["success"] is True
         assert os.path.exists(archive)
         with zipfile.ZipFile(archive) as zf:
@@ -45,12 +47,14 @@ class TestFileCompressorCompress:
         archive = str(tmp_path / "out.tar")
 
         tool = FileCompressorTool()
-        result = await tool.execute({
-            "action": "compress",
-            "files": [str(f1)],
-            "archive_path": archive,
-            "format": "tar",
-        })
+        result = await tool.execute(
+            {
+                "action": "compress",
+                "files": [str(f1)],
+                "archive_path": archive,
+                "format": "tar",
+            }
+        )
         assert result["success"] is True
         assert os.path.exists(archive)
 
@@ -61,22 +65,26 @@ class TestFileCompressorCompress:
         archive = str(tmp_path / "out.tar.gz")
 
         tool = FileCompressorTool()
-        result = await tool.execute({
-            "action": "compress",
-            "files": [str(f1)],
-            "archive_path": archive,
-            "format": "tar.gz",
-        })
+        result = await tool.execute(
+            {
+                "action": "compress",
+                "files": [str(f1)],
+                "archive_path": archive,
+                "format": "tar.gz",
+            }
+        )
         assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_compress_no_files(self, tmp_path):
         tool = FileCompressorTool()
-        result = await tool.execute({
-            "action": "compress",
-            "files": [],
-            "archive_path": str(tmp_path / "out.zip"),
-        })
+        result = await tool.execute(
+            {
+                "action": "compress",
+                "files": [],
+                "archive_path": str(tmp_path / "out.zip"),
+            }
+        )
         assert result["success"] is False
 
     @pytest.mark.asyncio
@@ -84,24 +92,28 @@ class TestFileCompressorCompress:
         f1 = tmp_path / "a.txt"
         f1.write_text("hello")
         tool = FileCompressorTool()
-        result = await tool.execute({
-            "action": "compress",
-            "files": [str(f1)],
-            "archive_path": str(tmp_path / "out.7z"),
-            "format": "7z",
-        })
+        result = await tool.execute(
+            {
+                "action": "compress",
+                "files": [str(f1)],
+                "archive_path": str(tmp_path / "out.7z"),
+                "format": "7z",
+            }
+        )
         assert result["success"] is False
 
     @pytest.mark.asyncio
     async def test_compress_nonexistent_file(self, tmp_path):
         archive = str(tmp_path / "out.zip")
         tool = FileCompressorTool()
-        result = await tool.execute({
-            "action": "compress",
-            "files": ["/nonexistent/file.txt"],
-            "archive_path": archive,
-            "format": "zip",
-        })
+        result = await tool.execute(
+            {
+                "action": "compress",
+                "files": ["/nonexistent/file.txt"],
+                "archive_path": archive,
+                "format": "zip",
+            }
+        )
         assert result["success"] is True  # Silently skips missing files
 
 
@@ -112,17 +124,19 @@ class TestFileCompressorExtract:
         f1 = tmp_path / "a.txt"
         f1.write_text("extracted content")
         archive = str(tmp_path / "test.zip")
-        with zipfile.ZipFile(archive, 'w') as zf:
+        with zipfile.ZipFile(archive, "w") as zf:
             zf.write(str(f1), "a.txt")
 
         tool = FileCompressorTool()
         old_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
-            result = await tool.execute({
-                "action": "extract",
-                "archive_path": archive,
-            })
+            result = await tool.execute(
+                {
+                    "action": "extract",
+                    "archive_path": archive,
+                }
+            )
             assert result["success"] is True
         finally:
             os.chdir(old_cwd)
@@ -139,10 +153,12 @@ class TestFileCompressorExtract:
         old_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
-            result = await tool.execute({
-                "action": "extract",
-                "archive_path": archive,
-            })
+            result = await tool.execute(
+                {
+                    "action": "extract",
+                    "archive_path": archive,
+                }
+            )
             assert result["success"] is True
         finally:
             os.chdir(old_cwd)
@@ -150,10 +166,12 @@ class TestFileCompressorExtract:
     @pytest.mark.asyncio
     async def test_extract_nonexistent(self):
         tool = FileCompressorTool()
-        result = await tool.execute({
-            "action": "extract",
-            "archive_path": "/nonexistent/archive.zip",
-        })
+        result = await tool.execute(
+            {
+                "action": "extract",
+                "archive_path": "/nonexistent/archive.zip",
+            }
+        )
         assert result["success"] is False
 
     @pytest.mark.asyncio
@@ -164,10 +182,12 @@ class TestFileCompressorExtract:
         old_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
-            result = await tool.execute({
-                "action": "extract",
-                "archive_path": str(f),
-            })
+            result = await tool.execute(
+                {
+                    "action": "extract",
+                    "archive_path": str(f),
+                }
+            )
             assert result["success"] is False
         finally:
             os.chdir(old_cwd)
@@ -177,8 +197,10 @@ class TestFileCompressorActions:
     @pytest.mark.asyncio
     async def test_unknown_action(self):
         tool = FileCompressorTool()
-        result = await tool.execute({
-            "action": "nope",
-            "archive_path": "x",
-        })
+        result = await tool.execute(
+            {
+                "action": "nope",
+                "archive_path": "x",
+            }
+        )
         assert result["success"] is False

@@ -35,7 +35,9 @@ def _make_agent_core(config=None):
     mock_event_bus.publish = AsyncMock()
 
     with patch("portal.core.agent_core.MemoryManager"):
-        with patch("portal.core.agent_core.HITLApprovalMiddleware", side_effect=Exception("no redis")):
+        with patch(
+            "portal.core.agent_core.HITLApprovalMiddleware", side_effect=Exception("no redis")
+        ):
             core = AgentCore(
                 model_registry=mock_model_registry,
                 router=mock_router,
@@ -88,14 +90,14 @@ async def test_stream_response_saves_to_context():
     core.context_manager.add_message.assert_called()
     # Find the call that saved the assistant response (role='assistant')
     assistant_calls = [
-        call for call in core.context_manager.add_message.call_args_list
-        if call.kwargs.get('role') == 'assistant' or
-           (call.args and 'assistant' in str(call.args))
+        call
+        for call in core.context_manager.add_message.call_args_list
+        if call.kwargs.get("role") == "assistant" or (call.args and "assistant" in str(call.args))
     ]
     assert len(assistant_calls) >= 1, "Expected at least one assistant message saved"
     # Verify the full response was saved
     save_call = assistant_calls[0]
-    content = save_call.kwargs.get('content', '')
+    content = save_call.kwargs.get("content", "")
     assert content == "Hello world"
 
 
@@ -135,8 +137,9 @@ async def test_stream_response_does_not_save_empty_response():
 
     # Only user message save should have happened (no assistant save for empty response)
     assistant_saves = [
-        call for call in core.context_manager.add_message.call_args_list
-        if call.kwargs.get('role') == 'assistant'
+        call
+        for call in core.context_manager.add_message.call_args_list
+        if call.kwargs.get("role") == "assistant"
     ]
     assert len(assistant_saves) == 0
 
@@ -168,9 +171,14 @@ class TestSSEUsageBlock:
         agent.health_check = AsyncMock(return_value=True)
 
         secure = MagicMock()
-        secure.process_message = AsyncMock(return_value=MagicMock(
-            response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
-        ))
+        secure.process_message = AsyncMock(
+            return_value=MagicMock(
+                response="ok",
+                model_used="auto",
+                prompt_tokens=0,
+                completion_tokens=1,
+            )
+        )
         del secure.rate_limiter  # ensure no rate_limiter attribute
 
         iface = WebInterface(agent_core=agent, config={}, secure_agent=secure)
@@ -218,9 +226,14 @@ class TestSSEUsageBlock:
         agent.health_check = AsyncMock(return_value=True)
 
         secure = MagicMock()
-        secure.process_message = AsyncMock(return_value=MagicMock(
-            response="ok", model_used="auto", prompt_tokens=0, completion_tokens=3,
-        ))
+        secure.process_message = AsyncMock(
+            return_value=MagicMock(
+                response="ok",
+                model_used="auto",
+                prompt_tokens=0,
+                completion_tokens=3,
+            )
+        )
         del secure.rate_limiter
 
         iface = WebInterface(agent_core=agent, config={}, secure_agent=secure)

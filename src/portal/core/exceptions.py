@@ -53,7 +53,7 @@ class PortalError(Exception):
         self,
         message: str,
         error_code: ErrorCode = ErrorCode.INTERNAL_ERROR,
-        details: dict[str, Any] | None = None
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -63,12 +63,11 @@ class PortalError(Exception):
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for structured logging"""
         return {
-            'error_type': self.__class__.__name__,
-            'error_code': int(self.error_code),
-            'message': self.message,
-            'details': self.details
+            "error_type": self.__class__.__name__,
+            "error_code": int(self.error_code),
+            "message": self.message,
+            "details": self.details,
         }
-
 
 
 class PolicyViolationError(PortalError):
@@ -103,7 +102,9 @@ class AuthorizationError(PortalError):
 class RateLimitError(PortalError):
     """Raised when rate limit is exceeded"""
 
-    def __init__(self, message: str, retry_after: int, details: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, message: str, retry_after: int, details: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(message, ErrorCode.RATE_LIMIT_EXCEEDED, details)
         self.retry_after = retry_after
 

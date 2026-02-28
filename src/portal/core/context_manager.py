@@ -37,8 +37,9 @@ class _ConnectionPool:
 
 
 @dataclass
-class Message:
+class ContextMessage:
     """Represents a single message in conversation history"""
+
     role: str  # 'user', 'assistant', 'system'
     content: str
     timestamp: str
@@ -123,10 +124,13 @@ class ContextManager:
     ) -> None:
         timestamp = datetime.now(tz=UTC).isoformat()
         conn = self._pool.get()
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO conversations (chat_id, role, content, timestamp, interface, metadata)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (chat_id, role, content, timestamp, interface, json.dumps(metadata)))
+        """,
+            (chat_id, role, content, timestamp, interface, json.dumps(metadata)),
+        )
         conn.commit()
 
     def _sync_get_history(
@@ -134,7 +138,7 @@ class ContextManager:
         chat_id: str,
         limit: int,
         include_system: bool,
-    ) -> list[Message]:
+    ) -> list[ContextMessage]:
         conn = self._pool.get()
         conn.row_factory = sqlite3.Row
 
@@ -154,13 +158,15 @@ class ContextManager:
 
         messages = []
         for row in reversed(rows):
-            messages.append(Message(
-                role=row['role'],
-                content=row['content'],
-                timestamp=row['timestamp'],
-                interface=row['interface'],
-                metadata=json.loads(row['metadata'])
-            ))
+            messages.append(
+                ContextMessage(
+                    role=row["role"],
+                    content=row["content"],
+                    timestamp=row["timestamp"],
+                    interface=row["interface"],
+                    metadata=json.loads(row["metadata"]),
+                )
+            )
         # Reset row_factory to avoid leaking into subsequent queries
         conn.row_factory = None
         return messages
@@ -174,9 +180,7 @@ class ContextManager:
         """Delete messages older than the retention period. Returns count deleted."""
         cutoff = (datetime.now(tz=UTC) - timedelta(days=self._MAX_AGE_DAYS)).isoformat()
         conn = self._pool.get()
-        cursor = conn.execute(
-            "DELETE FROM conversations WHERE timestamp < ?", (cutoff,)
-        )
+        cursor = conn.execute("DELETE FROM conversations WHERE timestamp < ?", (cutoff,))
         conn.commit()
         return cursor.rowcount
 
@@ -190,7 +194,7 @@ class ContextManager:
         role: str,
         content: str,
         interface: str,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Add a message to conversation history
@@ -210,14 +214,13 @@ class ContextManager:
         if self._insert_count % self._PRUNE_INTERVAL == 0:
             deleted = await asyncio.to_thread(self._sync_prune_old_messages)
             if deleted:
-                logger.info("Pruned %d old context messages (>%d days)", deleted, self._MAX_AGE_DAYS)
+                logger.info(
+                    "Pruned %d old context messages (>%d days)", deleted, self._MAX_AGE_DAYS
+                )
 
     async def get_history(
-        self,
-        chat_id: str,
-        limit: int | None = None,
-        include_system: bool = True
-    ) -> list[Message]:
+        self, chat_id: str, limit: int | None = None, include_system: bool = True
+    ) -> list[ContextMessage]:
         """
         Retrieve conversation history
 
@@ -233,10 +236,7 @@ class ContextManager:
         return await asyncio.to_thread(self._sync_get_history, chat_id, limit, include_system)
 
     async def get_formatted_history(
-        self,
-        chat_id: str,
-        limit: int | None = None,
-        format: str = 'openai'
+        self, chat_id: str, limit: int | None = None, format: str = "openai"
     ) -> list[dict[str, str]]:
         """
         Get history formatted for LLM APIs
@@ -251,18 +251,20 @@ class ContextManager:
         """
         messages = await self.get_history(chat_id, limit)
 
-        if format == 'openai':
-            return [{'role': msg.role, 'content': msg.content} for msg in messages]
-        elif format == 'anthropic':
+        if format == "openai":
+            return [{"role": msg.role, "content": msg.content} for msg in messages]
+        elif format == "anthropic":
             # Anthropic handles system prompts separately; skip system messages here
             formatted = []
             for msg in messages:
-                if msg.role == 'system':
+                if msg.role == "system":
                     continue
-                formatted.append({
-                    'role': msg.role,  # preserve 'user' and 'assistant' as-is
-                    'content': msg.content
-                })
+                formatted.append(
+                    {
+                        "role": msg.role,  # preserve 'user' and 'assistant' as-is
+                        "content": msg.content,
+                    }
+                )
             return formatted
         else:
             raise ValueError(f"Unsupported format: {format}")

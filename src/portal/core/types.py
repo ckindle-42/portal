@@ -41,6 +41,7 @@ class InterfaceType(StrEnum):
 @dataclass
 class IncomingMessage:
     """Standardized incoming message across all interfaces."""
+
     id: str
     text: str
     model: str = "auto"
@@ -67,6 +68,7 @@ class ProcessingResult:
     Fields used internally / for debugging:
         trace_id, metadata, tool_results, error
     """
+
     # Primary response text
     response: str
 
@@ -92,4 +94,4 @@ class ProcessingResult:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-__all__ = ['InterfaceType', 'IncomingMessage', 'ProcessingResult']
+__all__ = ["InterfaceType", "IncomingMessage", "ProcessingResult"]

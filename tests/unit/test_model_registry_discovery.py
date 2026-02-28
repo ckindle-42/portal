@@ -197,6 +197,7 @@ class TestModelRegistryQueries:
 # R1: Auto-discovery called during bootstrap
 # ---------------------------------------------------------------------------
 
+
 class TestBootstrapDiscovery:
     """R1: discover_from_ollama must be invoked during Runtime.bootstrap()."""
 
@@ -230,7 +231,10 @@ class TestBootstrapDiscovery:
 
             with (
                 patch("portal.lifecycle.create_agent_core", return_value=mock_agent_core),
-                patch("portal.lifecycle.SecurityMiddleware", return_value=MagicMock(cleanup=AsyncMock())),
+                patch(
+                    "portal.lifecycle.SecurityMiddleware",
+                    return_value=MagicMock(cleanup=AsyncMock()),
+                ),
                 patch("portal.lifecycle.load_settings") as mock_settings,
             ):
                 settings = MagicMock()
@@ -248,6 +252,4 @@ class TestBootstrapDiscovery:
                 except Exception:
                     pass  # We only care that discover was called
 
-        assert len(discovery_called) >= 1, (
-            "discover_from_ollama was not called during bootstrap"
-        )
+        assert len(discovery_called) >= 1, "discover_from_ollama was not called during bootstrap"

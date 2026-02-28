@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class EventType(Enum):
     """Standard event types"""
+
     PROCESSING_STARTED = "processing_started"
     PROCESSING_COMPLETED = "processing_completed"
     PROCESSING_FAILED = "processing_failed"
@@ -54,6 +55,7 @@ class EventType(Enum):
 @dataclass
 class Event:
     """Represents an event in the system"""
+
     event_type: EventType
     chat_id: str
     timestamp: str
@@ -63,11 +65,11 @@ class Event:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
-            'event_type': self.event_type.value,
-            'chat_id': self.chat_id,
-            'timestamp': self.timestamp,
-            'data': self.data,
-            'trace_id': self.trace_id
+            "event_type": self.event_type.value,
+            "chat_id": self.chat_id,
+            "timestamp": self.timestamp,
+            "data": self.data,
+            "trace_id": self.trace_id,
         }
 
 
@@ -127,11 +129,7 @@ class EventBus:
                 logger.warning("Callback not found in %s subscribers", event_type.value)
 
     async def publish(
-        self,
-        event_type: EventType,
-        chat_id: str,
-        data: dict[str, Any],
-        trace_id: str | None = None
+        self, event_type: EventType, chat_id: str, data: dict[str, Any], trace_id: str | None = None
     ) -> None:
         """
         Publish an event
@@ -147,7 +145,7 @@ class EventBus:
             chat_id=chat_id,
             timestamp=datetime.now(tz=UTC).isoformat(),
             data=data,
-            trace_id=trace_id
+            trace_id=trace_id,
         )
 
         # Add to history (only if enabled to prevent memory leaks)
@@ -178,7 +176,7 @@ class EventBus:
                 if isinstance(result, Exception):
                     logger.error(
                         f"Uncaught exception in event subscriber {i} for {event_type.value}: {result}",
-                        exc_info=result
+                        exc_info=result,
                     )
 
     async def _notify_subscriber(self, callback: Callable, event: Event) -> None:
@@ -191,14 +189,14 @@ class EventBus:
             await callback(event)
         except Exception as e:
             logger.error(
-                f"Error in event subscriber for {event.event_type.value}: {e}",
-                exc_info=True
+                f"Error in event subscriber for {event.event_type.value}: {e}", exc_info=True
             )
 
 
 # =============================================================================
 # HELPER FUNCTIONS FOR COMMON EVENT PATTERNS
 # =============================================================================
+
 
 class EventEmitter:
     """
@@ -213,9 +211,5 @@ class EventEmitter:
     async def emit_processing_started(self, chat_id: str, message: str, trace_id: str) -> None:
         """Emit processing started event"""
         await self.event_bus.publish(
-            EventType.PROCESSING_STARTED,
-            chat_id,
-            {'message': message},
-            trace_id
+            EventType.PROCESSING_STARTED, chat_id, {"message": message}, trace_id
         )
-

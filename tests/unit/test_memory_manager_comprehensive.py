@@ -214,6 +214,7 @@ class TestMemorySnippet:
 # R3: TTL-based memory pruning
 # ---------------------------------------------------------------------------
 
+
 class TestMemoryPruning:
     """R3: Old memory entries beyond the retention period must be pruned."""
 
@@ -234,6 +235,7 @@ class TestMemoryPruning:
             conn.commit()
 
         import asyncio
+
         deleted = await asyncio.to_thread(mm._prune_old_memories)
         assert deleted >= 1
 
@@ -247,6 +249,7 @@ class TestMemoryPruning:
         await mm.add_message("u1", "recent memory content")
 
         import asyncio
+
         deleted = await asyncio.to_thread(mm._prune_old_memories)
         assert deleted == 0
 

@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from portal.middleware.tool_confirmation_middleware import ToolConfirmationMiddleware
     from portal.tools import ToolRegistry
 
-logger = get_logger('AgentCore')
+logger = get_logger("AgentCore")
 
 # Configuration constants (avoid magic numbers/strings scattered throughout)
 DEFAULT_MCP_TOOL_MAX_ROUNDS = 3
@@ -81,17 +81,17 @@ class AgentCore:
 
         logger.info(
             "AgentCore initialized successfully",
-            routing_strategy=router.strategy.value if hasattr(router, 'strategy') else 'unknown',
+            routing_strategy=router.strategy.value if hasattr(router, "strategy") else "unknown",
             tools_loaded=loaded,
             tools_failed=failed,
             models_available=len(model_registry.models),
-            confirmation_middleware_enabled=confirmation_middleware is not None
+            confirmation_middleware_enabled=confirmation_middleware is not None,
         )
 
     @staticmethod
     def _init_hitl_middleware(config: dict[str, Any]) -> HITLApprovalMiddleware | None:
         """Try to initialize HITL approval middleware if Redis is configured."""
-        if not (config.get('redis_url') or os.getenv('REDIS_URL')):
+        if not (config.get("redis_url") or os.getenv("REDIS_URL")):
             return None
         try:
             return HITLApprovalMiddleware()
@@ -102,11 +102,11 @@ class AgentCore:
     @staticmethod
     def _initial_stats() -> dict[str, Any]:
         return {
-            'messages_processed': 0,
-            'total_execution_time': 0.0,
-            'tools_executed': 0,
-            'by_interface': {},
-            'errors': 0,
+            "messages_processed": 0,
+            "total_execution_time": 0.0,
+            "tools_executed": 0,
+            "by_interface": {},
+            "errors": 0,
         }
 
     async def process_message(
@@ -125,10 +125,14 @@ class AgentCore:
         with TraceContext() as trace_id:
             try:
                 await self._record_message_start(chat_id, message, interface, trace_id)
-                message = await self._persist_user_context(chat_id, message, interface, user_context, trace_id)
-                system_prompt, available_tools, context_history = await self._build_execution_context(
-                    chat_id, interface, user_context
+                message = await self._persist_user_context(
+                    chat_id, message, interface, user_context, trace_id
                 )
+                (
+                    system_prompt,
+                    available_tools,
+                    context_history,
+                ) = await self._build_execution_context(chat_id, interface, user_context)
                 result, tool_results = await self._run_execution_with_mcp_loop(
                     query=message,
                     system_prompt=system_prompt,
@@ -137,7 +141,7 @@ class AgentCore:
                     trace_id=trace_id,
                     messages=context_history or None,
                 )
-                await self._save_message(chat_id, 'assistant', result.response, interface.value)
+                await self._save_message(chat_id, "assistant", result.response, interface.value)
                 return await self._finalize_result(
                     result, tool_results, chat_id, interface, start_time, trace_id
                 )
@@ -148,10 +152,7 @@ class AgentCore:
 
             except Exception as e:
                 await self._handle_processing_error(e, chat_id, trace_id, start_time, known=False)
-                raise PortalError(
-                    f"Unexpected error: {str(e)}",
-                    details={'original_error': str(e)}
-                )
+                raise PortalError(f"Unexpected error: {str(e)}", details={"original_error": str(e)})
 
     def _normalize_interface(self, interface: InterfaceType | str) -> InterfaceType:
         """Coerce plain strings to InterfaceType."""
@@ -167,11 +168,16 @@ class AgentCore:
     ) -> None:
         """Update stats, log, and emit processing-started event."""
         async with self._stats_lock:
-            self.stats['messages_processed'] += 1
+            self.stats["messages_processed"] += 1
             key = interface.value
-            self.stats['by_interface'][key] = self.stats['by_interface'].get(key, 0) + 1
+            self.stats["by_interface"][key] = self.stats["by_interface"].get(key, 0) + 1
 
-        logger.info("Processing message", chat_id=chat_id, interface=interface.value, message_length=len(message))
+        logger.info(
+            "Processing message",
+            chat_id=chat_id,
+            interface=interface.value,
+            message_length=len(message),
+        )
         await self.events.emit_processing_started(chat_id, message, trace_id)
 
     async def _persist_user_context(
@@ -184,11 +190,13 @@ class AgentCore:
     ) -> str:
         """Load context, persist user message, enrich with memory. Returns enriched message."""
         await self._load_context(chat_id, trace_id)
-        await self._save_message(chat_id, 'user', message, interface.value)
+        await self._save_message(chat_id, "user", message, interface.value)
 
         user_id = str(user_context.get("user_id") or chat_id)
         await self.memory_manager.add_message(user_id=user_id, content=message)
-        memory_context = await self.memory_manager.build_context_block(user_id=user_id, query=message)
+        memory_context = await self.memory_manager.build_context_block(
+            user_id=user_id, query=message
+        )
         if memory_context:
             message = f"{memory_context}\n\nUser message:\n{message}"
         return message
@@ -199,7 +207,7 @@ class AgentCore:
         """Build system prompt, tool list, and conversation history."""
         system_prompt = self._build_system_prompt(interface.value, user_context)
         available_tools = [t.metadata.name for t in self.tool_registry.get_all_tools()]
-        context_history = await self.context_manager.get_formatted_history(chat_id, format='openai')
+        context_history = await self.context_manager.get_formatted_history(chat_id, format="openai")
         return system_prompt, available_tools, context_history
 
     async def _finalize_result(
@@ -213,16 +221,25 @@ class AgentCore:
     ) -> ProcessingResult:
         """Update stats, log completion, emit event, and return ProcessingResult."""
         execution_time = time.perf_counter() - start_time
-        tools_used = getattr(result, 'tools_used', [])
+        tools_used = getattr(result, "tools_used", [])
         async with self._stats_lock:
-            self.stats['total_execution_time'] += execution_time
-            self.stats['tools_executed'] += len(tools_used)
+            self.stats["total_execution_time"] += execution_time
+            self.stats["tools_executed"] += len(tools_used)
 
-        logger.info("Completed processing", model=result.model_used, execution_time=execution_time, tools_count=len(tools_used))
+        logger.info(
+            "Completed processing",
+            model=result.model_used,
+            execution_time=execution_time,
+            tools_count=len(tools_used),
+        )
         await self.event_bus.publish(
             EventType.PROCESSING_COMPLETED,
             chat_id,
-            {'model': result.model_used, 'execution_time': execution_time, 'tools_used': tools_used},
+            {
+                "model": result.model_used,
+                "execution_time": execution_time,
+                "tools_used": tools_used,
+            },
             trace_id,
         )
         return ProcessingResult(
@@ -234,13 +251,13 @@ class AgentCore:
             warnings=[],
             completion_tokens=result.tokens_generated or None,
             metadata={
-                'chat_id': chat_id,
-                'interface': interface.value,
-                'timestamp': datetime.now(tz=UTC).isoformat(),
-                'routing_strategy': (
-                    self.router.strategy.value if hasattr(self.router, 'strategy') else 'auto'
+                "chat_id": chat_id,
+                "interface": interface.value,
+                "timestamp": datetime.now(tz=UTC).isoformat(),
+                "routing_strategy": (
+                    self.router.strategy.value if hasattr(self.router, "strategy") else "auto"
                 ),
-                'tool_results': tool_results,
+                "tool_results": tool_results,
             },
             trace_id=trace_id,
         )
@@ -250,15 +267,20 @@ class AgentCore:
     ) -> None:
         """Increment error stats, log, and emit PROCESSING_FAILED event."""
         async with self._stats_lock:
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
 
         if known:
             portal_exc: Any = exc
-            logger.error("Processing failed", error_type=type(exc).__name__, error_message=str(exc), details=portal_exc.details)
-            error_payload = {'error': portal_exc.to_dict()}
+            logger.error(
+                "Processing failed",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                details=portal_exc.details,
+            )
+            error_payload = {"error": portal_exc.to_dict()}
         else:
             logger.error("Unexpected error", error=str(exc), exc_info=True)
-            error_payload = {'error': str(exc)}
+            error_payload = {"error": str(exc)}
 
         await self.event_bus.publish(EventType.PROCESSING_FAILED, chat_id, error_payload, trace_id)
 
@@ -267,10 +289,7 @@ class AgentCore:
         history = await self.context_manager.get_history(chat_id, limit=10)
 
         await self.event_bus.publish(
-            EventType.CONTEXT_LOADED,
-            chat_id,
-            {'messages_loaded': len(history)},
-            trace_id
+            EventType.CONTEXT_LOADED, chat_id, {"messages_loaded": len(history)}, trace_id
         )
 
         logger.debug("Context loaded", chat_id=chat_id, message_count=len(history))
@@ -284,11 +303,10 @@ class AgentCore:
 
     def _build_system_prompt(self, interface: str, user_context: dict | None) -> str:
         """Build system prompt from external templates."""
-        user_prefs = user_context.get('preferences', {}) if user_context else {}
+        user_prefs = user_context.get("preferences", {}) if user_context else {}
 
         return self.prompt_manager.build_system_prompt(
-            interface=interface,
-            user_preferences=user_prefs
+            interface=interface, user_preferences=user_prefs
         )
 
     async def _execute_with_routing(
@@ -303,18 +321,30 @@ class AgentCore:
         """Route the query and execute it, emitting routing/generating events."""
         decision = self.router.route(query)
         await self.event_bus.publish(
-            EventType.ROUTING_DECISION, chat_id,
-            {'model': decision.model_id, 'reasoning': decision.reasoning,
-             'complexity': decision.classification.complexity.value},
+            EventType.ROUTING_DECISION,
+            chat_id,
+            {
+                "model": decision.model_id,
+                "reasoning": decision.reasoning,
+                "complexity": decision.classification.complexity.value,
+            },
             trace_id,
         )
-        logger.info("Routing decision", model=decision.model_id, complexity=decision.classification.complexity.value)
-        await self.event_bus.publish(EventType.MODEL_GENERATING, chat_id, {'model': decision.model_id}, trace_id)
-        result = await self.execution_engine.execute(query=query, system_prompt=system_prompt, messages=messages)
+        logger.info(
+            "Routing decision",
+            model=decision.model_id,
+            complexity=decision.classification.complexity.value,
+        )
+        await self.event_bus.publish(
+            EventType.MODEL_GENERATING, chat_id, {"model": decision.model_id}, trace_id
+        )
+        result = await self.execution_engine.execute(
+            query=query, system_prompt=system_prompt, messages=messages
+        )
         if not result.success:
             raise ModelNotAvailableError(
                 f"Model execution failed: {result.error}",
-                details={'model': decision.model_id, 'error': result.error},
+                details={"model": decision.model_id, "error": result.error},
             )
         return result
 
@@ -323,13 +353,13 @@ class AgentCore:
         async with self._stats_lock:
             uptime = (datetime.now(tz=UTC) - self.start_time).total_seconds()
             stats = self.stats.copy()
-        stats['uptime_seconds'] = uptime
-        if stats['messages_processed'] > 0:
-            stats['avg_execution_time'] = (
-                stats['total_execution_time'] / stats['messages_processed']
+        stats["uptime_seconds"] = uptime
+        if stats["messages_processed"] > 0:
+            stats["avg_execution_time"] = (
+                stats["total_execution_time"] / stats["messages_processed"]
             )
         else:
-            stats['avg_execution_time'] = 0
+            stats["avg_execution_time"] = 0
         return stats
 
     def get_tool_list(self) -> list[dict[str, Any]]:
@@ -404,11 +434,10 @@ class AgentCore:
         if full_response and incoming.id:
             try:
                 await self._save_message(
-                    incoming.id, 'assistant', full_response, incoming.source or "web"
+                    incoming.id, "assistant", full_response, incoming.source or "web"
                 )
             except Exception as e:
                 logger.warning("Failed to save streamed response to context: %s", e)
-
 
     async def _run_execution_with_mcp_loop(
         self,
@@ -454,16 +483,20 @@ class AgentCore:
         )
         return final_result, collected_tool_results
 
-    def _format_tool_results_as_messages(self, tool_results: list[dict[str, Any]]) -> list[dict[str, str]]:
+    def _format_tool_results_as_messages(
+        self, tool_results: list[dict[str, Any]]
+    ) -> list[dict[str, str]]:
         """Format MCP tool outputs as structured messages for the model."""
         messages = []
         for result in tool_results:
-            tool_name = result.get('tool', 'unknown')
-            tool_output = json.dumps(result.get('result', {}), ensure_ascii=False, default=str)
-            messages.append({
-                "role": "tool",
-                "content": f"[{tool_name}] {tool_output}",
-            })
+            tool_name = result.get("tool", "unknown")
+            tool_output = json.dumps(result.get("result", {}), ensure_ascii=False, default=str)
+            messages.append(
+                {
+                    "role": "tool",
+                    "content": f"[{tool_name}] {tool_output}",
+                }
+            )
         return messages
 
     async def health_check(self) -> bool:
@@ -474,7 +507,7 @@ class AgentCore:
         Falls back to True if the engine does not expose a health method.
         """
         try:
-            if hasattr(self.execution_engine, 'health_check'):
+            if hasattr(self.execution_engine, "health_check"):
                 return await self.execution_engine.health_check()
             # Minimal liveness: just check that start_time is set
             return self.start_time is not None
@@ -493,7 +526,7 @@ class AgentCore:
 
         results = []
         for call in tool_calls:
-            tool_name = call.get('tool') or call.get('name', '')
+            tool_name = call.get("tool") or call.get("name", "")
             if not tool_name:
                 continue
             result = await self._dispatch_single_mcp_tool(call, tool_name, chat_id, trace_id)
@@ -501,11 +534,15 @@ class AgentCore:
         return results
 
     async def _dispatch_single_mcp_tool(
-        self, call: dict[str, Any], tool_name: str, chat_id: str, trace_id: str,
+        self,
+        call: dict[str, Any],
+        tool_name: str,
+        chat_id: str,
+        trace_id: str,
     ) -> dict[str, Any]:
         """Dispatch one MCP tool call, applying HITL gating if needed."""
-        server_name = call.get('server', 'core')
-        arguments = call.get('arguments', {})
+        server_name = call.get("server", "core")
+        arguments = call.get("arguments", {})
 
         logger.info("Dispatching MCP tool", server=server_name, tool=tool_name, chat_id=chat_id)
 
@@ -515,10 +552,13 @@ class AgentCore:
 
         result = await self.mcp_registry.call_tool(server_name, tool_name, arguments)
         MCP_TOOL_USAGE.labels(tool_name=tool_name).inc()
-        return {'tool': tool_name, 'result': result}
+        return {"tool": tool_name, "result": result}
 
     async def _check_hitl_approval(
-        self, tool_name: str, arguments: dict[str, Any], chat_id: str,
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        chat_id: str,
     ) -> dict[str, Any] | None:
         """Return a pending-approval result if HITL blocks the tool, else None."""
         if not (self.hitl_middleware and tool_name in HIGH_RISK_TOOLS):
@@ -529,9 +569,14 @@ class AgentCore:
 
         if not approval_token:
             approval_token = await self.hitl_middleware.request(
-                user_id=user_id, channel="telegram", tool_name=tool_name, args=arguments,
+                user_id=user_id,
+                channel="telegram",
+                tool_name=tool_name,
+                args=arguments,
             )
-            return self._hitl_pending_result(tool_name, approval_token, "deferred until approval token is granted")
+            return self._hitl_pending_result(
+                tool_name, approval_token, "deferred until approval token is granted"
+            )
 
         if not self.hitl_middleware.check_approved(user_id=user_id, token=approval_token):
             return self._hitl_pending_result(tool_name, approval_token, "still pending or denied")
@@ -541,11 +586,11 @@ class AgentCore:
     @staticmethod
     def _hitl_pending_result(tool_name: str, token: str, reason: str) -> dict[str, Any]:
         return {
-            'tool': tool_name,
-            'result': {
-                'status': 'pending_approval',
-                'approval_token': token,
-                'message': f'Approval token is {reason}.',
+            "tool": tool_name,
+            "result": {
+                "status": "pending_approval",
+                "approval_token": token,
+                "message": f"Approval token is {reason}.",
             },
         }
 
@@ -555,12 +600,12 @@ class AgentCore:
         parameters: dict[str, Any],
         chat_id: str | None = None,
         user_id: str | None = None,
-        trace_id: str | None = None
+        trace_id: str | None = None,
     ) -> dict[str, Any]:
         """Execute a specific tool directly, with optional confirmation gate."""
         tool = self.tool_registry.get_tool(tool_name)
         if not tool:
-            raise ToolExecutionError(tool_name, f'Tool not found: {tool_name}')
+            raise ToolExecutionError(tool_name, f"Tool not found: {tool_name}")
 
         await self._gate_tool_confirmation(tool, tool_name, parameters, chat_id, user_id, trace_id)
 
@@ -568,34 +613,43 @@ class AgentCore:
             return await tool.execute(parameters)
         except Exception as e:
             logger.error("Tool execution error", tool=tool_name, error=str(e))
-            raise ToolExecutionError(tool_name, str(e), details={'parameters': parameters})
+            raise ToolExecutionError(tool_name, str(e), details={"parameters": parameters})
 
     async def _gate_tool_confirmation(
-        self, tool: Any, tool_name: str, parameters: dict[str, Any],
-        chat_id: str | None, user_id: str | None, trace_id: str | None,
+        self,
+        tool: Any,
+        tool_name: str,
+        parameters: dict[str, Any],
+        chat_id: str | None,
+        user_id: str | None,
+        trace_id: str | None,
     ) -> None:
         """Request human-in-the-loop confirmation if needed. Raises on denial."""
-        requires_confirmation = getattr(tool.metadata, 'requires_confirmation', False)
+        requires_confirmation = getattr(tool.metadata, "requires_confirmation", False)
         if not (requires_confirmation and self.confirmation_middleware):
             return
 
         logger.info("Tool requires confirmation", tool=tool_name, chat_id=chat_id)
         approved = await self.confirmation_middleware.request_confirmation(
-            tool_name=tool_name, parameters=parameters,
-            chat_id=chat_id or "unknown", user_id=user_id, trace_id=trace_id,
+            tool_name=tool_name,
+            parameters=parameters,
+            chat_id=chat_id or "unknown",
+            user_id=user_id,
+            trace_id=trace_id,
         )
         if not approved:
             logger.warning("Tool execution denied", tool=tool_name, chat_id=chat_id)
             raise ToolExecutionError(
-                tool_name, "Tool execution denied by administrator",
-                details={'parameters': parameters, 'requires_confirmation': True},
+                tool_name,
+                "Tool execution denied by administrator",
+                details={"parameters": parameters, "requires_confirmation": True},
             )
         logger.info("Tool execution approved", tool=tool_name, chat_id=chat_id)
 
     async def cleanup(self) -> None:
         """Release MCP and execution-engine resources."""
         logger.info("Cleaning up AgentCore...")
-        if self.mcp_registry and hasattr(self.mcp_registry, 'close'):
+        if self.mcp_registry and hasattr(self.mcp_registry, "close"):
             await self.mcp_registry.close()
         await self.execution_engine.cleanup()
         logger.info("AgentCore cleanup complete")
@@ -606,5 +660,5 @@ def create_agent_core(config) -> AgentCore:
     from .factories import create_dependencies
 
     if not isinstance(config, dict):
-        config = config.to_agent_config() if hasattr(config, 'to_agent_config') else {}
+        config = config.to_agent_config() if hasattr(config, "to_agent_config") else {}
     return AgentCore(**create_dependencies(config).get_all())

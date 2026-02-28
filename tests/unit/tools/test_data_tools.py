@@ -28,10 +28,12 @@ class TestCSVAnalyzerTool:
         """Test analyzing a CSV file — uses real pandas"""
         tool = CSVAnalyzerTool()
 
-        result = await tool.execute({
-            "file_path": str(sample_csv_file),
-            "analysis_type": "summary",
-        })
+        result = await tool.execute(
+            {
+                "file_path": str(sample_csv_file),
+                "analysis_type": "summary",
+            }
+        )
 
         assert result["success"] is True
         assert "analysis" in result or "result" in result
@@ -41,10 +43,12 @@ class TestCSVAnalyzerTool:
         """Test analyzing non-existent CSV"""
         tool = CSVAnalyzerTool()
 
-        result = await tool.execute({
-            "file_path": "/nonexistent/file.csv",
-            "operation": "summary",
-        })
+        result = await tool.execute(
+            {
+                "file_path": "/nonexistent/file.csv",
+                "operation": "summary",
+            }
+        )
 
         assert result["success"] is False
         assert "error" in result
@@ -62,12 +66,14 @@ class TestFileCompressorTool:
         output_path = temp_dir / "output.zip"
 
         with patch("zipfile.ZipFile"):
-            result = await tool.execute({
-                "operation": "compress",
-                "source": str(mock_file_system["file"]),
-                "output": str(output_path),
-                "format": "zip"
-            })
+            result = await tool.execute(
+                {
+                    "operation": "compress",
+                    "source": str(mock_file_system["file"]),
+                    "output": str(output_path),
+                    "format": "zip",
+                }
+            )
 
             assert result["success"] is True or "error" in result
 
@@ -77,11 +83,13 @@ class TestFileCompressorTool:
         tool = FileCompressorTool()
 
         with patch("zipfile.ZipFile"):
-            result = await tool.execute({
-                "operation": "extract",
-                "source": str(temp_dir / "archive.zip"),
-                "output": str(temp_dir / "extracted")
-            })
+            result = await tool.execute(
+                {
+                    "operation": "extract",
+                    "source": str(temp_dir / "archive.zip"),
+                    "output": str(temp_dir / "extracted"),
+                }
+            )
 
             # May fail if validation is strict
             assert "success" in result or "error" in result
@@ -98,10 +106,12 @@ class TestMathVisualizerTool:
         tool = MathVisualizerTool()
 
         with patch("matplotlib.pyplot.savefig"), patch("matplotlib.pyplot.close"):
-            result = await tool.execute({
-                "expression": "x**2",
-                "x_range": [-10, 10],
-            })
+            result = await tool.execute(
+                {
+                    "expression": "x**2",
+                    "x_range": [-10, 10],
+                }
+            )
 
         assert result["success"] is True or "error" in result
 
@@ -110,10 +120,12 @@ class TestMathVisualizerTool:
         """Test with invalid mathematical function"""
         tool = MathVisualizerTool()
 
-        result = await tool.execute({
-            "expression": "invalid_func(x)",
-            "x_range": [0, 10],
-        })
+        result = await tool.execute(
+            {
+                "expression": "invalid_func(x)",
+                "x_range": [0, 10],
+            }
+        )
 
         assert result["success"] is False
         assert "error" in result
@@ -129,9 +141,11 @@ class TestQRGeneratorTool:
         """Test generating a QR code — uses real qrcode library"""
         tool = QRGeneratorTool()
 
-        result = await tool.execute({
-            "content": "https://example.com",
-        })
+        result = await tool.execute(
+            {
+                "content": "https://example.com",
+            }
+        )
 
         assert result["success"] is True
 
@@ -140,10 +154,12 @@ class TestQRGeneratorTool:
         """Test QR code generation with custom options"""
         tool = QRGeneratorTool()
 
-        result = await tool.execute({
-            "content": "Test QR Code",
-            "size": 8,
-        })
+        result = await tool.execute(
+            {
+                "content": "Test QR Code",
+                "size": 8,
+            }
+        )
 
         assert result["success"] is True
 
@@ -157,11 +173,13 @@ class TestTextTransformerTool:
         """Test converting JSON to YAML"""
         tool = TextTransformerTool()
 
-        result = await tool.execute({
-            "content": '{"key": "value", "number": 123}',
-            "from_format": "json",
-            "to_format": "yaml",
-        })
+        result = await tool.execute(
+            {
+                "content": '{"key": "value", "number": 123}',
+                "from_format": "json",
+                "to_format": "yaml",
+            }
+        )
 
         assert result["success"] is True
         assert "result" in result or "output" in result
@@ -171,11 +189,13 @@ class TestTextTransformerTool:
         """Test converting YAML to JSON"""
         tool = TextTransformerTool()
 
-        result = await tool.execute({
-            "content": "key: value\nnumber: 123",
-            "from_format": "yaml",
-            "to_format": "json",
-        })
+        result = await tool.execute(
+            {
+                "content": "key: value\nnumber: 123",
+                "from_format": "yaml",
+                "to_format": "json",
+            }
+        )
 
         assert result["success"] is True
 
@@ -184,11 +204,13 @@ class TestTextTransformerTool:
         """Test with invalid JSON input"""
         tool = TextTransformerTool()
 
-        result = await tool.execute({
-            "content": "{invalid json",
-            "from_format": "json",
-            "to_format": "yaml",
-        })
+        result = await tool.execute(
+            {
+                "content": "{invalid json",
+                "from_format": "json",
+                "to_format": "yaml",
+            }
+        )
 
         assert result["success"] is False
         assert "error" in result

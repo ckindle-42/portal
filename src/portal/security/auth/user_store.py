@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import os
-import secrets
 import sqlite3
 import threading
 from dataclasses import dataclass
@@ -21,19 +20,13 @@ class _ConnectionPool:
         self._local = threading.local()
 
     def get(self) -> sqlite3.Connection:
-        conn = getattr(self._local, 'conn', None)
+        conn = getattr(self._local, "conn", None)
         if conn is None:
             conn = sqlite3.connect(self._db_path)
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA foreign_keys=ON")
             self._local.conn = conn
         return conn
-
-    def close_all(self) -> None:
-        conn = getattr(self._local, 'conn', None)
-        if conn:
-            conn.close()
-            self._local.conn = None
 
 
 @dataclass(slots=True)
@@ -88,19 +81,6 @@ class UserStore:
             (user_id, role, now),
         )
         conn.commit()
-
-    def create_api_key(self, user_id: str, name: str = "default") -> str:
-        self.ensure_user(user_id)
-        token = f"ptl_{secrets.token_urlsafe(24)}"
-        key_hash = hashlib.sha256(token.encode()).hexdigest()
-        now = datetime.now(UTC).isoformat()
-        conn = self._pool.get()
-        conn.execute(
-            "INSERT INTO api_keys(user_id, key_hash, name, created_at) VALUES (?, ?, ?, ?)",
-            (user_id, key_hash, name, now),
-        )
-        conn.commit()
-        return token
 
     # ------------------------------------------------------------------
     # Private sync helpers (called via asyncio.to_thread)
@@ -171,12 +151,3 @@ class UserStore:
             (user_id, key_hash, "bootstrap", now),
         )
         conn.commit()
-
-    def get_tokens(self, user_id: str) -> int:
-        period = datetime.now(UTC).strftime("%Y-%W")
-        conn = self._pool.get()
-        row = conn.execute(
-            "SELECT token_count FROM quotas WHERE user_id = ? AND period = ?",
-            (user_id, period),
-        ).fetchone()
-        return int(row[0]) if row else 0

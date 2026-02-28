@@ -27,6 +27,7 @@ from portal.routing.task_classifier import TaskCategory, TaskClassification, Tas
 # Helpers – reusable test model factories
 # ---------------------------------------------------------------------------
 
+
 def _make_model(
     model_id: str = "test_model",
     backend: str = "ollama",
@@ -86,6 +87,7 @@ def _classification(
 # RoutingDecision dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestRoutingDecision:
     def test_creation(self):
         model = _make_model()
@@ -107,6 +109,7 @@ class TestRoutingDecision:
 # ---------------------------------------------------------------------------
 # IntelligentRouter
 # ---------------------------------------------------------------------------
+
 
 class TestIntelligentRouterInit:
     def test_default_strategy_is_auto(self):
@@ -151,16 +154,26 @@ class TestIntelligentRouterInit:
 # route() dispatch to each strategy
 # ---------------------------------------------------------------------------
 
+
 class TestRouteDispatch:
     """Verify route() delegates to the correct _route_* method."""
 
     def _setup_router(self, strategy: RoutingStrategy) -> IntelligentRouter:
         reg = _empty_registry()
-        fast = _make_model("fast", speed_class=SpeedClass.FAST, general_quality=0.6, cost=0.1,
-                           capabilities=[ModelCapability.GENERAL, ModelCapability.CODE])
-        slow = _make_model("slow", speed_class=SpeedClass.SLOW, general_quality=0.9, cost=0.8,
-                           capabilities=[ModelCapability.GENERAL, ModelCapability.CODE,
-                                         ModelCapability.REASONING])
+        fast = _make_model(
+            "fast",
+            speed_class=SpeedClass.FAST,
+            general_quality=0.6,
+            cost=0.1,
+            capabilities=[ModelCapability.GENERAL, ModelCapability.CODE],
+        )
+        slow = _make_model(
+            "slow",
+            speed_class=SpeedClass.SLOW,
+            general_quality=0.9,
+            cost=0.8,
+            capabilities=[ModelCapability.GENERAL, ModelCapability.CODE, ModelCapability.REASONING],
+        )
         reg.register(fast)
         reg.register(slow)
         return IntelligentRouter(reg, strategy=strategy)
@@ -204,6 +217,7 @@ class TestRouteDispatch:
 # _route_auto
 # ---------------------------------------------------------------------------
 
+
 class TestRouteAuto:
     def test_prefers_configured_model(self):
         reg = _empty_registry()
@@ -244,7 +258,9 @@ class TestRouteAuto:
 
     def test_code_task_uses_code_preferences(self):
         reg = _empty_registry()
-        code_model = _make_model("coder", capabilities=[ModelCapability.CODE, ModelCapability.GENERAL])
+        code_model = _make_model(
+            "coder", capabilities=[ModelCapability.CODE, ModelCapability.GENERAL]
+        )
         general = _make_model("general")
         reg.register(code_model)
         reg.register(general)
@@ -255,11 +271,14 @@ class TestRouteAuto:
 
     def test_code_fallback_via_capability_when_no_pref_match(self):
         reg = _empty_registry()
-        code_model = _make_model("coder", capabilities=[ModelCapability.CODE],
-                                 speed_class=SpeedClass.FAST)
+        code_model = _make_model(
+            "coder", capabilities=[ModelCapability.CODE], speed_class=SpeedClass.FAST
+        )
         reg.register(code_model)
         # No code preference configured, but task requires code
-        router = IntelligentRouter(reg, model_preferences={"code": [], "simple": [], "moderate": []})
+        router = IntelligentRouter(
+            reg, model_preferences={"code": [], "simple": [], "moderate": []}
+        )
         cls = _classification(requires_code=True, category=TaskCategory.CODE)
         with patch.object(router.classifier, "classify", return_value=cls):
             decision = router.route("implement a function")
@@ -270,11 +289,15 @@ class TestRouteAuto:
 # _route_speed
 # ---------------------------------------------------------------------------
 
+
 class TestRouteSpeed:
-    @pytest.mark.parametrize("capability,fast_speed,cls_kwargs", [
-        (ModelCapability.CODE, SpeedClass.ULTRA_FAST, {"requires_code": True}),
-        (ModelCapability.MATH, SpeedClass.FAST, {"requires_math": True}),
-    ])
+    @pytest.mark.parametrize(
+        "capability,fast_speed,cls_kwargs",
+        [
+            (ModelCapability.CODE, SpeedClass.ULTRA_FAST, {"requires_code": True}),
+            (ModelCapability.MATH, SpeedClass.FAST, {"requires_math": True}),
+        ],
+    )
     def test_selects_fastest_with_capability(self, capability, fast_speed, cls_kwargs):
         reg = _empty_registry()
         fast = _make_model("fast", speed_class=fast_speed, capabilities=[capability])
@@ -303,21 +326,41 @@ class TestRouteSpeed:
 # _route_quality
 # ---------------------------------------------------------------------------
 
+
 class TestRouteQuality:
-    @pytest.mark.parametrize("model_a,model_b,category,expected", [
-        (
-            {"model_id": "low", "general_quality": 0.5, "capabilities": [ModelCapability.GENERAL]},
-            {"model_id": "high", "general_quality": 0.95, "capabilities": [ModelCapability.GENERAL]},
-            TaskCategory.GENERAL,
-            "high",
-        ),
-        (
-            {"model_id": "reason", "general_quality": 0.9, "capabilities": [ModelCapability.REASONING]},
-            {"model_id": "general", "general_quality": 0.7, "capabilities": [ModelCapability.GENERAL]},
-            TaskCategory.ANALYSIS,
-            "reason",
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "model_a,model_b,category,expected",
+        [
+            (
+                {
+                    "model_id": "low",
+                    "general_quality": 0.5,
+                    "capabilities": [ModelCapability.GENERAL],
+                },
+                {
+                    "model_id": "high",
+                    "general_quality": 0.95,
+                    "capabilities": [ModelCapability.GENERAL],
+                },
+                TaskCategory.GENERAL,
+                "high",
+            ),
+            (
+                {
+                    "model_id": "reason",
+                    "general_quality": 0.9,
+                    "capabilities": [ModelCapability.REASONING],
+                },
+                {
+                    "model_id": "general",
+                    "general_quality": 0.7,
+                    "capabilities": [ModelCapability.GENERAL],
+                },
+                TaskCategory.ANALYSIS,
+                "reason",
+            ),
+        ],
+    )
     def test_selects_best_model_for_category(self, model_a, model_b, category, expected):
         reg = _empty_registry()
         reg.register(_make_model(**model_a))
@@ -330,10 +373,12 @@ class TestRouteQuality:
 
     def test_respects_max_cost(self):
         reg = _empty_registry()
-        expensive = _make_model("expensive", general_quality=0.99, cost=0.9,
-                                capabilities=[ModelCapability.GENERAL])
-        cheap = _make_model("cheap", general_quality=0.6, cost=0.1,
-                            capabilities=[ModelCapability.GENERAL])
+        expensive = _make_model(
+            "expensive", general_quality=0.99, cost=0.9, capabilities=[ModelCapability.GENERAL]
+        )
+        cheap = _make_model(
+            "cheap", general_quality=0.6, cost=0.1, capabilities=[ModelCapability.GENERAL]
+        )
         reg.register(expensive)
         reg.register(cheap)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.QUALITY)
@@ -346,6 +391,7 @@ class TestRouteQuality:
 # ---------------------------------------------------------------------------
 # _route_balanced
 # ---------------------------------------------------------------------------
+
 
 class TestRouteBalanced:
     def test_moderate_delegates_to_auto_with_reduced_cost(self):
@@ -366,6 +412,7 @@ class TestRouteBalanced:
 # ---------------------------------------------------------------------------
 # _route_cost_optimized
 # ---------------------------------------------------------------------------
+
 
 class TestRouteCostOptimized:
     def test_picks_cheapest_available(self):
@@ -394,10 +441,8 @@ class TestRouteCostOptimized:
 
     def test_cheapest_code_model_selected(self):
         reg = _empty_registry()
-        cheap_code = _make_model("cheap_code", cost=0.1,
-                                 capabilities=[ModelCapability.CODE])
-        expensive_code = _make_model("exp_code", cost=0.9,
-                                     capabilities=[ModelCapability.CODE])
+        cheap_code = _make_model("cheap_code", cost=0.1, capabilities=[ModelCapability.CODE])
+        expensive_code = _make_model("exp_code", cost=0.9, capabilities=[ModelCapability.CODE])
         reg.register(expensive_code)
         reg.register(cheap_code)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.COST_OPTIMIZED)
@@ -420,6 +465,7 @@ class TestRouteCostOptimized:
 # _build_fallback_chain
 # ---------------------------------------------------------------------------
 
+
 class TestBuildFallbackChain:
     def test_excludes_primary_model(self):
         reg = _empty_registry()
@@ -430,9 +476,7 @@ class TestBuildFallbackChain:
         reg.register(fb1)
         reg.register(fb2)
         router = IntelligentRouter(reg)
-        chain = router._build_fallback_chain(
-            primary, _classification()
-        )
+        chain = router._build_fallback_chain(primary, _classification())
         assert "primary" not in chain
 
     def test_returns_up_to_three_fallbacks(self):
@@ -477,6 +521,7 @@ class TestBuildFallbackChain:
 # _get_any_available_model
 # ---------------------------------------------------------------------------
 
+
 class TestGetAnyAvailableModel:
     def test_returns_first_available(self):
         reg = _empty_registry()
@@ -506,6 +551,7 @@ class TestGetAnyAvailableModel:
 # ---------------------------------------------------------------------------
 # _generate_reasoning
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateReasoning:
     def test_contains_all_parts(self):
@@ -538,6 +584,7 @@ class TestGenerateReasoning:
 # ---------------------------------------------------------------------------
 # Integration: full route() end-to-end
 # ---------------------------------------------------------------------------
+
 
 class TestRouteEndToEnd:
     def test_decision_has_all_fields(self):

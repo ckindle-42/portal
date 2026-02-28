@@ -29,21 +29,21 @@ class DockerStopTool(BaseTool):
                     name="containers",
                     param_type="list",
                     description="Container IDs or names to stop",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="timeout",
                     param_type="int",
                     description="Seconds to wait before killing (default: 10)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="remove",
                     param_type="bool",
                     description="Remove containers after stopping (default: False)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -102,11 +102,7 @@ class DockerStopTool(BaseTool):
 
             return self._success_response(
                 result="\n".join(result_parts),
-                metadata={
-                    "stopped": stopped,
-                    "errors": errors,
-                    "removed": remove
-                }
+                metadata={"stopped": stopped, "errors": errors, "removed": remove},
             )
 
         except Exception as e:

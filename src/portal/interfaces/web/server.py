@@ -72,7 +72,10 @@ class ChatCompletionRequest(BaseModel):
 
 
 def _build_cors_origins() -> list[str]:
-    raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000")
+    raw = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000",
+    )
     origins = [o.strip() for o in raw.split(",") if o.strip()]
     return origins or ["http://localhost:8080"]
 
@@ -125,7 +128,9 @@ class WebInterface(BaseInterface):
             or "anonymous"
         )
 
-    async def _auth_context(self, request: Request, authorization: str | None = Header(None)) -> dict[str, str]:
+    async def _auth_context(
+        self, request: Request, authorization: str | None = Header(None)
+    ) -> dict[str, str]:
         user_id = self._extract_user_id(request)
         token = None
         if authorization and authorization.startswith("Bearer "):
@@ -186,29 +191,49 @@ class WebInterface(BaseInterface):
         async def rate_limit_handler(request: Request, exc: RateLimitError):
             return JSONResponse(
                 status_code=429,
-                content={"error": {"message": str(exc), "type": "rate_limit_error", "code": "rate_limit_exceeded"}},
-                headers={"Retry-After": str(getattr(exc, 'retry_after', 60))},
+                content={
+                    "error": {
+                        "message": str(exc),
+                        "type": "rate_limit_error",
+                        "code": "rate_limit_exceeded",
+                    }
+                },
+                headers={"Retry-After": str(getattr(exc, "retry_after", 60))},
             )
 
         @app.exception_handler(ValidationError)
         async def validation_handler(request: Request, exc: ValidationError):
             return JSONResponse(
                 status_code=400,
-                content={"error": {"message": str(exc), "type": "invalid_request_error", "code": "validation_error"}},
+                content={
+                    "error": {
+                        "message": str(exc),
+                        "type": "invalid_request_error",
+                        "code": "validation_error",
+                    }
+                },
             )
 
         @app.exception_handler(ModelNotAvailableError)
         async def model_unavailable_handler(request: Request, exc: ModelNotAvailableError):
             return JSONResponse(
                 status_code=503,
-                content={"error": {"message": str(exc), "type": "server_error", "code": "model_not_available"}},
+                content={
+                    "error": {
+                        "message": str(exc),
+                        "type": "server_error",
+                        "code": "model_not_available",
+                    }
+                },
             )
 
         @app.exception_handler(PortalError)
         async def portal_error_handler(request: Request, exc: PortalError):
             return JSONResponse(
                 status_code=500,
-                content={"error": {"message": str(exc), "type": "server_error", "code": "internal_error"}},
+                content={
+                    "error": {"message": str(exc), "type": "server_error", "code": "internal_error"}
+                },
             )
 
     def _register_middleware(self, app: FastAPI) -> None:
@@ -228,19 +253,28 @@ class WebInterface(BaseInterface):
 
     def _register_chat_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
         @app.post("/v1/chat/completions")
-        async def chat_completions(payload: ChatCompletionRequest, request: Request, auth=Depends(self._auth_context)):
+        async def chat_completions(
+            payload: ChatCompletionRequest, request: Request, auth=Depends(self._auth_context)
+        ):
             # Readiness gate: return 503 while agent is still warming up
             if not _agent_ready.is_set():
                 return JSONResponse(
                     status_code=503,
-                    content={"error": {"message": "Portal is starting up. Please retry in a few seconds.", "type": "server_error"}},
+                    content={
+                        "error": {
+                            "message": "Portal is starting up. Please retry in a few seconds.",
+                            "type": "server_error",
+                        }
+                    },
                     headers={"Retry-After": "5"},
                 )
 
             user_id = auth["user_id"]
             mark_request(user_id)
 
-            last_user_msg = next((m.content for m in reversed(payload.messages) if m.role == "user"), "")
+            last_user_msg = next(
+                (m.content for m in reversed(payload.messages) if m.role == "user"), ""
+            )
             image_present = any(isinstance(m.content, list) for m in payload.messages)
             selected_model = payload.model
             if image_present and payload.model == "auto":
@@ -259,6 +293,7 @@ class WebInterface(BaseInterface):
                 # Security gate for streaming path — mirrors process_message() in SecurityMiddleware
                 if isinstance(self.secure_agent, SecurityMiddleware):
                     from portal.security.security_module import InputSanitizer
+
                     _sanitizer = InputSanitizer()
                     _sanitized, _warnings = _sanitizer.sanitize_command(str(last_user_msg))
                     if any("Dangerous pattern detected" in w for w in _warnings):
@@ -281,13 +316,18 @@ class WebInterface(BaseInterface):
                 user_context={"user_id": user_id},
             )
             elapsed = time.perf_counter() - start
-            tokens = (result.completion_tokens or max(len(result.response.split()), 1))
+            tokens = result.completion_tokens or max(len(result.response.split()), 1)
             TOKENS_PER_SECOND.observe(tokens / max(elapsed, 0.001))
-            await self.user_store.add_tokens(user_id=user_id, tokens=(result.prompt_tokens or 0) + (result.completion_tokens or 0))
+            await self.user_store.add_tokens(
+                user_id=user_id,
+                tokens=(result.prompt_tokens or 0) + (result.completion_tokens or 0),
+            )
             return JSONResponse(self._format_completion(result, selected_model))
 
         @app.post("/v1/audio/transcriptions")
-        async def audio_transcriptions(file: UploadFile = File(...), auth=Depends(self._auth_context)):
+        async def audio_transcriptions(
+            file: UploadFile = File(...), auth=Depends(self._auth_context)
+        ):
             # Read with size limit to prevent memory exhaustion (S4)
             data = await file.read(_MAX_AUDIO_BYTES + 1)
             if len(data) > _MAX_AUDIO_BYTES:
@@ -296,8 +336,16 @@ class WebInterface(BaseInterface):
                     detail=f"Audio file exceeds {_MAX_AUDIO_BYTES // (1024 * 1024)}MB limit",
                 )
             client = self._ollama_client or httpx.AsyncClient(timeout=60.0)
-            files = {"audio_file": (file.filename or "audio.wav", data, file.content_type or "application/octet-stream")}
-            resp = await client.post(os.getenv("WHISPER_URL", "http://localhost:10300/inference"), files=files)
+            files = {
+                "audio_file": (
+                    file.filename or "audio.wav",
+                    data,
+                    file.content_type or "application/octet-stream",
+                )
+            }
+            resp = await client.post(
+                os.getenv("WHISPER_URL", "http://localhost:10300/inference"), files=files
+            )
             out = resp.json()
             return {"text": out.get("text", "")}
 
@@ -305,17 +353,34 @@ class WebInterface(BaseInterface):
         async def list_models(auth=Depends(self._auth_context)):
             try:
                 client = self._ollama_client or httpx.AsyncClient(timeout=3.0)
-                resp = await client.get(f"{os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/tags")
+                resp = await client.get(
+                    f"{os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/tags"
+                )
                 data = resp.json()
                 return {
                     "object": "list",
                     "data": [
-                        {"id": m["name"], "object": "model", "created": int(time.time()), "owned_by": "portal"}
+                        {
+                            "id": m["name"],
+                            "object": "model",
+                            "created": int(time.time()),
+                            "owned_by": "portal",
+                        }
                         for m in data.get("models", [])
                     ],
                 }
             except Exception:
-                return {"object": "list", "data": [{"id": "auto", "object": "model", "created": int(time.time()), "owned_by": "portal"}]}
+                return {
+                    "object": "list",
+                    "data": [
+                        {
+                            "id": "auto",
+                            "object": "model",
+                            "created": int(time.time()),
+                            "owned_by": "portal",
+                        }
+                    ],
+                }
 
     def _register_utility_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
         @app.get("/metrics")
@@ -357,7 +422,7 @@ class WebInterface(BaseInterface):
                 healthy = False
             body["agent_core"] = "ok" if healthy else "degraded"
             mcp_status = {}
-            if hasattr(self.agent_core, 'mcp_registry') and self.agent_core.mcp_registry:
+            if hasattr(self.agent_core, "mcp_registry") and self.agent_core.mcp_registry:
                 try:
                     mcp_status = await self.agent_core.mcp_registry.health_check_all()
                 except Exception:
@@ -369,6 +434,7 @@ class WebInterface(BaseInterface):
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket) -> None:
             from portal.security.security_module import InputSanitizer
+
             sanitizer = InputSanitizer()
 
             static_key = os.getenv("WEB_API_KEY", "").strip()
@@ -404,22 +470,30 @@ class WebInterface(BaseInterface):
                             continue
                     else:
                         now = time.time()
-                        message_timestamps = [ts for ts in message_timestamps if now - ts < ws_rate_window]
+                        message_timestamps = [
+                            ts for ts in message_timestamps if now - ts < ws_rate_window
+                        ]
                         if len(message_timestamps) >= ws_rate_limit:
-                            await websocket.send_json({
-                                "error": f"Rate limit exceeded ({ws_rate_limit} messages per {int(ws_rate_window)}s). Please wait.",
-                                "done": True,
-                            })
+                            await websocket.send_json(
+                                {
+                                    "error": f"Rate limit exceeded ({ws_rate_limit} messages per {int(ws_rate_window)}s). Please wait.",
+                                    "done": True,
+                                }
+                            )
                             continue
                         message_timestamps.append(now)
 
                     raw_text = data.get("message", "")
                     sanitized_text, warnings = sanitizer.sanitize_command(raw_text)
                     if any("Dangerous pattern detected" in w for w in warnings):
-                        await websocket.send_json({"error": "Message blocked by security policy", "done": True})
+                        await websocket.send_json(
+                            {"error": "Message blocked by security policy", "done": True}
+                        )
                         continue
                     if len(sanitized_text) > 10000:
-                        await websocket.send_json({"error": "Message exceeds maximum length", "done": True})
+                        await websocket.send_json(
+                            {"error": "Message exceeds maximum length", "done": True}
+                        )
                         continue
 
                     incoming = IncomingMessage(
@@ -440,7 +514,9 @@ class WebInterface(BaseInterface):
                     pass
                 return
 
-    async def _stream_response(self, incoming: IncomingMessage, model: str, user_id: str) -> AsyncIterator[str]:
+    async def _stream_response(
+        self, incoming: IncomingMessage, model: str, user_id: str
+    ) -> AsyncIterator[str]:
         chunk_id = f"chatcmpl-{uuid.uuid4().hex[:8]}"
         created = int(time.time())
         started = time.perf_counter()
@@ -452,7 +528,13 @@ class WebInterface(BaseInterface):
                 TTFT_MS.observe((time.perf_counter() - started) * 1000)
                 first_token_emitted = True
             token_count += 1
-            chunk = {"id": chunk_id, "object": "chat.completion.chunk", "created": created, "model": model, "choices": [{"index": 0, "delta": {"content": token}, "finish_reason": None}]}
+            chunk = {
+                "id": chunk_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [{"index": 0, "delta": {"content": token}, "finish_reason": None}],
+            }
             yield f"data: {json.dumps(chunk)}\n\n"
 
         elapsed = time.perf_counter() - started
@@ -461,8 +543,19 @@ class WebInterface(BaseInterface):
 
         if not first_token_emitted:
             error_chunk = {
-                "id": chunk_id, "object": "chat.completion.chunk", "created": created,
-                "model": model, "choices": [{"index": 0, "delta": {"content": "I'm sorry, I wasn't able to generate a response. Please try again."}, "finish_reason": "stop"}]
+                "id": chunk_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {
+                            "content": "I'm sorry, I wasn't able to generate a response. Please try again."
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
             }
             yield f"data: {json.dumps(error_chunk)}\n\n"
 
@@ -488,7 +581,13 @@ class WebInterface(BaseInterface):
             "object": "chat.completion",
             "created": int(time.time()),
             "model": model,
-            "choices": [{"index": 0, "message": {"role": "assistant", "content": result.response}, "finish_reason": "stop"}],
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": result.response},
+                    "finish_reason": "stop",
+                }
+            ],
             "usage": {
                 "prompt_tokens": result.prompt_tokens or 0,
                 "completion_tokens": result.completion_tokens or 0,
@@ -498,7 +597,9 @@ class WebInterface(BaseInterface):
 
     async def handle_message(self, message):  # type: ignore[override]
         """Not used by WebInterface; HTTP handlers process messages via FastAPI routes."""
-        raise NotImplementedError("WebInterface processes messages via HTTP — call the FastAPI app directly.")
+        raise NotImplementedError(
+            "WebInterface processes messages via HTTP — call the FastAPI app directly."
+        )
 
     async def send_message(self, user_id: str, response) -> bool:  # type: ignore[override]
         """Not used by WebInterface; responses are delivered via HTTP streaming."""
@@ -507,7 +608,9 @@ class WebInterface(BaseInterface):
     async def start(self) -> None:
         import uvicorn
 
-        config = uvicorn.Config(self.app, host="0.0.0.0", port=int(os.getenv("WEB_PORT", "8081")), log_level="info")
+        config = uvicorn.Config(
+            self.app, host="0.0.0.0", port=int(os.getenv("WEB_PORT", "8081")), log_level="info"
+        )
         self._server = uvicorn.Server(config)
         await self._server.serve()
 

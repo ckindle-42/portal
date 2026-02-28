@@ -22,6 +22,7 @@ class Message:
     This abstraction allows the core agent to process messages
     without knowing which interface they came from.
     """
+
     user_id: str
     content: str
     interface_type: str  # "telegram", "web", "slack", etc.
@@ -41,6 +42,7 @@ class Response:
 
     Interfaces translate this into their native format.
     """
+
     content: str
     message_type: str = "text"  # "text", "image", "file", "code", etc.
     metadata: dict[str, Any] = None
@@ -164,7 +166,7 @@ class BaseInterface(ABC):
             self.__class__.__name__,
             error,
             exc_info=error,
-            extra={"message": message}
+            extra={"message": message},
         )
 
     async def health_check(self) -> bool:
@@ -181,12 +183,12 @@ class BaseInterface(ABC):
         return {
             "interface": self.__class__.__name__,
             "is_running": self.is_running,
-            "config_keys": list(self.config.keys()) if self.config else []
+            "config_keys": list(self.config.keys()) if self.config else [],
         }
 
 
 __all__ = [
-    'BaseInterface',
-    'Message',
-    'Response',
+    "BaseInterface",
+    "Message",
+    "Response",
 ]

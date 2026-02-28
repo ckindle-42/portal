@@ -47,9 +47,13 @@ class LogRotator:
         self._task: asyncio.Task | None = None
         self._last_rotation_time = time.time()
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
-        logger.info("LogRotator initialized", log_file=str(self.log_file),
-                    strategy=self.config.strategy.value, max_bytes=self.config.max_bytes,
-                    rotation_hours=self.config.rotation_interval_hours)
+        logger.info(
+            "LogRotator initialized",
+            log_file=str(self.log_file),
+            strategy=self.config.strategy.value,
+            max_bytes=self.config.max_bytes,
+            rotation_hours=self.config.rotation_interval_hours,
+        )
 
     async def start(self) -> None:
         if self._running:
@@ -102,7 +106,9 @@ class LogRotator:
             return
         try:
             timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
-            rotated_path = self.log_file.parent / f"{self.log_file.stem}_{timestamp}{self.log_file.suffix}"
+            rotated_path = (
+                self.log_file.parent / f"{self.log_file.stem}_{timestamp}{self.log_file.suffix}"
+            )
             logger.info("Rotating log file: %s -> %s", self.log_file, rotated_path)
             self.log_file.rename(rotated_path)
             self.log_file.touch()
@@ -120,7 +126,7 @@ class LogRotator:
 
     async def _compress_log(self, log_path: Path) -> None:
         try:
-            compressed_path = log_path.with_suffix(log_path.suffix + '.gz')
+            compressed_path = log_path.with_suffix(log_path.suffix + ".gz")
             await asyncio.to_thread(self._compress_file, log_path, compressed_path)
             log_path.unlink()
         except Exception as e:
@@ -128,47 +134,52 @@ class LogRotator:
 
     @staticmethod
     def _compress_file(src: Path, dst: Path) -> None:
-        with open(src, 'rb') as f_in, gzip.open(dst, 'wb') as f_out:
+        with open(src, "rb") as f_in, gzip.open(dst, "wb") as f_out:
             f_out.writelines(f_in)
 
     async def _cleanup_old_logs(self) -> None:
         try:
             pattern = f"{self.log_file.stem}_*{self.log_file.suffix}*"
-            rotated_files = sorted(self.log_file.parent.glob(pattern),
-                                   key=lambda p: p.stat().st_mtime, reverse=True)
-            for fp in rotated_files[self.config.backup_count:]:
+            rotated_files = sorted(
+                self.log_file.parent.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True
+            )
+            for fp in rotated_files[self.config.backup_count :]:
                 logger.debug("Deleting old rotated log: %s", fp)
                 fp.unlink()
             if self.config.cleanup_older_than_days > 0:
                 cutoff = time.time() - self.config.cleanup_older_than_days * 86400
                 for fp in rotated_files:
                     if fp.stat().st_mtime < cutoff:
-                        logger.debug("Deleting log older than %s days: %s",
-                                     self.config.cleanup_older_than_days, fp)
+                        logger.debug(
+                            "Deleting log older than %s days: %s",
+                            self.config.cleanup_older_than_days,
+                            fp,
+                        )
                         fp.unlink()
         except Exception as e:
             logger.error("Error during log cleanup: %s", e, exc_info=True)
 
     def get_rotated_logs(self) -> list[Path]:
         pattern = f"{self.log_file.stem}_*{self.log_file.suffix}*"
-        return sorted(self.log_file.parent.glob(pattern),
-                      key=lambda p: p.stat().st_mtime, reverse=True)
+        return sorted(
+            self.log_file.parent.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True
+        )
 
     def get_status(self) -> dict:
         current_size = self.log_file.stat().st_size if self.log_file.exists() else 0
         return {
-            'running': self._running,
-            'log_file': str(self.log_file),
-            'current_size_bytes': current_size,
-            'max_size_bytes': self.config.max_bytes,
-            'size_utilization_percent': (
+            "running": self._running,
+            "log_file": str(self.log_file),
+            "current_size_bytes": current_size,
+            "max_size_bytes": self.config.max_bytes,
+            "size_utilization_percent": (
                 current_size / self.config.max_bytes * 100 if self.config.max_bytes > 0 else 0
             ),
-            'time_since_last_rotation_seconds': time.time() - self._last_rotation_time,
-            'rotation_interval_seconds': self.config.rotation_interval_hours * 3600,
-            'rotated_files_count': len(self.get_rotated_logs()),
-            'backup_count': self.config.backup_count,
-            'strategy': self.config.strategy.value,
+            "time_since_last_rotation_seconds": time.time() - self._last_rotation_time,
+            "rotation_interval_seconds": self.config.rotation_interval_hours * 3600,
+            "rotated_files_count": len(self.get_rotated_logs()),
+            "backup_count": self.config.backup_count,
+            "strategy": self.config.strategy.value,
         }
 
 
@@ -203,7 +214,9 @@ class RotatingStructuredLogHandler(logging.Handler):
         try:
             self._file_handler.close()
             timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
-            rotated_path = self.log_file.parent / f"{self.log_file.stem}_{timestamp}{self.log_file.suffix}"
+            rotated_path = (
+                self.log_file.parent / f"{self.log_file.stem}_{timestamp}{self.log_file.suffix}"
+            )
             if self.log_file.exists():
                 self.log_file.rename(rotated_path)
             if self.config.compress_rotated:
@@ -212,7 +225,7 @@ class RotatingStructuredLogHandler(logging.Handler):
                     loop.create_task(self._compress_async(rotated_path))
                 except RuntimeError:
                     try:
-                        compressed = rotated_path.with_suffix(rotated_path.suffix + '.gz')
+                        compressed = rotated_path.with_suffix(rotated_path.suffix + ".gz")
                         LogRotator._compress_file(rotated_path, compressed)
                         rotated_path.unlink()
                     except Exception as comp_err:
@@ -224,7 +237,7 @@ class RotatingStructuredLogHandler(logging.Handler):
 
     async def _compress_async(self, log_path: Path) -> None:
         try:
-            compressed_path = log_path.with_suffix(log_path.suffix + '.gz')
+            compressed_path = log_path.with_suffix(log_path.suffix + ".gz")
             await asyncio.to_thread(LogRotator._compress_file, log_path, compressed_path)
             log_path.unlink()
         except Exception as e:

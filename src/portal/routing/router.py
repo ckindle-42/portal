@@ -81,9 +81,7 @@ def _extract_user_text(messages: list[dict]) -> str:
             content = msg.get("content", "")
             if isinstance(content, list):
                 # Handle multimodal content blocks
-                return " ".join(
-                    part.get("text", "") for part in content if isinstance(part, dict)
-                )
+                return " ".join(part.get("text", "") for part in content if isinstance(part, dict))
             return str(content)
     return ""
 
@@ -121,7 +119,6 @@ def resolve_model(requested_model: str, messages: list[dict]) -> tuple[str, str]
         return requested_model, "explicit model"
 
     return DEFAULT_MODEL, "default"
-
 
 
 @app.get("/health")
@@ -220,9 +217,7 @@ async def proxy(request: Request, path: str) -> Response:
     """
     body = await request.body()
     headers = {
-        k: v
-        for k, v in request.headers.items()
-        if k.lower() not in ("host", "content-length")
+        k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")
     }
 
     # Rewrite model in chat/generate requests

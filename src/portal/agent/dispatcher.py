@@ -58,8 +58,7 @@ class CentralDispatcher:
         except KeyError:
             available = ", ".join(sorted(cls._registry)) or "<none>"
             raise UnknownInterfaceError(
-                f"No interface registered for {name!r}. "
-                f"Available: {available}"
+                f"No interface registered for {name!r}. Available: {available}"
             ) from None
 
     @classmethod

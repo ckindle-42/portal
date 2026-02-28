@@ -40,7 +40,9 @@ class TestResolveModel:
     def test_manual_override(self, _no_router_token):
         """Manual @model: override selects the correct model."""
         mod = _no_router_token
-        model, reason = mod.resolve_model("auto", [{"role": "user", "content": "@model:llama3 hello"}])
+        model, reason = mod.resolve_model(
+            "auto", [{"role": "user", "content": "@model:llama3 hello"}]
+        )
         assert model == "llama3"
         assert "manual" in reason
 
@@ -67,7 +69,9 @@ class TestRouterTokenAuth:
         mod = _no_router_token
         client = TestClient(mod.app, raise_server_exceptions=False)
         # health is before the catch-all, but dry-run is a normal route
-        resp = client.post("/api/dry-run", json={"model": "auto", "messages": [{"role": "user", "content": "hi"}]})
+        resp = client.post(
+            "/api/dry-run", json={"model": "auto", "messages": [{"role": "user", "content": "hi"}]}
+        )
         assert resp.status_code == 200
 
     def test_valid_token_accepted(self, _with_router_token):

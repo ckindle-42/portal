@@ -14,12 +14,13 @@ from portal.core.exceptions import PolicyViolationError, RateLimitError, Validat
 from portal.core.structured_logger import get_logger
 from portal.security.security_module import InputSanitizer, RateLimiter
 
-logger = get_logger('SecurityMiddleware')
+logger = get_logger("SecurityMiddleware")
 
 
 @dataclass
 class SecurityContext:
     """Security context for a request"""
+
     user_id: str | None = None
     chat_id: str = ""
     interface: str = "unknown"
@@ -75,7 +76,7 @@ class SecurityMiddleware:
         logger.info(
             "SecurityMiddleware initialized",
             rate_limiting=enable_rate_limiting,
-            input_sanitization=enable_input_sanitization
+            input_sanitization=enable_input_sanitization,
         )
 
     async def process_message(
@@ -84,7 +85,7 @@ class SecurityMiddleware:
         message: str,
         interface: str = "unknown",
         user_context: dict | None = None,
-        files: list[Any] | None = None
+        files: list[Any] | None = None,
     ):
         """
         Process a message through security layer then core
@@ -105,14 +106,14 @@ class SecurityMiddleware:
             PolicyViolationError: If security policy violated
         """
         user_context = user_context or {}
-        user_id = user_context.get('user_id')
+        user_id = user_context.get("user_id")
 
         # Create security context
         sec_ctx = SecurityContext(
             user_id=str(user_id) if user_id else None,
             chat_id=chat_id,
             interface=interface,
-            ip_address=user_context.get('ip_address')
+            ip_address=user_context.get("ip_address"),
         )
 
         # Step 1: Rate limiting check
@@ -133,7 +134,7 @@ class SecurityMiddleware:
             "Security checks passed",
             chat_id=chat_id,
             interface=interface,
-            warnings=len(sec_ctx.warnings)
+            warnings=len(sec_ctx.warnings),
         )
 
         # Step 4: Forward to AgentCore
@@ -142,16 +143,16 @@ class SecurityMiddleware:
             message=sec_ctx.sanitized_input,
             interface=interface,
             user_context=user_context,
-            files=files
+            files=files,
         )
 
         # Append security warnings to result
         if sec_ctx.warnings:
-            existing_warnings = getattr(result, 'warnings', None)
+            existing_warnings = getattr(result, "warnings", None)
             if isinstance(existing_warnings, list):
                 existing_warnings.extend(sec_ctx.warnings)
             else:
-                setattr(result, 'warnings', list(sec_ctx.warnings))
+                setattr(result, "warnings", list(sec_ctx.warnings))
 
         return result
 
@@ -173,20 +174,17 @@ class SecurityMiddleware:
                 "Rate limit exceeded",
                 user_id=user_id,
                 chat_id=sec_ctx.chat_id,
-                interface=sec_ctx.interface
+                interface=sec_ctx.interface,
             )
 
             # Extract wait time from error message if possible
-            match = re.search(r'wait (\d+) seconds', error_msg)
+            match = re.search(r"wait (\d+) seconds", error_msg)
             retry_after = int(match.group(1)) if match else 60
 
             raise RateLimitError(
                 error_msg,
                 retry_after=retry_after,
-                details={
-                    'user_id': user_id,
-                    'interface': sec_ctx.interface
-                }
+                details={"user_id": user_id, "interface": sec_ctx.interface},
             )
 
     async def _sanitize_input(self, message: str, sec_ctx: SecurityContext) -> None:
@@ -207,9 +205,7 @@ class SecurityMiddleware:
 
         if warnings:
             logger.warning(
-                "Input sanitization warnings",
-                chat_id=sec_ctx.chat_id,
-                warnings=warnings
+                "Input sanitization warnings", chat_id=sec_ctx.chat_id, warnings=warnings
             )
 
             # Check if warnings indicate dangerous content
@@ -219,10 +215,10 @@ class SecurityMiddleware:
                     raise PolicyViolationError(
                         "Dangerous command pattern detected",
                         details={
-                            'warning': warning,
-                            'chat_id': sec_ctx.chat_id,
-                            'interface': sec_ctx.interface
-                        }
+                            "warning": warning,
+                            "chat_id": sec_ctx.chat_id,
+                            "interface": sec_ctx.interface,
+                        },
                     )
 
     async def _validate_security_policies(self, sec_ctx: SecurityContext) -> None:
@@ -237,19 +233,16 @@ class SecurityMiddleware:
         """
         # Reject empty messages
         if not sec_ctx.sanitized_input or not sec_ctx.sanitized_input.strip():
-            raise ValidationError(
-                "Message cannot be empty",
-                details={'chat_id': sec_ctx.chat_id}
-            )
+            raise ValidationError("Message cannot be empty", details={"chat_id": sec_ctx.chat_id})
 
         # Check message length
         if len(sec_ctx.sanitized_input) > self.max_message_length:
             raise ValidationError(
                 f"Message exceeds maximum length of {self.max_message_length} characters",
                 details={
-                    'length': len(sec_ctx.sanitized_input),
-                    'max_length': self.max_message_length,
-                }
+                    "length": len(sec_ctx.sanitized_input),
+                    "max_length": self.max_message_length,
+                },
             )
 
     def get_rate_limit_stats(self, user_id: str) -> dict[str, int]:
@@ -262,10 +255,7 @@ class SecurityMiddleware:
         logger.info("Rate limit reset", user_id=user_id)
 
     async def execute_tool(
-        self,
-        tool_name: str,
-        parameters: dict[str, Any],
-        user_id: str | None = None
+        self, tool_name: str, parameters: dict[str, Any], user_id: str | None = None
     ) -> dict[str, Any]:
         """
         Execute a tool directly through security layer

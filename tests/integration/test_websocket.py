@@ -4,6 +4,7 @@ Integration tests for WebSocket endpoint and streaming (SSE) response.
 All tests use mocked AgentCore/SecurityMiddleware — no live services required.
 Run with:  pytest tests/integration/test_websocket.py -v
 """
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,6 +12,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def aiter(items):
     for item in items:
@@ -28,9 +30,14 @@ def _make_interface(stream_tokens=None, health_ok=True):
     agent.health_check = AsyncMock(return_value=health_ok)
 
     secure = MagicMock()
-    secure.process_message = AsyncMock(return_value=MagicMock(
-        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
-    ))
+    secure.process_message = AsyncMock(
+        return_value=MagicMock(
+            response="ok",
+            model_used="auto",
+            prompt_tokens=0,
+            completion_tokens=1,
+        )
+    )
 
     config = MagicMock()
     config.interfaces.web.port = 8082
@@ -42,6 +49,7 @@ def _make_interface(stream_tokens=None, health_ok=True):
 # ---------------------------------------------------------------------------
 # WebSocket tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_websocket_valid_api_key_connects(monkeypatch):
@@ -168,6 +176,7 @@ async def test_websocket_rate_limit_rejects_after_n_messages(monkeypatch):
 # Streaming (SSE) tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_streaming_response_emits_sse_lines():
     """Streaming /v1/chat/completions emits data: lines and ends with [DONE]."""
@@ -254,6 +263,7 @@ async def test_empty_message_validation():
 # S2: WebSocket must share the HTTP rate limiter state
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_websocket_uses_shared_rate_limiter(monkeypatch):
     """WebSocket endpoint uses the same shared rate_limiter as SecurityMiddleware (S2)."""
@@ -270,15 +280,21 @@ async def test_websocket_uses_shared_rate_limiter(monkeypatch):
 
     # Use a real SecurityMiddleware with a tight rate limit
     mock_inner = MagicMock()
-    mock_inner.process_message = AsyncMock(return_value=MagicMock(
-        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
-    ))
+    mock_inner.process_message = AsyncMock(
+        return_value=MagicMock(
+            response="ok",
+            model_used="auto",
+            prompt_tokens=0,
+            completion_tokens=1,
+        )
+    )
     mock_inner.cleanup = AsyncMock()
     mock_inner.event_bus = MagicMock()
     mock_inner.get_tool_list = MagicMock(return_value=[])
     mock_inner.get_stats = AsyncMock(return_value={})
 
     from portal.security.security_module import RateLimiter
+
     limiter = RateLimiter(max_requests=2, window_seconds=60)
     secure = SecurityMiddleware(mock_inner, rate_limiter=limiter, enable_rate_limiting=True)
 

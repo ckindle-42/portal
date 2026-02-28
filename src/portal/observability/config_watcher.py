@@ -47,7 +47,7 @@ class ConfigWatcher:
         self,
         config_file: Path,
         check_interval: float = 5.0,
-        validator: Callable[[dict[str, Any]], bool] | None = None
+        validator: Callable[[dict[str, Any]], bool] | None = None,
     ):
         """
         Initialize config watcher.
@@ -214,16 +214,19 @@ class ConfigWatcher:
         # Determine format from extension
         suffix = file_path.suffix.lower()
 
-        if suffix in ['.yaml', '.yml']:
+        if suffix in [".yaml", ".yml"]:
             import yaml
+
             return yaml.safe_load(content)
 
-        elif suffix == '.json':
+        elif suffix == ".json":
             import json
+
             return json.loads(content)
 
-        elif suffix == '.toml':
+        elif suffix == ".toml":
             import toml
+
             return toml.loads(content)
 
         else:
@@ -248,7 +251,7 @@ async def watch_config(
     config_file: Path,
     on_change: Callable[[dict[str, Any]], None],
     validator: Callable[[dict[str, Any]], bool] | None = None,
-    check_interval: float = 5.0
+    check_interval: float = 5.0,
 ) -> ConfigWatcher:
     """
     Convenience function to start watching a config file.
@@ -263,9 +266,7 @@ async def watch_config(
         ConfigWatcher instance (already started)
     """
     watcher = ConfigWatcher(
-        config_file=config_file,
-        check_interval=check_interval,
-        validator=validator
+        config_file=config_file, check_interval=check_interval, validator=validator
     )
 
     watcher.add_callback(on_change)

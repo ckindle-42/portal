@@ -29,10 +29,10 @@ try:
     from pptx.chart.data import CategoryChartData
     from pptx.enum.chart import XL_CHART_TYPE
     from pptx.util import Inches
+
     PPTX_AVAILABLE = True
 except ImportError:
     PPTX_AVAILABLE = False
-
 
 
 class PowerPointProcessorTool(BaseTool):
@@ -52,7 +52,7 @@ class PowerPointProcessorTool(BaseTool):
         "title_only": 5,
         "blank": 6,
         "content_caption": 7,
-        "picture_caption": 8
+        "picture_caption": 8,
     }
 
     def __init__(self) -> None:
@@ -70,70 +70,67 @@ class PowerPointProcessorTool(BaseTool):
                     name="action",
                     param_type="string",
                     description="Action: create, add_slide, add_text, add_image, add_chart, read, save",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="file_path",
                     param_type="string",
                     description="Path to PowerPoint file",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="layout",
                     param_type="string",
                     description="Slide layout: title, title_content, section_header, two_content, blank",
                     required=False,
-                    default="title_content"
+                    default="title_content",
                 ),
                 ToolParameter(
-                    name="title",
-                    param_type="string",
-                    description="Slide title",
-                    required=False
+                    name="title", param_type="string", description="Slide title", required=False
                 ),
                 ToolParameter(
                     name="content",
                     param_type="string",
                     description="Slide content (text or bullet points)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="bullet_points",
                     param_type="list",
                     description="List of bullet points",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="image_path",
                     param_type="string",
                     description="Path to image file",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="image_position",
                     param_type="object",
                     description="Image position: {left, top, width, height} in inches",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="chart_data",
                     param_type="object",
                     description="Chart data for creating charts",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="chart_type",
                     param_type="string",
                     description="Chart type: bar, line, pie",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="theme",
                     param_type="object",
                     description="Theme settings: {background_color, title_color, text_color}",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -183,13 +180,27 @@ class PowerPointProcessorTool(BaseTool):
             prs.save(file_path)
 
             return self._success_response(
-                result={"file_path": str(file_path), "slides": 1},
-                metadata={"title": title}
+                result={"file_path": str(file_path), "slides": 1}, metadata={"title": title}
             )
 
         except Exception as e:
             logger.error("PowerPoint creation error: %s", e)
             return self._error_response(f"Creation error: {e}")
+
+    def _fill_body_placeholder(self, slide: Any, content: str, bullet_points: list[str]) -> None:
+        """Write content or bullet points into the first body placeholder (type 2)."""
+        for shape in slide.placeholders:
+            if shape.placeholder_format.type == 2:  # Body placeholder
+                text_frame = shape.text_frame
+                text_frame.clear()
+                if bullet_points:
+                    for point in bullet_points:
+                        p = text_frame.add_paragraph()
+                        p.text = point
+                        p.level = 0
+                else:
+                    text_frame.text = content
+                break
 
     async def _add_slide(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Add slide to presentation"""
@@ -220,28 +231,14 @@ class PowerPointProcessorTool(BaseTool):
 
             # Add content
             if content or bullet_points:
-                # Find content placeholder
-                for shape in slide.placeholders:
-                    if shape.placeholder_format.type == 2:  # Body placeholder
-                        text_frame = shape.text_frame
-                        text_frame.clear()
-
-                        if bullet_points:
-                            for point in bullet_points:
-                                p = text_frame.add_paragraph()
-                                p.text = point
-                                p.level = 0
-                        elif content:
-                            text_frame.text = content
-
-                        break
+                self._fill_body_placeholder(slide, content, bullet_points)
 
             # Save
             prs.save(file_path)
 
             return self._success_response(
                 result={"slides_total": len(prs.slides)},
-                metadata={"slide_added": title or "Untitled"}
+                metadata={"slide_added": title or "Untitled"},
             )
 
         except Exception as e:
@@ -287,7 +284,7 @@ class PowerPointProcessorTool(BaseTool):
 
             return self._success_response(
                 result={"image_added": str(image_path)},
-                metadata={"slide_index": slide_idx if slide_idx != -1 else len(prs.slides) - 1}
+                metadata={"slide_index": slide_idx if slide_idx != -1 else len(prs.slides) - 1},
             )
 
         except Exception as e:
@@ -344,7 +341,7 @@ class PowerPointProcessorTool(BaseTool):
 
             return self._success_response(
                 result={"chart_added": chart_type},
-                metadata={"categories": len(chart_data.get("categories", []))}
+                metadata={"categories": len(chart_data.get("categories", []))},
             )
 
         except Exception as e:
@@ -367,12 +364,7 @@ class PowerPointProcessorTool(BaseTool):
             slides_content = []
 
             for idx, slide in enumerate(prs.slides):
-                slide_data = {
-                    "index": idx,
-                    "title": "",
-                    "content": [],
-                    "notes": ""
-                }
+                slide_data = {"index": idx, "title": "", "content": [], "notes": ""}
 
                 # Get title
                 if slide.shapes.title:
@@ -396,8 +388,8 @@ class PowerPointProcessorTool(BaseTool):
                 metadata={
                     "total_slides": len(prs.slides),
                     "slide_width": prs.slide_width,
-                    "slide_height": prs.slide_height
-                }
+                    "slide_height": prs.slide_height,
+                },
             )
 
         except Exception as e:
@@ -412,7 +404,4 @@ class PowerPointProcessorTool(BaseTool):
         if not file_path.exists():
             return self._error_response(f"File not found: {file_path}")
 
-        return self._success_response(
-            result={"saved": str(file_path)},
-            metadata={}
-        )
+        return self._success_response(result={"saved": str(file_path)}, metadata={})

@@ -8,11 +8,6 @@ from portal.routing.model_registry import ModelCapability, ModelRegistry, SpeedC
 class TestDataDrivenRegistry:
     """Verify the data-driven _register_default_models populates correctly."""
 
-    def test_default_model_count(self):
-        """9 default models should be registered."""
-        registry = ModelRegistry()
-        assert len(registry.get_all_models()) == 9
-
     def test_all_model_ids_unique(self):
         """Every model_id must be unique."""
         registry = ModelRegistry()

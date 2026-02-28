@@ -26,33 +26,33 @@ class GitLogTool(BaseTool):
                     name="repo_path",
                     param_type="string",
                     description="Path to repository (default: current directory)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="max_count",
                     param_type="int",
                     description="Maximum number of commits to show (default: 10)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="author",
                     param_type="string",
                     description="Filter by author name",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="since",
                     param_type="string",
                     description="Show commits since date (e.g., '2 weeks ago')",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="file_path",
                     param_type="string",
                     description="Show commits affecting specific file",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -87,14 +87,15 @@ class GitLogTool(BaseTool):
 
             if not commits:
                 return self._success_response(
-                    result="No commits found matching criteria",
-                    metadata={"count": 0}
+                    result="No commits found matching criteria", metadata={"count": 0}
                 )
 
             # Format commit history
             log_lines = []
             for commit in commits:
-                commit_date = datetime.fromtimestamp(commit.committed_date).strftime('%Y-%m-%d %H:%M')
+                commit_date = datetime.fromtimestamp(commit.committed_date).strftime(
+                    "%Y-%m-%d %H:%M"
+                )
                 log_lines.append(
                     f"• {commit.hexsha[:8]} - {commit.author.name}\n"
                     f"  {commit_date}\n"
@@ -106,14 +107,13 @@ class GitLogTool(BaseTool):
             # Truncate if too long
             max_length = 3000
             if len(result) > max_length:
-                result = result[:max_length] + f"\n\n... ({len(commits)} total commits, showing first {len(log_lines[:20])})"
+                result = (
+                    result[:max_length]
+                    + f"\n\n... ({len(commits)} total commits, showing first {len(log_lines[:20])})"
+                )
 
             return self._success_response(
-                result=result,
-                metadata={
-                    "count": len(commits),
-                    "showing": min(len(commits), 20)
-                }
+                result=result, metadata={"count": len(commits), "showing": min(len(commits), 20)}
             )
 
         except GitCommandError as e:

@@ -16,6 +16,7 @@ import time
 # Low-level hmac.new() correctness
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_hmac_new_exists_in_python3():
     """hmac.new() is a valid Python 3 function (not removed in Py3)."""
     assert callable(hmac.new), "hmac.new must be callable"
@@ -57,7 +58,10 @@ def test_hmac_new_different_keys_produce_different_digests():
 # SlackInterface signature verification logic (inline, no import needed)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _verify_slack_signature(signing_secret: str, body: bytes, timestamp: str, signature: str) -> bool:
+
+def _verify_slack_signature(
+    signing_secret: str, body: bytes, timestamp: str, signature: str
+) -> bool:
     """
     Mirror of SlackInterface._verify_slack_signature for isolated testing.
     """

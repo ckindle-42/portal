@@ -60,6 +60,7 @@ class TestDockerPythonSandboxInit:
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", False)
     def test_raises_without_docker(self):
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         with pytest.raises(RuntimeError, match="Docker package not installed"):
             DockerPythonSandbox()
 
@@ -71,6 +72,7 @@ class TestDockerPythonSandboxInit:
         mock_client.images.get.return_value = MagicMock()
 
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         sandbox = DockerPythonSandbox()
         assert sandbox.docker_client is mock_client
 
@@ -80,6 +82,7 @@ class TestDockerPythonSandboxInit:
         mock_docker.from_env.side_effect = RuntimeError("no docker daemon")
 
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         with pytest.raises(RuntimeError, match="Docker not available"):
             DockerPythonSandbox()
 
@@ -95,15 +98,16 @@ class TestDockerPythonSandboxExecute:
         mock_client.images.get.return_value = MagicMock()
 
         mock_container = MagicMock()
-        mock_container.wait.return_value = {'StatusCode': 0}
+        mock_container.wait.return_value = {"StatusCode": 0}
         mock_container.logs.return_value = b"Hello World\n"
         mock_client.containers.run.return_value = mock_container
 
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         sandbox = DockerPythonSandbox()
         result = await sandbox.execute_code('print("Hello World")')
-        assert result['success'] is True
-        assert 'Hello World' in result['stdout']
+        assert result["success"] is True
+        assert "Hello World" in result["stdout"]
 
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", True)
     @patch("portal.security.sandbox.docker_sandbox.docker")
@@ -114,14 +118,15 @@ class TestDockerPythonSandboxExecute:
         mock_client.images.get.return_value = MagicMock()
 
         mock_container = MagicMock()
-        mock_container.wait.return_value = {'StatusCode': 1}
+        mock_container.wait.return_value = {"StatusCode": 1}
         mock_container.logs.return_value = b"NameError: name 'foo' is not defined"
         mock_client.containers.run.return_value = mock_container
 
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         sandbox = DockerPythonSandbox()
-        result = await sandbox.execute_code('foo')
-        assert result['success'] is False
+        result = await sandbox.execute_code("foo")
+        assert result["success"] is False
 
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", True)
     @patch("portal.security.sandbox.docker_sandbox.docker")
@@ -133,10 +138,11 @@ class TestDockerPythonSandboxExecute:
         mock_client.containers.run.side_effect = RuntimeError("container failed")
 
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         sandbox = DockerPythonSandbox()
         result = await sandbox.execute_code('print("test")')
-        assert result['success'] is False
-        assert 'container failed' in result['stderr']
+        assert result["success"] is False
+        assert "container failed" in result["stderr"]
 
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", True)
     @patch("portal.security.sandbox.docker_sandbox.docker")
@@ -153,9 +159,10 @@ class TestDockerPythonSandboxExecute:
         mock_client.containers.run.return_value = mock_container
 
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         sandbox = DockerPythonSandbox()
-        result = await sandbox.execute_code('import time; time.sleep(100)', timeout=1)
-        assert result['exit_code'] == -1
+        result = await sandbox.execute_code("import time; time.sleep(100)", timeout=1)
+        assert result["exit_code"] == -1
 
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", True)
     @patch("portal.security.sandbox.docker_sandbox.docker")
@@ -166,7 +173,7 @@ class TestDockerPythonSandboxExecute:
         mock_client.images.get.return_value = MagicMock()
 
         mock_container = MagicMock()
-        mock_container.wait.return_value = {'StatusCode': 0}
+        mock_container.wait.return_value = {"StatusCode": 0}
         mock_container.logs.return_value = b"script output"
         mock_client.containers.run.return_value = mock_container
 
@@ -174,9 +181,10 @@ class TestDockerPythonSandboxExecute:
         script.write_text('print("script output")')
 
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         sandbox = DockerPythonSandbox()
         result = await sandbox.execute_script(str(script))
-        assert result['success'] is True
+        assert result["success"] is True
 
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", True)
     @patch("portal.security.sandbox.docker_sandbox.docker")
@@ -187,9 +195,10 @@ class TestDockerPythonSandboxExecute:
         mock_client.images.get.return_value = MagicMock()
 
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         sandbox = DockerPythonSandbox()
         result = await sandbox.execute_script("/nonexistent/script.py")
-        assert result['success'] is False
+        assert result["success"] is False
 
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", True)
     @patch("portal.security.sandbox.docker_sandbox.docker")
@@ -199,6 +208,7 @@ class TestDockerPythonSandboxExecute:
         mock_client.images.get.return_value = MagicMock()
 
         from portal.security.sandbox.docker_sandbox import DockerPythonSandbox
+
         sandbox = DockerPythonSandbox()
         sandbox.cleanup()
         mock_client.close.assert_called_once()
@@ -211,6 +221,7 @@ class TestDockerPythonExecutionTool:
     @patch("portal.security.sandbox.docker_sandbox.DOCKER_AVAILABLE", False)
     def test_init_without_docker(self):
         from portal.security.sandbox.docker_sandbox import DockerPythonExecutionTool
+
         DockerPythonExecutionTool._sandbox = None
         tool = DockerPythonExecutionTool()
         meta = tool._get_metadata()
@@ -220,6 +231,7 @@ class TestDockerPythonExecutionTool:
     @pytest.mark.asyncio
     async def test_execute_without_docker(self):
         from portal.security.sandbox.docker_sandbox import DockerPythonExecutionTool
+
         DockerPythonExecutionTool._sandbox = None
         tool = DockerPythonExecutionTool()
         result = await tool.execute({"code": "print('hi')"})
@@ -229,6 +241,7 @@ class TestDockerPythonExecutionTool:
     @pytest.mark.asyncio
     async def test_execute_no_code(self):
         from portal.security.sandbox.docker_sandbox import DockerPythonExecutionTool
+
         DockerPythonExecutionTool._sandbox = None
         tool = DockerPythonExecutionTool()
         result = await tool.execute({})

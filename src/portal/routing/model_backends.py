@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GenerationResult:
     """Result from model generation"""
+
     text: str
     tokens_generated: int
     time_ms: float
@@ -44,20 +45,28 @@ class ModelBackend(ABC):
         )
 
     @abstractmethod
-    async def generate(self, prompt: str, model_name: str,
-                      system_prompt: str | None = None,
-                      max_tokens: int = 2048,
-                      temperature: float = 0.7,
-                      messages: list[dict[str, Any]] | None = None) -> GenerationResult:
+    async def generate(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> GenerationResult:
         """Generate text from model"""
         pass
 
     @abstractmethod
-    async def generate_stream(self, prompt: str, model_name: str,
-                             system_prompt: str | None = None,
-                             max_tokens: int = 2048,
-                             temperature: float = 0.7,
-                             messages: list[dict[str, Any]] | None = None) -> AsyncGenerator[str, None]:
+    async def generate_stream(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> AsyncGenerator[str, None]:
         """Stream text generation"""
         pass
 
@@ -81,9 +90,7 @@ class BaseHTTPBackend(ModelBackend):
 
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=120)
-            )
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120))
         return self._session
 
     async def close(self) -> None:
@@ -145,11 +152,15 @@ class OllamaBackend(BaseHTTPBackend):
 
         return normalized_calls or None
 
-    async def generate(self, prompt: str, model_name: str,
-                      system_prompt: str | None = None,
-                      max_tokens: int = 2048,
-                      temperature: float = 0.7,
-                      messages: list[dict[str, Any]] | None = None) -> GenerationResult:
+    async def generate(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> GenerationResult:
         """Generate text using Ollama /api/chat (supports tool calls)."""
         start_time = time.time()
 
@@ -186,17 +197,23 @@ class OllamaBackend(BaseHTTPBackend):
                     )
                 else:
                     error_text = await response.text()
-                    return self._error_result(model_name, start_time, f"HTTP {response.status}: {error_text}")
+                    return self._error_result(
+                        model_name, start_time, f"HTTP {response.status}: {error_text}"
+                    )
 
         except Exception as e:
             logger.error("Ollama generation error: %s", e)
             return self._error_result(model_name, start_time, str(e))
 
-    async def generate_stream(self, prompt: str, model_name: str,
-                             system_prompt: str | None = None,
-                             max_tokens: int = 2048,
-                             temperature: float = 0.7,
-                             messages: list[dict[str, Any]] | None = None) -> AsyncGenerator[str, None]:
+    async def generate_stream(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> AsyncGenerator[str, None]:
         """Stream generation from Ollama /api/chat."""
         try:
             session = await self._get_session()
@@ -258,11 +275,15 @@ class LMStudioBackend(BaseHTTPBackend):
     def __init__(self, base_url: str = "http://localhost:1234/v1") -> None:
         super().__init__(base_url)
 
-    async def generate(self, prompt: str, model_name: str,
-                      system_prompt: str | None = None,
-                      max_tokens: int = 2048,
-                      temperature: float = 0.7,
-                      messages: list[dict[str, Any]] | None = None) -> GenerationResult:
+    async def generate(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> GenerationResult:
         """Generate using OpenAI-compatible API"""
         start_time = time.time()
 
@@ -275,13 +296,10 @@ class LMStudioBackend(BaseHTTPBackend):
                 "messages": chat_messages,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
-                "stream": False
+                "stream": False,
             }
 
-            async with session.post(
-                f"{self.base_url}/chat/completions",
-                json=payload
-            ) as response:
+            async with session.post(f"{self.base_url}/chat/completions", json=payload) as response:
                 if response.status == 200:
                     data = await response.json()
                     elapsed = (time.time() - start_time) * 1000
@@ -294,21 +312,27 @@ class LMStudioBackend(BaseHTTPBackend):
                         tokens_generated=tokens,
                         time_ms=elapsed,
                         model_id=model_name,
-                        success=True
+                        success=True,
                     )
                 else:
                     error_text = await response.text()
-                    return self._error_result(model_name, start_time, f"HTTP {response.status}: {error_text}")
+                    return self._error_result(
+                        model_name, start_time, f"HTTP {response.status}: {error_text}"
+                    )
 
         except Exception as e:
             logger.error("LM Studio generation error: %s", e)
             return self._error_result(model_name, start_time, str(e))
 
-    async def generate_stream(self, prompt: str, model_name: str,
-                             system_prompt: str | None = None,
-                             max_tokens: int = 2048,
-                             temperature: float = 0.7,
-                             messages: list[dict[str, Any]] | None = None) -> AsyncGenerator[str, None]:
+    async def generate_stream(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> AsyncGenerator[str, None]:
         """Stream generation from LM Studio"""
         try:
             session = await self._get_session()
@@ -319,16 +343,13 @@ class LMStudioBackend(BaseHTTPBackend):
                 "messages": chat_messages,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
-                "stream": True
+                "stream": True,
             }
 
-            async with session.post(
-                f"{self.base_url}/chat/completions",
-                json=payload
-            ) as response:
+            async with session.post(f"{self.base_url}/chat/completions", json=payload) as response:
                 async for line in response.content:
-                    line = line.decode('utf-8').strip()
-                    if line.startswith('data: ') and line != 'data: [DONE]':
+                    line = line.decode("utf-8").strip()
+                    if line.startswith("data: ") and line != "data: [DONE]":
                         try:
                             data = json.loads(line[6:])
                             delta = data["choices"][0].get("delta", {})
@@ -376,6 +397,7 @@ class MLXBackend(ModelBackend):
         """Load MLX model"""
         try:
             from mlx_lm import load
+
             self._model, self._tokenizer = load(model_path)
             self._available = True
             logger.info("Loaded MLX model: %s", model_path)
@@ -386,11 +408,15 @@ class MLXBackend(ModelBackend):
             logger.error("Failed to load MLX model: %s", e)
             self._available = False
 
-    async def generate(self, prompt: str, model_name: str,
-                      system_prompt: str | None = None,
-                      max_tokens: int = 2048,
-                      temperature: float = 0.7,
-                      messages: list[dict[str, Any]] | None = None) -> GenerationResult:
+    async def generate(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> GenerationResult:
         """Generate using MLX"""
         start_time = time.time()
 
@@ -405,12 +431,16 @@ class MLXBackend(ModelBackend):
                     time_ms=0,
                     model_id=model_name,
                     success=False,
-                    error="MLX not available"
+                    error="MLX not available",
                 )
 
             from mlx_lm import generate
 
-            full_prompt = prompt if not system_prompt else f"System: {system_prompt}\n\nUser: {prompt}\n\nAssistant:"
+            full_prompt = (
+                prompt
+                if not system_prompt
+                else f"System: {system_prompt}\n\nUser: {prompt}\n\nAssistant:"
+            )
             loop = asyncio.get_running_loop()
             response = await loop.run_in_executor(
                 None,
@@ -419,8 +449,8 @@ class MLXBackend(ModelBackend):
                     self._tokenizer,
                     prompt=full_prompt,
                     max_tokens=max_tokens,
-                    temp=temperature
-                )
+                    temp=temperature,
+                ),
             )
 
             elapsed = (time.time() - start_time) * 1000
@@ -430,24 +460,28 @@ class MLXBackend(ModelBackend):
                 tokens_generated=len(self._tokenizer.encode(response)),
                 time_ms=elapsed,
                 model_id=model_name,
-                success=True
+                success=True,
             )
 
         except Exception as e:
             logger.error("MLX generation error: %s", e)
             return self._error_result(model_name, start_time, str(e))
 
-    async def generate_stream(self, prompt: str, model_name: str,
-                             system_prompt: str | None = None,
-                             max_tokens: int = 2048,
-                             temperature: float = 0.7,
-                             messages: list[dict[str, Any]] | None = None) -> AsyncGenerator[str, None]:
+    async def generate_stream(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> AsyncGenerator[str, None]:
         """Stream generation from MLX (simulated — no native streaming)."""
         result = await self.generate(prompt, model_name, system_prompt, max_tokens, temperature)
         if result.success:
             chunk_size = 50
             for i in range(0, len(result.text), chunk_size):
-                yield result.text[i:i + chunk_size]
+                yield result.text[i : i + chunk_size]
         else:
             logger.error("MLX stream error: %s", result.error)
 
@@ -458,6 +492,7 @@ class MLXBackend(ModelBackend):
 
         try:
             import mlx_lm  # noqa: F401
+
             self._available = True
         except ImportError:
             self._available = False

@@ -29,6 +29,7 @@ try:
     from docx import Document
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Inches
+
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
@@ -56,78 +57,72 @@ class WordProcessorTool(BaseTool):
                     name="action",
                     param_type="string",
                     description="Action: create, add_heading, add_paragraph, add_table, add_image, read, save",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="file_path",
                     param_type="string",
                     description="Path to Word document",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
-                    name="title",
-                    param_type="string",
-                    description="Document title",
-                    required=False
+                    name="title", param_type="string", description="Document title", required=False
                 ),
                 ToolParameter(
                     name="text",
                     param_type="string",
                     description="Text content to add",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
-                    name="heading",
-                    param_type="string",
-                    description="Heading text",
-                    required=False
+                    name="heading", param_type="string", description="Heading text", required=False
                 ),
                 ToolParameter(
                     name="level",
                     param_type="integer",
                     description="Heading level (1-9)",
                     required=False,
-                    default=1
+                    default=1,
                 ),
                 ToolParameter(
                     name="style",
                     param_type="string",
                     description="Text style: normal, bold, italic, underline",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="alignment",
                     param_type="string",
                     description="Text alignment: left, center, right, justify",
                     required=False,
-                    default="left"
+                    default="left",
                 ),
                 ToolParameter(
                     name="table_data",
                     param_type="object",
                     description="Table data (rows and columns)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="image_path",
                     param_type="string",
                     description="Path to image file",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="image_width",
                     param_type="number",
                     description="Image width in inches",
                     required=False,
-                    default=4
+                    default=4,
                 ),
                 ToolParameter(
                     name="metadata",
                     param_type="object",
                     description="Document metadata (author, subject, keywords)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -182,8 +177,7 @@ class WordProcessorTool(BaseTool):
             doc.save(file_path)
 
             return self._success_response(
-                result={"file_path": str(file_path)},
-                metadata={"title": title}
+                result={"file_path": str(file_path)}, metadata={"title": title}
             )
 
         except Exception as e:
@@ -214,8 +208,7 @@ class WordProcessorTool(BaseTool):
             doc.save(file_path)
 
             return self._success_response(
-                result={"heading_added": heading},
-                metadata={"level": level}
+                result={"heading_added": heading}, metadata={"level": level}
             )
 
         except Exception as e:
@@ -248,7 +241,7 @@ class WordProcessorTool(BaseTool):
                 "left": WD_ALIGN_PARAGRAPH.LEFT,
                 "center": WD_ALIGN_PARAGRAPH.CENTER,
                 "right": WD_ALIGN_PARAGRAPH.RIGHT,
-                "justify": WD_ALIGN_PARAGRAPH.JUSTIFY
+                "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
             }
             paragraph.alignment = alignment_map.get(alignment, WD_ALIGN_PARAGRAPH.LEFT)
 
@@ -264,8 +257,7 @@ class WordProcessorTool(BaseTool):
             doc.save(file_path)
 
             return self._success_response(
-                result={"paragraph_added": True},
-                metadata={"length": len(text), "style": style}
+                result={"paragraph_added": True}, metadata={"length": len(text), "style": style}
             )
 
         except Exception as e:
@@ -299,7 +291,7 @@ class WordProcessorTool(BaseTool):
             num_cols = len(rows[0]) if rows else len(headers)
             num_rows = len(rows) + (1 if headers else 0)
             table = doc.add_table(rows=num_rows, cols=num_cols)
-            table.style = 'Light Grid Accent 1'
+            table.style = "Light Grid Accent 1"
 
             # Add headers
             if headers:
@@ -322,8 +314,7 @@ class WordProcessorTool(BaseTool):
             doc.save(file_path)
 
             return self._success_response(
-                result={"table_added": True},
-                metadata={"rows": len(rows), "columns": num_cols}
+                result={"table_added": True}, metadata={"rows": len(rows), "columns": num_cols}
             )
 
         except Exception as e:
@@ -354,8 +345,7 @@ class WordProcessorTool(BaseTool):
             doc.save(file_path)
 
             return self._success_response(
-                result={"image_added": str(image_path)},
-                metadata={"width_inches": image_width}
+                result={"image_added": str(image_path)}, metadata={"width_inches": image_width}
             )
 
         except Exception as e:
@@ -380,19 +370,16 @@ class WordProcessorTool(BaseTool):
                     "title": doc.core_properties.title or "",
                     "author": doc.core_properties.author or "",
                     "subject": doc.core_properties.subject or "",
-                    "keywords": doc.core_properties.keywords or ""
+                    "keywords": doc.core_properties.keywords or "",
                 },
                 "paragraphs": [],
-                "tables": []
+                "tables": [],
             }
 
             # Extract paragraphs
             for para in doc.paragraphs:
                 if para.text.strip():
-                    content["paragraphs"].append({
-                        "text": para.text,
-                        "style": para.style.name
-                    })
+                    content["paragraphs"].append({"text": para.text, "style": para.style.name})
 
             # Extract tables
             for table in doc.tables:
@@ -406,8 +393,8 @@ class WordProcessorTool(BaseTool):
                 result=content,
                 metadata={
                     "paragraphs_count": len(content["paragraphs"]),
-                    "tables_count": len(content["tables"])
-                }
+                    "tables_count": len(content["tables"]),
+                },
             )
 
         except Exception as e:
@@ -422,7 +409,4 @@ class WordProcessorTool(BaseTool):
         if not file_path.exists():
             return self._error_response(f"File not found: {file_path}")
 
-        return self._success_response(
-            result={"saved": str(file_path)},
-            metadata={}
-        )
+        return self._success_response(result={"saved": str(file_path)}, metadata={})

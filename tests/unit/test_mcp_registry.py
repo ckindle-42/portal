@@ -150,12 +150,8 @@ class TestMCPRegistryListTools:
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json.return_value = {
             "paths": {
-                "/read_file": {
-                    "post": {"operationId": "read_file", "summary": "Read a file"}
-                },
-                "/list_dir": {
-                    "get": {"operationId": "list_dir", "summary": "List directory"}
-                },
+                "/read_file": {"post": {"operationId": "read_file", "summary": "Read a file"}},
+                "/list_dir": {"get": {"operationId": "list_dir", "summary": "List directory"}},
             }
         }
 
@@ -171,9 +167,7 @@ class TestMCPRegistryListTools:
     async def test_list_tools_streamable_transport(self):
         """list_tools returns tools list for streamable-http transport."""
         registry = MCPRegistry()
-        await registry.register(
-            "stream-svc", "http://localhost:9000", transport="streamable-http"
-        )
+        await registry.register("stream-svc", "http://localhost:9000", transport="streamable-http")
 
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -273,6 +267,7 @@ class TestPickleGating:
         import unittest.mock as mock
 
         from portal.tools.knowledge.knowledge_base_sqlite import EnhancedKnowledgeTool
+
         with mock.patch("sqlite3.connect"):
             inst = EnhancedKnowledgeTool.__new__(EnhancedKnowledgeTool)
             inst.conn = None
@@ -286,13 +281,17 @@ class TestPickleGating:
         """Without the env flag, pickle blobs must return None."""
         np = pytest.importorskip("numpy")
         monkeypatch.delenv("ALLOW_LEGACY_PICKLE_EMBEDDINGS", raising=False)
-        result = self._make_instance()._deserialize_embedding(self._pickle_blob(np.array([0.1, 0.2, 0.3])))
+        result = self._make_instance()._deserialize_embedding(
+            self._pickle_blob(np.array([0.1, 0.2, 0.3]))
+        )
         assert result is None
 
     def test_flag_false_returns_none(self, monkeypatch):
         np = pytest.importorskip("numpy")
         monkeypatch.setenv("ALLOW_LEGACY_PICKLE_EMBEDDINGS", "false")
-        result = self._make_instance()._deserialize_embedding(self._pickle_blob(np.array([0.1, 0.2, 0.3])))
+        result = self._make_instance()._deserialize_embedding(
+            self._pickle_blob(np.array([0.1, 0.2, 0.3]))
+        )
         assert result is None
 
     @pytest.mark.parametrize("flag_value", ["true", "1", "yes"])

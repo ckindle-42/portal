@@ -1,4 +1,5 @@
 """Shared helpers for git tools — avoids per-file try/except import boilerplate."""
+
 from __future__ import annotations
 
 from typing import Any

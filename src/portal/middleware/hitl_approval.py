@@ -28,8 +28,7 @@ class HITLApprovalMiddleware:
     def redis(self):
         if _redis is None:
             raise RuntimeError(
-                "redis package is required for HITL approval. "
-                "Install it with: pip install redis"
+                "redis package is required for HITL approval. Install it with: pip install redis"
             )
         if self._redis is None:
             self._redis = _redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
@@ -44,7 +43,9 @@ class HITLApprovalMiddleware:
             return token
         except _redis.ConnectionError:
             logger.warning("Redis unavailable for HITL approval — denying tool execution")
-            raise ToolExecutionError(tool_name, "HITL approval requires Redis but Redis is unavailable")
+            raise ToolExecutionError(
+                tool_name, "HITL approval requires Redis but Redis is unavailable"
+            )
 
     def check_approved(self, user_id: str, token: str) -> bool:
         try:

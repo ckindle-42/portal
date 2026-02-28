@@ -21,17 +21,17 @@ class CSVAnalyzerTool(BaseTool):
                     name="file_path",
                     param_type="string",
                     description="Path to CSV file",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="analysis_type",
                     param_type="string",
                     description="Type: summary, statistics, head, describe",
                     required=False,
-                    default="summary"
-                )
+                    default="summary",
+                ),
             ],
-            examples=["Analyze data.csv and show statistics"]
+            examples=["Analyze data.csv and show statistics"],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -52,7 +52,7 @@ class CSVAnalyzerTool(BaseTool):
                 "file": file_path,
                 "rows": len(df),
                 "columns": len(df.columns),
-                "column_names": list(df.columns)
+                "column_names": list(df.columns),
             }
 
             if analysis_type == "head":
@@ -71,13 +71,13 @@ class CSVAnalyzerTool(BaseTool):
                 result["null_counts"] = df.isnull().sum().to_dict()
 
                 # Basic stats for numeric columns
-                numeric_cols = df.select_dtypes(include=['number']).columns
+                numeric_cols = df.select_dtypes(include=["number"]).columns
                 if len(numeric_cols) > 0:
                     result["numeric_summary"] = {
                         col: {
                             "mean": float(df[col].mean()),
                             "min": float(df[col].min()),
-                            "max": float(df[col].max())
+                            "max": float(df[col].max()),
                         }
                         for col in numeric_cols[:5]  # First 5 numeric columns
                     }

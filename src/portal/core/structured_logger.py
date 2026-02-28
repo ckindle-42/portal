@@ -15,7 +15,7 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 
 # Context variable to store trace_id for current request
-_trace_id_var: ContextVar[str | None] = ContextVar('trace_id', default=None)
+_trace_id_var: ContextVar[str | None] = ContextVar("trace_id", default=None)
 
 _SECRET_PATTERNS = re.compile(
     r"(xoxb-[A-Za-z0-9-]+|sk-[A-Za-z0-9]+|bot\d+:[A-Za-z0-9_-]+|"
@@ -70,15 +70,15 @@ class StructuredLogger:
 
         # Build structured log entry
         log_entry = {
-            'timestamp': datetime.now(tz=UTC).isoformat(),
-            'level': level,
-            'component': self.component,
-            'message': _redact_secrets(message),
+            "timestamp": datetime.now(tz=UTC).isoformat(),
+            "level": level,
+            "component": self.component,
+            "message": _redact_secrets(message),
         }
 
         # Add trace_id if available
         if trace_id:
-            log_entry['trace_id'] = trace_id
+            log_entry["trace_id"] = trace_id
 
         # Add additional fields, redacting string values
         for k, v in kwargs.items():
@@ -93,23 +93,23 @@ class StructuredLogger:
 
     def debug(self, message: str, **kwargs) -> None:
         """Log debug message"""
-        self._log('DEBUG', message, **kwargs)
+        self._log("DEBUG", message, **kwargs)
 
     def info(self, message: str, **kwargs) -> None:
         """Log info message"""
-        self._log('INFO', message, **kwargs)
+        self._log("INFO", message, **kwargs)
 
     def warning(self, message: str, **kwargs) -> None:
         """Log warning message"""
-        self._log('WARNING', message, **kwargs)
+        self._log("WARNING", message, **kwargs)
 
     def error(self, message: str, **kwargs) -> None:
         """Log error message"""
-        self._log('ERROR', message, **kwargs)
+        self._log("ERROR", message, **kwargs)
 
     def critical(self, message: str, **kwargs) -> None:
         """Log critical message"""
-        self._log('CRITICAL', message, **kwargs)
+        self._log("CRITICAL", message, **kwargs)
 
 
 class TraceContext:
@@ -147,10 +147,10 @@ class TraceContext:
         return str(uuid.uuid4())[:8]  # Short UUID
 
 
-
 # =============================================================================
 # CONVENIENCE FUNCTIONS
 # =============================================================================
+
 
 def get_logger(component: str) -> StructuredLogger:
     """
@@ -163,5 +163,3 @@ def get_logger(component: str) -> StructuredLogger:
         StructuredLogger instance
     """
     return StructuredLogger(component)
-
-

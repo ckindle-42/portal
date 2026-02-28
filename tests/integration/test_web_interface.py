@@ -4,6 +4,7 @@ Integration tests for WebInterface.
 All tests use a mocked AgentCore — no live Ollama or other services required.
 Run with:  pytest tests/integration/test_web_interface.py -v
 """
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,6 +12,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def aiter(items):
     for item in items:
@@ -29,9 +31,14 @@ def _make_interface(stream_tokens=None, health_ok=True):
     agent.health_check = AsyncMock(return_value=health_ok)
 
     secure = MagicMock()
-    secure.process_message = AsyncMock(return_value=MagicMock(
-        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
-    ))
+    secure.process_message = AsyncMock(
+        return_value=MagicMock(
+            response="ok",
+            model_used="auto",
+            prompt_tokens=0,
+            completion_tokens=1,
+        )
+    )
 
     config = MagicMock()
     config.interfaces.web.port = 8082
@@ -43,6 +50,7 @@ def _make_interface(stream_tokens=None, health_ok=True):
 # ---------------------------------------------------------------------------
 # Health endpoint
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_health_returns_200():
@@ -105,6 +113,7 @@ async def test_health_reflects_agent_core_degraded():
 # Security headers
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_security_headers_present():
     """/health response includes all mandatory security headers."""
@@ -123,6 +132,7 @@ async def test_security_headers_present():
 # ---------------------------------------------------------------------------
 # Models endpoint
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_models_returns_list():
@@ -143,6 +153,7 @@ async def test_models_returns_list():
 # Route completeness
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_all_required_routes_exist():
     """WebInterface exposes all documented routes."""
@@ -160,6 +171,7 @@ async def test_all_required_routes_exist():
 # API key guard
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_api_key_guard_blocks_without_key(monkeypatch):
     """/v1/chat/completions returns 401 when WEB_API_KEY is set and header is missing."""
@@ -173,9 +185,14 @@ async def test_api_key_guard_blocks_without_key(monkeypatch):
     agent.stream_response = MagicMock(side_effect=lambda _: aiter(["hi"]))
     agent.health_check = AsyncMock(return_value=True)
     secure = MagicMock()
-    secure.process_message = AsyncMock(return_value=MagicMock(
-        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
-    ))
+    secure.process_message = AsyncMock(
+        return_value=MagicMock(
+            response="ok",
+            model_used="auto",
+            prompt_tokens=0,
+            completion_tokens=1,
+        )
+    )
     iface = WebInterface(agent_core=agent, config=MagicMock(), secure_agent=secure)
     with TestClient(iface.app, raise_server_exceptions=False) as client:
         payload = {
@@ -199,9 +216,14 @@ async def test_api_key_guard_passes_with_bearer(monkeypatch):
     agent = MagicMock()
     agent.health_check = AsyncMock(return_value=True)
     secure = MagicMock()
-    secure.process_message = AsyncMock(return_value=MagicMock(
-        response="ok", model_used="auto", prompt_tokens=0, completion_tokens=1,
-    ))
+    secure.process_message = AsyncMock(
+        return_value=MagicMock(
+            response="ok",
+            model_used="auto",
+            prompt_tokens=0,
+            completion_tokens=1,
+        )
+    )
     iface = WebInterface(agent_core=agent, config=MagicMock(), secure_agent=secure)
     with TestClient(iface.app) as client:
         resp = client.get(
@@ -214,6 +236,7 @@ async def test_api_key_guard_passes_with_bearer(monkeypatch):
 # ---------------------------------------------------------------------------
 # create_app factory
 # ---------------------------------------------------------------------------
+
 
 def test_create_app_returns_fastapi_instance():
     """create_app() returns a FastAPI instance without raising."""
@@ -234,6 +257,7 @@ def test_create_app_returns_fastapi_instance():
 # ---------------------------------------------------------------------------
 # Streaming response
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_streaming_response_emits_sse_done():
@@ -318,6 +342,7 @@ async def test_empty_message_returns_error():
 # ---------------------------------------------------------------------------
 # E2: Startup readiness gate — 503 while agent is warming up
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_chat_completions_returns_503_during_warmup():

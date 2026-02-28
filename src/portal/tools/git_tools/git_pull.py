@@ -26,27 +26,27 @@ class GitPullTool(BaseTool):
                     name="repo_path",
                     param_type="string",
                     description="Path to repository (default: current directory)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="remote",
                     param_type="string",
                     description="Remote name (default: origin)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="branch",
                     param_type="string",
                     description="Branch to pull (default: current branch)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="rebase",
                     param_type="bool",
                     description="Rebase instead of merge (default: False)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -92,15 +92,9 @@ class GitPullTool(BaseTool):
             # Run in executor to avoid blocking
             loop = asyncio.get_event_loop()
             if rebase:
-                await loop.run_in_executor(
-                    None,
-                    lambda: remote.pull(branch, rebase=True)
-                )
+                await loop.run_in_executor(None, lambda: remote.pull(branch, rebase=True))
             else:
-                await loop.run_in_executor(
-                    None,
-                    lambda: remote.pull(branch)
-                )
+                await loop.run_in_executor(None, lambda: remote.pull(branch))
 
             # Get new commit
             new_commit = repo.head.commit.hexsha[:8]
@@ -118,8 +112,8 @@ class GitPullTool(BaseTool):
                     "branch": branch,
                     "old_commit": old_commit,
                     "new_commit": new_commit,
-                    "rebased": rebase
-                }
+                    "rebased": rebase,
+                },
             )
 
         except GitCommandError as e:

@@ -29,27 +29,27 @@ class DockerLogsTool(BaseTool):
                     name="container",
                     param_type="string",
                     description="Container ID or name",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="tail",
                     param_type="int",
                     description="Number of lines to show from end (default: 100)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="follow",
                     param_type="bool",
                     description="Follow log output (default: False)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="timestamps",
                     param_type="bool",
                     description="Show timestamps (default: False)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -77,11 +77,11 @@ class DockerLogsTool(BaseTool):
             logs = container.logs(
                 tail=tail,
                 timestamps=timestamps,
-                follow=False  # Always False for Telegram response
+                follow=False,  # Always False for Telegram response
             )
 
             # Decode logs
-            log_text = logs.decode('utf-8', errors='replace')
+            log_text = logs.decode("utf-8", errors="replace")
 
             # Truncate if too long for Telegram
             max_length = 3000
@@ -97,8 +97,8 @@ class DockerLogsTool(BaseTool):
                     "container": container.name,
                     "container_id": container.short_id,
                     "tail": tail,
-                    "length": len(log_text)
-                }
+                    "length": len(log_text),
+                },
             )
 
         except docker.errors.NotFound:

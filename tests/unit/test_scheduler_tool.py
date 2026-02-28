@@ -28,12 +28,14 @@ class TestJobSchedulerToolCreate:
     @pytest.mark.asyncio
     async def test_create_job(self):
         tool = JobSchedulerTool()
-        result = await tool.execute({
-            "action": "create",
-            "name": "Backup",
-            "schedule": "0 * * * *",
-            "command": "backup.sh",
-        })
+        result = await tool.execute(
+            {
+                "action": "create",
+                "name": "Backup",
+                "schedule": "0 * * * *",
+                "command": "backup.sh",
+            }
+        )
         assert result["success"] is True
         assert "Backup" in result["result"]["message"]
         job = result["result"]["job"]
@@ -43,21 +45,25 @@ class TestJobSchedulerToolCreate:
     @pytest.mark.asyncio
     async def test_create_job_without_schedule(self):
         tool = JobSchedulerTool()
-        result = await tool.execute({
-            "action": "create",
-            "name": "Bad",
-            "command": "run.sh",
-        })
+        result = await tool.execute(
+            {
+                "action": "create",
+                "name": "Bad",
+                "command": "run.sh",
+            }
+        )
         assert result["success"] is False
         assert "Schedule" in result["error"]
 
     @pytest.mark.asyncio
     async def test_create_job_without_command(self):
         tool = JobSchedulerTool()
-        result = await tool.execute({
-            "action": "create",
-            "schedule": "0 * * * *",
-        })
+        result = await tool.execute(
+            {
+                "action": "create",
+                "schedule": "0 * * * *",
+            }
+        )
         assert result["success"] is False
         assert "Command" in result["error"]
 
@@ -65,12 +71,14 @@ class TestJobSchedulerToolCreate:
     async def test_create_multiple_jobs(self):
         tool = JobSchedulerTool()
         for i in range(3):
-            await tool.execute({
-                "action": "create",
-                "name": f"Job {i}",
-                "schedule": "* * * * *",
-                "command": f"cmd_{i}",
-            })
+            await tool.execute(
+                {
+                    "action": "create",
+                    "name": f"Job {i}",
+                    "schedule": "* * * * *",
+                    "command": f"cmd_{i}",
+                }
+            )
         assert len(JobSchedulerTool._jobs) == 3
 
 
@@ -85,10 +93,14 @@ class TestJobSchedulerToolList:
     @pytest.mark.asyncio
     async def test_list_with_jobs(self):
         tool = JobSchedulerTool()
-        await tool.execute({
-            "action": "create", "name": "J1",
-            "schedule": "* * * * *", "command": "cmd1",
-        })
+        await tool.execute(
+            {
+                "action": "create",
+                "name": "J1",
+                "schedule": "* * * * *",
+                "command": "cmd1",
+            }
+        )
         result = await tool.execute({"action": "list"})
         assert result["success"] is True
         assert result["result"]["total"] == 1
@@ -98,10 +110,14 @@ class TestJobSchedulerToolDelete:
     @pytest.mark.asyncio
     async def test_delete_job(self):
         tool = JobSchedulerTool()
-        r = await tool.execute({
-            "action": "create", "name": "Del",
-            "schedule": "* * * * *", "command": "cmd",
-        })
+        r = await tool.execute(
+            {
+                "action": "create",
+                "name": "Del",
+                "schedule": "* * * * *",
+                "command": "cmd",
+            }
+        )
         job_id = r["result"]["job"]["id"]
         result = await tool.execute({"action": "delete", "job_id": job_id})
         assert result["success"] is True
@@ -124,10 +140,14 @@ class TestJobSchedulerToolPauseResume:
     @pytest.mark.asyncio
     async def test_pause_job(self):
         tool = JobSchedulerTool()
-        r = await tool.execute({
-            "action": "create", "name": "P",
-            "schedule": "* * * * *", "command": "c",
-        })
+        r = await tool.execute(
+            {
+                "action": "create",
+                "name": "P",
+                "schedule": "* * * * *",
+                "command": "c",
+            }
+        )
         job_id = r["result"]["job"]["id"]
         result = await tool.execute({"action": "pause", "job_id": job_id})
         assert result["success"] is True
@@ -136,10 +156,14 @@ class TestJobSchedulerToolPauseResume:
     @pytest.mark.asyncio
     async def test_resume_job(self):
         tool = JobSchedulerTool()
-        r = await tool.execute({
-            "action": "create", "name": "R",
-            "schedule": "* * * * *", "command": "c",
-        })
+        r = await tool.execute(
+            {
+                "action": "create",
+                "name": "R",
+                "schedule": "* * * * *",
+                "command": "c",
+            }
+        )
         job_id = r["result"]["job"]["id"]
         await tool.execute({"action": "pause", "job_id": job_id})
         result = await tool.execute({"action": "resume", "job_id": job_id})
@@ -179,6 +203,7 @@ class TestJobSchedulerToolEdge:
         assert isinstance(result, str)
         # Should be a valid ISO timestamp in the future
         from datetime import UTC, datetime
+
         next_run = datetime.fromisoformat(result)
         assert next_run >= datetime.now(tz=UTC)
 
@@ -186,6 +211,7 @@ class TestJobSchedulerToolEdge:
     async def test_calculate_next_run_interval_minutes(self):
         tool = JobSchedulerTool()
         from datetime import UTC, datetime
+
         before = datetime.now(tz=UTC)
         result = tool._calculate_next_run("5m")
         next_run = datetime.fromisoformat(result)
@@ -195,6 +221,7 @@ class TestJobSchedulerToolEdge:
     async def test_calculate_next_run_interval_hours(self):
         tool = JobSchedulerTool()
         from datetime import UTC, datetime
+
         before = datetime.now(tz=UTC)
         result = tool._calculate_next_run("1h")
         next_run = datetime.fromisoformat(result)
@@ -211,6 +238,7 @@ class TestJobSchedulerToolEdge:
         tool = JobSchedulerTool()
         # Non-parseable schedule falls back to 1 hour from now
         from datetime import UTC, datetime
+
         before = datetime.now(tz=UTC)
         result = tool._calculate_next_run("invalid")
         next_run = datetime.fromisoformat(result)

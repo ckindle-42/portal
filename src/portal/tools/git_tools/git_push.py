@@ -26,33 +26,33 @@ class GitPushTool(BaseTool):
                     name="repo_path",
                     param_type="string",
                     description="Path to repository (default: current directory)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="remote",
                     param_type="string",
                     description="Remote name (default: origin)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="branch",
                     param_type="string",
                     description="Branch to push (default: current branch)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="force",
                     param_type="bool",
                     description="Force push (DANGEROUS - use with caution)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="set_upstream",
                     param_type="bool",
                     description="Set upstream tracking (default: False)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -96,10 +96,7 @@ class GitPushTool(BaseTool):
 
             # Run in executor to avoid blocking
             loop = asyncio.get_event_loop()
-            push_info = await loop.run_in_executor(
-                None,
-                lambda: remote.push(branch, **push_kwargs)
-            )
+            push_info = await loop.run_in_executor(None, lambda: remote.push(branch, **push_kwargs))
 
             # Check results
             if push_info:
@@ -113,8 +110,8 @@ class GitPushTool(BaseTool):
                     "remote": remote_name,
                     "branch": branch,
                     "forced": force,
-                    "upstream_set": set_upstream
-                }
+                    "upstream_set": set_upstream,
+                },
             )
 
         except GitCommandError as e:

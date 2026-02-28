@@ -30,45 +30,42 @@ class DockerRunTool(BaseTool):
                     name="image",
                     param_type="string",
                     description="Docker image name (e.g., nginx:latest)",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
-                    name="name",
-                    param_type="string",
-                    description="Container name",
-                    required=False
+                    name="name", param_type="string", description="Container name", required=False
                 ),
                 ToolParameter(
                     name="ports",
                     param_type="object",
                     description="Port mappings (e.g., {'80/tcp': 8080})",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="environment",
                     param_type="object",
                     description="Environment variables",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="volumes",
                     param_type="object",
                     description="Volume mappings",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="detach",
                     param_type="bool",
                     description="Run in background (default: True)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="remove",
                     param_type="bool",
                     description="Auto-remove when stopped (default: False)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -93,10 +90,7 @@ class DockerRunTool(BaseTool):
                 self.client = docker.from_env()
 
             # Build run arguments
-            kwargs = {
-                "detach": detach,
-                "remove": remove
-            }
+            kwargs = {"detach": detach, "remove": remove}
 
             if name:
                 kwargs["name"] = name
@@ -112,8 +106,7 @@ class DockerRunTool(BaseTool):
 
             loop = asyncio.get_event_loop()
             container = await loop.run_in_executor(
-                None,
-                lambda: self.client.containers.run(image, **kwargs)
+                None, lambda: self.client.containers.run(image, **kwargs)
             )
 
             return self._success_response(
@@ -122,12 +115,14 @@ class DockerRunTool(BaseTool):
                     "container_id": container.short_id,
                     "container_name": container.name,
                     "image": image,
-                    "status": container.status
-                }
+                    "status": container.status,
+                },
             )
 
         except docker.errors.ImageNotFound:
-            return self._error_response(f"Image not found: {image}. Pull it first with 'docker pull {image}'")
+            return self._error_response(
+                f"Image not found: {image}. Pull it first with 'docker pull {image}'"
+            )
         except docker.errors.APIError as e:
             return self._error_response(f"Docker API error: {str(e)}")
         except Exception as e:

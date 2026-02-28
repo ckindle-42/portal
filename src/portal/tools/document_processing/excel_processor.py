@@ -26,6 +26,7 @@ from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, To
 try:
     import openpyxl  # noqa: F401
     from openpyxl.utils import get_column_letter
+
     OPENPYXL_AVAILABLE = True
 except ImportError:
     OPENPYXL_AVAILABLE = False
@@ -55,58 +56,55 @@ class ExcelProcessorTool(BaseTool):
                     name="action",
                     param_type="string",
                     description="Action: read, write, analyze, format, add_chart",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="file_path",
                     param_type="string",
                     description="Path to Excel file",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="sheet_name",
                     param_type="string",
                     description="Sheet name (default: Sheet1)",
                     required=False,
-                    default="Sheet1"
+                    default="Sheet1",
                 ),
                 ToolParameter(
                     name="data",
                     param_type="object",
                     description="Data to write (list of lists or dict)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="range",
                     param_type="string",
                     description="Cell range (e.g., 'A1:C10')",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
-                    name="headers",
-                    param_type="list",
-                    description="Column headers",
-                    required=False
+                    name="headers", param_type="list", description="Column headers", required=False
                 ),
                 ToolParameter(
                     name="formatting",
                     param_type="object",
                     description="Formatting options (font, fill, border, alignment)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="chart_type",
                     param_type="string",
                     description="Chart type: bar, line, pie",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="formulas",
                     param_type="list",
                     description="Formulas to add (list of cell-formula pairs)",
-                    required=False
-                )
-            ]
+                    required=False,
+                ),
+            ],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -170,18 +168,13 @@ class ExcelProcessorTool(BaseTool):
                 "rows": ws.max_row,
                 "columns": ws.max_column,
                 "has_formulas": any(
-                    cell.data_type == 'f'
-                    for row in ws.iter_rows()
-                    for cell in row
-                )
+                    cell.data_type == "f" for row in ws.iter_rows() for cell in row
+                ),
             }
 
             wb.close()
 
-            return self._success_response(
-                result={"data": data},
-                metadata=metadata
-            )
+            return self._success_response(result={"data": data}, metadata=metadata)
 
         except Exception as e:
             logger.error("Excel read error: %s", e)
@@ -216,7 +209,9 @@ class ExcelProcessorTool(BaseTool):
                     cell.value = header
                     # Bold headers
                     cell.font = Font(bold=True)
-                    cell.fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
+                    cell.fill = PatternFill(
+                        start_color="DDDDDD", end_color="DDDDDD", fill_type="solid"
+                    )
                 start_row = 2
 
             # Write data
@@ -258,8 +253,8 @@ class ExcelProcessorTool(BaseTool):
                 metadata={
                     "rows_written": len(data),
                     "columns": len(data[0]) if data else 0,
-                    "formulas_added": len(formulas)
-                }
+                    "formulas_added": len(formulas),
+                },
             )
 
         except Exception as e:
@@ -290,27 +285,24 @@ class ExcelProcessorTool(BaseTool):
                 "columns": list(df.columns),
                 "data_types": df.dtypes.astype(str).to_dict(),
                 "missing_values": df.isnull().sum().to_dict(),
-                "numeric_stats": {}
+                "numeric_stats": {},
             }
 
             # Numeric column statistics
-            numeric_cols = df.select_dtypes(include=['number']).columns
+            numeric_cols = df.select_dtypes(include=["number"]).columns
             for col in numeric_cols:
                 analysis["numeric_stats"][col] = {
                     "mean": float(df[col].mean()),
                     "median": float(df[col].median()),
                     "std": float(df[col].std()),
                     "min": float(df[col].min()),
-                    "max": float(df[col].max())
+                    "max": float(df[col].max()),
                 }
 
             # Sample data
-            analysis["sample_rows"] = df.head(5).to_dict(orient='records')
+            analysis["sample_rows"] = df.head(5).to_dict(orient="records")
 
-            return self._success_response(
-                result=analysis,
-                metadata={"analyzed_with": "pandas"}
-            )
+            return self._success_response(result=analysis, metadata={"analyzed_with": "pandas"})
 
         except Exception as e:
             logger.error("Excel analysis error: %s", e)
@@ -352,7 +344,7 @@ class ExcelProcessorTool(BaseTool):
 
             return self._success_response(
                 result={"formatted_range": cell_range},
-                metadata={"formatting_applied": list(formatting.keys())}
+                metadata={"formatting_applied": list(formatting.keys())},
             )
 
         except Exception as e:
@@ -372,7 +364,7 @@ class ExcelProcessorTool(BaseTool):
                 size=font_opts.get("size", 11),
                 bold=font_opts.get("bold", False),
                 italic=font_opts.get("italic", False),
-                color=font_opts.get("color")
+                color=font_opts.get("color"),
             )
 
         # Fill
@@ -381,7 +373,7 @@ class ExcelProcessorTool(BaseTool):
             cell.fill = PatternFill(
                 start_color=fill_opts.get("color", "FFFFFF"),
                 end_color=fill_opts.get("color", "FFFFFF"),
-                fill_type="solid"
+                fill_type="solid",
             )
 
         # Alignment
@@ -390,7 +382,7 @@ class ExcelProcessorTool(BaseTool):
             cell.alignment = Alignment(
                 horizontal=align_opts.get("horizontal", "left"),
                 vertical=align_opts.get("vertical", "top"),
-                wrap_text=align_opts.get("wrap", False)
+                wrap_text=align_opts.get("wrap", False),
             )
 
         # Border
@@ -401,7 +393,7 @@ class ExcelProcessorTool(BaseTool):
                 left=Side(style=side_style),
                 right=Side(style=side_style),
                 top=Side(style=side_style),
-                bottom=Side(style=side_style)
+                bottom=Side(style=side_style),
             )
 
     async def _add_chart(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -449,8 +441,7 @@ class ExcelProcessorTool(BaseTool):
             wb.close()
 
             return self._success_response(
-                result={"chart_added": chart_type},
-                metadata={"data_range": data_range}
+                result={"chart_added": chart_type}, metadata={"data_range": data_range}
             )
 
         except Exception as e:

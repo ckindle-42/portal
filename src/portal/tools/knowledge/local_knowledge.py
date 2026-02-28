@@ -10,6 +10,7 @@ from typing import Any
 
 try:
     import aiofiles
+
     HAS_AIOFILES = True
 except ImportError:
     HAS_AIOFILES = False
@@ -26,7 +27,7 @@ class LocalKnowledgeTool(BaseTool):
     _db_loaded: bool = False
 
     # Use config from environment or fallback to default
-    DB_PATH = Path(os.getenv('KNOWLEDGE_BASE_DIR', 'data')) / "knowledge_base.json"
+    DB_PATH = Path(os.getenv("KNOWLEDGE_BASE_DIR", "data")) / "knowledge_base.json"
 
     def __init__(self) -> None:
         super().__init__()
@@ -47,35 +48,35 @@ class LocalKnowledgeTool(BaseTool):
                     name="action",
                     param_type="string",
                     description="Action: search, add, list, clear",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="query",
                     param_type="string",
                     description="Search query (for search action)",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="document_path",
                     param_type="string",
                     description="Path to document to add",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="content",
                     param_type="string",
                     description="Text content to add directly",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="top_k",
                     param_type="int",
                     description="Number of results to return",
                     required=False,
-                    default=5
-                )
+                    default=5,
+                ),
             ],
-            examples=["Search for deployment instructions"]
+            examples=["Search for deployment instructions"],
         )
 
     def _get_embedding(self, text: str) -> list[float]:
@@ -83,7 +84,8 @@ class LocalKnowledgeTool(BaseTool):
         try:
             if LocalKnowledgeTool._embeddings_model is None:
                 from sentence_transformers import SentenceTransformer
-                LocalKnowledgeTool._embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+                LocalKnowledgeTool._embeddings_model = SentenceTransformer("all-MiniLM-L6-v2")
 
             # Generate embedding and convert to list for JSON serialization
             embedding = LocalKnowledgeTool._embeddings_model.encode([text])[0]
@@ -98,10 +100,7 @@ class LocalKnowledgeTool(BaseTool):
             action = parameters.get("action", "").lower()
 
             if action == "search":
-                return await self._search(
-                    parameters.get("query", ""),
-                    parameters.get("top_k", 5)
-                )
+                return await self._search(parameters.get("query", ""), parameters.get("top_k", 5))
             elif action == "add":
                 doc_path = parameters.get("document_path")
                 content = parameters.get("content")
@@ -126,9 +125,9 @@ class LocalKnowledgeTool(BaseTool):
         """Fallback keyword search when sentence-transformers is unavailable."""
         query_lower = query.lower()
         return [
-            {"source": doc.get('source', 'unknown'), "content": doc['content'][:500], "score": 1.0}
+            {"source": doc.get("source", "unknown"), "content": doc["content"][:500], "score": 1.0}
             for doc in LocalKnowledgeTool._documents
-            if query_lower in doc['content'].lower()
+            if query_lower in doc["content"].lower()
         ][:top_k]
 
     def _embedding_search(self, query: str, top_k: int) -> list[dict[str, Any]]:
@@ -137,15 +136,15 @@ class LocalKnowledgeTool(BaseTool):
         from sentence_transformers import SentenceTransformer
 
         if LocalKnowledgeTool._embeddings_model is None:
-            LocalKnowledgeTool._embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
+            LocalKnowledgeTool._embeddings_model = SentenceTransformer("all-MiniLM-L6-v2")
         model = LocalKnowledgeTool._embeddings_model
 
         query_vec = np.array(model.encode([query])[0])
-        valid_docs = [d for d in LocalKnowledgeTool._documents if d.get('embedding')]
+        valid_docs = [d for d in LocalKnowledgeTool._documents if d.get("embedding")]
         if not valid_docs:
             return []
 
-        embedding_matrix = np.array([d['embedding'] for d in valid_docs])
+        embedding_matrix = np.array([d["embedding"] for d in valid_docs])
         embedding_norms = np.linalg.norm(embedding_matrix, axis=1, keepdims=True)
         query_norm = np.linalg.norm(query_vec) or 1
         embedding_norms = np.where(embedding_norms == 0, 1, embedding_norms)
@@ -153,9 +152,11 @@ class LocalKnowledgeTool(BaseTool):
         top_indices = np.argsort(scores)[::-1][:top_k]
 
         return [
-            {"source": valid_docs[i].get('source', 'unknown'),
-             "content": valid_docs[i]['content'][:500],
-             "score": float(scores[i])}
+            {
+                "source": valid_docs[i].get("source", "unknown"),
+                "content": valid_docs[i]["content"][:500],
+                "score": float(scores[i]),
+            }
             for i in top_indices
         ]
 
@@ -171,11 +172,13 @@ class LocalKnowledgeTool(BaseTool):
             return self._success_response({"query": query, "results": results})
         except ImportError:
             results = self._keyword_search(query, top_k)
-            return self._success_response({
-                "query": query,
-                "results": results,
-                "note": "Using keyword search (install sentence-transformers for semantic search)"
-            })
+            return self._success_response(
+                {
+                    "query": query,
+                    "results": results,
+                    "note": "Using keyword search (install sentence-transformers for semantic search)",
+                }
+            )
 
     async def _add_document(self, doc_path: str) -> dict[str, Any]:
         """Add document from file with pre-computed embedding"""
@@ -185,11 +188,11 @@ class LocalKnowledgeTool(BaseTool):
         # Read file content asynchronously if aiofiles is available
         try:
             if HAS_AIOFILES:
-                async with aiofiles.open(doc_path, encoding='utf-8') as f:
+                async with aiofiles.open(doc_path, encoding="utf-8") as f:
                     content = await f.read()
             else:
                 # Fallback to synchronous reading
-                with open(doc_path, encoding='utf-8') as f:
+                with open(doc_path, encoding="utf-8") as f:
                     content = f.read()
         except Exception as e:
             return self._error_response(f"Failed to read file: {e}")
@@ -198,52 +201,54 @@ class LocalKnowledgeTool(BaseTool):
         embedding = self._get_embedding(content[:1000])
 
         # Add to documents with cached embedding
-        LocalKnowledgeTool._documents.append({
-            "source": doc_path,
-            "content": content,
-            "embedding": embedding,  # CACHED for fast search!
-            "added_at": Path(doc_path).stat().st_mtime
-        })
+        LocalKnowledgeTool._documents.append(
+            {
+                "source": doc_path,
+                "content": content,
+                "embedding": embedding,  # CACHED for fast search!
+                "added_at": Path(doc_path).stat().st_mtime,
+            }
+        )
 
         # Save to disk
         self._save_db()
 
-        return self._success_response({
-            "message": f"Added document: {doc_path}",
-            "total_documents": len(LocalKnowledgeTool._documents)
-        })
+        return self._success_response(
+            {
+                "message": f"Added document: {doc_path}",
+                "total_documents": len(LocalKnowledgeTool._documents),
+            }
+        )
 
     async def _add_content(self, content: str) -> dict[str, Any]:
         """Add content directly with pre-computed embedding"""
         # Generate embedding once at add time (not at search time!)
         embedding = self._get_embedding(content[:1000])
 
-        LocalKnowledgeTool._documents.append({
-            "source": "direct_input",
-            "content": content,
-            "embedding": embedding,  # CACHED for fast search!
-            "added_at": None
-        })
+        LocalKnowledgeTool._documents.append(
+            {
+                "source": "direct_input",
+                "content": content,
+                "embedding": embedding,  # CACHED for fast search!
+                "added_at": None,
+            }
+        )
 
         # Save to disk
         self._save_db()
 
-        return self._success_response({
-            "message": "Content added",
-            "total_documents": len(LocalKnowledgeTool._documents)
-        })
+        return self._success_response(
+            {"message": "Content added", "total_documents": len(LocalKnowledgeTool._documents)}
+        )
 
     async def _list_documents(self) -> dict[str, Any]:
         """List all documents"""
         docs = [
-            {"source": d.get('source', 'unknown'), "length": len(d['content'])}
+            {"source": d.get("source", "unknown"), "length": len(d["content"])}
             for d in LocalKnowledgeTool._documents
         ]
 
-        return self._success_response({
-            "total": len(docs),
-            "documents": docs
-        })
+        return self._success_response({"total": len(docs), "documents": docs})
 
     async def _clear(self) -> dict[str, Any]:
         """Clear the knowledge base"""
@@ -254,17 +259,15 @@ class LocalKnowledgeTool(BaseTool):
         # Save the cleared state
         self._save_db()
 
-        return self._success_response({
-            "message": f"Cleared {count} documents"
-        })
+        return self._success_response({"message": f"Cleared {count} documents"})
 
     def _load_db(self) -> None:
         """Load knowledge base from disk"""
         if self.DB_PATH.exists():
             try:
-                with open(self.DB_PATH, encoding='utf-8') as f:
+                with open(self.DB_PATH, encoding="utf-8") as f:
                     data = json.load(f)
-                    LocalKnowledgeTool._documents = data.get('documents', [])
+                    LocalKnowledgeTool._documents = data.get("documents", [])
             except Exception as e:
                 print(f"Error loading knowledge base: {e}")
 
@@ -280,7 +283,7 @@ class LocalKnowledgeTool(BaseTool):
             self.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
             # Create backup of existing file
-            backup_path = self.DB_PATH.with_suffix('.json.backup')
+            backup_path = self.DB_PATH.with_suffix(".json.backup")
             if self.DB_PATH.exists():
                 try:
                     shutil.copy2(self.DB_PATH, backup_path)
@@ -289,13 +292,11 @@ class LocalKnowledgeTool(BaseTool):
 
             # Write to temporary file first (atomic write pattern)
             temp_fd, temp_path = tempfile.mkstemp(
-                dir=self.DB_PATH.parent,
-                prefix='.knowledge_base_tmp_',
-                suffix='.json'
+                dir=self.DB_PATH.parent, prefix=".knowledge_base_tmp_", suffix=".json"
             )
 
             try:
-                with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
+                with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
                     # Acquire exclusive lock to prevent race conditions
                     try:
                         fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -304,7 +305,7 @@ class LocalKnowledgeTool(BaseTool):
                         # Continue anyway, but this indicates a concurrency issue
 
                     # Write data to temporary file
-                    json.dump({'documents': LocalKnowledgeTool._documents}, f, indent=2)
+                    json.dump({"documents": LocalKnowledgeTool._documents}, f, indent=2)
                     f.flush()
                     os.fsync(f.fileno())  # Force write to disk
 

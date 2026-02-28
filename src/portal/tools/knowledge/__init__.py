@@ -13,6 +13,6 @@ from .knowledge_base_sqlite import EnhancedKnowledgeTool
 from .local_knowledge import LocalKnowledgeTool
 
 __all__ = [
-    'EnhancedKnowledgeTool',
-    'LocalKnowledgeTool',
+    "EnhancedKnowledgeTool",
+    "LocalKnowledgeTool",
 ]

@@ -12,38 +12,60 @@ from portal.routing.model_registry import ModelCapability, ModelMetadata, ModelR
 from portal.routing.task_classifier import TaskCategory, TaskClassification, TaskComplexity
 
 
-def _make_model(model_id="test_model", backend="ollama", available=True, cost=0.3,
-                general_quality=0.7) -> ModelMetadata:
+def _make_model(
+    model_id="test_model", backend="ollama", available=True, cost=0.3, general_quality=0.7
+) -> ModelMetadata:
     return ModelMetadata(
-        model_id=model_id, backend=backend, display_name="Test Model",
-        parameters="7B", quantization="Q4_K_M",
-        capabilities=[ModelCapability.GENERAL], speed_class=SpeedClass.FAST,
-        general_quality=general_quality, cost=cost, available=available,
+        model_id=model_id,
+        backend=backend,
+        display_name="Test Model",
+        parameters="7B",
+        quantization="Q4_K_M",
+        capabilities=[ModelCapability.GENERAL],
+        speed_class=SpeedClass.FAST,
+        general_quality=general_quality,
+        cost=cost,
+        available=available,
         api_model_name=model_id,
     )
 
 
 def _make_classification() -> TaskClassification:
     return TaskClassification(
-        complexity=TaskComplexity.SIMPLE, category=TaskCategory.GENERAL,
-        estimated_tokens=100, requires_reasoning=False, requires_code=False,
-        requires_math=False, is_multi_turn=False, confidence=0.8,
+        complexity=TaskComplexity.SIMPLE,
+        category=TaskCategory.GENERAL,
+        estimated_tokens=100,
+        requires_reasoning=False,
+        requires_code=False,
+        requires_math=False,
+        is_multi_turn=False,
+        confidence=0.8,
     )
 
 
-def _make_routing_decision(model_id="test_model", model=None, fallback_models=None) -> RoutingDecision:
+def _make_routing_decision(
+    model_id="test_model", model=None, fallback_models=None
+) -> RoutingDecision:
     m = model or _make_model(model_id=model_id)
     return RoutingDecision(
-        model_id=model_id, model_metadata=m, classification=_make_classification(),
+        model_id=model_id,
+        model_metadata=m,
+        classification=_make_classification(),
         strategy_used=RoutingStrategy.AUTO,
-        fallback_models=fallback_models or [], reasoning="test",
+        fallback_models=fallback_models or [],
+        reasoning="test",
     )
 
 
 def _make_gen_result(success=True, text="response", tool_calls=None) -> GenerationResult:
     return GenerationResult(
-        text=text, tokens_generated=10, time_ms=50.0, model_id="test_model",
-        success=success, error=None if success else "backend error", tool_calls=tool_calls,
+        text=text,
+        tokens_generated=10,
+        time_ms=50.0,
+        model_id="test_model",
+        success=success,
+        error=None if success else "backend error",
+        tool_calls=tool_calls,
     )
 
 
@@ -64,16 +86,27 @@ def _build_engine(registry=None, router=None, config=None) -> ExecutionEngine:
 
 class TestExecutionResult:
     def test_defaults(self):
-        r = ExecutionResult(success=True, response="hello", model_used="M",
-                            execution_time_ms=100.0, tokens_generated=5)
+        r = ExecutionResult(
+            success=True,
+            response="hello",
+            model_used="M",
+            execution_time_ms=100.0,
+            tokens_generated=5,
+        )
         assert r.fallbacks_used == 0
         assert r.error is None
         assert r.tool_calls is None
 
     def test_failure(self):
-        r = ExecutionResult(success=False, response="", model_used="none",
-                            execution_time_ms=200.0, tokens_generated=0,
-                            error="all failed", fallbacks_used=3)
+        r = ExecutionResult(
+            success=False,
+            response="",
+            model_used="none",
+            execution_time_ms=200.0,
+            tokens_generated=0,
+            error="all failed",
+            fallbacks_used=3,
+        )
         assert not r.success
         assert r.fallbacks_used == 3
 
@@ -85,8 +118,11 @@ class TestExecutionEngineInit:
         assert engine.circuit_breaker_enabled is True
 
     def test_circuit_breaker_disabled(self):
-        engine = ExecutionEngine(_empty_registry(), MagicMock(spec=IntelligentRouter),
-                                 config={"circuit_breaker_enabled": False})
+        engine = ExecutionEngine(
+            _empty_registry(),
+            MagicMock(spec=IntelligentRouter),
+            config={"circuit_breaker_enabled": False},
+        )
         assert engine.circuit_breaker_enabled is False
         assert engine.circuit_breaker is None
 
@@ -134,10 +170,13 @@ class TestExecute:
         assert not result.success and "All models failed" in result.error
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("model_id,backend,expected_fail_reason", [
-        ("nonexistent", "ollama", None),
-        ("m1", "unknown_backend", None),
-    ])
+    @pytest.mark.parametrize(
+        "model_id,backend,expected_fail_reason",
+        [
+            ("nonexistent", "ollama", None),
+            ("m1", "unknown_backend", None),
+        ],
+    )
     async def test_missing_model_or_backend(self, model_id, backend, expected_fail_reason):
         engine = _build_engine()
         if model_id != "nonexistent":
@@ -154,6 +193,7 @@ class TestExecute:
         engine.router.route.return_value = _make_routing_decision("m1", model)
         engine.circuit_breaker.states["ollama"] = CircuitState.OPEN
         import time
+
         engine.circuit_breaker.last_failure_times["ollama"] = time.time() + 999999
         result = await engine.execute("hello")
         assert not result.success
@@ -187,14 +227,21 @@ class TestExecuteWithTimeout:
     async def test_timeout_returns_failure(self):
         engine = _build_engine(config={"timeout_seconds": 0.01})
         model = _make_model()
+
         async def slow_generate(**kwargs):
             await asyncio.sleep(10)
             return _make_gen_result()
+
         mock_backend = AsyncMock()
         mock_backend.generate = slow_generate
         result = await engine._execute_with_timeout(
-            backend=mock_backend, model=model, query="test",
-            system_prompt=None, max_tokens=100, temperature=0.7)
+            backend=mock_backend,
+            model=model,
+            query="test",
+            system_prompt=None,
+            max_tokens=100,
+            temperature=0.7,
+        )
         assert not result.success and "Timeout" in result.error
 
 
@@ -206,9 +253,11 @@ class TestGenerateStream:
         engine.registry.register(model)
         engine.router.route.return_value = _make_routing_decision("m1", model)
         engine.backends["ollama"].is_available.return_value = True
+
         async def fake_stream(**kwargs):
             for t in ["Hello", " ", "world"]:
                 yield t
+
         engine.backends["ollama"].generate_stream = fake_stream
         tokens = [t async for t in engine.generate_stream("hello")]
         assert tokens == ["Hello", " ", "world"]
@@ -222,11 +271,14 @@ class TestGenerateStream:
         engine.registry.register(fallback)
         engine.router.route.return_value = _make_routing_decision("primary", primary, ["fallback"])
         engine.backends["ollama"].is_available.return_value = True
+
         async def failing_stream(**kwargs):
             raise ConnectionError("fail")
             yield  # noqa: F704
+
         async def ok_stream(**kwargs):
             yield "ok"
+
         engine.backends["ollama"].generate_stream = failing_stream
         engine.backends["lmstudio"].is_available.return_value = True
         engine.backends["lmstudio"].generate_stream = ok_stream

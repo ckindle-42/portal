@@ -15,17 +15,13 @@ class TestTaskClassifier:
         """Test that greetings and simple queries are classified as trivial"""
         classifier = TaskClassifier()
 
-        trivial_queries = [
-            "hello",
-            "hi there",
-            "what's up",
-            "thanks",
-            "ok"
-        ]
+        trivial_queries = ["hello", "hi there", "what's up", "thanks", "ok"]
 
         for query in trivial_queries:
             result = classifier.classify(query)
-            assert result.complexity.value in ["trivial", "simple"], f"'{query}' should be trivial/simple, got {result}"
+            assert result.complexity.value in ["trivial", "simple"], (
+                f"'{query}' should be trivial/simple, got {result}"
+            )
 
     def test_classify_complex_queries(self):
         """Test that complex queries are correctly classified"""
@@ -38,7 +34,9 @@ class TestTaskClassifier:
 
         for query in complex_queries:
             result = classifier.classify(query)
-            assert result.complexity.value in ["simple", "moderate", "complex", "expert"], f"'{query}' should be at least simple, got {result}"
+            assert result.complexity.value in ["simple", "moderate", "complex", "expert"], (
+                f"'{query}' should be at least simple, got {result}"
+            )
 
     def test_classify_code_queries(self):
         """Test that code-related queries are at least medium complexity"""
@@ -47,12 +45,14 @@ class TestTaskClassifier:
         code_queries = [
             "Write a Python function to sort a list",
             "Create a React component for user authentication",
-            "Debug this error in my code"
+            "Debug this error in my code",
         ]
 
         for query in code_queries:
             result = classifier.classify(query)
-            assert result.complexity.value in ["simple", "moderate", "complex", "expert"], f"'{query}' should need at least simple complexity, got {result}"
+            assert result.complexity.value in ["simple", "moderate", "complex", "expert"], (
+                f"'{query}' should need at least simple complexity, got {result}"
+            )
 
 
 class TestIntelligentRouter:

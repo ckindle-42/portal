@@ -35,10 +35,12 @@ class TestHTTPClientTool:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         with patch("aiohttp.ClientSession", return_value=mock_session):
-            result = await tool.execute({
-                "method": "GET",
-                "url": "https://api.example.com/data",
-            })
+            result = await tool.execute(
+                {
+                    "method": "GET",
+                    "url": "https://api.example.com/data",
+                }
+            )
 
         assert result["success"] is True
         assert "response" in result or "result" in result
@@ -62,11 +64,13 @@ class TestHTTPClientTool:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         with patch("aiohttp.ClientSession", return_value=mock_session):
-            result = await tool.execute({
-                "method": "POST",
-                "url": "https://api.example.com/create",
-                "body": '{"name": "test"}',
-            })
+            result = await tool.execute(
+                {
+                    "method": "POST",
+                    "url": "https://api.example.com/create",
+                    "body": '{"name": "test"}',
+                }
+            )
 
         assert result["success"] is True
 
@@ -75,10 +79,7 @@ class TestHTTPClientTool:
         """Test with invalid URL"""
         tool = HTTPClientTool()
 
-        result = await tool.execute({
-            "method": "GET",
-            "url": "not-a-valid-url"
-        })
+        result = await tool.execute({"method": "GET", "url": "not-a-valid-url"})
 
         assert result["success"] is False
         assert "error" in result
@@ -94,9 +95,7 @@ class TestAudioTranscribeTool:
         try:
             from faster_whisper import WhisperModel  # noqa: F401
         except ImportError:
-            pytest.skip(
-                "faster-whisper not available (pip install faster-whisper)"
-            )
+            pytest.skip("faster-whisper not available (pip install faster-whisper)")
 
         audio_file = temp_dir / "test.wav"
         audio_file.write_bytes(b"\x00" * 1000)  # dummy audio bytes
@@ -112,10 +111,12 @@ class TestAudioTranscribeTool:
 
         with patch("faster_whisper.WhisperModel", return_value=mock_model):
             tool = AudioTranscribeTool()
-            result = await tool.execute({
-                "audio_files": [str(audio_file)],
-                "model_size": "base",
-            })
+            result = await tool.execute(
+                {
+                    "audio_files": [str(audio_file)],
+                    "model_size": "base",
+                }
+            )
 
         assert "success" in result
 
@@ -124,9 +125,7 @@ class TestAudioTranscribeTool:
         """Test transcribing non-existent audio file"""
         tool = AudioTranscribeTool()
 
-        result = await tool.execute({
-            "file_path": "/nonexistent/audio.mp3"
-        })
+        result = await tool.execute({"file_path": "/nonexistent/audio.mp3"})
 
         assert result["success"] is False
         assert "error" in result
@@ -145,14 +144,9 @@ class TestDevTools:
 
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(
-                returncode=0,
-                stdout="Successfully created virtual environment",
-                stderr=""
+                returncode=0, stdout="Successfully created virtual environment", stderr=""
             )
 
-            result = await tool.execute({
-                "operation": "create",
-                "path": str(temp_dir / "venv")
-            })
+            result = await tool.execute({"operation": "create", "path": str(temp_dir / "venv")})
 
             assert result["success"] is True or "error" in result

@@ -24,29 +24,29 @@ class FileCompressorTool(BaseTool):
                     name="action",
                     param_type="string",
                     description="Action: compress or extract",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="files",
                     param_type="list",
                     description="List of file paths to compress",
-                    required=False
+                    required=False,
                 ),
                 ToolParameter(
                     name="archive_path",
                     param_type="string",
                     description="Path to archive file",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="format",
                     param_type="string",
                     description="Archive format: zip, tar, tar.gz",
                     required=False,
-                    default="zip"
-                )
+                    default="zip",
+                ),
             ],
-            examples=["Compress files to backup.zip"]
+            examples=["Compress files to backup.zip"],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -76,7 +76,7 @@ class FileCompressorTool(BaseTool):
     async def _compress(self, files: list[str], archive_path: str, fmt: str) -> dict[str, Any]:
         """Compress files"""
         if fmt == "zip":
-            with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 for file_path in files:
                     if os.path.exists(file_path):
                         zf.write(file_path, os.path.basename(file_path))
@@ -90,11 +90,13 @@ class FileCompressorTool(BaseTool):
             return self._error_response(f"Unsupported format: {fmt}")
 
         size = os.path.getsize(archive_path)
-        return self._success_response({
-            "message": f"Created archive: {archive_path}",
-            "size_bytes": size,
-            "files_added": len(files)
-        })
+        return self._success_response(
+            {
+                "message": f"Created archive: {archive_path}",
+                "size_bytes": size,
+                "files_added": len(files),
+            }
+        )
 
     async def _extract(self, archive_path: str) -> dict[str, Any]:
         """Extract archive"""
@@ -103,19 +105,21 @@ class FileCompressorTool(BaseTool):
 
         extracted = []
 
-        if archive_path.endswith('.zip'):
-            with zipfile.ZipFile(archive_path, 'r') as zf:
+        if archive_path.endswith(".zip"):
+            with zipfile.ZipFile(archive_path, "r") as zf:
                 zf.extractall(output_dir)
                 extracted = zf.namelist()
-        elif archive_path.endswith(('.tar', '.tar.gz', '.tgz')):
-            with tarfile.open(archive_path, 'r:*') as tf:
+        elif archive_path.endswith((".tar", ".tar.gz", ".tgz")):
+            with tarfile.open(archive_path, "r:*") as tf:
                 tf.extractall(output_dir)
                 extracted = tf.getnames()
         else:
             return self._error_response("Unsupported archive format")
 
-        return self._success_response({
-            "message": f"Extracted to: {output_dir}",
-            "files_extracted": len(extracted),
-            "files": extracted[:10]  # First 10 files
-        })
+        return self._success_response(
+            {
+                "message": f"Extracted to: {output_dir}",
+                "files_extracted": len(extracted),
+                "files": extracted[:10],  # First 10 files
+            }
+        )

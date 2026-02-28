@@ -22,17 +22,17 @@ class QRGeneratorTool(BaseTool):
                     name="content",
                     param_type="string",
                     description="Text or URL to encode",
-                    required=True
+                    required=True,
                 ),
                 ToolParameter(
                     name="size",
                     param_type="int",
                     description="QR code size (1-10)",
                     required=False,
-                    default=5
-                )
+                    default=5,
+                ),
             ],
-            examples=["Generate QR for https://example.com"]
+            examples=["Generate QR for https://example.com"],
         )
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -67,13 +67,17 @@ class QRGeneratorTool(BaseTool):
             output_path = f"qr_{hash(content) % 100000}.png"
             img.save(output_path)
 
-            return self._success_response({
-                "message": f"QR code generated for: {content[:50]}...",
-                "file_path": output_path,
-                "base64": img_base64[:100] + "..."  # Truncated for display
-            })
+            return self._success_response(
+                {
+                    "message": f"QR code generated for: {content[:50]}...",
+                    "file_path": output_path,
+                    "base64": img_base64[:100] + "...",  # Truncated for display
+                }
+            )
 
         except ImportError:
-            return self._error_response("qrcode library not installed. Run: pip install qrcode[pil]")
+            return self._error_response(
+                "qrcode library not installed. Run: pip install qrcode[pil]"
+            )
         except Exception as e:
             return self._error_response(str(e))

@@ -63,10 +63,16 @@ class TestShutdownPriority:
     def test_callbacks_sort_by_priority(self):
         """Shutdown callbacks should sort by priority descending."""
         cb_low = ShutdownCallback(callback=lambda: None, priority=ShutdownPriority.LOW, name="low")
-        cb_high = ShutdownCallback(callback=lambda: None, priority=ShutdownPriority.HIGH, name="high")
-        cb_crit = ShutdownCallback(callback=lambda: None, priority=ShutdownPriority.CRITICAL, name="crit")
+        cb_high = ShutdownCallback(
+            callback=lambda: None, priority=ShutdownPriority.HIGH, name="high"
+        )
+        cb_crit = ShutdownCallback(
+            callback=lambda: None, priority=ShutdownPriority.CRITICAL, name="crit"
+        )
 
-        sorted_cbs = sorted([cb_low, cb_high, cb_crit], key=lambda c: c.priority.value, reverse=True)
+        sorted_cbs = sorted(
+            [cb_low, cb_high, cb_crit], key=lambda c: c.priority.value, reverse=True
+        )
         assert [c.name for c in sorted_cbs] == ["crit", "high", "low"]
 
 
@@ -129,11 +135,14 @@ class TestBootstrapGuards:
 
         with (
             patch("portal.lifecycle.load_settings", return_value=mock_settings),
-            patch.dict("os.environ", {
-                "MCP_API_KEY": "real-secret",
-                "PORTAL_BOOTSTRAP_API_KEY": "portal-dev-key",
-                "PORTAL_ENV": "production",
-            }),
+            patch.dict(
+                "os.environ",
+                {
+                    "MCP_API_KEY": "real-secret",
+                    "PORTAL_BOOTSTRAP_API_KEY": "portal-dev-key",
+                    "PORTAL_ENV": "production",
+                },
+            ),
         ):
             with pytest.raises(RuntimeError, match="PORTAL_BOOTSTRAP_API_KEY"):
                 await rt.bootstrap()

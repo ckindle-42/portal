@@ -20,6 +20,7 @@ _has_numpy = importlib.util.find_spec("numpy") is not None
 # ATOMIC WRITE TESTS (local_knowledge.py)
 # =============================================================================
 
+
 @pytest.mark.skipif(not _has_numpy, reason="numpy not installed")
 class TestAtomicWrites:
     """Test atomic write functionality in LocalKnowledgeTool"""
@@ -44,7 +45,7 @@ class TestAtomicWrites:
         tool._save_db()
 
         # Verify backup was created
-        backup_path = tool.DB_PATH.with_suffix('.json.backup')
+        backup_path = tool.DB_PATH.with_suffix(".json.backup")
         assert backup_path.exists()
 
     def test_atomic_write_survives_crash(self, tmp_path):
@@ -61,8 +62,8 @@ class TestAtomicWrites:
         # Verify we can read it back
         with open(tool.DB_PATH) as f:
             data = json.load(f)
-            assert len(data['documents']) == 1
-            assert data['documents'][0]['content'] == "important"
+            assert len(data["documents"]) == 1
+            assert data["documents"][0]["content"] == "important"
 
     def test_atomic_write_no_partial_data(self, tmp_path):
         """Verify no partial/corrupted JSON is written"""
@@ -72,18 +73,21 @@ class TestAtomicWrites:
         tool.DB_PATH = tmp_path / "test_kb.json"
 
         # Write data
-        LocalKnowledgeTool._documents = [{"content": f"doc_{i}", "source": "test"} for i in range(100)]
+        LocalKnowledgeTool._documents = [
+            {"content": f"doc_{i}", "source": "test"} for i in range(100)
+        ]
         tool._save_db()
 
         # Verify file is valid JSON
         with open(tool.DB_PATH) as f:
             data = json.load(f)  # Should not raise
-            assert len(data['documents']) == 100
+            assert len(data["documents"]) == 100
 
 
 # =============================================================================
 # PERSISTENT RATE LIMITING TESTS
 # =============================================================================
+
 
 class TestPersistentRateLimiting:
     """Test persistent rate limiting in security_module.py"""
@@ -155,6 +159,7 @@ class TestPersistentRateLimiting:
 # =============================================================================
 # CIRCUIT BREAKER TESTS
 # =============================================================================
+
 
 class TestCircuitBreaker:
     """Test circuit breaker pattern in execution_engine.py"""
@@ -252,6 +257,7 @@ class TestCircuitBreaker:
 # =============================================================================
 # INTEGRATION TESTS
 # =============================================================================
+
 
 class TestDataIntegrityIntegration:
     """Integration tests for all data integrity fixes"""

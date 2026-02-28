@@ -45,6 +45,7 @@ class TestHealthCheckSystem:
 
         async def fn():
             return _result(HealthStatus.HEALTHY)
+
         system.add_check("fn", fn)
         assert "fn" in system._check_functions
 
@@ -54,13 +55,16 @@ class TestHealthCheckSystem:
         assert result["status"] == "healthy" and result["checks"] == {}
 
     @patch("portal.observability.health.logger")
-    @pytest.mark.parametrize("statuses,expected", [
-        ([HealthStatus.HEALTHY], "healthy"),
-        ([HealthStatus.HEALTHY, HealthStatus.DEGRADED], "degraded"),
-        ([HealthStatus.DEGRADED, HealthStatus.UNHEALTHY], "unhealthy"),
-        ([HealthStatus.HEALTHY, HealthStatus.UNHEALTHY], "unhealthy"),
-        ([HealthStatus.UNHEALTHY, HealthStatus.UNHEALTHY], "unhealthy"),
-    ])
+    @pytest.mark.parametrize(
+        "statuses,expected",
+        [
+            ([HealthStatus.HEALTHY], "healthy"),
+            ([HealthStatus.HEALTHY, HealthStatus.DEGRADED], "degraded"),
+            ([HealthStatus.DEGRADED, HealthStatus.UNHEALTHY], "unhealthy"),
+            ([HealthStatus.HEALTHY, HealthStatus.UNHEALTHY], "unhealthy"),
+            ([HealthStatus.UNHEALTHY, HealthStatus.UNHEALTHY], "unhealthy"),
+        ],
+    )
     async def test_status_aggregation(self, _, statuses, expected):
         system = HealthCheckSystem()
         for i, s in enumerate(statuses):
@@ -83,8 +87,10 @@ class TestHealthCheckSystem:
     @patch("portal.observability.health.logger")
     async def test_function_check_works(self, _):
         system = HealthCheckSystem()
+
         async def fn():
             return _result(HealthStatus.HEALTHY)
+
         system.add_check("fn1", fn)
         result = await system.check_health()
         assert result["status"] == "healthy" and "fn1" in result["checks"]
@@ -95,8 +101,10 @@ class TestHealthCheckSystem:
         prov = AsyncMock(spec=HealthCheckProvider)
         prov.check.return_value = _result(HealthStatus.HEALTHY)
         system.add_provider("p", prov)
+
         async def degraded_fn():
             return _result(HealthStatus.DEGRADED, "slow")
+
         system.add_check("fn", degraded_fn)
         result = await system.check_health()
         assert result["status"] == "degraded"
@@ -108,11 +116,14 @@ class TestHealthCheckSystem:
         assert result["status"] == "healthy" and "alive" in result["message"]
 
     @patch("portal.observability.health.logger")
-    @pytest.mark.parametrize("status,expected_ready", [
-        (HealthStatus.HEALTHY, True),
-        (HealthStatus.DEGRADED, True),
-        (HealthStatus.UNHEALTHY, False),
-    ])
+    @pytest.mark.parametrize(
+        "status,expected_ready",
+        [
+            (HealthStatus.HEALTHY, True),
+            (HealthStatus.DEGRADED, True),
+            (HealthStatus.UNHEALTHY, False),
+        ],
+    )
     async def test_readiness(self, _, status, expected_ready):
         system = HealthCheckSystem()
         prov = AsyncMock(spec=HealthCheckProvider)
@@ -147,5 +158,3 @@ class TestDatabaseHealthCheck:
         repo.get_stats.side_effect = ConnectionError("refused")
         result = await DatabaseHealthCheck(repo).check()
         assert result.status == HealthStatus.UNHEALTHY and "refused" in result.message
-
-
