@@ -580,7 +580,7 @@ run_doctor() {
     check_service "portal-api" "http://localhost:8081/health"
     check_service "web-ui" "http://localhost:8080" "true"
 
-    if [ "${MCP_ENABLED:-true}" = "true" ]; then
+    if [ "${WEB_UI:-openwebui}" = "openwebui" ] && [ "${MCP_ENABLED:-true}" = "true" ]; then
         check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}" "true"
         check_process "scrapling" "scrapling" "true"
     fi
