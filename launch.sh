@@ -406,12 +406,17 @@ start_extended_services() {
     # Start Docker stack for selected web UI
     local DEPLOY_DIR="$PORTAL_ROOT/deploy/web-ui/${WEB_UI:-openwebui}"
     if [ -d "$DEPLOY_DIR" ]; then
-        echo "[docker] starting ${WEB_UI:-openwebui} stack..."
-        (cd "$DEPLOY_DIR" && \
-            DOCKER_HOST_IP="$DOCKER_HOST_IP" \
-            AI_OUTPUT_DIR="$HOME/AI_Output" \
-            docker compose up -d)
-        echo "[docker] OK"
+        if ! docker info &>/dev/null; then
+            echo "[docker] Docker is not running. Start Docker Desktop and re-run: bash launch.sh up"
+            echo "[docker] Skipping web UI — Portal API is still available at http://localhost:8081/v1"
+        else
+            echo "[docker] starting ${WEB_UI:-openwebui} stack..."
+            (cd "$DEPLOY_DIR" && \
+                DOCKER_HOST_IP="$DOCKER_HOST_IP" \
+                AI_OUTPUT_DIR="$HOME/AI_Output" \
+                docker compose up -d)
+            echo "[docker] OK"
+        fi
     else
         echo "[docker] deploy dir not found: $DEPLOY_DIR (skipping)"
     fi
