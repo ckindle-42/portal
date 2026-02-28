@@ -65,13 +65,19 @@ class TelegramInterface:
     - settings: Application settings (for telegram, security, tools config)
     """
 
-    def __init__(self, agent_core: "AgentCore", settings: "Settings") -> None:
+    def __init__(
+        self,
+        agent_core: "AgentCore",
+        settings: "Settings",
+        rate_limiter: "RateLimiter | None" = None,
+    ) -> None:
         """
         Initialize Telegram interface with injected dependencies
 
         Args:
             agent_core: Pre-configured AgentCore instance (already wrapped in SecurityMiddleware by CLI)
             settings: Application settings object (Pydantic Settings)
+            rate_limiter: Optional pre-built RateLimiter; a default is created if not provided.
 
         Raises:
             ValueError: If telegram config is missing or invalid
@@ -86,7 +92,7 @@ class TelegramInterface:
         self.confirmation_middleware = None
 
         self._validate_config(settings)
-        self._setup_rate_limiter(settings)
+        self._setup_rate_limiter(settings, rate_limiter)
         self._setup_confirmation_middleware(settings)
 
         logger.info("=" * 60)
@@ -118,8 +124,13 @@ class TelegramInterface:
                     "No authorized user IDs configured. Set authorized_users in config."
                 )
 
-    def _setup_rate_limiter(self, settings: "Settings") -> None:
-        """Create per-user rate limiter from security config."""
+    def _setup_rate_limiter(
+        self, settings: "Settings", rate_limiter: "RateLimiter | None" = None
+    ) -> None:
+        """Use injected rate limiter if provided; otherwise create default from security config."""
+        if rate_limiter is not None:
+            self.rate_limiter = rate_limiter
+            return
         security_config = settings.security
         self.rate_limiter = RateLimiter(
             max_requests=security_config.rate_limit_requests,
