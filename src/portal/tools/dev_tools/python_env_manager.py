@@ -4,41 +4,25 @@ import os
 import subprocess
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
 class PythonEnvManagerTool(BaseTool):
     """Manage Python virtual environments"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="python_env_manager",
-            description="Create, manage, and inspect Python virtual environments",
-            category=ToolCategory.DEV,
-            version="1.0.0",
-            requires_confirmation=True,
-            parameters=[
-                ToolParameter(
-                    name="action",
-                    param_type="string",
-                    description="Action: create, list, install, info, freeze",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="env_path",
-                    param_type="string",
-                    description="Path to virtual environment",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="packages",
-                    param_type="list",
-                    description="List of packages to install",
-                    required=False,
-                ),
-            ],
-            examples=["Create venv at ./myenv"],
-        )
+    METADATA = {
+        "name": "python_env_manager",
+        "description": "Create, manage, and inspect Python virtual environments",
+        "category": ToolCategory.DEV,
+        "version": "1.0.0",
+        "requires_confirmation": True,
+        "parameters": [
+            {"name": "action", "param_type": "string", "description": "Action: create, list, install, info, freeze", "required": True},
+            {"name": "env_path", "param_type": "string", "description": "Path to virtual environment", "required": False},
+            {"name": "packages", "param_type": "list", "description": "List of packages to install", "required": False},
+        ],
+        "examples": ["Create venv at ./myenv"],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Manage Python environments"""

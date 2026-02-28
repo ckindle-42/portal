@@ -3,43 +3,25 @@
 import os
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
 class AudioTranscribeTool(BaseTool):
     """Transcribe audio files using local Whisper"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="audio_transcribe",
-            description="Transcribe audio files using local Whisper model",
-            category=ToolCategory.AUDIO,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="audio_files",
-                    param_type="list",
-                    description="List of audio file paths",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="model_size",
-                    param_type="string",
-                    description="Model size: tiny, base, small, medium, large",
-                    required=False,
-                    default="base",
-                ),
-                ToolParameter(
-                    name="language",
-                    param_type="string",
-                    description="Language code (e.g., 'en', 'es') or 'auto'",
-                    required=False,
-                    default="auto",
-                ),
-            ],
-            examples=["Transcribe audio.mp3"],
-        )
+    METADATA = {
+        "name": "audio_transcribe",
+        "description": "Transcribe audio files using local Whisper model",
+        "category": ToolCategory.AUDIO,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "audio_files", "param_type": "list", "description": "List of audio file paths", "required": True},
+            {"name": "model_size", "param_type": "string", "description": "Model size: tiny, base, small, medium, large", "required": False, "default": "base"},
+            {"name": "language", "param_type": "string", "description": "Language code (e.g., 'en', 'es') or 'auto'", "required": False, "default": "auto"},
+        ],
+        "examples": ["Transcribe audio.mp3"],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Transcribe audio files"""

@@ -6,48 +6,26 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
 class FileCompressorTool(BaseTool):
     """Compress and decompress files/archives"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="file_compressor",
-            description="Compress files to ZIP/TAR or extract archives",
-            category=ToolCategory.UTILITY,
-            version="1.0.0",
-            requires_confirmation=True,
-            parameters=[
-                ToolParameter(
-                    name="action",
-                    param_type="string",
-                    description="Action: compress or extract",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="files",
-                    param_type="list",
-                    description="List of file paths to compress",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="archive_path",
-                    param_type="string",
-                    description="Path to archive file",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="format",
-                    param_type="string",
-                    description="Archive format: zip, tar, tar.gz",
-                    required=False,
-                    default="zip",
-                ),
-            ],
-            examples=["Compress files to backup.zip"],
-        )
+    METADATA = {
+        "name": "file_compressor",
+        "description": "Compress files to ZIP/TAR or extract archives",
+        "category": ToolCategory.UTILITY,
+        "version": "1.0.0",
+        "requires_confirmation": True,
+        "parameters": [
+            {"name": "action", "param_type": "string", "description": "Action: compress or extract", "required": True},
+            {"name": "files", "param_type": "list", "description": "List of file paths to compress", "required": False},
+            {"name": "archive_path", "param_type": "string", "description": "Path to archive file", "required": True},
+            {"name": "format", "param_type": "string", "description": "Archive format: zip, tar, tar.gz", "required": False, "default": "zip"},
+        ],
+        "examples": ["Compress files to backup.zip"],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Compress or extract files"""

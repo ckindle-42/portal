@@ -18,7 +18,7 @@ def reset_scheduler():
 class TestJobSchedulerToolMetadata:
     def test_metadata_name(self):
         tool = JobSchedulerTool()
-        meta = tool._get_metadata()
+        meta = tool.metadata
         assert meta.name == "job_scheduler"
         assert meta.requires_confirmation is False
         assert len(meta.parameters) >= 3

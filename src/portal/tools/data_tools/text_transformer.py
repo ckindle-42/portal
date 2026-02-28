@@ -3,41 +3,25 @@
 import json
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
 class TextTransformerTool(BaseTool):
     """Transform text between formats (JSON, YAML, XML, TOML)"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="text_transformer",
-            description="Convert text between JSON, YAML, XML, and TOML formats",
-            category=ToolCategory.UTILITY,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="content",
-                    param_type="string",
-                    description="Input text to transform",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="from_format",
-                    param_type="string",
-                    description="Source format (json, yaml, xml, toml)",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="to_format",
-                    param_type="string",
-                    description="Target format (json, yaml, xml, toml)",
-                    required=True,
-                ),
-            ],
-            examples=["Convert JSON to YAML: {...}"],
-        )
+    METADATA = {
+        "name": "text_transformer",
+        "description": "Convert text between JSON, YAML, XML, and TOML formats",
+        "category": ToolCategory.UTILITY,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "content", "param_type": "string", "description": "Input text to transform", "required": True},
+            {"name": "from_format", "param_type": "string", "description": "Source format (json, yaml, xml, toml)", "required": True},
+            {"name": "to_format", "param_type": "string", "description": "Target format (json, yaml, xml, toml)", "required": True},
+        ],
+        "examples": ["Convert JSON to YAML: {...}"],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Transform text format"""

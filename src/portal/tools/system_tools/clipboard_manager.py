@@ -5,7 +5,7 @@ Clipboard Manager Tool - Read/write clipboard
 import logging
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 logger = logging.getLogger(__name__)
 
@@ -20,26 +20,16 @@ except ImportError:
 class ClipboardManagerTool(BaseTool):
     """Manage system clipboard"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="clipboard_manager",
-            description="Read from or write to system clipboard",
-            category=ToolCategory.UTILITY,
-            requires_confirmation=True,  # Security consideration
-            parameters={
-                "action": {
-                    "type": "string",
-                    "required": True,
-                    "options": ["read", "write", "clear"],
-                    "description": "Clipboard action",
-                },
-                "content": {
-                    "type": "string",
-                    "required": False,
-                    "description": "Content to write (for write action)",
-                },
-            },
-        )
+    METADATA = {
+        "name": "clipboard_manager",
+        "description": "Read from or write to system clipboard",
+        "category": ToolCategory.UTILITY,
+        "requires_confirmation": True,
+        "parameters": [
+            {"name": "action", "param_type": "string", "description": "Clipboard action: read, write, clear", "required": True},
+            {"name": "content", "param_type": "string", "description": "Content to write (for write action)", "required": False},
+        ],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute clipboard operation"""

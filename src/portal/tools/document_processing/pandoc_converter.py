@@ -20,7 +20,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 logger = logging.getLogger(__name__)
 
@@ -73,73 +73,24 @@ class PandocConverterTool(BaseTool):
         # Default templates
         self._install_default_templates()
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="pandoc_convert",
-            description="Convert documents between 40+ formats (MD, PDF, DOCX, HTML, LaTeX, EPUB)",
-            category=ToolCategory.UTILITY,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="input_file",
-                    param_type="string",
-                    description="Path to input document",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="output_file",
-                    param_type="string",
-                    description="Path to output document (extension determines format)",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="from_format",
-                    param_type="string",
-                    description="Input format (auto-detected if not specified)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="to_format",
-                    param_type="string",
-                    description="Output format (auto-detected from extension if not specified)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="template",
-                    param_type="string",
-                    description="Template name for branded output (optional)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="metadata",
-                    param_type="object",
-                    description="Document metadata (title, author, date, etc.)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="toc",
-                    param_type="boolean",
-                    description="Include table of contents (default: False)",
-                    required=False,
-                    default=False,
-                ),
-                ToolParameter(
-                    name="standalone",
-                    param_type="boolean",
-                    description="Produce standalone document with headers (default: True)",
-                    required=False,
-                    default=True,
-                ),
-                ToolParameter(
-                    name="pdf_engine",
-                    param_type="string",
-                    description="PDF engine: pdflatex, xelatex, lualatex, wkhtmltopdf (default: pdflatex)",
-                    required=False,
-                    default="pdflatex",
-                ),
-            ],
-        )
+    METADATA = {
+        "name": "pandoc_convert",
+        "description": "Convert documents between 40+ formats (MD, PDF, DOCX, HTML, LaTeX, EPUB)",
+        "category": ToolCategory.UTILITY,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "input_file", "param_type": "string", "description": "Path to input document", "required": True},
+            {"name": "output_file", "param_type": "string", "description": "Path to output document (extension determines format)", "required": True},
+            {"name": "from_format", "param_type": "string", "description": "Input format (auto-detected if not specified)", "required": False},
+            {"name": "to_format", "param_type": "string", "description": "Output format (auto-detected from extension if not specified)", "required": False},
+            {"name": "template", "param_type": "string", "description": "Template name for branded output (optional)", "required": False},
+            {"name": "metadata", "param_type": "object", "description": "Document metadata (title, author, date, etc.)", "required": False},
+            {"name": "toc", "param_type": "bool", "description": "Include table of contents (default: False)", "required": False, "default": False},
+            {"name": "standalone", "param_type": "bool", "description": "Produce standalone document with headers (default: True)", "required": False, "default": True},
+            {"name": "pdf_engine", "param_type": "string", "description": "PDF engine: pdflatex, xelatex, lualatex, wkhtmltopdf (default: pdflatex)", "required": False, "default": "pdflatex"},
+        ],
+    }
 
     def _install_default_templates(self) -> None:
         """Install default Pandoc templates"""

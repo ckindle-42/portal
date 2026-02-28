@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 logger = logging.getLogger(__name__)
 
@@ -23,25 +23,16 @@ except ImportError:
 class PDFOCRTool(BaseTool):
     """Extract text from PDFs using OCR"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="pdf_ocr",
-            description="Extract text from PDF files using OCR",
-            category=ToolCategory.DATA,
-            parameters={
-                "pdf_path": {"type": "string", "required": True, "description": "Path to PDF file"},
-                "language": {
-                    "type": "string",
-                    "required": False,
-                    "description": "OCR language (default: eng)",
-                },
-                "dpi": {
-                    "type": "integer",
-                    "required": False,
-                    "description": "Image DPI for conversion (default: 300)",
-                },
-            },
-        )
+    METADATA = {
+        "name": "pdf_ocr",
+        "description": "Extract text from PDF files using OCR",
+        "category": ToolCategory.DATA,
+        "parameters": [
+            {"name": "pdf_path", "param_type": "string", "description": "Path to PDF file", "required": True},
+            {"name": "language", "param_type": "string", "description": "OCR language (default: eng)", "required": False},
+            {"name": "dpi", "param_type": "int", "description": "Image DPI for conversion (default: 300)", "required": False},
+        ],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Perform OCR on PDF"""

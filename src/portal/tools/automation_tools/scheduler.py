@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
 class JobSchedulerTool(BaseTool):
@@ -13,44 +13,21 @@ class JobSchedulerTool(BaseTool):
     _jobs: dict[str, dict[str, Any]] = {}
     _job_counter: int = 0
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="job_scheduler",
-            description="Schedule, list, and manage recurring tasks",
-            category=ToolCategory.AUTOMATION,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="action",
-                    param_type="string",
-                    description="Action: create, list, delete, pause, resume",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="job_id",
-                    param_type="string",
-                    description="Job ID (for delete/pause/resume)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="name", param_type="string", description="Job name", required=False
-                ),
-                ToolParameter(
-                    name="schedule",
-                    param_type="string",
-                    description="Cron expression or interval (e.g., '*/5 * * * *' or '5m')",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="command",
-                    param_type="string",
-                    description="Command or task to execute",
-                    required=False,
-                ),
-            ],
-            examples=["Schedule backup every hour"],
-        )
+    METADATA = {
+        "name": "job_scheduler",
+        "description": "Schedule, list, and manage recurring tasks",
+        "category": ToolCategory.AUTOMATION,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "action", "param_type": "string", "description": "Action: create, list, delete, pause, resume", "required": True},
+            {"name": "job_id", "param_type": "string", "description": "Job ID (for delete/pause/resume)", "required": False},
+            {"name": "name", "param_type": "string", "description": "Job name", "required": False},
+            {"name": "schedule", "param_type": "string", "description": "Cron expression or interval (e.g., '*/5 * * * *' or '5m')", "required": False},
+            {"name": "command", "param_type": "string", "description": "Command or task to execute", "required": False},
+        ],
+        "examples": ["Schedule backup every hour"],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Manage scheduled jobs"""

@@ -3,36 +3,24 @@
 import os
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
 class CSVAnalyzerTool(BaseTool):
     """Analyze CSV files with statistics and summaries"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="csv_analyzer",
-            description="Analyze CSV files - statistics, summaries, and insights",
-            category=ToolCategory.DATA,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="file_path",
-                    param_type="string",
-                    description="Path to CSV file",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="analysis_type",
-                    param_type="string",
-                    description="Type: summary, statistics, head, describe",
-                    required=False,
-                    default="summary",
-                ),
-            ],
-            examples=["Analyze data.csv and show statistics"],
-        )
+    METADATA = {
+        "name": "csv_analyzer",
+        "description": "Analyze CSV files - statistics, summaries, and insights",
+        "category": ToolCategory.DATA,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "file_path", "param_type": "string", "description": "Path to CSV file", "required": True},
+            {"name": "analysis_type", "param_type": "string", "description": "Type: summary, statistics, head, describe", "required": False, "default": "summary"},
+        ],
+        "examples": ["Analyze data.csv and show statistics"],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Analyze CSV file"""

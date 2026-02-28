@@ -50,11 +50,11 @@ class ToolMetadata:
 
 class BaseTool(ABC):
     """
-    Abstract base class for all tools
+    Abstract base class for all tools.
 
-    Subclasses must implement:
-    - _get_metadata(): Return tool metadata
-    - execute(parameters): Execute the tool
+    Subclasses must implement ``execute(parameters)`` and either:
+    - Define a class-level ``METADATA`` dict (preferred), or
+    - Override ``_get_metadata()`` (legacy, still supported).
     """
 
     def __init__(self) -> None:
@@ -62,15 +62,33 @@ class BaseTool(ABC):
 
     @property
     def metadata(self) -> ToolMetadata:
-        """Get tool metadata (cached)"""
+        """Get tool metadata (cached).
+
+        Checks the class-level ``METADATA`` dict first; falls back to
+        ``_get_metadata()`` for backward compatibility.
+        """
         if self._metadata is None:
-            self._metadata = self._get_metadata()
+            cls_meta = getattr(type(self), "METADATA", None)
+            if cls_meta is not None:
+                self._metadata = ToolMetadata(
+                    name=cls_meta["name"],
+                    description=cls_meta["description"],
+                    category=cls_meta["category"],
+                    version=cls_meta.get("version", "1.0.0"),
+                    requires_confirmation=cls_meta.get("requires_confirmation", False),
+                    async_capable=cls_meta.get("async_capable", True),
+                    parameters=[ToolParameter(**p) for p in cls_meta.get("parameters", [])],
+                    examples=cls_meta.get("examples", []),
+                )
+            else:
+                self._metadata = self._get_metadata()
         return self._metadata
 
-    @abstractmethod
     def _get_metadata(self) -> ToolMetadata:
-        """Return tool metadata - must be implemented by subclasses"""
-        pass
+        """Return tool metadata. Override or define a class-level METADATA dict."""
+        raise NotImplementedError(
+            f"{type(self).__name__} must define a METADATA class attribute or implement _get_metadata()"
+        )
 
     @abstractmethod
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
