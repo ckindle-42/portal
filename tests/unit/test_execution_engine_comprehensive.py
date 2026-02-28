@@ -128,7 +128,7 @@ class TestExecutionEngineInit:
 
     def test_all_backends_initialized(self):
         engine = ExecutionEngine(_empty_registry(), MagicMock(spec=IntelligentRouter))
-        assert {"ollama", "lmstudio", "mlx"} <= set(engine.backends.keys())
+        assert {"ollama"} == set(engine.backends.keys())
 
 
 class TestExecute:
@@ -147,14 +147,15 @@ class TestExecute:
     async def test_fallback_on_backend_failure(self):
         engine = _build_engine()
         primary = _make_model("primary", "ollama")
-        fallback = _make_model("fallback", "lmstudio")
+        fallback = _make_model("fallback", "ollama")
         engine.registry.register(primary)
         engine.registry.register(fallback)
         engine.router.route.return_value = _make_routing_decision("primary", primary, ["fallback"])
         engine.backends["ollama"].is_available.return_value = True
-        engine.backends["ollama"].generate.return_value = _make_gen_result(success=False)
-        engine.backends["lmstudio"].is_available.return_value = True
-        engine.backends["lmstudio"].generate.return_value = _make_gen_result(text="fallback ok")
+        engine.backends["ollama"].generate.side_effect = [
+            _make_gen_result(success=False),
+            _make_gen_result(text="fallback ok"),
+        ]
         result = await engine.execute("hello")
         assert result.success and result.response == "fallback ok" and result.fallbacks_used >= 1
 
@@ -266,22 +267,25 @@ class TestGenerateStream:
     async def test_stream_falls_back_on_error(self):
         engine = _build_engine()
         primary = _make_model("primary", "ollama")
-        fallback = _make_model("fallback", "lmstudio")
+        fallback = _make_model("fallback_alt", "ollama")
         engine.registry.register(primary)
         engine.registry.register(fallback)
-        engine.router.route.return_value = _make_routing_decision("primary", primary, ["fallback"])
+        engine.router.route.return_value = _make_routing_decision(
+            "primary", primary, ["fallback_alt"]
+        )
+        call_count = 0
+
+        async def stream_with_fallback(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ConnectionError("fail")
+                yield  # noqa: F704
+            else:
+                yield "ok"
+
         engine.backends["ollama"].is_available.return_value = True
-
-        async def failing_stream(**kwargs):
-            raise ConnectionError("fail")
-            yield  # noqa: F704
-
-        async def ok_stream(**kwargs):
-            yield "ok"
-
-        engine.backends["ollama"].generate_stream = failing_stream
-        engine.backends["lmstudio"].is_available.return_value = True
-        engine.backends["lmstudio"].generate_stream = ok_stream
+        engine.backends["ollama"].generate_stream = stream_with_fallback
         tokens = [t async for t in engine.generate_stream("hello")]
         assert tokens == ["ok"]
 
@@ -307,8 +311,6 @@ class TestHealthCheck:
     async def test_backend_unavailable(self):
         engine = _build_engine()
         engine.backends["ollama"].is_available.return_value = False
-        for name in ("lmstudio", "mlx"):
-            engine.backends[name].is_available.return_value = True
         health = await engine.health_check()
         assert health["ollama"]["available"] is False
 
@@ -316,8 +318,6 @@ class TestHealthCheck:
     async def test_exception_handled(self):
         engine = _build_engine()
         engine.backends["ollama"].is_available.side_effect = RuntimeError("fail")
-        for name in ("lmstudio", "mlx"):
-            engine.backends[name].is_available.return_value = True
         health = await engine.health_check()
         assert health["ollama"]["available"] is False and "error" in health["ollama"]
 
@@ -362,5 +362,5 @@ class TestCloseAndCleanup:
     @pytest.mark.asyncio
     async def test_close_handles_missing_close(self):
         engine = _build_engine()
-        engine.backends["mlx"] = object()
+        engine.backends["extra"] = object()
         await engine.close()  # must not raise

@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.3.5] - 2026-02-28
+
+### Fixed
+- Python version constraint now allows 3.13+ (was incorrectly capped at <3.13)
+- launch.sh first-run bootstrap works on POSIX sh and older bash (replaced `${,,}` syntax)
+- Telegram /start no longer shows stale PocketPortal "v3.1" version — now uses dynamic `__version__`
+- CLAUDE.md version corrected to 1.3.5
+
+### Removed
+- Dead `LMStudioBackend` class — no models used this backend (PocketPortal vestige)
+- Dead `MLXBackend` stub — no models used this backend; proper MLX support is a future project
+- Dead config fields: `mlx_enabled`, `default_backend` from `BackendsConfig`; `lmstudio_base_url` from `create_execution_engine`
+
+### Changed
+- .env.example now documents all environment variables used in code
+
+---
+
 ## [Unreleased] — 2026-02-28 — Modularization & Production Hardening
 
 ### Summary

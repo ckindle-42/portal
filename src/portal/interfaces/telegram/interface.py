@@ -28,6 +28,7 @@ from telegram.ext import (
     filters,
 )
 
+from portal import __version__
 from portal.agent.dispatcher import CentralDispatcher
 
 # Import types
@@ -327,9 +328,9 @@ class TelegramInterface:
             return
 
         welcome = (
-            "🤖 **Portal Agent v3.1**\n\n"
+            f"🤖 **Portal v{__version__}**\n\n"
             "🧠 Unified core architecture\n"
-            "🔧 11+ tools ready\n"
+            "🔧 Tools ready\n"
             "🚀 Intelligent routing\n\n"
             "**Commands:**\n"
             "• `/help` - Show help\n"

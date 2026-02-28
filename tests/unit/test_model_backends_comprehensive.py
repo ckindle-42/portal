@@ -8,8 +8,6 @@ import pytest
 from portal.routing.model_backends import (
     BaseHTTPBackend,
     GenerationResult,
-    LMStudioBackend,
-    MLXBackend,
     OllamaBackend,
 )
 
@@ -240,120 +238,6 @@ class TestOllamaAvailability:
             assert await backend.list_models() == []
 
 
-class TestLMStudioGenerate:
-    @pytest.mark.asyncio
-    async def test_successful_generation(self):
-        backend = LMStudioBackend()
-        data = {"choices": [{"message": {"content": "Hi!"}}], "usage": {"completion_tokens": 5}}
-        with patch.object(
-            backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, data))
-        ):
-            result = await backend.generate("hello", "lm-model")
-        assert result.success and result.text == "Hi!" and result.tokens_generated == 5
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "patch_kwargs,expected_error",
-        [
-            ({"return_value": _FakeSession(_FakeResponse(503, text_data="OL"))}, "503"),
-            ({"side_effect": TimeoutError("timeout")}, "timeout"),
-        ],
-    )
-    async def test_generate_failure(self, patch_kwargs, expected_error):
-        backend = LMStudioBackend()
-        with patch.object(backend, "_get_session", **patch_kwargs):
-            result = await backend.generate("hello", "lm-model")
-        assert not result.success and expected_error in result.error
-
-
-class TestLMStudioStream:
-    @pytest.mark.asyncio
-    async def test_successful_stream(self):
-        backend = LMStudioBackend()
-        lines = [
-            b'data: {"choices": [{"delta": {"content": "Hello"}}]}\n',
-            b'data: {"choices": [{"delta": {"content": " world"}}]}\n',
-            b"data: [DONE]\n",
-        ]
-        with patch.object(
-            backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, lines=lines))
-        ):
-            tokens = [t async for t in backend.generate_stream("hi", "lm-model")]
-        assert tokens == ["Hello", " world"]
-
-    @pytest.mark.asyncio
-    async def test_exception_yields_nothing(self):
-        backend = LMStudioBackend()
-        with patch.object(backend, "_get_session", side_effect=ConnectionError):
-            assert [t async for t in backend.generate_stream("hi", "lm-model")] == []
-
-
-class TestLMStudioAvailability:
-    @pytest.mark.asyncio
-    async def test_available_and_list_models(self):
-        backend = LMStudioBackend()
-        data = {"data": [{"id": "model-a"}, {"id": "model-b"}]}
-        with patch.object(
-            backend, "_get_session", return_value=_FakeSession(_FakeResponse(200, data))
-        ):
-            assert await backend.is_available()
-            models = await backend.list_models()
-        assert models == ["model-a", "model-b"]
-
-    @pytest.mark.asyncio
-    async def test_unavailable_and_empty_on_error(self):
-        backend = LMStudioBackend()
-        with patch.object(backend, "_get_session", side_effect=ConnectionError):
-            assert not await backend.is_available()
-            assert await backend.list_models() == []
-
-
-class TestMLXBackend:
-    @pytest.mark.asyncio
-    async def test_generate_when_unavailable(self):
-        backend = MLXBackend()
-        backend._available = False
-        result = await backend.generate("hello", "some-model")
-        assert not result.success and "not available" in result.error.lower()
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize("cached", [True, False])
-    async def test_is_available_cached(self, cached):
-        backend = MLXBackend()
-        backend._available = cached
-        assert await backend.is_available() == cached
-
-    @pytest.mark.asyncio
-    async def test_list_models_returns_list(self):
-        backend = MLXBackend()
-        models = await backend.list_models()
-        assert isinstance(models, list) and len(models) >= 1
-
-    @pytest.mark.asyncio
-    async def test_stream_yields_chunks(self):
-        backend = MLXBackend()
-        fake = GenerationResult(
-            text="A" * 120, tokens_generated=10, time_ms=100.0, model_id="test", success=True
-        )
-        with patch.object(backend, "generate", new_callable=AsyncMock, return_value=fake):
-            chunks = [c async for c in backend.generate_stream("hi", "test-model")]
-        assert len(chunks) == 3 and "".join(chunks) == "A" * 120
-
-    @pytest.mark.asyncio
-    async def test_stream_yields_nothing_on_failure(self):
-        backend = MLXBackend()
-        fake = GenerationResult(
-            text="",
-            tokens_generated=0,
-            time_ms=50.0,
-            model_id="test",
-            success=False,
-            error="mlx error",
-        )
-        with patch.object(backend, "generate", new_callable=AsyncMock, return_value=fake):
-            assert [c async for c in backend.generate_stream("hi", "test-model")] == []
-
-
 class TestBaseHTTPBackendSession:
     @pytest.mark.asyncio
     async def test_creates_session(self):
@@ -397,12 +281,5 @@ class TestBaseHTTPBackendSession:
 
 
 class TestURLConstruction:
-    @pytest.mark.parametrize(
-        "backend_cls,url,expected",
-        [
-            (OllamaBackend, "http://host:11434/", "http://host:11434"),
-            (LMStudioBackend, "http://host:1234/v1/", "http://host:1234/v1"),
-        ],
-    )
-    def test_strips_trailing_slash(self, backend_cls, url, expected):
-        assert backend_cls(base_url=url).base_url == expected
+    def test_strips_trailing_slash(self):
+        assert OllamaBackend(base_url="http://host:11434/").base_url == "http://host:11434"

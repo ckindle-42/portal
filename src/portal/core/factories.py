@@ -44,7 +44,6 @@ def create_execution_engine(
     """Return an ExecutionEngine with backend/circuit-breaker config."""
     backend_config = {
         "ollama_base_url": config.get("ollama_base_url", "http://localhost:11434"),
-        "lmstudio_base_url": config.get("lmstudio_base_url", "http://localhost:1234/v1"),
         "circuit_breaker_enabled": config.get("circuit_breaker_enabled", True),
         "circuit_breaker_threshold": config.get("circuit_breaker_threshold", 3),
         "circuit_breaker_timeout": config.get("circuit_breaker_timeout", 60),

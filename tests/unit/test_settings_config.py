@@ -106,7 +106,6 @@ class TestSubConfigs:
     def test_backends_defaults(self):
         cfg = BackendsConfig()
         assert cfg.ollama_url == "http://localhost:11434"
-        assert cfg.default_backend == "ollama"
 
     def test_web_config_defaults(self):
         cfg = WebConfig()
