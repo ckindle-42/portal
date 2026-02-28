@@ -39,7 +39,7 @@ class ModelMetadata:
     """Complete model metadata"""
 
     model_id: str
-    backend: str  # ollama, lmstudio, mlx
+    backend: str  # ollama (lmstudio and mlx planned)
     display_name: str
     parameters: str  # e.g., "7B", "32B"
     quantization: str  # e.g., "Q4_K_M", "4bit"

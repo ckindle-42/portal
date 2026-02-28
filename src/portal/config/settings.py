@@ -220,8 +220,6 @@ class BackendsConfig(BaseModel):
     """LLM backend configuration"""
 
     ollama_url: str = Field("http://localhost:11434", description="Ollama API URL")
-    mlx_enabled: bool = Field(False, description="Enable Apple MLX backend")
-    default_backend: str = Field("ollama", description="Default backend to use")
     timeout_seconds: int = Field(300, ge=1, le=3600, description="Request timeout in seconds")
 
     model_config = ConfigDict(extra="allow")
