@@ -101,22 +101,19 @@ class LocalKnowledgeTool(BaseTool):
 
             if action == "search":
                 return await self._search(parameters.get("query", ""), parameters.get("top_k", 5))
-            elif action == "add":
+            if action == "list":
+                return await self._list_documents()
+            if action == "clear":
+                return await self._clear()
+            if action == "add":
                 doc_path = parameters.get("document_path")
                 content = parameters.get("content")
-
                 if doc_path:
                     return await self._add_document(doc_path)
-                elif content:
+                if content:
                     return await self._add_content(content)
-                else:
-                    return self._error_response("Provide document_path or content")
-            elif action == "list":
-                return await self._list_documents()
-            elif action == "clear":
-                return await self._clear()
-            else:
-                return self._error_response(f"Unknown action: {action}")
+                return self._error_response("Provide document_path or content")
+            return self._error_response(f"Unknown action: {action}")
 
         except Exception as e:
             return self._error_response(str(e))

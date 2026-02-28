@@ -122,16 +122,15 @@ class ExcelProcessorTool(BaseTool):
 
         if action == "read":
             return await self._read_excel(parameters)
-        elif action == "write":
+        if action == "write":
             return await self._write_excel(parameters)
-        elif action == "analyze":
+        if action == "analyze":
             return await self._analyze_excel(parameters)
-        elif action == "format":
+        if action == "format":
             return await self._format_excel(parameters)
-        elif action == "add_chart":
+        if action == "add_chart":
             return await self._add_chart(parameters)
-        else:
-            return self._error_response(f"Unknown action: {action}")
+        return self._error_response(f"Unknown action: {action}")
 
     async def _read_excel(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Read Excel file"""

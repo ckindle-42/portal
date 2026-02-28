@@ -57,20 +57,15 @@ class CSVAnalyzerTool(BaseTool):
 
             if analysis_type == "head":
                 result["preview"] = df.head(10).to_string()
-
-            elif analysis_type == "statistics":
+            if analysis_type == "statistics":
                 result["statistics"] = df.describe().to_string()
-
-            elif analysis_type == "describe":
+            if analysis_type == "describe":
                 result["dtypes"] = df.dtypes.to_string()
                 result["null_counts"] = df.isnull().sum().to_string()
                 result["statistics"] = df.describe().to_string()
-
-            else:  # summary
+            if analysis_type not in ("head", "statistics", "describe"):
                 result["dtypes"] = {col: str(dtype) for col, dtype in df.dtypes.items()}
                 result["null_counts"] = df.isnull().sum().to_dict()
-
-                # Basic stats for numeric columns
                 numeric_cols = df.select_dtypes(include=["number"]).columns
                 if len(numeric_cols) > 0:
                     result["numeric_summary"] = {
@@ -79,7 +74,7 @@ class CSVAnalyzerTool(BaseTool):
                             "min": float(df[col].min()),
                             "max": float(df[col].max()),
                         }
-                        for col in numeric_cols[:5]  # First 5 numeric columns
+                        for col in numeric_cols[:5]
                     }
 
             return self._success_response(result)

@@ -364,23 +364,8 @@ class PowerPointProcessorTool(BaseTool):
             slides_content = []
 
             for idx, slide in enumerate(prs.slides):
-                slide_data = {"index": idx, "title": "", "content": [], "notes": ""}
-
-                # Get title
-                if slide.shapes.title:
-                    slide_data["title"] = slide.shapes.title.text
-
-                # Get text content
-                for shape in slide.shapes:
-                    if hasattr(shape, "text"):
-                        if shape != slide.shapes.title and shape.text:
-                            slide_data["content"].append(shape.text)
-
-                # Get notes
-                if slide.has_notes_slide:
-                    notes_slide = slide.notes_slide
-                    slide_data["notes"] = notes_slide.notes_text_frame.text
-
+                slide_data = self._parse_slide(slide)
+                slide_data["index"] = idx
                 slides_content.append(slide_data)
 
             return self._success_response(
@@ -395,6 +380,18 @@ class PowerPointProcessorTool(BaseTool):
         except Exception as e:
             logger.error("PowerPoint read error: %s", e)
             return self._error_response(f"Read error: {e}")
+
+    def _parse_slide(self, slide: Any) -> dict[str, Any]:
+        """Extract title, content, and notes from a single slide."""
+        slide_data: dict[str, Any] = {"title": "", "content": [], "notes": ""}
+        if slide.shapes.title:
+            slide_data["title"] = slide.shapes.title.text
+        for shape in slide.shapes:
+            if hasattr(shape, "text") and shape != slide.shapes.title and shape.text:
+                slide_data["content"].append(shape.text)
+        if slide.has_notes_slide:
+            slide_data["notes"] = slide.notes_slide.notes_text_frame.text
+        return slide_data
 
     async def _save_presentation(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Save presentation (placeholder for future modifications)"""

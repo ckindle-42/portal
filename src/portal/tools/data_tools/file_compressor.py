@@ -75,19 +75,19 @@ class FileCompressorTool(BaseTool):
 
     async def _compress(self, files: list[str], archive_path: str, fmt: str) -> dict[str, Any]:
         """Compress files"""
+        if fmt not in ("zip", "tar", "tar.gz"):
+            return self._error_response(f"Unsupported format: {fmt}")
         if fmt == "zip":
             with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 for file_path in files:
                     if os.path.exists(file_path):
                         zf.write(file_path, os.path.basename(file_path))
-        elif fmt in ["tar", "tar.gz"]:
+        if fmt in ("tar", "tar.gz"):
             mode = "w:gz" if fmt == "tar.gz" else "w"
             with tarfile.open(archive_path, mode) as tf:
                 for file_path in files:
                     if os.path.exists(file_path):
                         tf.add(file_path, arcname=os.path.basename(file_path))
-        else:
-            return self._error_response(f"Unsupported format: {fmt}")
 
         size = os.path.getsize(archive_path)
         return self._success_response(
