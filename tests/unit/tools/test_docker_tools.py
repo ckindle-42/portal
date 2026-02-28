@@ -8,10 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from portal.tools.docker_tools.docker_compose import DockerComposeTool
-from portal.tools.docker_tools.docker_logs import DockerLogsTool
-from portal.tools.docker_tools.docker_ps import DockerPSTool
-from portal.tools.docker_tools.docker_run import DockerRunTool
-from portal.tools.docker_tools.docker_stop import DockerStopTool
+from portal.tools.docker_tools.docker_tool import DockerTool
 
 _has_docker = importlib.util.find_spec("docker") is not None
 
@@ -38,32 +35,32 @@ def _make_mock_docker_client():
 @pytest.mark.unit
 @pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerPSTool:
-    """Test docker_ps tool"""
+    """Test docker ps action via DockerTool"""
 
     @pytest.mark.asyncio
     async def test_docker_ps_success(self):
         """Test listing Docker containers"""
-        tool = DockerPSTool()
+        tool = DockerTool()
         mock_client, _ = _make_mock_docker_client()
 
         with (
-            patch("portal.tools.docker_tools.docker_ps.DOCKER_AVAILABLE", True),
-            patch("portal.tools.docker_tools.docker_ps.docker") as mock_docker_mod,
+            patch("portal.tools.docker_tools.docker_tool.DOCKER_AVAILABLE", True),
+            patch("portal.tools.docker_tools.docker_tool.docker") as mock_docker_mod,
         ):
             mock_docker_mod.from_env.return_value = mock_client
             tool.client = mock_client
-            result = await tool.execute({})
+            result = await tool.execute({"action": "ps"})
 
         assert result["success"] is True
-        assert "containers" in result or "result" in result
+        assert "result" in result
 
     @pytest.mark.asyncio
     async def test_docker_ps_no_docker(self):
         """Test when Docker SDK is not available"""
-        tool = DockerPSTool()
+        tool = DockerTool()
 
-        with patch("portal.tools.docker_tools.docker_ps.DOCKER_AVAILABLE", False):
-            result = await tool.execute({})
+        with patch("portal.tools.docker_tools.docker_tool.DOCKER_AVAILABLE", False):
+            result = await tool.execute({"action": "ps"})
 
         assert result["success"] is False
         assert "error" in result
@@ -73,27 +70,24 @@ class TestDockerPSTool:
 @pytest.mark.requires_docker
 @pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerRunTool:
-    """Test docker_run tool"""
+    """Test docker run action via DockerTool"""
 
     @pytest.mark.asyncio
     async def test_docker_run_success(self):
         """Test running a Docker container"""
-        tool = DockerRunTool()
+        tool = DockerTool()
         mock_client, mock_container = _make_mock_docker_client()
 
         with (
-            patch("portal.tools.docker_tools.docker_run.DOCKER_AVAILABLE", True),
-            patch("portal.tools.docker_tools.docker_run.docker") as mock_docker_mod,
+            patch("portal.tools.docker_tools.docker_tool.DOCKER_AVAILABLE", True),
+            patch("portal.tools.docker_tools.docker_tool.docker") as mock_docker_mod,
         ):
             mock_docker_mod.from_env.return_value = mock_client
             mock_docker_mod.errors.ImageNotFound = Exception
             mock_docker_mod.errors.APIError = Exception
             tool.client = mock_client
             result = await tool.execute(
-                {
-                    "image": "nginx:latest",
-                    "name": "test-nginx",
-                }
+                {"action": "run", "image": "nginx:latest", "name": "test-nginx"}
             )
 
         assert result["success"] is True
@@ -102,26 +96,24 @@ class TestDockerRunTool:
 @pytest.mark.unit
 @pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerStopTool:
-    """Test docker_stop tool"""
+    """Test docker stop action via DockerTool"""
 
     @pytest.mark.asyncio
     async def test_docker_stop_success(self):
         """Test stopping Docker containers"""
-        tool = DockerStopTool()
+        tool = DockerTool()
         mock_client, mock_container = _make_mock_docker_client()
         mock_container.name = "test-container"
 
         with (
-            patch("portal.tools.docker_tools.docker_stop.DOCKER_AVAILABLE", True),
-            patch("portal.tools.docker_tools.docker_stop.docker") as mock_docker_mod,
+            patch("portal.tools.docker_tools.docker_tool.DOCKER_AVAILABLE", True),
+            patch("portal.tools.docker_tools.docker_tool.docker") as mock_docker_mod,
         ):
             mock_docker_mod.from_env.return_value = mock_client
             mock_docker_mod.errors.NotFound = type("NotFound", (Exception,), {})
             tool.client = mock_client
             result = await tool.execute(
-                {
-                    "containers": ["test-container"],
-                }
+                {"action": "stop", "containers": ["test-container"]}
             )
 
         assert result["success"] is True
@@ -130,32 +122,29 @@ class TestDockerStopTool:
 @pytest.mark.unit
 @pytest.mark.skipif(not _has_docker, reason="docker not installed")
 class TestDockerLogsTool:
-    """Test docker_logs tool"""
+    """Test docker logs action via DockerTool"""
 
     @pytest.mark.asyncio
     async def test_docker_logs_success(self):
         """Test viewing Docker container logs"""
-        tool = DockerLogsTool()
+        tool = DockerTool()
         mock_client, mock_container = _make_mock_docker_client()
         mock_container.name = "test-container"
         mock_container.short_id = "abc123"
 
         with (
-            patch("portal.tools.docker_tools.docker_logs.DOCKER_AVAILABLE", True),
-            patch("portal.tools.docker_tools.docker_logs.docker") as mock_docker_mod,
+            patch("portal.tools.docker_tools.docker_tool.DOCKER_AVAILABLE", True),
+            patch("portal.tools.docker_tools.docker_tool.docker") as mock_docker_mod,
         ):
             mock_docker_mod.from_env.return_value = mock_client
             mock_docker_mod.errors.NotFound = type("NotFound", (Exception,), {})
             tool.client = mock_client
             result = await tool.execute(
-                {
-                    "container": "test-container",
-                    "tail": 50,
-                }
+                {"action": "logs", "container": "test-container", "tail": 50}
             )
 
         assert result["success"] is True
-        assert "logs" in result or "result" in result
+        assert "result" in result
 
 
 @pytest.mark.unit
