@@ -258,3 +258,8 @@ class ContextManager:
         """Clear conversation history for a chat"""
         await asyncio.to_thread(self._sync_clear_history, chat_id)
         logger.info("Cleared history for chat_id: %s", chat_id)
+
+    async def close(self) -> None:
+        """Close the connection pool and release resources."""
+        self._pool.close()
+        logger.info("ContextManager connection pool closed")

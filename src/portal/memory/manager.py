@@ -156,3 +156,8 @@ class MemoryManager:
         for idx, snippet in enumerate(snippets, start=1):
             lines.append(f"{idx}. {snippet.text}")
         return "\n".join(lines)
+
+    async def close(self) -> None:
+        """Close the connection pool and release resources."""
+        self._pool.close()
+        logger.info("MemoryManager connection pool closed")
