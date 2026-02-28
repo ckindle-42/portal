@@ -1,5 +1,5 @@
 """
-Model Backends - Adapters for Ollama, LM Studio, and MLX
+Model Backends - Adapters for Ollama LLM backend
 """
 
 import asyncio
@@ -125,10 +125,7 @@ class BaseHTTPBackend(ModelBackend):
         system_prompt: str | None,
         messages: list[dict[str, Any]] | None,
     ) -> list[dict[str, Any]]:
-        """Build a chat-messages list from prompt, system prompt, and optional history.
-
-        Shared by Ollama and LMStudio backends to eliminate message-building duplication.
-        """
+        """Build a chat-messages list from prompt, system prompt, and optional history."""
         if messages is not None:
             chat_messages: list[dict[str, Any]] = list(messages)
             if system_prompt and (not chat_messages or chat_messages[0].get("role") != "system"):
@@ -256,101 +253,6 @@ class OllamaBackend(BaseHTTPBackend):
                     return [m["name"] for m in data.get("models", [])]
         except Exception as e:
             logger.error("Failed to list Ollama models: %s", e)
-        return []
-
-
-class LMStudioBackend(BaseHTTPBackend):
-    """LM Studio backend adapter (OpenAI-compatible API)"""
-
-    def __init__(self, base_url: str = "http://localhost:1234/v1") -> None:
-        super().__init__(base_url)
-
-    async def generate(
-        self,
-        prompt: str,
-        model_name: str,
-        system_prompt: str | None = None,
-        max_tokens: int = 2048,
-        temperature: float = 0.7,
-        messages: list[dict[str, Any]] | None = None,
-    ) -> GenerationResult:
-        """Generate using OpenAI-compatible /chat/completions API."""
-        start_time = time.time()
-        try:
-            payload = {
-                "model": model_name,
-                "messages": self._build_chat_messages(prompt, system_prompt, messages),
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "stream": False,
-            }
-            status, data = await self._post_json("/chat/completions", payload)
-            if status == 200:
-                content = data["choices"][0]["message"]["content"]
-                tokens = data.get("usage", {}).get("completion_tokens", 0)
-                return GenerationResult(
-                    text=content,
-                    tokens_generated=tokens,
-                    time_ms=(time.time() - start_time) * 1000,
-                    model_id=model_name,
-                    success=True,
-                )
-            return self._error_result(model_name, start_time, f"HTTP {status}: {data}")
-        except Exception as e:
-            logger.error("LM Studio generation error: %s", e)
-            return self._error_result(model_name, start_time, str(e))
-
-    async def generate_stream(
-        self,
-        prompt: str,
-        model_name: str,
-        system_prompt: str | None = None,
-        max_tokens: int = 2048,
-        temperature: float = 0.7,
-        messages: list[dict[str, Any]] | None = None,
-    ) -> AsyncGenerator[str, None]:
-        """Stream generation from LM Studio via SSE."""
-        try:
-            payload = {
-                "model": model_name,
-                "messages": self._build_chat_messages(prompt, system_prompt, messages),
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "stream": True,
-            }
-            async for raw_line in self._stream_content("/chat/completions", payload):
-                line = raw_line.decode("utf-8").strip()
-                if line.startswith("data: ") and line != "data: [DONE]":
-                    try:
-                        data = json.loads(line[6:])
-                        delta = data["choices"][0].get("delta", {})
-                        if "content" in delta:
-                            yield delta["content"]
-                    except Exception:
-                        continue
-        except Exception as e:
-            logger.error("LM Studio stream error: %s", e)
-            return
-
-    async def is_available(self) -> bool:
-        """Check if LM Studio is available."""
-        try:
-            session = await self._get_session()
-            async with session.get(f"{self.base_url}/models") as response:
-                return response.status == 200
-        except Exception:
-            return False
-
-    async def list_models(self) -> list:
-        """List available LM Studio models."""
-        try:
-            session = await self._get_session()
-            async with session.get(f"{self.base_url}/models") as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return [m["id"] for m in data.get("data", [])]
-        except Exception as e:
-            logger.error("Failed to list LM Studio models: %s", e)
         return []
 
 

@@ -9,7 +9,7 @@ from typing import Any
 
 from .circuit_breaker import CircuitBreaker, CircuitState  # noqa: F401
 from .intelligent_router import IntelligentRouter, RoutingDecision
-from .model_backends import GenerationResult, LMStudioBackend, MLXBackend, OllamaBackend
+from .model_backends import GenerationResult, MLXBackend, OllamaBackend
 from .model_registry import ModelMetadata, ModelRegistry
 
 logger = logging.getLogger(__name__)
@@ -45,9 +45,6 @@ class ExecutionEngine:
         self.backends = {
             "ollama": OllamaBackend(
                 base_url=self.config.get("ollama_base_url", "http://localhost:11434")
-            ),
-            "lmstudio": LMStudioBackend(
-                base_url=self.config.get("lmstudio_base_url", "http://localhost:1234/v1")
             ),
             "mlx": MLXBackend(model_path=self.config.get("mlx_model_path")),
         }
