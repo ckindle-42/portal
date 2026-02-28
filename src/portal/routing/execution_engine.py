@@ -7,7 +7,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
-from .circuit_breaker import CircuitBreaker, CircuitState
+from .circuit_breaker import CircuitBreaker, CircuitState  # noqa: F401
 from .intelligent_router import IntelligentRouter, RoutingDecision
 from .model_backends import GenerationResult, LMStudioBackend, MLXBackend, OllamaBackend
 from .model_registry import ModelMetadata, ModelRegistry
