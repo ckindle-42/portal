@@ -9,8 +9,9 @@ This module provides security features including:
 - Security policies
 """
 
+from .input_sanitizer import InputSanitizer
 from .middleware import SecurityContext, SecurityMiddleware
-from .security_module import InputSanitizer, RateLimiter
+from .rate_limiter import RateLimiter
 
 __all__ = [
     "SecurityMiddleware",
