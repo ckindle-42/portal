@@ -256,13 +256,6 @@ async def test_observability_imports():
 
         # Try optional imports
         try:
-            from portal.observability import setup_telemetry  # noqa: F401
-
-            print("  ✓ Can import setup_telemetry")
-        except ImportError as e:
-            print(f"  ⚠️  Tracer import warning: {e}")
-
-        try:
             from portal.observability import MetricsCollector  # noqa: F401
 
             print("  ✓ Can import MetricsCollector")
