@@ -1,0 +1,45 @@
+name: Security Scan
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"  # Every Monday at 8am UTC
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pip-audit:
+    name: Python Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: pip install pip-audit
+      - name: Audit Python dependencies
+        run: pip-audit --desc --fix --dry-run
+        continue-on-error: true  # Don't block PRs on new advisories — alert only
+
+  docker-scout:
+    name: Docker Image Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'  # Only on weekly schedule, not every PR
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan Open WebUI image
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: ghcr.io/open-webui/open-webui:main
+          only-severities: critical,high
+        continue-on-error: true
+      - name: Scan Portal Dockerfile
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          dockerfiles: Dockerfile
+          only-severities: critical,high
+        continue-on-error: true
