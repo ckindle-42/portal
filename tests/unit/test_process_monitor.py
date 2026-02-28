@@ -13,7 +13,7 @@ _has_psutil = importlib.util.find_spec("psutil") is not None
 class TestProcessMonitorMetadata:
     def test_metadata(self):
         tool = ProcessMonitorTool()
-        meta = tool._get_metadata()
+        meta = tool.metadata
         assert meta.name == "process_monitor"
         assert len(meta.parameters) >= 3
 

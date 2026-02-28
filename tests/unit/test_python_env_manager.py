@@ -11,7 +11,7 @@ from portal.tools.dev_tools.python_env_manager import PythonEnvManagerTool
 class TestPythonEnvManagerMetadata:
     def test_metadata(self):
         tool = PythonEnvManagerTool()
-        meta = tool._get_metadata()
+        meta = tool.metadata
         assert meta.name == "python_env_manager"
         assert meta.requires_confirmation is True
         assert len(meta.parameters) >= 2

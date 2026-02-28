@@ -10,6 +10,7 @@ import logging
 from typing import Any
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory
+
 try:
     import docker
     import docker.errors

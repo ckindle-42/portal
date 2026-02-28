@@ -12,7 +12,7 @@ from portal.tools.data_tools.file_compressor import FileCompressorTool
 class TestFileCompressorMetadata:
     def test_metadata(self):
         tool = FileCompressorTool()
-        meta = tool._get_metadata()
+        meta = tool.metadata
         assert meta.name == "file_compressor"
         assert meta.requires_confirmation is True
 
