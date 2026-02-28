@@ -117,6 +117,14 @@ class WebInterface(BaseInterface):
         self._server = None
         # Shared HTTP client for Ollama/Whisper calls (avoids per-request connection overhead)
         self._ollama_client: httpx.AsyncClient | None = None
+        # Reuse sanitizer from SecurityMiddleware to share state; fall back to new instance
+        from portal.security.input_sanitizer import InputSanitizer as _InputSanitizer
+
+        self._input_sanitizer = (
+            secure_agent.input_sanitizer
+            if isinstance(secure_agent, SecurityMiddleware)
+            else _InputSanitizer()
+        )
         self.app = self._build_app()
 
     def _extract_user_id(self, request: Request) -> str:
@@ -292,10 +300,9 @@ class WebInterface(BaseInterface):
             if payload.stream:
                 # Security gate for streaming path — mirrors process_message() in SecurityMiddleware
                 if isinstance(self.secure_agent, SecurityMiddleware):
-                    from portal.security.security_module import InputSanitizer
-
-                    _sanitizer = InputSanitizer()
-                    _sanitized, _warnings = _sanitizer.sanitize_command(str(last_user_msg))
+                    _sanitized, _warnings = self._input_sanitizer.sanitize_command(
+                        str(last_user_msg)
+                    )
                     if any("Dangerous pattern detected" in w for w in _warnings):
                         raise ValidationError("Message blocked by security policy")
                     _allowed, _err = await self.secure_agent.rate_limiter.check_limit(user_id)
@@ -433,9 +440,7 @@ class WebInterface(BaseInterface):
     def _register_websocket_route(self, app: FastAPI) -> None:
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket) -> None:
-            from portal.security.security_module import InputSanitizer
-
-            sanitizer = InputSanitizer()
+            sanitizer = self._input_sanitizer
 
             static_key = os.getenv("WEB_API_KEY", "").strip()
             if static_key:
