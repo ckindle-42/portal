@@ -12,6 +12,13 @@
 
 ```bash
 git clone https://github.com/ckindle-42/portal && cd portal
+```
+
+> Fastest path: run `bash launch.sh up` and follow first-run prompts. The launcher auto-detects hardware, creates `.env`, generates secrets, and installs dependencies.
+
+Manual path (if you want explicit setup):
+
+```bash
 cp .env.example .env
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[all]"
@@ -144,7 +151,7 @@ Enabled by default when `MCP_ENABLED=true` (the default). Three core servers lau
 
 | Server | Description |
 |---|---|
-| `filesystem` | Safe local filesystem access under `/portal/data/` |
+| `filesystem` | Safe local filesystem access under `/portal/data/user_{user_id}/` |
 | `bash` | Sandboxed CLI execution with human-in-the-loop approval |
 | `web` | Web search and scraping |
 
@@ -168,10 +175,10 @@ Image generation (ComfyUI) and speech-to-text (Whisper) MCP wrappers. Enabled by
 # In .env
 GENERATION_SERVICES=true
 COMFYUI_URL=http://localhost:8188
-VOICE_API_URL=http://localhost:5002
+WHISPER_MODEL=base
 ```
 
-Requires ComfyUI and/or Whisper running on those ports independently.
+ComfyUI must be running at `COMFYUI_URL` for image generation. Whisper runs locally inside the MCP wrapper (model size controlled by `WHISPER_MODEL`).
 
 ### Telegram Bot
 
@@ -240,7 +247,7 @@ curl http://localhost:8000/health        # Router
 curl http://localhost:8080               # Web UI
 ```
 
-Healthy output:
+Healthy output (Open WebUI + MCP enabled):
 
 ```
 === Portal Doctor ===
