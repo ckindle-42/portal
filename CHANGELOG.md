@@ -5,13 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-## [1.3.4] — 2026-02-27 — Codebase Shrink & Optimization
+## [1.3.4] — 2026-02-27 — Codebase Shrink & Optimization (Round 1 + Round 2)
 
 ### Summary
 
-Dead-code removal, test consolidation, nesting reduction, and one bug fix. No new features or architectural changes. All removals were evidence-verified via import tracing before deletion.
+Dead-code removal, test consolidation, nesting reduction, and one bug fix across two rounds. No new features or architectural changes. All removals were evidence-verified via import tracing before deletion.
 
-**Metrics**: ~500 src LOC removed, ~40 test LOC net reduction, 0 lint errors.
+**Round 1 Metrics**: ~500 src LOC removed, ~40 test LOC net reduction, 0 lint errors.
+
+**Round 2 Addendum (2026-02-28)**: Additional dead-code removal, 5 unused pip dependencies removed, 2 brittle tests deleted, QUAL-/ARCH- review tags cleaned, and context_manager.Message renamed to ContextMessage to eliminate name collision. ~570 src LOC removed (session_manager.py + user_store methods + validate_tool_parameters), 193 test LOC removed (test_session_manager.py). 0 lint errors, 818 tests passing (1 skipped).
 
 ### Removed
 
@@ -40,6 +42,33 @@ Dead-code removal, test consolidation, nesting reduction, and one bug fix. No ne
 
 - Removed internal review tags (`QUAL-3`, `ARCH-3`) from `ARCHITECTURE.md`
 - Updated README hardware table entry to "Apple M4 Mac Mini Pro (64–128GB)"
+
+---
+
+### Round 2 Addendum — 2026-02-28
+
+#### Removed (Round 2)
+
+- `src/portal/tools/dev_tools/session_manager.py` (337 LOC) — `SessionManager` never subclassed `BaseTool`, never imported in production
+- `tests/unit/test_session_manager.py` (193 LOC) — tests for the removed module
+- Unused pip dependencies: `websockets` (pulled transitively by uvicorn), `cryptography` (orphaned by prior jose removal), `opentelemetry-api`, `opentelemetry-sdk`, `mcp` (all zero imports in src/)
+- Uncalled `UserStore` methods: `create_api_key()`, `get_tokens()`, `_ConnectionPool.close_all()`
+- Uncalled `ToolRegistry.validate_tool_parameters()` (tool validation handled by `BaseTool.validate_parameters()`)
+- `Message` and `Response` unused re-exports from `src/portal/interfaces/__init__.py`
+
+#### Fixed (Round 2)
+
+- `context_manager.Message` renamed to `ContextMessage` to eliminate name collision with `agent_interface.Message`
+
+#### Refactored (Round 2)
+
+- `powerpoint_processor._add_slide()`: extracted `_fill_body_placeholder()` helper to reduce nesting from 6 → 3
+
+#### Documentation (Round 2)
+
+- Removed `QUAL-` and `ARCH-` review tags from `mcp_registry.py` and `test_bootstrap.py`
+- Removed brittle `test_default_model_count` (breaks on model list changes) and trivial `test_processing_result_defaults`
+- Applied ruff format to entire codebase (pre-existing formatting backlog cleared)
 
 ---
 
