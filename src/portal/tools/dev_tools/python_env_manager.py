@@ -42,31 +42,22 @@ class PythonEnvManagerTool(BaseTool):
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Manage Python environments"""
+        action = parameters.get("action", "").lower()
+        handler = self._DISPATCH.get(action)
+        if not handler:
+            return self._error_response(
+                f"Unknown action: {action}. Use: {', '.join(self._DISPATCH)}"
+            )
         try:
-            action = parameters.get("action", "").lower()
-
-            if action == "create":
-                return await self._create_env(parameters.get("env_path", "venv"))
-            elif action == "list":
-                return await self._list_envs()
-            elif action == "install":
-                return await self._install_packages(
-                    parameters.get("env_path", "venv"), parameters.get("packages", [])
-                )
-            elif action == "info":
-                return await self._env_info(parameters.get("env_path", "venv"))
-            elif action == "freeze":
-                return await self._freeze(parameters.get("env_path", "venv"))
-            else:
-                return self._error_response(f"Unknown action: {action}")
-
+            return await handler(self, parameters)
         except Exception as e:
             return self._error_response(str(e))
 
-    async def _create_env(self, env_path: str) -> dict[str, Any]:
+    async def _create_env(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Create a new virtual environment"""
         import venv
 
+        env_path = parameters.get("env_path", "venv")
         if os.path.exists(env_path):
             return self._error_response(f"Environment already exists: {env_path}")
 
@@ -79,7 +70,7 @@ class PythonEnvManagerTool(BaseTool):
             }
         )
 
-    async def _list_envs(self) -> dict[str, Any]:
+    async def _list_envs(self, parameters: dict[str, Any] | None = None) -> dict[str, Any]:
         """List virtual environments in current directory"""
         envs = []
 
@@ -93,8 +84,10 @@ class PythonEnvManagerTool(BaseTool):
 
         return self._success_response({"environments": envs, "count": len(envs)})
 
-    async def _install_packages(self, env_path: str, packages: list[str]) -> dict[str, Any]:
+    async def _install_packages(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Install packages in environment"""
+        env_path = parameters.get("env_path", "venv")
+        packages = parameters.get("packages", [])
         if not packages:
             return self._error_response("No packages specified")
 
@@ -119,8 +112,9 @@ class PythonEnvManagerTool(BaseTool):
         else:
             return self._error_response(f"Installation failed: {result.stderr[:500]}")
 
-    async def _env_info(self, env_path: str) -> dict[str, Any]:
+    async def _env_info(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Get environment information"""
+        env_path = parameters.get("env_path", "venv")
         python_path = os.path.join(env_path, "bin", "python")
         if not os.path.exists(python_path):
             python_path = os.path.join(env_path, "Scripts", "python.exe")
@@ -139,8 +133,9 @@ class PythonEnvManagerTool(BaseTool):
             }
         )
 
-    async def _freeze(self, env_path: str) -> dict[str, Any]:
+    async def _freeze(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Get installed packages"""
+        env_path = parameters.get("env_path", "venv")
         pip_path = os.path.join(env_path, "bin", "pip")
         if not os.path.exists(pip_path):
             pip_path = os.path.join(env_path, "Scripts", "pip.exe")
@@ -153,3 +148,11 @@ class PythonEnvManagerTool(BaseTool):
         packages = result.stdout.strip().split("\n") if result.stdout else []
 
         return self._success_response({"packages": packages, "count": len(packages)})
+
+    _DISPATCH: dict[str, Any] = {
+        "create": _create_env,
+        "list": _list_envs,
+        "install": _install_packages,
+        "info": _env_info,
+        "freeze": _freeze,
+    }

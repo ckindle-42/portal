@@ -236,23 +236,11 @@ class EnhancedKnowledgeTool(BaseTool):
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute knowledge base action"""
-
         action = parameters.get("action", "").lower()
-
-        if action == "add":
-            return await self._add_document(parameters)
-        elif action == "search":
-            return await self._search(parameters)
-        elif action == "list":
-            return await self._list_documents(parameters)
-        elif action == "delete":
-            return await self._delete_document(parameters)
-        elif action == "stats":
-            return await self._get_stats()
-        elif action == "migrate":
-            return await self._migrate_from_json(parameters)
-        else:
+        handler = self._DISPATCH.get(action)
+        if not handler:
             return self._error_response(f"Unknown action: {action}")
+        return await handler(self, parameters)
 
     async def _add_document(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Add document to knowledge base"""
@@ -454,7 +442,7 @@ class EnhancedKnowledgeTool(BaseTool):
         except Exception as e:
             return self._error_response(f"Delete error: {e}")
 
-    async def _get_stats(self) -> dict[str, Any]:
+    async def _get_stats(self, parameters: dict[str, Any] | None = None) -> dict[str, Any]:
         """Get knowledge base statistics"""
 
         try:
@@ -540,3 +528,12 @@ class EnhancedKnowledgeTool(BaseTool):
 
         except Exception as e:
             return self._error_response(f"Migration error: {e}")
+
+    _DISPATCH: dict[str, Any] = {
+        "add": _add_document,
+        "search": _search,
+        "list": _list_documents,
+        "delete": _delete_document,
+        "stats": _get_stats,
+        "migrate": _migrate_from_json,
+    }

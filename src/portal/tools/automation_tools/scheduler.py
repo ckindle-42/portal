@@ -54,22 +54,14 @@ class JobSchedulerTool(BaseTool):
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Manage scheduled jobs"""
+        action = parameters.get("action", "").lower()
+        handler = self._DISPATCH.get(action)
+        if not handler:
+            return self._error_response(
+                f"Unknown action: {action}. Use: {', '.join(self._DISPATCH)}"
+            )
         try:
-            action = parameters.get("action", "").lower()
-
-            if action == "create":
-                return await self._create_job(parameters)
-            elif action == "list":
-                return await self._list_jobs()
-            elif action == "delete":
-                return await self._delete_job(parameters.get("job_id"))
-            elif action == "pause":
-                return await self._pause_job(parameters.get("job_id"))
-            elif action == "resume":
-                return await self._resume_job(parameters.get("job_id"))
-            else:
-                return self._error_response(f"Unknown action: {action}")
-
+            return await handler(self, parameters)
         except Exception as e:
             return self._error_response(str(e))
 
@@ -103,21 +95,23 @@ class JobSchedulerTool(BaseTool):
 
         return self._success_response({"message": f"Job created: {name}", "job": job})
 
-    async def _list_jobs(self) -> dict[str, Any]:
+    async def _list_jobs(self, parameters: dict[str, Any] | None = None) -> dict[str, Any]:
         """List all jobs"""
         jobs = list(JobSchedulerTool._jobs.values())
         return self._success_response({"total": len(jobs), "jobs": jobs})
 
-    async def _delete_job(self, job_id: str | None) -> dict[str, Any]:
+    async def _delete_job(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Delete a job"""
+        job_id = parameters.get("job_id")
         if not job_id or job_id not in JobSchedulerTool._jobs:
             return self._error_response(f"Job not found: {job_id}")
 
         job = JobSchedulerTool._jobs.pop(job_id)
         return self._success_response({"message": f"Job deleted: {job['name']}", "job_id": job_id})
 
-    async def _pause_job(self, job_id: str | None) -> dict[str, Any]:
+    async def _pause_job(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Pause a job"""
+        job_id = parameters.get("job_id")
         if not job_id or job_id not in JobSchedulerTool._jobs:
             return self._error_response(f"Job not found: {job_id}")
 
@@ -126,8 +120,9 @@ class JobSchedulerTool(BaseTool):
             {"message": f"Job paused: {JobSchedulerTool._jobs[job_id]['name']}", "job_id": job_id}
         )
 
-    async def _resume_job(self, job_id: str | None) -> dict[str, Any]:
+    async def _resume_job(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Resume a paused job"""
+        job_id = parameters.get("job_id")
         if not job_id or job_id not in JobSchedulerTool._jobs:
             return self._error_response(f"Job not found: {job_id}")
 
@@ -135,6 +130,14 @@ class JobSchedulerTool(BaseTool):
         return self._success_response(
             {"message": f"Job resumed: {JobSchedulerTool._jobs[job_id]['name']}", "job_id": job_id}
         )
+
+    _DISPATCH: dict[str, Any] = {
+        "create": _create_job,
+        "list": _list_jobs,
+        "delete": _delete_job,
+        "pause": _pause_job,
+        "resume": _resume_job,
+    }
 
     def _calculate_next_run(self, schedule: str) -> str:
         """Calculate next run time from a cron expression or interval shorthand.
