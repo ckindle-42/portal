@@ -5,6 +5,66 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [Unreleased] — 2026-02-28 — Modularization & Production Hardening
+
+### Summary
+
+Modular refactor with strict behavior parity. 15 tasks across 3 tiers. No new features.
+All HTTP contracts, SSE chunk schema, Prometheus metric names, and CLI behavior unchanged.
+
+**Metrics**: 2 new files (`circuit_breaker.py`, `rate_limiter.py`, `input_sanitizer.py`),
+~180 src LOC net reduction from deduplication, 2 new contract tests added.
+0 lint errors, 818 unit tests passing (same 2 pre-existing env failures as before).
+
+### Fixed
+
+- `launch.sh`: Replace bash 4+ `${var,,}` lowercase expansion with POSIX `case` statements
+  for `tg_enable` and `slack_enable` — fixes install on bash 3.x, dash, minimal Linux
+- `CLAUDE.md`: Version field corrected from 1.3.3 → 1.3.4
+
+### Added
+
+- `.env.example`: Documented 8 previously undocumented env vars (`PORTAL_VISION_MODEL`,
+  `PORTAL_CSP`, `PORTAL_HSTS`, `PORTAL_MAX_AUDIO_MB`, `WS_RATE_LIMIT`, `WS_RATE_WINDOW`,
+  `PORTAL_CONTEXT_RETENTION_DAYS`, `PORTAL_MEMORY_RETENTION_DAYS`)
+- `test(web)`: Contract tests for `/v1/audio/transcriptions` — 401 auth check and
+  Whisper proxy response schema
+
+### Refactored
+
+- **Tier 1 — Boundary Fixes**
+  - `routing/circuit_breaker.py`: Extracted `CircuitBreaker`/`CircuitState` from `execution_engine.py`
+  - `security/rate_limiter.py`, `security/input_sanitizer.py`: Split `security_module.py`
+    into two focused modules; `security_module.py` retained as re-export shim
+  - `interfaces/web/server.py`: `WebInterface` now reuses `SecurityMiddleware.input_sanitizer`
+    instead of creating ad-hoc `InputSanitizer()` instances in 2 places
+
+- **Tier 2 — Structural Decomposition**
+  - `interfaces/web/server.py`: Handler closures in `_register_chat_routes` and
+    `_register_websocket_route` extracted into class methods
+    (`_handle_chat_completions`, `_handle_audio_transcriptions`, `_handle_list_models`,
+    `_handle_websocket`)
+  - `observability/metrics.py`: Runtime metric globals merged from `runtime_metrics.py`;
+    `runtime_metrics.py` retained as re-export shim
+  - `lifecycle.py`: `Runtime.bootstrap` (94 lines) decomposed into
+    `_load_settings`, `_create_agent`, `_discover_ollama_models`,
+    `_init_observability`, `_start_optional_components`, `_start_config_watcher`
+  - `interfaces/telegram/interface.py`: `__init__` (92 lines) decomposed into
+    `_validate_config`, `_setup_rate_limiter`, `_setup_confirmation_middleware`
+  - `routing/router.py`: Broad `except (JSONDecodeError, KeyError, TypeError): pass`
+    split into two clauses with `logger.debug()` for better debuggability
+
+- **Tier 3 — Strategic Refactors**
+  - `core/agent_core.py`: MCP tool loop simplified — `loop(N) + final_execute` pattern
+    replaced with `loop(N+1)` with early return, eliminating duplicate execution call
+  - `interfaces/telegram/interface.py`: `TelegramInterface.__init__` accepts optional
+    `rate_limiter` parameter for DI consistency with web interface
+  - `routing/model_backends.py`: `BaseHTTPBackend` gains `_post_json()` and
+    `_stream_content()` helpers; `OllamaBackend` and `LMStudioBackend` use them to
+    eliminate duplicated aiohttp boilerplate
+
+---
+
 ## [1.3.4] — 2026-02-27 — Codebase Shrink & Optimization (Round 1 + Round 2)
 
 ### Summary
