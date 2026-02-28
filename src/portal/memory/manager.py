@@ -5,11 +5,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import sqlite3
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+from portal.core.db import ConnectionPool
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class MemoryManager:
         self.provider = os.getenv("PORTAL_MEMORY_PROVIDER", "auto").lower()
         self._mem0 = None
         self._insert_count = 0
+        self._pool = ConnectionPool(self.db_path, pragmas=("PRAGMA journal_mode=WAL",))
         self._init_db()
         self._init_provider()
 
@@ -63,22 +65,21 @@ class MemoryManager:
         logger.info("MemoryManager using sqlite provider")
 
     def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS memories (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
+        conn = self._pool.get()
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS memories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id, created_at DESC)"
-            )
-            conn.commit()
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id, created_at DESC)"
+        )
+        conn.commit()
 
     async def add_message(self, user_id: str, content: str) -> None:
         if not content.strip():
@@ -95,21 +96,21 @@ class MemoryManager:
                 logger.info("Pruned %d old memories (>%d days)", deleted, self._MAX_AGE_DAYS)
 
     def _store_sqlite(self, user_id: str, content: str) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT INTO memories (user_id, content) VALUES (?, ?)", (user_id, content)
-            )
-            conn.commit()
+        conn = self._pool.get()
+        conn.execute(
+            "INSERT INTO memories (user_id, content) VALUES (?, ?)", (user_id, content)
+        )
+        conn.commit()
 
     def _prune_old_memories(self) -> int:
         """Delete memories older than the retention period. Returns count deleted."""
         cutoff = (datetime.now(tz=UTC) - timedelta(days=self._MAX_AGE_DAYS)).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("DELETE FROM memories WHERE created_at < ?", (cutoff,))
-            conn.commit()
-            return cursor.rowcount
+        conn = self._pool.get()
+        cursor = conn.execute("DELETE FROM memories WHERE created_at < ?", (cutoff,))
+        conn.commit()
+        return cursor.rowcount
 
     async def retrieve(self, user_id: str, query: str, limit: int = 5) -> list[MemorySnippet]:
         if self.provider == "mem0" and self._mem0 is not None:
@@ -134,18 +135,18 @@ class MemoryManager:
 
     def _retrieve_sqlite(self, user_id: str, query: str, limit: int) -> Iterable[str]:
         like = f"%{query.strip()[:200]}%"
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT content
-                FROM memories
-                WHERE user_id = ?
-                ORDER BY CASE WHEN content LIKE ? THEN 0 ELSE 1 END, created_at DESC
-                LIMIT ?
-                """,
-                (user_id, like, limit),
-            )
-            return [r[0] for r in cursor.fetchall()]
+        conn = self._pool.get()
+        cursor = conn.execute(
+            """
+            SELECT content
+            FROM memories
+            WHERE user_id = ?
+            ORDER BY CASE WHEN content LIKE ? THEN 0 ELSE 1 END, created_at DESC
+            LIMIT ?
+            """,
+            (user_id, like, limit),
+        )
+        return [r[0] for r in cursor.fetchall()]
 
     async def build_context_block(self, user_id: str, query: str) -> str:
         snippets = await self.retrieve(user_id=user_id, query=query)

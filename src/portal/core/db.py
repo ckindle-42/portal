@@ -20,3 +20,18 @@ class ConnectionPool:
                 conn.execute(pragma)
             self._local.conn = conn
         return conn
+
+
+def get_connection(
+    path: Path | str,
+    pragmas: tuple[str, ...] = ("PRAGMA journal_mode=WAL",),
+) -> sqlite3.Connection:
+    """Create a one-off SQLite connection with the given pragmas.
+
+    Use for infrequent operations (schema init, migrations).
+    For hot paths, prefer :class:`ConnectionPool`.
+    """
+    conn = sqlite3.connect(path)
+    for pragma in pragmas:
+        conn.execute(pragma)
+    return conn
