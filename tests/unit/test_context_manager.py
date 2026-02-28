@@ -143,9 +143,9 @@ class TestMessageMetadata:
 
 class TestMessageDataclass:
     def test_to_dict(self) -> None:
-        from portal.core.context_manager import Message
+        from portal.core.context_manager import ContextMessage
 
-        msg = Message(role="user", content="hi", timestamp="t", interface="web", metadata={})
+        msg = ContextMessage(role="user", content="hi", timestamp="t", interface="web", metadata={})
         d = msg.to_dict()
         assert d["role"] == "user"
         assert d["content"] == "hi"

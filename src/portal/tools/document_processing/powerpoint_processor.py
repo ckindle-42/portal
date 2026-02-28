@@ -187,6 +187,21 @@ class PowerPointProcessorTool(BaseTool):
             logger.error("PowerPoint creation error: %s", e)
             return self._error_response(f"Creation error: {e}")
 
+    def _fill_body_placeholder(self, slide: Any, content: str, bullet_points: list[str]) -> None:
+        """Write content or bullet points into the first body placeholder (type 2)."""
+        for shape in slide.placeholders:
+            if shape.placeholder_format.type == 2:  # Body placeholder
+                text_frame = shape.text_frame
+                text_frame.clear()
+                if bullet_points:
+                    for point in bullet_points:
+                        p = text_frame.add_paragraph()
+                        p.text = point
+                        p.level = 0
+                else:
+                    text_frame.text = content
+                break
+
     async def _add_slide(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Add slide to presentation"""
 
@@ -216,21 +231,7 @@ class PowerPointProcessorTool(BaseTool):
 
             # Add content
             if content or bullet_points:
-                # Find content placeholder
-                for shape in slide.placeholders:
-                    if shape.placeholder_format.type == 2:  # Body placeholder
-                        text_frame = shape.text_frame
-                        text_frame.clear()
-
-                        if bullet_points:
-                            for point in bullet_points:
-                                p = text_frame.add_paragraph()
-                                p.text = point
-                                p.level = 0
-                        elif content:
-                            text_frame.text = content
-
-                        break
+                self._fill_body_placeholder(slide, content, bullet_points)
 
             # Save
             prs.save(file_path)

@@ -37,7 +37,7 @@ class _ConnectionPool:
 
 
 @dataclass
-class Message:
+class ContextMessage:
     """Represents a single message in conversation history"""
 
     role: str  # 'user', 'assistant', 'system'
@@ -138,7 +138,7 @@ class ContextManager:
         chat_id: str,
         limit: int,
         include_system: bool,
-    ) -> list[Message]:
+    ) -> list[ContextMessage]:
         conn = self._pool.get()
         conn.row_factory = sqlite3.Row
 
@@ -159,7 +159,7 @@ class ContextManager:
         messages = []
         for row in reversed(rows):
             messages.append(
-                Message(
+                ContextMessage(
                     role=row["role"],
                     content=row["content"],
                     timestamp=row["timestamp"],
@@ -220,7 +220,7 @@ class ContextManager:
 
     async def get_history(
         self, chat_id: str, limit: int | None = None, include_system: bool = True
-    ) -> list[Message]:
+    ) -> list[ContextMessage]:
         """
         Retrieve conversation history
 
