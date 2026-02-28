@@ -109,6 +109,17 @@ bootstrap_env() {
     echo "  -> $WEB_UI"
     echo ""
 
+    # --- Multi-user (optional) ---
+    WEBUI_AUTH="false"
+    read -rp "Enable user accounts and login? [y/N]: " auth_enable
+    case "$auth_enable" in
+        [Yy]*)
+            WEBUI_AUTH="true"
+            echo "  -> First user to sign up will be admin"
+            ;;
+    esac
+    echo ""
+
     # --- Telegram (optional) ---
     TELEGRAM_ENABLED="false"
     TELEGRAM_BOT_TOKEN=""
@@ -209,6 +220,7 @@ bootstrap_env() {
         echo ""
         echo "# --- Web UI ---"
         echo "WEB_UI=$WEB_UI"
+        echo "WEBUI_AUTH=$WEBUI_AUTH"
         echo ""
         echo "# --- Security (auto-generated — do not share) ---"
         echo "MCP_API_KEY=$MCP_API_KEY"
@@ -255,6 +267,7 @@ bootstrap_env() {
     echo ""
     echo "  Hardware:     $profile ($COMPUTE_BACKEND)"
     echo "  Web UI:       $WEB_UI"
+    echo "  Auth:         $WEBUI_AUTH"
     echo "  Telegram:     $TELEGRAM_ENABLED"
     echo "  Slack:        $SLACK_ENABLED"
     echo "  Secrets:      6 keys auto-generated"
@@ -264,7 +277,7 @@ bootstrap_env() {
 
     # Export for use in the rest of this run
     export COMPUTE_BACKEND DOCKER_HOST_IP SUPERVISOR_TYPE GENERATION_SERVICES ROUTER_BIND_IP
-    export WEB_UI TELEGRAM_ENABLED SLACK_ENABLED
+    export WEB_UI WEBUI_AUTH TELEGRAM_ENABLED SLACK_ENABLED
     export MCP_API_KEY PORTAL_BOOTSTRAP_API_KEY WEB_API_KEY
     export WEBUI_SECRET_KEY JWT_SECRET JWT_REFRESH_SECRET
 }
@@ -340,6 +353,36 @@ setup_venv() {
         fi
     fi
     echo "[setup] Dependencies installed."
+}
+
+# ─── Ensure default Ollama model is available ────────────────────────────────
+ensure_default_model() {
+    local model="${DEFAULT_MODEL:-qwen2.5:7b}"
+
+    # Wait for Ollama to be ready (it may still be starting)
+    local retries=10
+    while ! curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; do
+        retries=$((retries - 1))
+        if [ "$retries" -le 0 ]; then
+            echo "[models] WARNING: Ollama not responding — skipping model check"
+            return
+        fi
+        sleep 1
+    done
+
+    # Check if default model is already pulled
+    if ollama list 2>/dev/null | grep -q "^${model}"; then
+        echo "[models] $model already available"
+        return
+    fi
+
+    echo "[models] Pulling default model: $model (this may take a few minutes on first run)..."
+    if ollama pull "$model"; then
+        echo "[models] $model ready"
+    else
+        echo "[models] WARNING: Failed to pull $model — you can pull it manually:"
+        echo "  ollama pull $model"
+    fi
 }
 
 # ─── Start router + Portal web interface ─────────────────────────────────────
@@ -796,8 +839,11 @@ case "$COMMAND" in
         # 5. Create venv + install deps if missing
         setup_venv
 
-        # 6-8. Start services
+        # 5.5 Start core services first so Ollama is available for model check
         start_core_services "$PROFILE"
+
+        # 5.6 Ensure default model is available in Ollama
+        ensure_default_model
 
         if [ "$MINIMAL" != "true" ]; then
             start_extended_services "$PROFILE"

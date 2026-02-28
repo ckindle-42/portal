@@ -11,7 +11,7 @@ services:
   # Caddy — reverse proxy and static file server
   # -----------------------------------------------------------------------
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.9-alpine
     container_name: portal-caddy
     restart: unless-stopped
     ports:
@@ -37,7 +37,7 @@ services:
   # Open WebUI — browser chat UI
   # -----------------------------------------------------------------------
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:v0.8.5
     container_name: portal-open-webui
     restart: unless-stopped
     volumes:
@@ -49,7 +49,7 @@ services:
       # Also expose direct Ollama access for model management
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-portal-secret-change-me}
-      - WEBUI_AUTH=false
+      - WEBUI_AUTH=${WEBUI_AUTH:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

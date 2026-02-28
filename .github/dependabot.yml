@@ -1,0 +1,48 @@
+version: 2
+updates:
+  # Python dependencies — weekly PRs grouped by type
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      # Group minor/patch updates to reduce PR noise
+      python-minor:
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+    open-pull-requests-limit: 5
+
+  # Docker images — monthly PRs
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy/web-ui/openwebui"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore(docker)"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy/web-ui/librechat"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore(docker)"
+    labels:
+      - "dependencies"
+
+  # GitHub Actions — weekly, auto-merge safe
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - "dependencies"
