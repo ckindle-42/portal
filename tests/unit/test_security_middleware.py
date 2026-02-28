@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from portal.core.exceptions import PolicyViolationError, ValidationError
+from portal.core.exceptions import PolicyViolationError, RateLimitError, ValidationError
 from portal.security.middleware import SecurityMiddleware
 
 
@@ -129,21 +129,87 @@ async def test_rate_limiting_enforced(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_no_user_id_skips_rate_limit(mock_agent_core):
-    """Requests without user_id skip rate limiting entirely."""
+async def test_no_user_id_but_still_rate_limited_by_chat_id(tmp_path):
+    """Requests without user_id are still rate limited using chat_id as fallback."""
+    from portal.security.security_module import RateLimiter
+
+    core = AsyncMock()
+    core.process_message = AsyncMock(
+        return_value=MagicMock(success=True, response="ok", warnings=[])
+    )
+
+    # Very restrictive: 1 request per window
+    rate_limiter = RateLimiter(
+        max_requests=1,
+        window_seconds=60,
+        persist_path=tmp_path / "rate_limits_anon.json",
+    )
+
     mw = SecurityMiddleware(
-        agent_core=mock_agent_core,
+        agent_core=core,
+        rate_limiter=rate_limiter,
         enable_rate_limiting=True,
         enable_input_sanitization=False,
     )
-    # Should not raise even with rate limiting enabled
+    # First request should go through
     result = await mw.process_message(
-        chat_id="chat1",
+        chat_id="chat_anonymous",
         message="hello",
         interface="web",
         user_context={},  # No user_id
     )
     assert result.success is True
+
+    # Second request from same chat_id should be rate limited
+    with pytest.raises(RateLimitError):
+        await mw.process_message(
+            chat_id="chat_anonymous",
+            message="hello again",
+            interface="web",
+            user_context={},  # No user_id - uses chat_id for rate limiting
+        )
+
+
+@pytest.mark.asyncio
+async def test_rate_limiting_without_user_id_ip_fallback(tmp_path):
+    """Rate limiting uses IP address when user_id and chat_id are unavailable."""
+    from portal.security.security_module import RateLimiter
+
+    core = AsyncMock()
+    core.process_message = AsyncMock(
+        return_value=MagicMock(success=True, response="ok", warnings=[])
+    )
+
+    # Very restrictive: 1 request per window
+    rate_limiter = RateLimiter(
+        max_requests=1,
+        window_seconds=60,
+        persist_path=tmp_path / "rate_limits_ip.json",
+    )
+
+    mw = SecurityMiddleware(
+        agent_core=core,
+        rate_limiter=rate_limiter,
+        enable_rate_limiting=True,
+        enable_input_sanitization=False,
+    )
+    # First request with IP should go through
+    result = await mw.process_message(
+        chat_id="chat1",
+        message="hello",
+        interface="web",
+        user_context={"ip_address": "192.168.1.100"},
+    )
+    assert result.success is True
+
+    # Second request from same IP should be rate limited
+    with pytest.raises(RateLimitError):
+        await mw.process_message(
+            chat_id="chat1",
+            message="hello again",
+            interface="web",
+            user_context={"ip_address": "192.168.1.100"},
+        )
 
 
 @pytest.mark.asyncio
