@@ -117,6 +117,14 @@ class WebInterface(BaseInterface):
         self._server = None
         # Shared HTTP client for Ollama/Whisper calls (avoids per-request connection overhead)
         self._ollama_client: httpx.AsyncClient | None = None
+        # Reuse sanitizer from SecurityMiddleware to share state; fall back to new instance
+        from portal.security.input_sanitizer import InputSanitizer as _InputSanitizer
+
+        self._input_sanitizer = (
+            secure_agent.input_sanitizer
+            if isinstance(secure_agent, SecurityMiddleware)
+            else _InputSanitizer()
+        )
         self.app = self._build_app()
 
     def _extract_user_id(self, request: Request) -> str:
@@ -256,131 +264,146 @@ class WebInterface(BaseInterface):
         async def chat_completions(
             payload: ChatCompletionRequest, request: Request, auth=Depends(self._auth_context)
         ):
-            # Readiness gate: return 503 while agent is still warming up
-            if not _agent_ready.is_set():
-                return JSONResponse(
-                    status_code=503,
-                    content={
-                        "error": {
-                            "message": "Portal is starting up. Please retry in a few seconds.",
-                            "type": "server_error",
-                        }
-                    },
-                    headers={"Retry-After": "5"},
-                )
-
-            user_id = auth["user_id"]
-            mark_request(user_id)
-
-            last_user_msg = next(
-                (m.content for m in reversed(payload.messages) if m.role == "user"), ""
-            )
-            image_present = any(isinstance(m.content, list) for m in payload.messages)
-            selected_model = payload.model
-            if image_present and payload.model == "auto":
-                selected_model = os.getenv("PORTAL_VISION_MODEL", "llava")
-
-            incoming = IncomingMessage(
-                id=str(uuid.uuid4()),
-                text=str(last_user_msg),
-                model=selected_model,
-                history=[{"role": m.role, "content": m.content} for m in payload.messages],
-                source="web",
-                metadata={"tools": payload.tools, "image_present": image_present},
-            )
-
-            if payload.stream:
-                # Security gate for streaming path — mirrors process_message() in SecurityMiddleware
-                if isinstance(self.secure_agent, SecurityMiddleware):
-                    from portal.security.security_module import InputSanitizer
-
-                    _sanitizer = InputSanitizer()
-                    _sanitized, _warnings = _sanitizer.sanitize_command(str(last_user_msg))
-                    if any("Dangerous pattern detected" in w for w in _warnings):
-                        raise ValidationError("Message blocked by security policy")
-                    _allowed, _err = await self.secure_agent.rate_limiter.check_limit(user_id)
-                    if not _allowed:
-                        raise RateLimitError(_err or "Rate limit exceeded", retry_after=60)
-                return StreamingResponse(
-                    self._stream_response(incoming, selected_model, user_id),
-                    media_type="text/event-stream",
-                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-                )
-
-            start = time.perf_counter()
-            processor = self.secure_agent if self.secure_agent is not None else self.agent_core
-            result = await processor.process_message(
-                chat_id=incoming.id,
-                message=incoming.text,
-                interface=InterfaceType.WEB,
-                user_context={"user_id": user_id},
-            )
-            elapsed = time.perf_counter() - start
-            tokens = result.completion_tokens or max(len(result.response.split()), 1)
-            TOKENS_PER_SECOND.observe(tokens / max(elapsed, 0.001))
-            await self.user_store.add_tokens(
-                user_id=user_id,
-                tokens=(result.prompt_tokens or 0) + (result.completion_tokens or 0),
-            )
-            return JSONResponse(self._format_completion(result, selected_model))
+            return await self._handle_chat_completions(payload, request, auth, _agent_ready)
 
         @app.post("/v1/audio/transcriptions")
         async def audio_transcriptions(
             file: UploadFile = File(...), auth=Depends(self._auth_context)
         ):
-            # Read with size limit to prevent memory exhaustion (S4)
-            data = await file.read(_MAX_AUDIO_BYTES + 1)
-            if len(data) > _MAX_AUDIO_BYTES:
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"Audio file exceeds {_MAX_AUDIO_BYTES // (1024 * 1024)}MB limit",
-                )
-            client = self._ollama_client or httpx.AsyncClient(timeout=60.0)
-            files = {
-                "audio_file": (
-                    file.filename or "audio.wav",
-                    data,
-                    file.content_type or "application/octet-stream",
-                )
-            }
-            resp = await client.post(
-                os.getenv("WHISPER_URL", "http://localhost:10300/inference"), files=files
-            )
-            out = resp.json()
-            return {"text": out.get("text", "")}
+            return await self._handle_audio_transcriptions(file, auth)
 
         @app.get("/v1/models")
         async def list_models(auth=Depends(self._auth_context)):
-            try:
-                client = self._ollama_client or httpx.AsyncClient(timeout=3.0)
-                resp = await client.get(
-                    f"{os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/tags"
+            return await self._handle_list_models(auth)
+
+    async def _handle_chat_completions(
+        self,
+        payload: ChatCompletionRequest,
+        request: Request,
+        auth: dict,
+        _agent_ready: asyncio.Event,
+    ) -> Any:
+        """Handle /v1/chat/completions — both streaming and non-streaming paths."""
+        if not _agent_ready.is_set():
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": {
+                        "message": "Portal is starting up. Please retry in a few seconds.",
+                        "type": "server_error",
+                    }
+                },
+                headers={"Retry-After": "5"},
+            )
+
+        user_id = auth["user_id"]
+        mark_request(user_id)
+
+        last_user_msg = next(
+            (m.content for m in reversed(payload.messages) if m.role == "user"), ""
+        )
+        image_present = any(isinstance(m.content, list) for m in payload.messages)
+        selected_model = payload.model
+        if image_present and payload.model == "auto":
+            selected_model = os.getenv("PORTAL_VISION_MODEL", "llava")
+
+        incoming = IncomingMessage(
+            id=str(uuid.uuid4()),
+            text=str(last_user_msg),
+            model=selected_model,
+            history=[{"role": m.role, "content": m.content} for m in payload.messages],
+            source="web",
+            metadata={"tools": payload.tools, "image_present": image_present},
+        )
+
+        if payload.stream:
+            # Security gate for streaming path — mirrors process_message() in SecurityMiddleware
+            if isinstance(self.secure_agent, SecurityMiddleware):
+                _sanitized, _warnings = self._input_sanitizer.sanitize_command(
+                    str(last_user_msg)
                 )
-                data = resp.json()
-                return {
-                    "object": "list",
-                    "data": [
-                        {
-                            "id": m["name"],
-                            "object": "model",
-                            "created": int(time.time()),
-                            "owned_by": "portal",
-                        }
-                        for m in data.get("models", [])
-                    ],
-                }
-            except Exception:
-                return {
-                    "object": "list",
-                    "data": [
-                        {
-                            "id": "auto",
-                            "object": "model",
-                            "created": int(time.time()),
-                            "owned_by": "portal",
-                        }
-                    ],
-                }
+                if any("Dangerous pattern detected" in w for w in _warnings):
+                    raise ValidationError("Message blocked by security policy")
+                _allowed, _err = await self.secure_agent.rate_limiter.check_limit(user_id)
+                if not _allowed:
+                    raise RateLimitError(_err or "Rate limit exceeded", retry_after=60)
+            return StreamingResponse(
+                self._stream_response(incoming, selected_model, user_id),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+
+        start = time.perf_counter()
+        processor = self.secure_agent if self.secure_agent is not None else self.agent_core
+        result = await processor.process_message(
+            chat_id=incoming.id,
+            message=incoming.text,
+            interface=InterfaceType.WEB,
+            user_context={"user_id": user_id},
+        )
+        elapsed = time.perf_counter() - start
+        tokens = result.completion_tokens or max(len(result.response.split()), 1)
+        TOKENS_PER_SECOND.observe(tokens / max(elapsed, 0.001))
+        await self.user_store.add_tokens(
+            user_id=user_id,
+            tokens=(result.prompt_tokens or 0) + (result.completion_tokens or 0),
+        )
+        return JSONResponse(self._format_completion(result, selected_model))
+
+    async def _handle_audio_transcriptions(self, file: UploadFile, auth: dict) -> dict:
+        """Handle /v1/audio/transcriptions — proxy to Whisper with size guard."""
+        data = await file.read(_MAX_AUDIO_BYTES + 1)
+        if len(data) > _MAX_AUDIO_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Audio file exceeds {_MAX_AUDIO_BYTES // (1024 * 1024)}MB limit",
+            )
+        client = self._ollama_client or httpx.AsyncClient(timeout=60.0)
+        files = {
+            "audio_file": (
+                file.filename or "audio.wav",
+                data,
+                file.content_type or "application/octet-stream",
+            )
+        }
+        resp = await client.post(
+            os.getenv("WHISPER_URL", "http://localhost:10300/inference"), files=files
+        )
+        out = resp.json()
+        return {"text": out.get("text", "")}
+
+    async def _handle_list_models(self, auth: dict) -> dict:
+        """Handle /v1/models — return available Ollama models with OpenAI schema."""
+        try:
+            client = self._ollama_client or httpx.AsyncClient(timeout=3.0)
+            resp = await client.get(
+                f"{os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/tags"
+            )
+            data = resp.json()
+            return {
+                "object": "list",
+                "data": [
+                    {
+                        "id": m["name"],
+                        "object": "model",
+                        "created": int(time.time()),
+                        "owned_by": "portal",
+                    }
+                    for m in data.get("models", [])
+                ],
+            }
+        except Exception:
+            return {
+                "object": "list",
+                "data": [
+                    {
+                        "id": "auto",
+                        "object": "model",
+                        "created": int(time.time()),
+                        "owned_by": "portal",
+                    }
+                ],
+            }
 
     def _register_utility_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
         @app.get("/metrics")
@@ -433,86 +456,86 @@ class WebInterface(BaseInterface):
     def _register_websocket_route(self, app: FastAPI) -> None:
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket) -> None:
-            from portal.security.security_module import InputSanitizer
+            await self._handle_websocket(websocket)
 
-            sanitizer = InputSanitizer()
+    async def _handle_websocket(self, websocket: WebSocket) -> None:
+        """Handle /ws — authenticated, rate-limited, streaming WebSocket chat."""
+        static_key = os.getenv("WEB_API_KEY", "").strip()
+        if static_key:
+            token = websocket.query_params.get("api_key", "")
+            if not hmac.compare_digest(token.encode(), static_key.encode()):
+                await websocket.close(code=4001, reason="Unauthorized")
+                return
+        await websocket.accept()
 
-            static_key = os.getenv("WEB_API_KEY", "").strip()
-            if static_key:
-                token = websocket.query_params.get("api_key", "")
-                if not hmac.compare_digest(token.encode(), static_key.encode()):
-                    await websocket.close(code=4001, reason="Unauthorized")
-                    return
-            await websocket.accept()
+        # Use shared rate limiter if available (S2: share state with HTTP rate limiter)
+        shared_rate_limiter = (
+            self.secure_agent.rate_limiter
+            if isinstance(self.secure_agent, SecurityMiddleware)
+            else None
+        )
+        ws_user_id = websocket.query_params.get("user_id", "ws-anonymous")
 
-            # Use shared rate limiter if available (S2: share state with HTTP rate limiter)
-            shared_rate_limiter = (
-                self.secure_agent.rate_limiter
-                if isinstance(self.secure_agent, SecurityMiddleware)
-                else None
-            )
-            ws_user_id = websocket.query_params.get("user_id", "ws-anonymous")
+        # Fallback per-connection rate limiter (used only when no shared limiter is present)
+        ws_rate_limit = int(os.getenv("WS_RATE_LIMIT", "10"))
+        ws_rate_window = float(os.getenv("WS_RATE_WINDOW", "60"))
+        message_timestamps: list[float] = []
 
-            # Fallback per-connection rate limiter (used only when no shared limiter is present)
-            ws_rate_limit = int(os.getenv("WS_RATE_LIMIT", "10"))
-            ws_rate_window = float(os.getenv("WS_RATE_WINDOW", "60"))
-            message_timestamps: list[float] = []
+        try:
+            while True:
+                data = await websocket.receive_json()
 
-            try:
-                while True:
-                    data = await websocket.receive_json()
-
-                    # Rate limiting: prefer shared limiter to prevent bypass via reconnect
-                    if shared_rate_limiter is not None:
-                        allowed, error_msg = await shared_rate_limiter.check_limit(ws_user_id)
-                        if not allowed:
-                            await websocket.send_json({"error": error_msg, "done": True})
-                            continue
-                    else:
-                        now = time.time()
-                        message_timestamps = [
-                            ts for ts in message_timestamps if now - ts < ws_rate_window
-                        ]
-                        if len(message_timestamps) >= ws_rate_limit:
-                            await websocket.send_json(
-                                {
-                                    "error": f"Rate limit exceeded ({ws_rate_limit} messages per {int(ws_rate_window)}s). Please wait.",
-                                    "done": True,
-                                }
-                            )
-                            continue
-                        message_timestamps.append(now)
-
-                    raw_text = data.get("message", "")
-                    sanitized_text, warnings = sanitizer.sanitize_command(raw_text)
-                    if any("Dangerous pattern detected" in w for w in warnings):
+                # Rate limiting: prefer shared limiter to prevent bypass via reconnect
+                if shared_rate_limiter is not None:
+                    allowed, error_msg = await shared_rate_limiter.check_limit(ws_user_id)
+                    if not allowed:
+                        await websocket.send_json({"error": error_msg, "done": True})
+                        continue
+                else:
+                    now = time.time()
+                    message_timestamps = [
+                        ts for ts in message_timestamps if now - ts < ws_rate_window
+                    ]
+                    if len(message_timestamps) >= ws_rate_limit:
                         await websocket.send_json(
-                            {"error": "Message blocked by security policy", "done": True}
+                            {
+                                "error": f"Rate limit exceeded ({ws_rate_limit} messages per {int(ws_rate_window)}s). Please wait.",
+                                "done": True,
+                            }
                         )
                         continue
-                    if len(sanitized_text) > 10000:
-                        await websocket.send_json(
-                            {"error": "Message exceeds maximum length", "done": True}
-                        )
-                        continue
+                    message_timestamps.append(now)
 
-                    incoming = IncomingMessage(
-                        id=str(uuid.uuid4()),
-                        text=sanitized_text,
-                        model=data.get("model", "auto"),
+                raw_text = data.get("message", "")
+                sanitized_text, warnings = self._input_sanitizer.sanitize_command(raw_text)
+                if any("Dangerous pattern detected" in w for w in warnings):
+                    await websocket.send_json(
+                        {"error": "Message blocked by security policy", "done": True}
                     )
-                    async for tok in self.agent_core.stream_response(incoming):
-                        await websocket.send_json({"token": tok, "done": False})
-                    await websocket.send_json({"token": "", "done": True})
-            except WebSocketDisconnect:
-                return
-            except Exception as e:
-                logger.error("WebSocket error: %s", e, exc_info=True)
-                try:
-                    await websocket.send_json({"error": "Internal error", "done": True})
-                except Exception:
-                    pass
-                return
+                    continue
+                if len(sanitized_text) > 10000:
+                    await websocket.send_json(
+                        {"error": "Message exceeds maximum length", "done": True}
+                    )
+                    continue
+
+                incoming = IncomingMessage(
+                    id=str(uuid.uuid4()),
+                    text=sanitized_text,
+                    model=data.get("model", "auto"),
+                )
+                async for tok in self.agent_core.stream_response(incoming):
+                    await websocket.send_json({"token": tok, "done": False})
+                await websocket.send_json({"token": "", "done": True})
+        except WebSocketDisconnect:
+            return
+        except Exception as e:
+            logger.error("WebSocket error: %s", e, exc_info=True)
+            try:
+                await websocket.send_json({"error": "Internal error", "done": True})
+            except Exception:
+                pass
+            return
 
     async def _stream_response(
         self, incoming: IncomingMessage, model: str, user_id: str

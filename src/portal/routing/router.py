@@ -237,8 +237,10 @@ async def proxy(request: Request, path: str) -> Response:
             body = json.dumps(payload).encode()
             headers["content-length"] = str(len(body))
             logger.debug("Routing %r → %r (%s)", requested, resolved_model, reason)
-        except (json.JSONDecodeError, KeyError, TypeError):
-            pass
+        except json.JSONDecodeError as _e:
+            logger.debug("Payload rewrite skipped — JSON parse error: %s", _e)
+        except (KeyError, TypeError) as _e:
+            logger.debug("Payload rewrite skipped — unexpected payload structure: %s", _e)
 
     target_url = f"{OLLAMA_HOST}/{path}"
     if request.url.query:

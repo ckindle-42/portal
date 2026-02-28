@@ -449,14 +449,15 @@ class AgentCore:
         messages: list[dict[str, Any]] | None = None,
     ) -> tuple[Any, list[dict[str, Any]]]:
         """Execute model calls and iterate tool calls until a final answer is produced."""
-        current_query = query
         collected_tool_results: list[dict[str, Any]] = []
         max_tool_rounds = int(self.config.get("mcp_tool_max_rounds", DEFAULT_MCP_TOOL_MAX_ROUNDS))
-        current_messages = messages  # Use caller-provided history on first pass only
+        current_messages = messages
 
-        for _ in range(max_tool_rounds):
+        # Loop max_tool_rounds+1 times: first max_tool_rounds may dispatch tools,
+        # the final round always returns the result without further dispatching.
+        for round_num in range(max_tool_rounds + 1):
             result = await self._execute_with_routing(
-                query=current_query,
+                query=query,
                 system_prompt=system_prompt,
                 available_tools=available_tools,
                 chat_id=chat_id,
@@ -465,7 +466,7 @@ class AgentCore:
             )
 
             tool_calls = result.tool_calls or []
-            if not (tool_calls and self.mcp_registry):
+            if not (tool_calls and self.mcp_registry) or round_num == max_tool_rounds:
                 return result, collected_tool_results
 
             mcp_results = await self._dispatch_mcp_tools(tool_calls, chat_id, trace_id)
@@ -473,15 +474,7 @@ class AgentCore:
             tool_msgs = self._format_tool_results_as_messages(mcp_results)
             current_messages = (current_messages or []) + tool_msgs
 
-        final_result = await self._execute_with_routing(
-            query=current_query,
-            system_prompt=system_prompt,
-            available_tools=available_tools,
-            chat_id=chat_id,
-            trace_id=trace_id,
-            messages=current_messages,
-        )
-        return final_result, collected_tool_results
+        return result, collected_tool_results  # defensive; loop always returns inside
 
     def _format_tool_results_as_messages(
         self, tool_results: list[dict[str, Any]]

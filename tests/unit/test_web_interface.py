@@ -143,3 +143,55 @@ class TestVersionNotHardcoded:
         agent.health_check = AsyncMock(return_value=True)
         iface = WebInterface(agent_core=agent, config={}, secure_agent=None)
         assert iface.app.version == portal.__version__
+
+
+class TestAudioTranscriptionContracts:
+    """Contract tests for /v1/audio/transcriptions endpoint."""
+
+    def _make_iface(self):
+        from portal.interfaces.web.server import WebInterface
+
+        agent = MagicMock()
+        agent.health_check = AsyncMock(return_value=True)
+        return WebInterface(agent_core=agent, config={}, secure_agent=None)
+
+    def test_audio_401_without_auth_when_key_required(self, monkeypatch) -> None:
+        """Returns 401 when WEB_API_KEY is set and request has no Bearer token."""
+        from fastapi.testclient import TestClient
+
+        monkeypatch.setenv("WEB_API_KEY", "secret-key")
+        iface = self._make_iface()
+        with TestClient(iface.app, raise_server_exceptions=False) as client:
+            resp = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("test.wav", b"x" * 10, "audio/wav")},
+                # No Authorization header
+            )
+        assert resp.status_code == 401
+
+    def test_audio_returns_text_field(self, monkeypatch) -> None:
+        """Successful Whisper proxy returns JSON with 'text' field."""
+        import io
+
+        from fastapi.testclient import TestClient
+
+        monkeypatch.delenv("WEB_API_KEY", raising=False)
+        iface = self._make_iface()
+
+        fake_resp = MagicMock()
+        fake_resp.json.return_value = {"text": "hello world"}
+
+        with patch("portal.interfaces.web.server.httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=fake_resp)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = mock_client
+
+            with TestClient(iface.app, raise_server_exceptions=False) as client:
+                resp = client.post(
+                    "/v1/audio/transcriptions",
+                    files={"file": ("test.wav", io.BytesIO(b"x" * 100), "audio/wav")},
+                )
+        assert resp.status_code == 200
+        assert "text" in resp.json()

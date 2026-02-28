@@ -97,6 +97,28 @@ class BaseHTTPBackend(ModelBackend):
         if self._session and not self._session.closed:
             await self._session.close()
 
+    async def _post_json(self, endpoint: str, payload: dict) -> tuple[int, Any]:
+        """POST JSON payload to an endpoint; return (http_status, parsed_body_or_text).
+
+        On HTTP error returns (status, error_text_string).
+        On network/parse error re-raises.
+        """
+        session = await self._get_session()
+        async with session.post(f"{self.base_url}{endpoint}", json=payload) as response:
+            if response.status == 200:
+                return response.status, await response.json()
+            return response.status, await response.text()
+
+    async def _stream_content(
+        self, endpoint: str, payload: dict
+    ) -> AsyncGenerator[bytes, None]:
+        """POST JSON payload and yield raw content bytes line-by-line."""
+        session = await self._get_session()
+        async with session.post(f"{self.base_url}{endpoint}", json=payload) as response:
+            async for line in response.content:
+                if line:
+                    yield line
+
     @staticmethod
     def _build_chat_messages(
         prompt: str,
@@ -163,44 +185,25 @@ class OllamaBackend(BaseHTTPBackend):
     ) -> GenerationResult:
         """Generate text using Ollama /api/chat (supports tool calls)."""
         start_time = time.time()
-
         try:
-            session = await self._get_session()
-            chat_messages = self._build_chat_messages(prompt, system_prompt, messages)
-
             payload = {
                 "model": model_name,
-                "messages": chat_messages,
+                "messages": self._build_chat_messages(prompt, system_prompt, messages),
                 "stream": False,
-                "options": {
-                    "num_predict": max_tokens,
-                    "temperature": temperature,
-                },
+                "options": {"num_predict": max_tokens, "temperature": temperature},
             }
-
-            async with session.post(
-                f"{self.base_url}/api/chat",
-                json=payload,
-            ) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    elapsed = (time.time() - start_time) * 1000
-                    msg = data.get("message", {})
-                    tool_calls = self._normalize_tool_calls(msg.get("tool_calls"))
-                    return GenerationResult(
-                        text=msg.get("content", ""),
-                        tokens_generated=data.get("eval_count", 0),
-                        time_ms=elapsed,
-                        model_id=model_name,
-                        success=True,
-                        tool_calls=tool_calls,
-                    )
-                else:
-                    error_text = await response.text()
-                    return self._error_result(
-                        model_name, start_time, f"HTTP {response.status}: {error_text}"
-                    )
-
+            status, data = await self._post_json("/api/chat", payload)
+            if status == 200:
+                msg = data.get("message", {})
+                return GenerationResult(
+                    text=msg.get("content", ""),
+                    tokens_generated=data.get("eval_count", 0),
+                    time_ms=(time.time() - start_time) * 1000,
+                    model_id=model_name,
+                    success=True,
+                    tool_calls=self._normalize_tool_calls(msg.get("tool_calls")),
+                )
+            return self._error_result(model_name, start_time, f"HTTP {status}: {data}")
         except Exception as e:
             logger.error("Ollama generation error: %s", e)
             return self._error_result(model_name, start_time, str(e))
@@ -216,33 +219,20 @@ class OllamaBackend(BaseHTTPBackend):
     ) -> AsyncGenerator[str, None]:
         """Stream generation from Ollama /api/chat."""
         try:
-            session = await self._get_session()
-            chat_messages = self._build_chat_messages(prompt, system_prompt, messages)
-
             payload = {
                 "model": model_name,
-                "messages": chat_messages,
+                "messages": self._build_chat_messages(prompt, system_prompt, messages),
                 "stream": True,
-                "options": {
-                    "num_predict": max_tokens,
-                    "temperature": temperature,
-                },
+                "options": {"num_predict": max_tokens, "temperature": temperature},
             }
-
-            async with session.post(
-                f"{self.base_url}/api/chat",
-                json=payload,
-            ) as response:
-                async for line in response.content:
-                    if line:
-                        try:
-                            data = json.loads(line.decode("utf-8"))
-                            content = data.get("message", {}).get("content", "")
-                            if content:
-                                yield content
-                        except json.JSONDecodeError:
-                            continue
-
+            async for line in self._stream_content("/api/chat", payload):
+                try:
+                    data = json.loads(line.decode("utf-8"))
+                    content = data.get("message", {}).get("content", "")
+                    if content:
+                        yield content
+                except json.JSONDecodeError:
+                    continue
         except Exception as e:
             logger.error("Ollama stream error: %s", e)
             return
@@ -284,42 +274,28 @@ class LMStudioBackend(BaseHTTPBackend):
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
     ) -> GenerationResult:
-        """Generate using OpenAI-compatible API"""
+        """Generate using OpenAI-compatible /chat/completions API."""
         start_time = time.time()
-
         try:
-            session = await self._get_session()
-            chat_messages = self._build_chat_messages(prompt, system_prompt, messages)
-
             payload = {
                 "model": model_name,
-                "messages": chat_messages,
+                "messages": self._build_chat_messages(prompt, system_prompt, messages),
                 "max_tokens": max_tokens,
                 "temperature": temperature,
                 "stream": False,
             }
-
-            async with session.post(f"{self.base_url}/chat/completions", json=payload) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    elapsed = (time.time() - start_time) * 1000
-
-                    content = data["choices"][0]["message"]["content"]
-                    tokens = data.get("usage", {}).get("completion_tokens", 0)
-
-                    return GenerationResult(
-                        text=content,
-                        tokens_generated=tokens,
-                        time_ms=elapsed,
-                        model_id=model_name,
-                        success=True,
-                    )
-                else:
-                    error_text = await response.text()
-                    return self._error_result(
-                        model_name, start_time, f"HTTP {response.status}: {error_text}"
-                    )
-
+            status, data = await self._post_json("/chat/completions", payload)
+            if status == 200:
+                content = data["choices"][0]["message"]["content"]
+                tokens = data.get("usage", {}).get("completion_tokens", 0)
+                return GenerationResult(
+                    text=content,
+                    tokens_generated=tokens,
+                    time_ms=(time.time() - start_time) * 1000,
+                    model_id=model_name,
+                    success=True,
+                )
+            return self._error_result(model_name, start_time, f"HTTP {status}: {data}")
         except Exception as e:
             logger.error("LM Studio generation error: %s", e)
             return self._error_result(model_name, start_time, str(e))
@@ -333,37 +309,31 @@ class LMStudioBackend(BaseHTTPBackend):
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
     ) -> AsyncGenerator[str, None]:
-        """Stream generation from LM Studio"""
+        """Stream generation from LM Studio via SSE."""
         try:
-            session = await self._get_session()
-            chat_messages = self._build_chat_messages(prompt, system_prompt, messages)
-
             payload = {
                 "model": model_name,
-                "messages": chat_messages,
+                "messages": self._build_chat_messages(prompt, system_prompt, messages),
                 "max_tokens": max_tokens,
                 "temperature": temperature,
                 "stream": True,
             }
-
-            async with session.post(f"{self.base_url}/chat/completions", json=payload) as response:
-                async for line in response.content:
-                    line = line.decode("utf-8").strip()
-                    if line.startswith("data: ") and line != "data: [DONE]":
-                        try:
-                            data = json.loads(line[6:])
-                            delta = data["choices"][0].get("delta", {})
-                            if "content" in delta:
-                                yield delta["content"]
-                        except Exception:
-                            continue
-
+            async for raw_line in self._stream_content("/chat/completions", payload):
+                line = raw_line.decode("utf-8").strip()
+                if line.startswith("data: ") and line != "data: [DONE]":
+                    try:
+                        data = json.loads(line[6:])
+                        delta = data["choices"][0].get("delta", {})
+                        if "content" in delta:
+                            yield delta["content"]
+                    except Exception:
+                        continue
         except Exception as e:
             logger.error("LM Studio stream error: %s", e)
             return
 
     async def is_available(self) -> bool:
-        """Check if LM Studio is available"""
+        """Check if LM Studio is available."""
         try:
             session = await self._get_session()
             async with session.get(f"{self.base_url}/models") as response:
@@ -372,7 +342,7 @@ class LMStudioBackend(BaseHTTPBackend):
             return False
 
     async def list_models(self) -> list:
-        """List available LM Studio models"""
+        """List available LM Studio models."""
         try:
             session = await self._get_session()
             async with session.get(f"{self.base_url}/models") as response:

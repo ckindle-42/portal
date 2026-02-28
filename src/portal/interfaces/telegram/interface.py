@@ -65,40 +65,55 @@ class TelegramInterface:
     - settings: Application settings (for telegram, security, tools config)
     """
 
-    def __init__(self, agent_core: "AgentCore", settings: "Settings") -> None:
+    def __init__(
+        self,
+        agent_core: "AgentCore",
+        settings: "Settings",
+        rate_limiter: "RateLimiter | None" = None,
+    ) -> None:
         """
         Initialize Telegram interface with injected dependencies
 
         Args:
             agent_core: Pre-configured AgentCore instance (already wrapped in SecurityMiddleware by CLI)
             settings: Application settings object (Pydantic Settings)
+            rate_limiter: Optional pre-built RateLimiter; a default is created if not provided.
 
         Raises:
             ValueError: If telegram config is missing or invalid
         """
-
         logger.info("=" * 60)
         logger.info("Initializing Telegram Interface (Passive Adapter)")
         logger.info("=" * 60)
 
-        # Store injected dependencies
         self.agent_core = agent_core
         self.settings = settings
+        self.application = None
+        self.confirmation_middleware = None
 
-        # Validate telegram configuration
+        self._validate_config(settings)
+        self._setup_rate_limiter(settings, rate_limiter)
+        self._setup_confirmation_middleware(settings)
+
+        logger.info("=" * 60)
+        logger.info("Telegram Interface ready!")
+        bot_id = self.bot_token.split(":")[0] if ":" in self.bot_token else "***"
+        logger.info("  Bot ID: %s (token masked)", bot_id)
+        logger.info("  Authorized users: %s", len(self.authorized_user_ids))
+        logger.info("  Dependency Injection: ✓")
+        logger.info("=" * 60)
+
+    def _validate_config(self, settings: "Settings") -> None:
+        """Validate Telegram config and resolve authorized user IDs."""
         if not settings.interfaces.telegram:
             raise ValueError("Telegram interface configuration missing in settings")
 
         telegram_config = settings.interfaces.telegram
-
-        # Telegram-specific config
         self.bot_token = telegram_config.bot_token
 
-        # Support legacy single user ID or new list of allowed user IDs
         if telegram_config.authorized_users:
             self.authorized_user_ids = set(telegram_config.authorized_users)
         else:
-            # Fallback: try to get from environment (backward compatibility)
             import os
 
             user_id_str = os.getenv("TELEGRAM_USER_ID")
@@ -109,54 +124,46 @@ class TelegramInterface:
                     "No authorized user IDs configured. Set authorized_users in config."
                 )
 
-        # Initialize rate limiter from security config
+    def _setup_rate_limiter(
+        self, settings: "Settings", rate_limiter: "RateLimiter | None" = None
+    ) -> None:
+        """Use injected rate limiter if provided; otherwise create default from security config."""
+        if rate_limiter is not None:
+            self.rate_limiter = rate_limiter
+            return
         security_config = settings.security
         self.rate_limiter = RateLimiter(
             max_requests=security_config.rate_limit_requests,
             window_seconds=60,  # 1 minute window
         )
 
-        # Initialize confirmation middleware if enabled
-        self.confirmation_middleware = None
+    def _setup_confirmation_middleware(self, settings: "Settings") -> None:
+        """Initialize tool confirmation middleware when sandbox is enabled."""
+        security_config = settings.security
+        if not security_config.sandbox_enabled:
+            return
 
-        # Check if tools require confirmation (use security config)
-        if security_config.sandbox_enabled:
-            logger.info("Initializing Tool Confirmation Middleware...")
+        logger.info("Initializing Tool Confirmation Middleware...")
+        self.admin_chat_id = (
+            list(self.authorized_user_ids)[0] if self.authorized_user_ids else None
+        )
 
-            # Admin chat ID is the first authorized user
-            self.admin_chat_id = (
-                list(self.authorized_user_ids)[0] if self.authorized_user_ids else None
+        if not self.admin_chat_id:
+            logger.warning(
+                "Cannot enable confirmation middleware: no authorized users configured"
             )
+            return
 
-            if not self.admin_chat_id:
-                logger.warning(
-                    "Cannot enable confirmation middleware: no authorized users configured"
-                )
-            else:
-                self.confirmation_middleware = ToolConfirmationMiddleware(
-                    event_bus=self.agent_core.event_bus,
-                    confirmation_sender=self._send_confirmation_request,
-                    default_timeout=300,  # 5 minutes default
-                )
-
-                # Inject middleware into agent core
-                self.agent_core.confirmation_middleware = self.confirmation_middleware
-
-                logger.info(
-                    "Confirmation middleware enabled (admin_chat_id: %s)",
-                    self.admin_chat_id,
-                )
-
-        # Telegram application
-        self.application = None
-
-        logger.info("=" * 60)
-        logger.info("Telegram Interface ready!")
-        bot_id = self.bot_token.split(":")[0] if ":" in self.bot_token else "***"
-        logger.info("  Bot ID: %s (token masked)", bot_id)
-        logger.info("  Authorized users: %s", len(self.authorized_user_ids))
-        logger.info("  Dependency Injection: ✓")
-        logger.info("=" * 60)
+        self.confirmation_middleware = ToolConfirmationMiddleware(
+            event_bus=self.agent_core.event_bus,
+            confirmation_sender=self._send_confirmation_request,
+            default_timeout=300,  # 5 minutes default
+        )
+        self.agent_core.confirmation_middleware = self.confirmation_middleware
+        logger.info(
+            "Confirmation middleware enabled (admin_chat_id: %s)",
+            self.admin_chat_id,
+        )
 
     # ========================================================================
     # AUTHORIZATION & SECURITY
