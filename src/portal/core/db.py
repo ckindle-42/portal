@@ -21,6 +21,13 @@ class ConnectionPool:
             self._local.conn = conn
         return conn
 
+    def close(self) -> None:
+        """Close the thread-local connection if it exists."""
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            conn.close()
+            self._local.conn = None
+
 
 def get_connection(
     path: Path | str,

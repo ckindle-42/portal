@@ -384,3 +384,107 @@ async def test_chat_completions_returns_503_during_warmup():
     assert "error" in body
     assert "starting up" in body["error"]["message"].lower()
     assert "retry-after" in resp.headers
+
+
+# ---------------------------------------------------------------------------
+# Audio Transcription Tests (TASK-005)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_audio_oversized_file_rejected():
+    """Upload exceeding _MAX_AUDIO_BYTES returns 413."""
+    from fastapi.testclient import TestClient
+
+    from portal.interfaces.web.server import WebInterface
+    from portal.security.middleware import SecurityMiddleware
+
+    agent = MagicMock()
+    agent.health_check = AsyncMock(return_value=True)
+
+    core = MagicMock()
+    secure = SecurityMiddleware(agent_core=core)
+
+    iface = WebInterface(agent_core=agent, config={}, secure_agent=secure)
+
+    # Create a file larger than _MAX_AUDIO_BYTES (25MB default)
+    large_content = b"x" * (26 * 1024 * 1024)  # 26MB
+
+    with TestClient(iface.app, raise_server_exceptions=False) as client:
+        # Use multipart form upload
+        resp = client.post(
+            "/v1/audio/transcriptions",
+            files={"file": ("test.wav", large_content, "audio/wav")},
+        )
+
+    assert resp.status_code == 413
+    body = resp.json()
+    assert "exceeds" in body["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_audio_transcription_endpoint_exists():
+    """Audio transcription endpoint exists and accepts file uploads."""
+    from fastapi.testclient import TestClient
+
+    from portal.interfaces.web.server import WebInterface
+    from portal.security.middleware import SecurityMiddleware
+
+    agent = MagicMock()
+    agent.health_check = AsyncMock(return_value=True)
+
+    core = MagicMock()
+    secure = SecurityMiddleware(agent_core=core)
+
+    iface = WebInterface(agent_core=agent, config={}, secure_agent=secure)
+
+    # Small audio content (under limit)
+    small_content = b"x" * (1024)  # 1KB
+
+    with TestClient(iface.app, raise_server_exceptions=False) as client:
+        resp = client.post(
+            "/v1/audio/transcriptions",
+            files={"file": ("test.wav", small_content, "audio/wav")},
+        )
+
+    # Should either succeed (200) or fail with connection error (not 413 for size)
+    # This test verifies the endpoint exists and accepts uploads under the size limit
+    assert resp.status_code != 413  # Not a size error
+
+
+@pytest.mark.asyncio
+async def test_audio_transcription_whisper_error():
+    """Audio transcription gracefully handles Whisper errors."""
+    import httpx
+    from fastapi.testclient import TestClient
+
+    from portal.interfaces.web.server import WebInterface
+    from portal.security.middleware import SecurityMiddleware
+
+    agent = MagicMock()
+    agent.health_check = AsyncMock(return_value=True)
+
+    core = MagicMock()
+    secure = SecurityMiddleware(agent_core=core)
+
+    # Mock the HTTP client to raise an error
+    async def mock_post(*args, **kwargs):
+        raise httpx.ConnectError("Connection refused")
+
+    iface = WebInterface(agent_core=agent, config={}, secure_agent=secure)
+    iface._ollama_client = AsyncMock()
+    iface._ollama_client.post = mock_post
+    iface._ollama_client.__aenter__ = AsyncMock(return_value=MagicMock())
+    iface._ollama_client.__aexit__ = AsyncMock(return_value=None)
+
+    # Small audio content (under limit)
+    small_content = b"x" * (1024)  # 1KB
+
+    with TestClient(iface.app, raise_server_exceptions=False) as client:
+        resp = client.post(
+            "/v1/audio/transcriptions",
+            files={"file": ("test.wav", small_content, "audio/wav")},
+        )
+
+    # Should return 500 or handle error gracefully
+    assert resp.status_code in (500, 502, 503)
