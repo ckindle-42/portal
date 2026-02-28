@@ -342,6 +342,36 @@ setup_venv() {
     echo "[setup] Dependencies installed."
 }
 
+# ─── Ensure default Ollama model is available ────────────────────────────────
+ensure_default_model() {
+    local model="${DEFAULT_MODEL:-qwen2.5:7b}"
+
+    # Wait for Ollama to be ready (it may still be starting)
+    local retries=10
+    while ! curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; do
+        retries=$((retries - 1))
+        if [ "$retries" -le 0 ]; then
+            echo "[models] WARNING: Ollama not responding — skipping model check"
+            return
+        fi
+        sleep 1
+    done
+
+    # Check if default model is already pulled
+    if ollama list 2>/dev/null | grep -q "^${model}"; then
+        echo "[models] $model already available"
+        return
+    fi
+
+    echo "[models] Pulling default model: $model (this may take a few minutes on first run)..."
+    if ollama pull "$model"; then
+        echo "[models] $model ready"
+    else
+        echo "[models] WARNING: Failed to pull $model — you can pull it manually:"
+        echo "  ollama pull $model"
+    fi
+}
+
 # ─── Start router + Portal web interface ─────────────────────────────────────
 start_core_services() {
     local profile="$1"
@@ -796,8 +826,11 @@ case "$COMMAND" in
         # 5. Create venv + install deps if missing
         setup_venv
 
-        # 6-8. Start services
+        # 5.5 Start core services first so Ollama is available for model check
         start_core_services "$PROFILE"
+
+        # 5.6 Ensure default model is available in Ollama
+        ensure_default_model
 
         if [ "$MINIMAL" != "true" ]; then
             start_extended_services "$PROFILE"
