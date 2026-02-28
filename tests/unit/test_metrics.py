@@ -1,6 +1,6 @@
 """Tests for portal.observability.metrics."""
 
-import asyncio
+import inspect
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -177,7 +177,7 @@ class TestMetricsCollectorPrometheusUnavailable:
 class TestGetMetricsHandler:
     async def test_handler_is_coroutine(self):
         mc = _fresh_collector()
-        assert asyncio.iscoroutinefunction(mc.get_metrics_handler())
+        assert inspect.iscoroutinefunction(mc.get_metrics_handler())
 
     @patch("portal.observability.metrics.generate_latest", return_value=b"# HELP test\n")
     @patch("portal.observability.metrics.CONTENT_TYPE_LATEST", "text/plain")

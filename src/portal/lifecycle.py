@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import os
 import signal
 from collections.abc import Callable
@@ -284,7 +285,7 @@ class Runtime:
         for cb in sorted_callbacks:
             cb_timeout = cb.timeout or 10.0
             try:
-                if asyncio.iscoroutinefunction(cb.callback):
+                if inspect.iscoroutinefunction(cb.callback):
                     await asyncio.wait_for(cb.callback(), timeout=cb_timeout)
                 else:
                     loop = asyncio.get_running_loop()

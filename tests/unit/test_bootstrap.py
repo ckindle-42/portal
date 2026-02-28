@@ -9,6 +9,7 @@ These are unit-level tests using mocks; they confirm the DI wiring is
 correct without executing any real LLM calls.
 """
 
+import inspect
 from unittest.mock import MagicMock, patch
 
 # ---------------------------------------------------------------------------
@@ -85,9 +86,6 @@ def test_create_agent_core_returns_agent_core():
 
 def test_create_agent_core_callable_methods():
     """process_message and stream_response are coroutine/async-generator callables."""
-    import asyncio
-    import inspect
-
     mock_registry = _make_mock_registry()
 
     with patch("portal.tools.registry", mock_registry):
@@ -96,7 +94,7 @@ def test_create_agent_core_callable_methods():
         container = DependencyContainer({"routing_strategy": "AUTO"})
         agent = container.create_agent_core()
 
-    assert asyncio.iscoroutinefunction(agent.process_message)
+    assert inspect.iscoroutinefunction(agent.process_message)
     assert inspect.isasyncgenfunction(agent.stream_response)
 
 

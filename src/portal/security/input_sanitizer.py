@@ -99,15 +99,17 @@ class InputSanitizer:
                 return False, "Path traversal detected"
 
         # Check for absolute paths to sensitive directories
-        path_obj = Path(decoded_path).resolve()
-        sensitive_dirs = [Path("/etc"), Path("/boot"), Path("/sys"), Path("/proc"), Path("/dev")]
-
-        for sensitive_dir in sensitive_dirs:
-            try:
-                path_obj.relative_to(sensitive_dir)
-                return False, f"Access to {sensitive_dir} is restricted"
-            except ValueError:
-                continue
+        # Use resolved path to handle symlinks, but check components for sensitive paths
+        path_obj = Path(decoded_path)
+        if path_obj.is_absolute():
+            resolved = path_obj.resolve()
+            # Get all path components
+            parts = resolved.parts
+            # Check if any component is a sensitive directory name
+            sensitive_names = {"etc", "boot", "sys", "proc", "dev", "root", "sbin", "bin", "lib", "usr"}
+            for part in parts:
+                if part.lower() in sensitive_names:
+                    return False, f"Access to /{part} is restricted"
 
         return True, None
 
