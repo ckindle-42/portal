@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.3.7] - 2026-02-28
+
+### Added
+- `bash launch.sh switch-ui [openwebui|librechat]` — change web UI without manual .env editing
+- `bash launch.sh reset [--full]` — clean recovery from broken state (--full for factory reset)
+
+---
+
 ## [1.3.6] - 2026-02-28
 
 ### Fixed
