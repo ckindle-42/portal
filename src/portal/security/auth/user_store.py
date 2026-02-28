@@ -5,28 +5,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import os
-import sqlite3
-import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-
-class _ConnectionPool:
-    """Thread-local SQLite connection cache."""
-
-    def __init__(self, db_path: Path) -> None:
-        self._db_path = db_path
-        self._local = threading.local()
-
-    def get(self) -> sqlite3.Connection:
-        conn = getattr(self._local, "conn", None)
-        if conn is None:
-            conn = sqlite3.connect(self._db_path)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA foreign_keys=ON")
-            self._local.conn = conn
-        return conn
+from portal.core.db import ConnectionPool
 
 
 @dataclass(slots=True)
@@ -40,7 +23,7 @@ class UserStore:
     def __init__(self, db_path: str | Path | None = None) -> None:
         self.db_path = Path(db_path or os.getenv("PORTAL_AUTH_DB", "data/auth.db"))
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._pool = _ConnectionPool(self.db_path)
+        self._pool = ConnectionPool(self.db_path, pragmas=("PRAGMA journal_mode=WAL", "PRAGMA foreign_keys=ON"))
         self._init_db()
         self._ensure_bootstrap_api_key()
 
