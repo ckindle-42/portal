@@ -352,6 +352,12 @@ start_core_services() {
         python_bin="$PORTAL_ROOT/.venv/bin/python"
     fi
 
+    # Verify uvicorn is importable before starting services
+    if ! "$python_bin" -c "import uvicorn" 2>/dev/null; then
+        echo "ERROR: uvicorn not found in venv. Run: rm -rf .venv && bash launch.sh up"
+        exit 1
+    fi
+
     # Start Ollama
     if ! pgrep -x "ollama" >/dev/null 2>&1; then
         echo "[ollama] starting..."
