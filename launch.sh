@@ -307,19 +307,39 @@ check_prerequisites() {
 
 # ─── Virtual environment setup ────────────────────────────────────────────────
 setup_venv() {
-    if [ ! -d "$PORTAL_ROOT/.venv" ]; then
-        echo "[setup] Creating virtual environment..."
-        if command -v uv &>/dev/null; then
-            uv venv "$PORTAL_ROOT/.venv"
-            echo "[setup] Installing dependencies with uv..."
-            (cd "$PORTAL_ROOT" && uv sync)
-        else
-            python3 -m venv "$PORTAL_ROOT/.venv"
-            echo "[setup] Installing dependencies..."
-            "$PORTAL_ROOT/.venv/bin/pip" install -q -e "$PORTAL_ROOT/.[all]"
-        fi
-        echo "[setup] Dependencies installed."
+    local venv_dir="$PORTAL_ROOT/.venv"
+    local python_bin="$venv_dir/bin/python"
+
+    # Quick check: can the venv import the main package?
+    if [ -f "$python_bin" ] && "$python_bin" -c "import uvicorn; import portal" 2>/dev/null; then
+        return 0  # venv is healthy
     fi
+
+    # Venv missing or broken — (re)create it
+    if [ -d "$venv_dir" ]; then
+        echo "[setup] Existing virtual environment is broken — recreating..."
+        rm -rf "$venv_dir"
+    fi
+
+    echo "[setup] Creating virtual environment..."
+    if command -v uv &>/dev/null; then
+        uv venv "$venv_dir"
+        echo "[setup] Installing dependencies with uv..."
+        if ! (cd "$PORTAL_ROOT" && uv sync); then
+            echo "ERROR: Dependency installation failed. Check Python version and try:"
+            echo "  rm -rf .venv && bash launch.sh up"
+            exit 1
+        fi
+    else
+        python3 -m venv "$venv_dir"
+        echo "[setup] Installing dependencies with pip..."
+        if ! "$venv_dir/bin/pip" install -q -e "$PORTAL_ROOT/.[all]"; then
+            echo "ERROR: Dependency installation failed. Check Python version and try:"
+            echo "  rm -rf .venv && bash launch.sh up"
+            exit 1
+        fi
+    fi
+    echo "[setup] Dependencies installed."
 }
 
 # ─── Start router + Portal web interface ─────────────────────────────────────
