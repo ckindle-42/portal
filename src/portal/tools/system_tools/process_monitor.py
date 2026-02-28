@@ -62,45 +62,23 @@ class ProcessMonitorTool(BaseTool):
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Monitor processes"""
-
         if not PSUTIL_AVAILABLE:
             return self._error_response("psutil not installed. Run: pip install psutil")
-
         action = parameters.get("action", "list").lower()
-        query = parameters.get("query", "")
-        pid = parameters.get("pid")
-        sort_by = parameters.get("sort_by", "cpu").lower()
-        limit = parameters.get("limit", 10)
-
+        handler = self._DISPATCH.get(action)
+        if not handler:
+            return self._error_response(
+                f"Unknown action: {action}. Use: {', '.join(self._DISPATCH)}"
+            )
         try:
-            if action == "list":
-                return await self._list_processes(sort_by, limit)
-
-            elif action == "search":
-                if not query:
-                    return self._error_response("Query is required for search action")
-                return await self._search_processes(query, limit)
-
-            elif action == "info":
-                if not pid:
-                    return self._error_response("PID is required for info action")
-                return await self._process_info(pid)
-
-            elif action == "kill":
-                if not pid:
-                    return self._error_response("PID is required for kill action")
-                return await self._kill_process(pid)
-
-            else:
-                return self._error_response(
-                    f"Unknown action: {action}. Use: list, search, info, kill"
-                )
-
+            return await handler(self, parameters)
         except Exception as e:
             return self._error_response(f"Process monitoring failed: {str(e)}")
 
-    async def _list_processes(self, sort_by: str, limit: int) -> dict[str, Any]:
+    async def _list_processes(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """List top processes"""
+        sort_by = parameters.get("sort_by", "cpu").lower()
+        limit = parameters.get("limit", 10)
         processes = []
 
         for proc in psutil.process_iter(["pid", "name", "cpu_percent", "memory_percent"]):
@@ -144,8 +122,12 @@ class ProcessMonitorTool(BaseTool):
             },
         )
 
-    async def _search_processes(self, query: str, limit: int) -> dict[str, Any]:
+    async def _search_processes(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Search for processes by name"""
+        query = parameters.get("query", "")
+        limit = parameters.get("limit", 10)
+        if not query:
+            return self._error_response("Query is required for search action")
         matches = []
         query_lower = query.lower()
 
@@ -189,8 +171,11 @@ class ProcessMonitorTool(BaseTool):
             },
         )
 
-    async def _process_info(self, pid: int) -> dict[str, Any]:
+    async def _process_info(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Get detailed info about a process"""
+        pid = parameters.get("pid")
+        if not pid:
+            return self._error_response("PID is required for info action")
         try:
             proc = psutil.Process(pid)
 
@@ -245,8 +230,11 @@ class ProcessMonitorTool(BaseTool):
         except psutil.AccessDenied:
             return self._error_response(f"Access denied to process {pid}")
 
-    async def _kill_process(self, pid: int) -> dict[str, Any]:
+    async def _kill_process(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Kill a process"""
+        pid = parameters.get("pid")
+        if not pid:
+            return self._error_response("PID is required for kill action")
         try:
             proc = psutil.Process(pid)
             name = proc.name()
@@ -273,3 +261,10 @@ class ProcessMonitorTool(BaseTool):
             return self._error_response(f"Process {pid} not found")
         except psutil.AccessDenied:
             return self._error_response(f"Access denied to kill process {pid}")
+
+    _DISPATCH: dict[str, Any] = {
+        "list": _list_processes,
+        "search": _search_processes,
+        "info": _process_info,
+        "kill": _kill_process,
+    }
