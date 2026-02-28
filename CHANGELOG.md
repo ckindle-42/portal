@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.3.6] - 2026-02-28
+
+### Fixed
+- launch.sh now validates venv health on startup — auto-recreates broken venvs from pre-1.3.5
+- launch.sh verifies uvicorn is importable before starting services (no more silent failures)
+- launch.sh checks Docker daemon before running compose (clear error instead of socket errors)
+- Removed obsolete `version:` key from LibreChat docker-compose (silences Docker Compose V2 warning)
+
+### Added
+- ROADMAP.md documenting planned LLM-based routing and MLX backend features
+
+### Changed
+- README PocketPortal attribution updated to past tense (all legacy code removed)
+- Routing __init__.py docstring corrected to accurately describe two independent routing layers
+
+---
+
 ## [1.3.5] - 2026-02-28
 
 ### Fixed
