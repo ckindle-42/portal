@@ -114,24 +114,28 @@ bootstrap_env() {
     TELEGRAM_BOT_TOKEN=""
     TELEGRAM_USER_IDS=""
     read -rp "Enable Telegram bot? [y/N]: " tg_enable
-    if [[ "${tg_enable,,}" =~ ^y ]]; then
-        TELEGRAM_ENABLED="true"
-        read -rp "  Telegram bot token (from @BotFather): " TELEGRAM_BOT_TOKEN
-        read -rp "  Authorized user IDs (comma-separated): " TELEGRAM_USER_IDS
-        echo ""
-    fi
+    case "$tg_enable" in
+        [Yy]*)
+            TELEGRAM_ENABLED="true"
+            read -rp "  Telegram bot token (from @BotFather): " TELEGRAM_BOT_TOKEN
+            read -rp "  Authorized user IDs (comma-separated): " TELEGRAM_USER_IDS
+            echo ""
+            ;;
+    esac
 
     # --- Slack (optional) ---
     SLACK_ENABLED="false"
     SLACK_BOT_TOKEN=""
     SLACK_SIGNING_SECRET_VAL=""
     read -rp "Enable Slack bot? [y/N]: " slack_enable
-    if [[ "${slack_enable,,}" =~ ^y ]]; then
-        SLACK_ENABLED="true"
-        read -rp "  Slack bot token (xoxb-...): " SLACK_BOT_TOKEN
-        read -rp "  Slack signing secret: " SLACK_SIGNING_SECRET_VAL
-        echo ""
-    fi
+    case "$slack_enable" in
+        [Yy]*)
+            SLACK_ENABLED="true"
+            read -rp "  Slack bot token (xoxb-...): " SLACK_BOT_TOKEN
+            read -rp "  Slack signing secret: " SLACK_SIGNING_SECRET_VAL
+            echo ""
+            ;;
+    esac
 
     # --- Auto-generate all secrets ---
     echo "Generating secrets..."
