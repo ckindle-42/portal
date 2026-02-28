@@ -137,6 +137,8 @@ class BaseHTTPBackend(ModelBackend):
         return chat_messages
 
 
+# TODO(Track B): Migrate from aiohttp to httpx for consistency with rest of Portal.
+# The rest of the codebase uses httpx; consolidating would remove a dual-dependency.
 class OllamaBackend(BaseHTTPBackend):
     """Ollama backend adapter"""
 
