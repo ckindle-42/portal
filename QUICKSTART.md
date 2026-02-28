@@ -5,7 +5,7 @@
 ---
 
 ## Prerequisites (All Platforms)
-
+- Git (required to clone the repository)
 - Python 3.11+
 - Docker & Docker Compose
 - Ollama installed
