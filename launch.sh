@@ -480,11 +480,30 @@ start_extended_services() {
 
         if ! pgrep -f "mcpo" >/dev/null 2>&1; then
             echo "[mcpo] starting..."
-            nohup uvx mcpo \
-                --port "${MCPO_PORT:-9000}" \
-                --api-key "${MCP_API_KEY}" \
-                --config "$PORTAL_ROOT/mcp/core/mcp_servers.json" \
-                >> "$LOG_DIR/mcpo.log" 2>&1 &
+            if command -v uvx &>/dev/null; then
+                nohup uvx mcpo \
+                    --port "${MCPO_PORT:-9000}" \
+                    --api-key "${MCP_API_KEY}" \
+                    --config "$PORTAL_ROOT/mcp/core/mcp_servers.json" \
+                    >> "$LOG_DIR/mcpo.log" 2>&1 &
+            else
+                # uvx not available — install mcpo into venv and run directly
+                local mcpo_bin="$PORTAL_ROOT/.venv/bin/mcpo"
+                if [ ! -f "$mcpo_bin" ]; then
+                    echo "[mcpo] uvx not found — installing mcpo into venv..."
+                    "$PORTAL_ROOT/.venv/bin/pip" install -q mcpo
+                fi
+                if [ -f "$mcpo_bin" ]; then
+                    nohup "$mcpo_bin" \
+                        --port "${MCPO_PORT:-9000}" \
+                        --api-key "${MCP_API_KEY}" \
+                        --config "$PORTAL_ROOT/mcp/core/mcp_servers.json" \
+                        >> "$LOG_DIR/mcpo.log" 2>&1 &
+                else
+                    echo "[mcpo] WARNING: Failed to install mcpo. MCP tools will be unavailable."
+                    echo "  Install manually: pip install mcpo  OR  install uv: https://docs.astral.sh/uv/"
+                fi
+            fi
             echo "[mcpo] OK (PID $!)"
         else
             echo "[mcpo] already running"
