@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.3.8] - 2026-02-28
+
+### Fixed
+- launch.sh auto-pulls DEFAULT_MODEL on first run — no more empty model list in Open WebUI on fresh install
+
+### Added
+- `WEBUI_AUTH` env var to enable Open WebUI user accounts and login screen (asked during first-run bootstrap)
+- `bash launch.sh switch-ui` and `reset` commands now documented; WEBUI_AUTH surfaced in interactive setup
+- Security scanning workflow (.github/workflows/security.yml): pip-audit for Python CVEs weekly + on PRs,
+  Docker Scout for image CVEs weekly
+- Dependabot configuration (.github/dependabot.yml): Python deps weekly, Docker images monthly,
+  GitHub Actions weekly — creates PRs, never auto-merges
+- Python 3.13 and 3.14 added to CI test matrix
+
+### Changed
+- Docker images pinned to version tags: Open WebUI v0.8.5, LibreChat v0.8.2, Caddy 2.9-alpine, MongoDB 7.0
+- uv.lock regenerated: requires-python now ">=3.11" (was ">=3.11, <3.13"); picked up fastapi 0.134.0,
+  ruff 0.15.4, huggingface-hub 1.5.0, protobuf 7.34.0
+
+---
+
 ## [1.3.7] - 2026-02-28
 
 ### Added
