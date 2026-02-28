@@ -3,52 +3,27 @@
 import json
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
 class HTTPClientTool(BaseTool):
     """Make HTTP requests to REST APIs"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="http_client",
-            description="Make HTTP requests (GET, POST, PUT, DELETE) to REST APIs",
-            category=ToolCategory.WEB,
-            version="1.0.0",
-            requires_confirmation=True,  # Network operations need confirmation
-            parameters=[
-                ToolParameter(
-                    name="url", param_type="string", description="Target URL", required=True
-                ),
-                ToolParameter(
-                    name="method",
-                    param_type="string",
-                    description="HTTP method: GET, POST, PUT, DELETE",
-                    required=False,
-                    default="GET",
-                ),
-                ToolParameter(
-                    name="headers",
-                    param_type="string",
-                    description="JSON string of headers",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="body",
-                    param_type="string",
-                    description="Request body (JSON string for POST/PUT)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="timeout",
-                    param_type="int",
-                    description="Timeout in seconds",
-                    required=False,
-                    default=30,
-                ),
-            ],
-            examples=["GET https://api.example.com/data"],
-        )
+    METADATA = {
+        "name": "http_client",
+        "description": "Make HTTP requests (GET, POST, PUT, DELETE) to REST APIs",
+        "category": ToolCategory.WEB,
+        "version": "1.0.0",
+        "requires_confirmation": True,
+        "parameters": [
+            {"name": "url", "param_type": "string", "description": "Target URL", "required": True},
+            {"name": "method", "param_type": "string", "description": "HTTP method: GET, POST, PUT, DELETE", "required": False, "default": "GET"},
+            {"name": "headers", "param_type": "string", "description": "JSON string of headers", "required": False},
+            {"name": "body", "param_type": "string", "description": "Request body (JSON string for POST/PUT)", "required": False},
+            {"name": "timeout", "param_type": "int", "description": "Timeout in seconds", "required": False, "default": 30},
+        ],
+        "examples": ["GET https://api.example.com/data"],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute HTTP request"""

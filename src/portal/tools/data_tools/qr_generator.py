@@ -4,36 +4,24 @@ import base64
 import io
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
 class QRGeneratorTool(BaseTool):
     """Generate QR codes from text or URLs"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="qr_generator",
-            description="Generate QR codes from text or URLs",
-            category=ToolCategory.UTILITY,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="content",
-                    param_type="string",
-                    description="Text or URL to encode",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="size",
-                    param_type="int",
-                    description="QR code size (1-10)",
-                    required=False,
-                    default=5,
-                ),
-            ],
-            examples=["Generate QR for https://example.com"],
-        )
+    METADATA = {
+        "name": "qr_generator",
+        "description": "Generate QR codes from text or URLs",
+        "category": ToolCategory.UTILITY,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "content", "param_type": "string", "description": "Text or URL to encode", "required": True},
+            {"name": "size", "param_type": "int", "description": "QR code size (1-10)", "required": False, "default": 5},
+        ],
+        "examples": ["Generate QR for https://example.com"],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Generate QR code"""

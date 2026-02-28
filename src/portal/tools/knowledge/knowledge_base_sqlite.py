@@ -28,7 +28,7 @@ from typing import Any
 
 import numpy as np
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 logger = logging.getLogger(__name__)
 
@@ -76,59 +76,22 @@ class EnhancedKnowledgeTool(BaseTool):
             EnhancedKnowledgeTool._embeddings_model = SentenceTransformer("all-MiniLM-L6-v2")
             logger.info("Embeddings model loaded")
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="knowledge_base_enhanced",
-            description="Enhanced knowledge base with SQLite backend (1000+ documents)",
-            category=ToolCategory.KNOWLEDGE,
-            version="2.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="action",
-                    param_type="string",
-                    description="Action: add, search, list, delete, stats, migrate",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="query",
-                    param_type="string",
-                    description="Search query (for search action)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="path",
-                    param_type="string",
-                    description="File path (for add action)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="content",
-                    param_type="string",
-                    description="Text content (for add action)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="doc_id",
-                    param_type="integer",
-                    description="Document ID (for delete action)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="limit",
-                    param_type="integer",
-                    description="Number of results (for search/list)",
-                    required=False,
-                    default=5,
-                ),
-                ToolParameter(
-                    name="metadata",
-                    param_type="object",
-                    description="Document metadata (tags, author, etc.)",
-                    required=False,
-                ),
-            ],
-        )
+    METADATA = {
+        "name": "knowledge_base_enhanced",
+        "description": "Enhanced knowledge base with SQLite backend (1000+ documents)",
+        "category": ToolCategory.KNOWLEDGE,
+        "version": "2.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "action", "param_type": "string", "description": "Action: add, search, list, delete, stats, migrate", "required": True},
+            {"name": "query", "param_type": "string", "description": "Search query (for search action)", "required": False},
+            {"name": "path", "param_type": "string", "description": "File path (for add action)", "required": False},
+            {"name": "content", "param_type": "string", "description": "Text content (for add action)", "required": False},
+            {"name": "doc_id", "param_type": "int", "description": "Document ID (for delete action)", "required": False},
+            {"name": "limit", "param_type": "int", "description": "Number of results (for search/list)", "required": False, "default": 5},
+            {"name": "metadata", "param_type": "object", "description": "Document metadata (tags, author, etc.)", "required": False},
+        ],
+    }
 
     def _init_database(self) -> None:
         """Initialize SQLite database with FTS5 and vector storage"""

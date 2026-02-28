@@ -19,7 +19,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 logger = logging.getLogger(__name__)
 
@@ -58,80 +58,26 @@ class PowerPointProcessorTool(BaseTool):
     def __init__(self) -> None:
         super().__init__()
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="powerpoint_processor",
-            description="Create and edit PowerPoint (PPTX) presentations",
-            category=ToolCategory.UTILITY,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="action",
-                    param_type="string",
-                    description="Action: create, add_slide, add_text, add_image, add_chart, read, save",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="file_path",
-                    param_type="string",
-                    description="Path to PowerPoint file",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="layout",
-                    param_type="string",
-                    description="Slide layout: title, title_content, section_header, two_content, blank",
-                    required=False,
-                    default="title_content",
-                ),
-                ToolParameter(
-                    name="title", param_type="string", description="Slide title", required=False
-                ),
-                ToolParameter(
-                    name="content",
-                    param_type="string",
-                    description="Slide content (text or bullet points)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="bullet_points",
-                    param_type="list",
-                    description="List of bullet points",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="image_path",
-                    param_type="string",
-                    description="Path to image file",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="image_position",
-                    param_type="object",
-                    description="Image position: {left, top, width, height} in inches",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="chart_data",
-                    param_type="object",
-                    description="Chart data for creating charts",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="chart_type",
-                    param_type="string",
-                    description="Chart type: bar, line, pie",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="theme",
-                    param_type="object",
-                    description="Theme settings: {background_color, title_color, text_color}",
-                    required=False,
-                ),
-            ],
-        )
+    METADATA = {
+        "name": "powerpoint_processor",
+        "description": "Create and edit PowerPoint (PPTX) presentations",
+        "category": ToolCategory.UTILITY,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "action", "param_type": "string", "description": "Action: create, add_slide, add_text, add_image, add_chart, read, save", "required": True},
+            {"name": "file_path", "param_type": "string", "description": "Path to PowerPoint file", "required": True},
+            {"name": "layout", "param_type": "string", "description": "Slide layout: title, title_content, section_header, two_content, blank", "required": False, "default": "title_content"},
+            {"name": "title", "param_type": "string", "description": "Slide title", "required": False},
+            {"name": "content", "param_type": "string", "description": "Slide content (text or bullet points)", "required": False},
+            {"name": "bullet_points", "param_type": "list", "description": "List of bullet points", "required": False},
+            {"name": "image_path", "param_type": "string", "description": "Path to image file", "required": False},
+            {"name": "image_position", "param_type": "object", "description": "Image position: {left, top, width, height} in inches", "required": False},
+            {"name": "chart_data", "param_type": "object", "description": "Chart data for creating charts", "required": False},
+            {"name": "chart_type", "param_type": "string", "description": "Chart type: bar, line, pie", "required": False},
+            {"name": "theme", "param_type": "object", "description": "Theme settings: {background_color, title_color, text_color}", "required": False},
+        ],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute PowerPoint operation"""

@@ -15,7 +15,7 @@ try:
 except ImportError:
     HAS_AIOFILES = False
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
 class LocalKnowledgeTool(BaseTool):
@@ -36,48 +36,21 @@ class LocalKnowledgeTool(BaseTool):
             self._load_db()
             LocalKnowledgeTool._db_loaded = True
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="local_knowledge",
-            description="Search local documents using semantic search (RAG)",
-            category=ToolCategory.KNOWLEDGE,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="action",
-                    param_type="string",
-                    description="Action: search, add, list, clear",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="query",
-                    param_type="string",
-                    description="Search query (for search action)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="document_path",
-                    param_type="string",
-                    description="Path to document to add",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="content",
-                    param_type="string",
-                    description="Text content to add directly",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="top_k",
-                    param_type="int",
-                    description="Number of results to return",
-                    required=False,
-                    default=5,
-                ),
-            ],
-            examples=["Search for deployment instructions"],
-        )
+    METADATA = {
+        "name": "local_knowledge",
+        "description": "Search local documents using semantic search (RAG)",
+        "category": ToolCategory.KNOWLEDGE,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "action", "param_type": "string", "description": "Action: search, add, list, clear", "required": True},
+            {"name": "query", "param_type": "string", "description": "Search query (for search action)", "required": False},
+            {"name": "document_path", "param_type": "string", "description": "Path to document to add", "required": False},
+            {"name": "content", "param_type": "string", "description": "Text content to add directly", "required": False},
+            {"name": "top_k", "param_type": "int", "description": "Number of results to return", "required": False, "default": 5},
+        ],
+        "examples": ["Search for deployment instructions"],
+    }
 
     def _get_embedding(self, text: str) -> list[float]:
         """Generate embedding for text (cached in model)"""

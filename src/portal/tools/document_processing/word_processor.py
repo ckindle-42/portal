@@ -20,7 +20,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 logger = logging.getLogger(__name__)
 
@@ -45,85 +45,27 @@ class WordProcessorTool(BaseTool):
     def __init__(self) -> None:
         super().__init__()
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="word_processor",
-            description="Create and edit Word (DOCX) documents",
-            category=ToolCategory.UTILITY,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="action",
-                    param_type="string",
-                    description="Action: create, add_heading, add_paragraph, add_table, add_image, read, save",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="file_path",
-                    param_type="string",
-                    description="Path to Word document",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="title", param_type="string", description="Document title", required=False
-                ),
-                ToolParameter(
-                    name="text",
-                    param_type="string",
-                    description="Text content to add",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="heading", param_type="string", description="Heading text", required=False
-                ),
-                ToolParameter(
-                    name="level",
-                    param_type="integer",
-                    description="Heading level (1-9)",
-                    required=False,
-                    default=1,
-                ),
-                ToolParameter(
-                    name="style",
-                    param_type="string",
-                    description="Text style: normal, bold, italic, underline",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="alignment",
-                    param_type="string",
-                    description="Text alignment: left, center, right, justify",
-                    required=False,
-                    default="left",
-                ),
-                ToolParameter(
-                    name="table_data",
-                    param_type="object",
-                    description="Table data (rows and columns)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="image_path",
-                    param_type="string",
-                    description="Path to image file",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="image_width",
-                    param_type="number",
-                    description="Image width in inches",
-                    required=False,
-                    default=4,
-                ),
-                ToolParameter(
-                    name="metadata",
-                    param_type="object",
-                    description="Document metadata (author, subject, keywords)",
-                    required=False,
-                ),
-            ],
-        )
+    METADATA = {
+        "name": "word_processor",
+        "description": "Create and edit Word (DOCX) documents",
+        "category": ToolCategory.UTILITY,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "action", "param_type": "string", "description": "Action: create, add_heading, add_paragraph, add_table, add_image, read, save", "required": True},
+            {"name": "file_path", "param_type": "string", "description": "Path to Word document", "required": True},
+            {"name": "title", "param_type": "string", "description": "Document title", "required": False},
+            {"name": "text", "param_type": "string", "description": "Text content to add", "required": False},
+            {"name": "heading", "param_type": "string", "description": "Heading text", "required": False},
+            {"name": "level", "param_type": "int", "description": "Heading level (1-9)", "required": False, "default": 1},
+            {"name": "style", "param_type": "string", "description": "Text style: normal, bold, italic, underline", "required": False},
+            {"name": "alignment", "param_type": "string", "description": "Text alignment: left, center, right, justify", "required": False, "default": "left"},
+            {"name": "table_data", "param_type": "object", "description": "Table data (rows and columns)", "required": False},
+            {"name": "image_path", "param_type": "string", "description": "Path to image file", "required": False},
+            {"name": "image_width", "param_type": "float", "description": "Image width in inches", "required": False, "default": 4},
+            {"name": "metadata", "param_type": "object", "description": "Document metadata (author, subject, keywords)", "required": False},
+        ],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute Word document operation"""

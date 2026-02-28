@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 logger = logging.getLogger(__name__)
 
@@ -41,29 +41,17 @@ class DocumentMetadataExtractorTool(BaseTool):
     def __init__(self) -> None:
         super().__init__()
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="document_metadata",
-            description="Extract metadata from documents (PDF, DOCX, PPTX, XLSX, images, audio)",
-            category=ToolCategory.UTILITY,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="file_path",
-                    param_type="string",
-                    description="Path to document file",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="detailed",
-                    param_type="boolean",
-                    description="Include detailed metadata (default: False)",
-                    required=False,
-                    default=False,
-                ),
-            ],
-        )
+    METADATA = {
+        "name": "document_metadata",
+        "description": "Extract metadata from documents (PDF, DOCX, PPTX, XLSX, images, audio)",
+        "category": ToolCategory.UTILITY,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "file_path", "param_type": "string", "description": "Path to document file", "required": True},
+            {"name": "detailed", "param_type": "bool", "description": "Include detailed metadata (default: False)", "required": False, "default": False},
+        ],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Extract document metadata"""

@@ -5,7 +5,7 @@ System Stats Tool - Monitor system resources
 import logging
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 logger = logging.getLogger(__name__)
 
@@ -20,20 +20,14 @@ except ImportError:
 class SystemStatsTool(BaseTool):
     """Monitor system resources"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="system_stats",
-            description="Get system resource usage (CPU, RAM, disk)",
-            category=ToolCategory.UTILITY,
-            parameters=[
-                ToolParameter(
-                    name="detailed",
-                    param_type="bool",
-                    description="Include detailed per-core/disk stats",
-                    required=False,
-                )
-            ],
-        )
+    METADATA = {
+        "name": "system_stats",
+        "description": "Get system resource usage (CPU, RAM, disk)",
+        "category": ToolCategory.UTILITY,
+        "parameters": [
+            {"name": "detailed", "param_type": "bool", "description": "Include detailed per-core/disk stats", "required": False},
+        ],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Get system stats"""

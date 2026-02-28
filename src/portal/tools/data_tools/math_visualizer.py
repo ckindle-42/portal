@@ -4,7 +4,7 @@ import ast
 import operator
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 _SAFE_OPS = {
     ast.Add: operator.add,
@@ -60,37 +60,19 @@ def _safe_eval(expr: str, x: "np.ndarray") -> "np.ndarray":  # type: ignore[name
 class MathVisualizerTool(BaseTool):
     """Visualize mathematical functions and equations"""
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="math_visualizer",
-            description="Plot mathematical functions and create visualizations",
-            category=ToolCategory.DATA,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="expression",
-                    param_type="string",
-                    description="Math expression (use x as variable, e.g., 'x**2 + 2*x')",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="x_range",
-                    param_type="list",
-                    description="X-axis range [min, max]",
-                    required=False,
-                    default=[-10, 10],
-                ),
-                ToolParameter(
-                    name="title",
-                    param_type="string",
-                    description="Plot title",
-                    required=False,
-                    default="Function Plot",
-                ),
-            ],
-            examples=["Plot x**2 from -5 to 5"],
-        )
+    METADATA = {
+        "name": "math_visualizer",
+        "description": "Plot mathematical functions and create visualizations",
+        "category": ToolCategory.DATA,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "expression", "param_type": "string", "description": "Math expression (use x as variable, e.g., 'x**2 + 2*x')", "required": True},
+            {"name": "x_range", "param_type": "list", "description": "X-axis range [min, max]", "required": False, "default": [-10, 10]},
+            {"name": "title", "param_type": "string", "description": "Plot title", "required": False, "default": "Function Plot"},
+        ],
+        "examples": ["Plot x**2 from -5 to 5"],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Create math visualization"""

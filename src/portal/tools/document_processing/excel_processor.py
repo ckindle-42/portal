@@ -21,7 +21,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from portal.core.interfaces.tool import BaseTool, ToolCategory, ToolMetadata, ToolParameter
+from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 try:
     import openpyxl  # noqa: F401
@@ -44,68 +44,24 @@ class ExcelProcessorTool(BaseTool):
     def __init__(self) -> None:
         super().__init__()
 
-    def _get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="excel_processor",
-            description="Create, read, analyze, and format Excel (XLSX) files",
-            category=ToolCategory.DATA,
-            version="1.0.0",
-            requires_confirmation=False,
-            parameters=[
-                ToolParameter(
-                    name="action",
-                    param_type="string",
-                    description="Action: read, write, analyze, format, add_chart",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="file_path",
-                    param_type="string",
-                    description="Path to Excel file",
-                    required=True,
-                ),
-                ToolParameter(
-                    name="sheet_name",
-                    param_type="string",
-                    description="Sheet name (default: Sheet1)",
-                    required=False,
-                    default="Sheet1",
-                ),
-                ToolParameter(
-                    name="data",
-                    param_type="object",
-                    description="Data to write (list of lists or dict)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="range",
-                    param_type="string",
-                    description="Cell range (e.g., 'A1:C10')",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="headers", param_type="list", description="Column headers", required=False
-                ),
-                ToolParameter(
-                    name="formatting",
-                    param_type="object",
-                    description="Formatting options (font, fill, border, alignment)",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="chart_type",
-                    param_type="string",
-                    description="Chart type: bar, line, pie",
-                    required=False,
-                ),
-                ToolParameter(
-                    name="formulas",
-                    param_type="list",
-                    description="Formulas to add (list of cell-formula pairs)",
-                    required=False,
-                ),
-            ],
-        )
+    METADATA = {
+        "name": "excel_processor",
+        "description": "Create, read, analyze, and format Excel (XLSX) files",
+        "category": ToolCategory.DATA,
+        "version": "1.0.0",
+        "requires_confirmation": False,
+        "parameters": [
+            {"name": "action", "param_type": "string", "description": "Action: read, write, analyze, format, add_chart", "required": True},
+            {"name": "file_path", "param_type": "string", "description": "Path to Excel file", "required": True},
+            {"name": "sheet_name", "param_type": "string", "description": "Sheet name (default: Sheet1)", "required": False, "default": "Sheet1"},
+            {"name": "data", "param_type": "object", "description": "Data to write (list of lists or dict)", "required": False},
+            {"name": "range", "param_type": "string", "description": "Cell range (e.g., 'A1:C10')", "required": False},
+            {"name": "headers", "param_type": "list", "description": "Column headers", "required": False},
+            {"name": "formatting", "param_type": "object", "description": "Formatting options (font, fill, border, alignment)", "required": False},
+            {"name": "chart_type", "param_type": "string", "description": "Chart type: bar, line, pie", "required": False},
+            {"name": "formulas", "param_type": "list", "description": "Formulas to add (list of cell-formula pairs)", "required": False},
+        ],
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute Excel operation"""
