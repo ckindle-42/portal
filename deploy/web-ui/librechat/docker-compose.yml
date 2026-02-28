@@ -41,7 +41,7 @@ services:
   # MongoDB — LibreChat database
   # -----------------------------------------------------------------------
   mongodb:
-    image: mongo:7.0
+    image: mongo:8.2
     container_name: portal-mongodb
     restart: unless-stopped
     volumes:
