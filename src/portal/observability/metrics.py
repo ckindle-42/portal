@@ -1,6 +1,7 @@
 """Prometheus-compatible metrics — counters, histograms, and /metrics endpoint."""
 
 import logging
+import os
 import time
 from typing import Any
 
@@ -181,3 +182,66 @@ def register_metrics_endpoint(app, metrics: MetricsCollector) -> None:
     """Register /metrics endpoint with a FastAPI app."""
     app.add_route("/metrics", metrics.get_metrics_handler(), methods=["GET"])
     logger.info("Metrics endpoint registered: /metrics")
+
+
+# ---------------------------------------------------------------------------
+# Runtime metrics — rolling request rate, per-user activity, TTFT, VRAM
+# (formerly in runtime_metrics.py; merged here to consolidate Prometheus defs)
+# ---------------------------------------------------------------------------
+
+if PROMETHEUS_AVAILABLE:
+    from prometheus_client import Counter, Gauge, Histogram  # noqa: F811
+
+    REQUESTS_PER_MINUTE = Gauge("portal_requests_per_minute", "Rolling requests per minute")
+    ACTIVE_USERS = Gauge("portal_active_users", "Unique users seen in process lifetime")
+    TOKENS_PER_SECOND = Histogram(
+        "portal_tokens_per_second",
+        "Tokens/sec during completion",
+        buckets=(1, 5, 10, 20, 40, 80),
+    )
+    TTFT_MS = Histogram(
+        "portal_ttft_ms",
+        "Time to first token",
+        buckets=(10, 50, 100, 250, 500, 1000, 2000, 5000),
+    )
+    MCP_TOOL_USAGE = Counter(
+        "portal_mcp_tool_usage_total", "MCP tool calls", ["tool_name"]
+    )
+    VRAM_MB = Gauge("portal_vram_usage_mb", "VRAM usage in MB")
+    UNIFIED_MEM_MB = Gauge("portal_unified_memory_usage_mb", "Unified memory usage in MB")
+else:
+    # Stubs so importers don't crash when prometheus_client is absent
+    class _Stub:
+        def observe(self, *a, **kw) -> None: ...
+        def inc(self, *a, **kw) -> None: ...
+        def set(self, *a, **kw) -> None: ...
+        def labels(self, *a, **kw) -> "_Stub": return self
+
+    REQUESTS_PER_MINUTE = _Stub()  # type: ignore[assignment]
+    ACTIVE_USERS = _Stub()  # type: ignore[assignment]
+    TOKENS_PER_SECOND = _Stub()  # type: ignore[assignment]
+    TTFT_MS = _Stub()  # type: ignore[assignment]
+    MCP_TOOL_USAGE = _Stub()  # type: ignore[assignment]
+    VRAM_MB = _Stub()  # type: ignore[assignment]
+    UNIFIED_MEM_MB = _Stub()  # type: ignore[assignment]
+
+_start = time.time()
+_seen_users: set[str] = set()
+_requests = 0
+_MAX_SEEN_USERS = 10_000
+
+
+def mark_request(user_id: str) -> None:
+    global _requests
+    _requests += 1
+    elapsed_min = max((time.time() - _start) / 60.0, 1 / 60)
+    REQUESTS_PER_MINUTE.set(_requests / elapsed_min)
+    if len(_seen_users) < _MAX_SEEN_USERS:
+        _seen_users.add(user_id)
+    ACTIVE_USERS.set(len(_seen_users))
+
+
+def set_memory_stats() -> None:
+    # Env-overridable so container orchestrators can push values.
+    VRAM_MB.set(float(os.getenv("PORTAL_VRAM_USAGE_MB", "0")))
+    UNIFIED_MEM_MB.set(float(os.getenv("PORTAL_UNIFIED_MEMORY_USAGE_MB", "0")))
