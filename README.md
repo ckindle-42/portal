@@ -142,7 +142,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Forked From
+## Origin
 
-PocketPortal — the Telegram-first foundation that proved the routing,
-security, and tool architecture. Portal rebases it as a web-first platform.
+Originally based on [PocketPortal](https://github.com/ckindle-42/pocketportal), a Telegram-first AI agent.
+Portal is a complete rewrite as a web-first, multi-interface platform.
