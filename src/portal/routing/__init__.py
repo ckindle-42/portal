@@ -1,13 +1,15 @@
 """
 Portal Routing System
 
-Two-layer routing:
-1. FastAPI proxy router (router.py) — sits at :8000, handles Ollama proxying,
-   VRAM management, workspace virtual models, regex keyword rules.
+Two independent routing layers:
+1. Proxy router (router.py) — FastAPI app at :8000 that proxies Ollama.
+   Uses router_rules.json for workspace virtual models and regex keyword rules.
+   Serves Open WebUI / LibreChat directly.
 2. Intelligent router (intelligent_router.py) — task classification and
-   model selection used by Portal's own AgentCore.
+   model selection used by Portal's AgentCore (:8081).
+   Uses TaskClassifier heuristics and configurable model preferences.
 
-Both layers use router_rules.json as the single source of routing truth.
+Both route to the same Ollama backend but use different selection logic.
 """
 
 from portal.routing.execution_engine import ExecutionEngine

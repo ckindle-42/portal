@@ -2,7 +2,7 @@
 
 **Project**: Portal — Local-First AI Platform
 **Repository**: https://github.com/ckindle-42/portal
-**Version**: 1.3.5
+**Version**: 1.3.6
 **Last Updated**: February 28, 2026
 
 ---
@@ -137,6 +137,17 @@ Only when the user asks for a full audit or debt removal session:
 - Branch names: `ai-<purpose>-YYYY-MM-DD` (e.g., `ai-shrink-2026-02-27`)
 - Commit prefixes: `feat:`, `fix:`, `refactor:`, `docs:`, `chore:`, `test:`, `perf:`
 - Include scope when useful: `fix(router): source health version from __version__`
+
+---
+
+## Planned Features (Do Not Implement Without Explicit Request)
+
+See [ROADMAP.md](ROADMAP.md) for scoped designs of planned features:
+- **LLM-Based Intelligent Routing** — replace regex routing with small-model classifier
+- **MLX Backend** — Apple Silicon native inference via mlx_lm.server
+
+These are designed but not yet implemented. Do not start either project during routine
+task sessions — they require dedicated feature branches.
 
 ---
 
