@@ -87,9 +87,36 @@ class Runtime:
             return self.context
 
         logger.info("Bootstrapping Portal runtime")
+        settings = self._load_settings()
+        agent_core, secure_agent = self._create_agent(settings)
+        await self._discover_ollama_models(agent_core, settings)
+        watchdog, log_rotator = await self._init_observability(settings)
+
+        self._setup_signal_handlers()
+        self.context = RuntimeContext(
+            settings=settings,
+            agent_core=agent_core,
+            secure_agent=secure_agent,
+            watchdog=watchdog,
+            log_rotator=log_rotator,
+        )
+
+        await self._start_optional_components(watchdog, log_rotator)
+        await self._start_config_watcher()
+
+        self._initialized = True
+        logger.info(
+            "Runtime bootstrap completed",
+            watchdog_enabled=self.enable_watchdog,
+            log_rotation_enabled=self.enable_log_rotation,
+        )
+
+        return self.context
+
+    def _load_settings(self) -> Settings:
+        """Load and validate application settings, refusing insecure defaults."""
         settings = load_settings(self.config_path) if self.config_path else load_settings()
 
-        # Refuse to start with insecure default MCP secret
         raw_mcp_api_key = (settings.security.mcp_api_key or "").strip()
         env_mcp_api_key = os.getenv("MCP_API_KEY", "").strip()
         effective_mcp_api_key = env_mcp_api_key or raw_mcp_api_key
@@ -108,12 +135,20 @@ class Runtime:
                 'python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
 
+        return settings
+
+    def _create_agent(self, settings: Settings) -> tuple[AgentCore, SecurityMiddleware]:
+        """Create AgentCore and wrap it with SecurityMiddleware."""
         agent_core = create_agent_core(settings.to_agent_config())
         secure_agent = SecurityMiddleware(
             agent_core, enable_rate_limiting=True, enable_input_sanitization=True
         )
+        return agent_core, secure_agent
 
-        # Auto-discover live Ollama models and add them to the registry (R1)
+    async def _discover_ollama_models(
+        self, agent_core: AgentCore, settings: Settings
+    ) -> None:
+        """Auto-discover live Ollama models and register them."""
         try:
             ollama_url = getattr(
                 getattr(settings, "backends", None), "ollama_url", "http://localhost:11434"
@@ -129,6 +164,10 @@ class Runtime:
                 "Ollama model discovery failed (will use static registry): %s", _disc_err
             )
 
+    async def _init_observability(
+        self, settings: Settings
+    ) -> tuple[Watchdog | None, LogRotator | None]:
+        """Initialize watchdog and log rotator if enabled."""
         watchdog = None
         if self.enable_watchdog:
             from portal.observability.watchdog import Watchdog, WatchdogConfig
@@ -144,20 +183,19 @@ class Runtime:
             logger.info("Initializing log rotation for %s", log_file)
             log_rotator = LogRotator(log_file=log_file, config=RotationConfig())
 
-        self._setup_signal_handlers()
-        self.context = RuntimeContext(
-            settings=settings,
-            agent_core=agent_core,
-            secure_agent=secure_agent,
-            watchdog=watchdog,
-            log_rotator=log_rotator,
-        )
+        return watchdog, log_rotator
 
+    async def _start_optional_components(
+        self, watchdog: Watchdog | None, log_rotator: LogRotator | None
+    ) -> None:
+        """Start watchdog and log rotator if present."""
         if watchdog:
             await watchdog.start()
         if log_rotator:
             await log_rotator.start()
 
+    async def _start_config_watcher(self) -> None:
+        """Start config file watcher if the config file exists."""
         config_watch_path = Path(self.config_path) if self.config_path else Path("portal.yaml")
         if config_watch_path.exists():
             from portal.observability.config_watcher import ConfigWatcher
@@ -165,15 +203,6 @@ class Runtime:
             config_watcher = ConfigWatcher(config_file=config_watch_path)
             asyncio.create_task(config_watcher.start(), name="config-watcher")
             logger.info("Config watcher started for %s", config_watch_path)
-
-        self._initialized = True
-        logger.info(
-            "Runtime bootstrap completed",
-            watchdog_enabled=self.enable_watchdog,
-            log_rotation_enabled=self.enable_log_rotation,
-        )
-
-        return self.context
 
     def _setup_signal_handlers(self):
         """Setup OS signal handlers for graceful shutdown."""
