@@ -140,4 +140,15 @@ Only when the user asks for a full audit or debt removal session:
 
 ---
 
+## Planned Features (Do Not Implement Without Explicit Request)
+
+See [ROADMAP.md](ROADMAP.md) for scoped designs of planned features:
+- **LLM-Based Intelligent Routing** — replace regex routing with small-model classifier
+- **MLX Backend** — Apple Silicon native inference via mlx_lm.server
+
+These are designed but not yet implemented. Do not start either project during routine
+task sessions — they require dedicated feature branches.
+
+---
+
 *This file is authoritative for all Claude Code sessions on the Portal repository.*
