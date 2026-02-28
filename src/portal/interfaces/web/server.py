@@ -74,7 +74,7 @@ class ChatCompletionRequest(BaseModel):
 def _build_cors_origins() -> list[str]:
     raw = os.getenv(
         "ALLOWED_ORIGINS",
-        "http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000",
+        "http://localhost:8080,http://127.0.0.1:8080",
     )
     origins = [o.strip() for o in raw.split(",") if o.strip()]
     return origins or ["http://localhost:8080"]
@@ -161,6 +161,39 @@ class WebInterface(BaseInterface):
         except ValueError as exc:
             raise HTTPException(status_code=401, detail=str(exc)) from exc
         return {"user_id": ctx.user_id, "role": ctx.role}
+
+    async def _validate_request(
+        self, user_id: str, message: str
+    ) -> tuple[str, list[str]]:
+        """
+        Shared security validation for all request paths (HTTP streaming, WebSocket).
+
+        Performs input sanitization, rate limiting, and message length checks.
+        Returns (sanitized_message, warnings) or raises appropriate exceptions.
+
+        This consolidates security enforcement to prevent code divergence.
+        """
+        if not isinstance(self.secure_agent, SecurityMiddleware):
+            # No security middleware - return message as-is
+            return message, []
+
+        # Input sanitization
+        sanitized, warnings = self._input_sanitizer.sanitize_command(message)
+        if any("Dangerous pattern detected" in w for w in warnings):
+            raise ValidationError("Message blocked by security policy")
+
+        # Rate limiting
+        allowed, error_msg = await self.secure_agent.rate_limiter.check_limit(user_id)
+        if not allowed:
+            raise RateLimitError(error_msg or "Rate limit exceeded", retry_after=60)
+
+        # Message length check using configured max_message_length
+        if len(sanitized) > self.secure_agent.max_message_length:
+            raise ValidationError(
+                f"Message exceeds maximum length of {self.secure_agent.max_message_length} characters"
+            )
+
+        return sanitized, warnings
 
     def _build_app(self) -> FastAPI:
         _agent_ready: asyncio.Event = asyncio.Event()
@@ -317,16 +350,8 @@ class WebInterface(BaseInterface):
         )
 
         if payload.stream:
-            # Security gate for streaming path — mirrors process_message() in SecurityMiddleware
-            if isinstance(self.secure_agent, SecurityMiddleware):
-                _sanitized, _warnings = self._input_sanitizer.sanitize_command(
-                    str(last_user_msg)
-                )
-                if any("Dangerous pattern detected" in w for w in _warnings):
-                    raise ValidationError("Message blocked by security policy")
-                _allowed, _err = await self.secure_agent.rate_limiter.check_limit(user_id)
-                if not _allowed:
-                    raise RateLimitError(_err or "Rate limit exceeded", retry_after=60)
+            # Use shared validation method for security checks
+            await self._validate_request(user_id, str(last_user_msg))
             return StreamingResponse(
                 self._stream_response(incoming, selected_model, user_id),
                 media_type="text/event-stream",
@@ -513,9 +538,15 @@ class WebInterface(BaseInterface):
                         {"error": "Message blocked by security policy", "done": True}
                     )
                     continue
-                if len(sanitized_text) > 10000:
+                # Use configured max_message_length from SecurityMiddleware if available
+                max_len = (
+                    self.secure_agent.max_message_length
+                    if isinstance(self.secure_agent, SecurityMiddleware)
+                    else 10000
+                )
+                if len(sanitized_text) > max_len:
                     await websocket.send_json(
-                        {"error": "Message exceeds maximum length", "done": True}
+                        {"error": f"Message exceeds maximum length of {max_len} characters", "done": True}
                     )
                     continue
 

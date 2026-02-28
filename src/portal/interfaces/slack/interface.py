@@ -73,7 +73,7 @@ class SlackInterface(BaseInterface):
         sig_basestring = f"v0:{parsed_timestamp}:{body.decode('utf-8')}"
         my_signature = (
             "v0="
-            + hmac.new(
+            + hmac.HMAC(
                 self.slack_config.signing_secret.encode(),
                 sig_basestring.encode(),
                 hashlib.sha256,

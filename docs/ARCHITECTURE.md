@@ -1,6 +1,6 @@
 # Portal Architecture
 
-**Version:** 1.3.4
+**Version:** 1.3.8
 **Last updated:** February 2026
 
 ---
@@ -81,7 +81,7 @@ The central processing engine.  All interfaces funnel requests through here.
 
 All concrete interfaces inherit from `BaseInterface`
 (`src/portal/core/interfaces/agent_interface.py`).
-`src/portal/interfaces/base.py` is a convenience re-export of that class.
+`src/portal/interfaces/__init__.py` re-exports `BaseInterface`.
 
 #### WebInterface (`src/portal/interfaces/web/server.py`)
 
@@ -121,14 +121,29 @@ http://localhost:8081/v1
 | `ModelRegistry` | Catalogue of local models with capability tags and speed classes; `discover_from_ollama()` for dynamic discovery |
 | `IntelligentRouter` | Classifies query complexity and selects optimal model |
 | `RoutingStrategy` | `AUTO` / `QUALITY` / `SPEED` / `BALANCED` |
-| `ExecutionEngine` | Calls Ollama / LMStudio / MLX; circuit-breaker per backend |
-| `BaseHTTPBackend` | Shared aiohttp session management; base class for `OllamaBackend` and `LMStudioBackend` |
+| `ExecutionEngine` | Calls Ollama / MLX; circuit-breaker per backend (LMStudio planned - see ROADMAP.md) |
+| `BaseHTTPBackend` | Shared aiohttp session management; base class for `OllamaBackend` (MLX and LMStudio planned) |
 
 Routing strategies:
 - **AUTO** — automatic complexity-based selection (default)
 - **QUALITY** — always use the most capable available model
 - **SPEED** — always use the fastest available model
 - **BALANCED** — weighted composite of quality and speed scores
+
+#### Dual Router Architecture
+
+Portal uses two separate routers for different client paths:
+
+| Router | Port | Purpose | Client |
+|--------|------|---------|--------|
+| **Proxy Router** | `:8000` | Ollama proxy with workspace and regex routing | Open WebUI, LibreChat |
+| **IntelligentRouter** | `:8081` | Task complexity classification, serves Portal API | Portal interfaces (Web, Telegram, Slack) |
+
+The Proxy Router at `:8000` acts as a transparent pass-through to Ollama with regex-based model selection via `router_rules.json`. It serves external web UIs that expect an Ollama-compatible endpoint.
+
+The IntelligentRouter at `:8081` is Portal's own routing that uses `TaskClassifier` (100+ regex patterns) to classify task complexity and category, then selects the optimal model. It serves the Portal API and chat interfaces.
+
+This separation allows external web UIs to use Ollama directly while Portal's own interfaces get intelligent routing. Future unification is a Track B opportunity (see ROADMAP.md for LLM-based Intelligent Routing).
 
 #### Dynamic Ollama Discovery
 
@@ -453,7 +468,7 @@ portal/
 │   ├── routing/
 │   │   ├── model_registry.py   ModelRegistry + discover_from_ollama()
 │   │   ├── intelligent_router.py
-│   │   ├── model_backends.py   BaseHTTPBackend, OllamaBackend, LMStudioBackend
+│   │   ├── model_backends.py   BaseHTTPBackend, OllamaBackend (MLX/LMStudio planned)
 │   │   └── execution_engine.py
 │   ├── protocols/mcp/
 │   │   └── mcp_registry.py     MCPRegistry with retry transport

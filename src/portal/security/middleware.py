@@ -107,18 +107,21 @@ class SecurityMiddleware:
         """
         user_context = user_context or {}
         user_id = user_context.get("user_id")
+        ip_address = user_context.get("ip_address")
 
         # Create security context
         sec_ctx = SecurityContext(
             user_id=str(user_id) if user_id else None,
             chat_id=chat_id,
             interface=interface,
-            ip_address=user_context.get("ip_address"),
+            ip_address=ip_address,
         )
 
         # Step 1: Rate limiting check
-        if self.enable_rate_limiting and user_id:
-            await self._check_rate_limit(user_id, sec_ctx)
+        # Always apply rate limiting - derive key from user_id, ip_address, chat_id, or use "anonymous"
+        if self.enable_rate_limiting:
+            rate_limit_key = user_id or ip_address or chat_id or "anonymous"
+            await self._check_rate_limit(rate_limit_key, sec_ctx)
 
         # Step 2: Input sanitization
         if self.enable_input_sanitization:
