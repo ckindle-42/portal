@@ -12,7 +12,8 @@ from typing import Any
 
 from portal.core.exceptions import PolicyViolationError, RateLimitError, ValidationError
 from portal.core.structured_logger import get_logger
-from portal.security.security_module import InputSanitizer, RateLimiter
+from portal.security.input_sanitizer import InputSanitizer
+from portal.security.rate_limiter import RateLimiter
 
 logger = get_logger("SecurityMiddleware")
 
