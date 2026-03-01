@@ -1,12 +1,18 @@
 # Portal — Unified Roadmap
 
 **Generated:** 2026-03-01
-**Current version:** 1.3.9 (type safety and hardening complete)
+**Current version:** 1.3.9 (security_module shim partially removed)
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
 and completed work across the Portal project. It supersedes the earlier `ROADMAP.md`
 file which contained only future design sketches.
+
+---
+
+## Changelog
+
+- **2026-03-01:** Added ROAD-C12 (security_module cleanup - in progress). Updated TASK-20, TASK-21, TASK-22 in action prompt.
 
 ---
 
@@ -29,7 +35,7 @@ Portal 1.3.9 is fully operational for its stated purpose:
 - **Structured logging** — JSON with trace IDs, secret redaction
 
 **CI status:** 874 tests passing, 0 lint errors, Python 3.11–3.14 matrix.
-**Type safety:** 124 mypy errors (down from 170).
+**Type safety:** 124 mypy errors (unchanged from prior).
 
 ---
 
@@ -186,11 +192,34 @@ Evidence:     PR #84 (v1.3.9)
 Result:       mypy errors reduced from 170 to 124
 ```
 
+### [ROAD-C12] security_module.py Cleanup
+
+```
+Status:       IN-PROGRESS
+Priority:     P2-HIGH
+Effort:       S
+Description:  Remove security_module.py re-export shim:
+              - middleware.py updated to import directly (COMPLETE)
+              - 13 test files need import updates (TASK-20)
+              - security_module.py file can be deleted after (TASK-21)
+Evidence:     e407996 (middleware.py update); tests still import from shim
+```
+
 ---
 
 ## 3. In Progress
 
-No items currently in progress.
+### [ROAD-C12] security_module.py Cleanup
+
+```
+Status:       IN-PROGRESS
+Priority:     P2-HIGH
+Effort:       S
+Description:  Remove security_module.py re-export shim. Middleware updated to import
+              directly. Tests still use shim - need update. File can be deleted after.
+Evidence:     e407996 (middleware.py update)
+Remaining:    Update 13 test files to import directly
+```
 
 ---
 
@@ -396,4 +425,4 @@ Why deferred: Not needed; existing CLI + third-party UIs cover the use case.
 *This roadmap is maintained as part of the Portal source tree. Update it whenever a
 significant item is completed, started, or added.*
 
-*Last updated: 2026-03-01 — Type Safety Uplift (ROAD-C11) completed, version 1.3.9 released.*
+*Last updated: 2026-03-01 — security_module.py cleanup (ROAD-C12) in progress.*

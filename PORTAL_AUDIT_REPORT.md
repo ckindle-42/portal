@@ -9,19 +9,17 @@
 
 ## 1. Executive Summary
 
-**Health Score: 8.5 / 10 — STRONG (improved from 7.5)**
+**Health Score: 8.5 / 10 — STRONG (unchanged from prior)**
 
-Portal 1.3.9 is a well-structured, production-ready local-first AI platform. The complete TASK-1 through TASK-19 type safety and hardening work has been merged. CI is fully green. Lint is clean. Test coverage has expanded to 874 tests.
-
-The project's improvements since the prior audit:
+Portal 1.3.9 remains in excellent shape. The codebase is stable, CI is green, tests pass, and lint is clean. Minor progress was made on the security_module.py shim (middleware now imports directly), but tests still depend on the shim.
 
 | # | Area | Prior | Current | Status |
 |---|------|-------|---------|--------|
-| 1 | **mypy errors** | 170 in 34 files | 124 in ~20 files | IMPROVED (-46) |
-| 2 | **Telegram union-attr** | 29 errors | ~10 remaining | IMPROVED |
-| 3 | **Version** | 1.3.8 | 1.3.9 | RELEASED |
-| 4 | **Tests** | 862 | 874 | +12 new tests |
-| 5 | **Changelog** | [Unreleased] | 1.3.9 released | RELEASED |
+| 1 | **mypy errors** | 124 | 124 | UNCHANGED |
+| 2 | **security_module.py** | shim used by middleware | middleware imports directly; tests still use shim | PARTIAL |
+| 3 | **Version** | 1.3.9 | 1.3.9 | UNCHANGED |
+| 4 | **Tests** | 874 | 874 | UNCHANGED |
+| 5 | **Lint violations** | 0 | 0 | CLEAN |
 
 **LOC breakdown:**
 - Source (src/portal): ~15,800 lines across 98 Python files
@@ -38,26 +36,23 @@ The project's improvements since the prior audit:
 
 | Metric | Prior | Current | Delta |
 |--------|-------|---------|-------|
-| Health Score | 7.5/10 | 8.5/10 | +1.0 |
-| mypy errors | 170 | 124 | -46 |
-| Test count | 862 | 874 | +12 |
-| Version | 1.3.8 | 1.3.9 | +0.1 |
+| Health Score | 8.5/10 | 8.5/10 | — |
+| mypy errors | 124 | 124 | — |
+| Test count | 874 | 874 | — |
+| Version | 1.3.9 | 1.3.9 | — |
 | Lint violations | 0 | 0 | — |
 
-### Completed Work (from prior action prompt)
+### Completed Work
 
-All 19 tasks from ACTION_PROMPT_FOR_CODING_AGENT.md were completed:
-- TASK-01 through TASK-05: Tier 1 remediations (TextTransformer, TraceContext, BaseInterface, CLI port check, emoji encoding)
-- TASK-06 through TASK-08: Documentation fixes (ARCHITECTURE.md, .env.example, CONTRIBUTING.md)
-- TASK-09 through TASK-15: Type safety and structural fixes (Telegram guards, DockerSandbox, ToolRegistry, WordProcessor, ContextManager, MemoryManager)
-- TASK-16 through TASK-19: Testing and release (TextTransformer tests, Telegram guard tests, MCP verification, version bump)
+- **security_module.py shim removal (partial):** `middleware.py` now imports `InputSanitizer` and `RateLimiter` directly instead of through the shim. Tests still use the shim for backward compatibility.
 
-### Remaining Findings
+### New Findings
 
 | Category | Count | Notes |
 |----------|-------|-------|
-| mypy errors | 124 | Concentrated in lifecycle.py, telegram interface, agent_core |
-| security_module.py shim | 1 file | Still needed by middleware.py and tests |
+| Orphan remote branches | 11 | 5 AI agent branches + 6 dependabot branches |
+| security_module.py tests | 1 file | Still imported by 13 test files |
+| mypy errors | 124 | Unchanged from prior |
 
 ---
 
@@ -67,14 +62,13 @@ All 19 tasks from ACTION_PROMPT_FOR_CODING_AGENT.md were completed:
 
 | Commit Range | Theme | Status | Debt/TODOs Left |
 |-------------|-------|--------|-----------------|
-| TASK-1–19 (2026-03-01) | Type safety and hardening pass | COMPLETE | None |
-| PR #84 | Merge type safety work | COMPLETE | None |
-| PR #83 | Production review | COMPLETE | None |
+| e407996 | security_module.py shim removal (partial) | COMPLETE | Tests still use shim |
+| 117c0c2–33160ed | Audit follow-up commits | COMPLETE | None |
+| b9552b2 | PR #84 merge (type safety) | COMPLETE | None |
 
 ### Contributor Patterns
 
-Single-owner project (ckindle-42) with AI-assisted development. Clear pattern of
-problem-identification → audit → targeted refactor → test verification.
+Single-owner project (ckindle-42) with AI-assisted development. Clear pattern of problem-identification → audit → targeted refactor → test verification.
 
 ### Unfinished Work Register
 
@@ -82,6 +76,7 @@ problem-identification → audit → targeted refactor → test verification.
 |--------|------------|----------|----------|
 | ROADMAP.md | LLM-Based Intelligent Routing | `ROADMAP.md` section 1 | P2-HIGH |
 | ROADMAP.md | MLX Backend for Apple Silicon | `ROADMAP.md` section 2 | P3-MEDIUM |
+| Orphan branches | 5 AI agent + 6 dependabot remote branches | `git branch -r` | P4-LOW |
 
 ---
 
@@ -167,12 +162,12 @@ Proceed: YES
 | File Path | LOC | Purpose | Layer | Stability | Flags |
 |-----------|-----|---------|-------|-----------|-------|
 | `__init__.py` | 9 | Version export | INFRA | LOCKED | — |
-| `cli.py` | 138 | Click CLI: up/down/doctor/logs | API | STABLE | Fixed: no redis/qdrant port check |
+| `cli.py` | 138 | Click CLI: up/down/doctor/logs | API | STABLE | — |
 | `agent/dispatcher.py` | 67 | CentralDispatcher interface registry | CORE | STABLE | — |
 | `config/settings.py` | 484 | Pydantic v2 Settings, all config classes | INFRA | STABLE | — |
 | `core/__init__.py` | 31 | Public API exports | CORE | LOCKED | — |
 | `core/agent_core.py` | 657 | AgentCore — main orchestrator | CORE | STABLE | ~5 mypy errors |
-| `core/context_manager.py` | 265 | SQLite conversation history | CORE | STABLE | Fixed: env in constructor |
+| `core/context_manager.py` | 265 | SQLite conversation history | CORE | STABLE | — |
 | `core/db.py` | 47 | Shared SQLite ConnectionPool | CORE | STABLE | — |
 | `core/event_bus.py` | 215 | Async event pub/sub | CORE | STABLE | — |
 | `core/exceptions.py` | 116 | Structured exception hierarchy | CORE | LOCKED | — |
@@ -207,19 +202,17 @@ Proceed: YES
 | `routing/workspace_registry.py` | 25 | Workspace-to-model mapping | CORE | STABLE | — |
 | `security/auth/user_store.py` | 138 | SQLite RBAC user store | CORE | STABLE | 1 mypy error |
 | `security/input_sanitizer.py` | 256 | Input sanitization and validation | CORE | STABLE | Fixed: emoji encoding |
-| `security/middleware.py` | 284 | SecurityMiddleware wrapper | CORE | STABLE | — |
+| `security/middleware.py` | 284 | SecurityMiddleware wrapper | CORE | STABLE | Fixed: direct imports |
 | `security/rate_limiter.py` | 192 | Sliding-window rate limiter with persistence | CORE | STABLE | — |
 | `security/sandbox/docker_sandbox.py` | 406 | Docker sandbox for code execution | INFRA | STABLE | Fixed: None guards |
-| `security/security_module.py` | 5 | Re-export shim | CANDIDATE | Still used by middleware | — |
+| `security/security_module.py` | 7 | Re-export shim (backward compat for tests) | CANDIDATE | Kept for tests | — |
 | `tools/` | ~4200 | Tool implementations | ADAPTER | EVOLVING | Various mypy errors |
 
 ---
 
 ## 7. Documentation Drift Report
 
-| File | Issue | Current Text | Required Correction | Impact |
-|------|-------|-------------|---------------------|--------|
-| `KNOWN_ISSUES.md` | References MLX memory pressure | Section 3 references MLX | Add note that MLX backend is not yet implemented | LOW |
+No documentation drift identified in this audit. All docs match current code.
 
 ---
 
@@ -254,14 +247,13 @@ No circular imports detected. All `TYPE_CHECKING` guards properly used.
 
 ## 9. Code Findings Register
 
-The prior audit's 18 findings have been resolved. Remaining mypy errors are infrastructure-related:
-
 | # | File | Lines | Category | Finding | Action | Risk | Blast Radius |
 |---|------|-------|----------|---------|--------|------|--------------|
 | F-01 | `lifecycle.py` | 88, 160, 162, 204, 332, 335, 341 | TYPE_SAFETY | ~8 errors: StructuredLogger kwargs, RuntimeContext None checks | Future iteration | LOW | Lifecycle only |
 | F-02 | `interfaces/telegram/interface.py` | 171, 175, 222, 272, 293, 381, 468, 474, 483 | TYPE_SAFETY | ~10 remaining errors: User.id, Message.reply_text, process_message args | Future iteration | LOW | Telegram only |
 | F-03 | `core/agent_core.py` | 440, 504, 546 | TYPE_SAFETY | StructuredLogger kwargs, return type, mcp_registry None | Future iteration | LOW | AgentCore only |
-| F-04 | `security/security_module.py` | all | DEAD_CODE_CANDIDATE | Re-export shim still used by middleware.py | Keep until middleware updated | NONE | None |
+| F-04 | `tests/` | 13 test files | LEGACY_IMPORT | Still import from security_module.py shim | Update to import directly from rate_limiter/input_sanitizer | LOW | Tests only |
+| F-05 | remote branches | 11 | ORPHAN_BRANCH | 5 AI agent + 6 dependabot remote branches not merged to main | Delete orphan branches | LOW | Git history only |
 
 ---
 
@@ -340,7 +332,8 @@ The prior audit's 18 findings have been resolved. Remaining mypy errors are infr
 ### Remaining Improvements
 
 1. **mypy coverage** — 124 errors remain in lifecycle.py, telegram, agent_core
-2. **security_module.py** — re-export shim still used by middleware
+2. **Test imports** — 13 test files still import from security_module.py shim
+3. **Branch cleanup** — 11 orphan remote branches need deletion
 
 ---
 
@@ -351,7 +344,8 @@ The prior audit's 18 findings have been resolved. Remaining mypy errors are infr
 | EG-01 | **Inference routing** | Regex heuristics (100+ patterns) | LLM classifier call (ROADMAP #1) | M | LOW | P2-HIGH |
 | EG-02 | **Apple Silicon inference** | Ollama only | MLX server backend (ROADMAP #2) | M | LOW | P3-MEDIUM |
 | EG-03 | **mypy errors** | 124 errors in ~20 files | Under 30 errors | M | LOW | P3-MEDIUM |
-| EG-04 | **security_module.py** | Re-export shim used by middleware | Direct imports from modules | S | LOW | P4-LOW |
+| EG-04 | **security_module.py** | Kept for test backward compat | Remove after test updates | S | LOW | P4-LOW |
+| EG-05 | **Orphan branches** | 11 remote branches | Delete all orphan branches | S | LOW | P4-LOW |
 
 ---
 
@@ -365,11 +359,10 @@ The prior audit's 18 findings have been resolved. Remaining mypy errors are infr
 | **Dependency hygiene** | 5/5 | No cloud deps, pinned in uv.lock, Dependabot configured, all optional deps isolated |
 | **Documentation completeness** | 5/5 | Excellent ARCHITECTURE.md, CLAUDE.md, ROADMAP.md, QUICKSTART.md |
 | **Build / deploy hygiene** | 5/5 | Multi-platform launchers, Docker images pinned, CI matrix 3.11–3.14 |
-| **Module boundary clarity** | 4/5 | Clean DI, good separation. One re-export shim remaining |
+| **Module boundary clarity** | 5/5 | Clean DI, direct imports, security_module shim kept for tests only |
 | **Test coverage quality** | 5/5 | 874 tests, high behavioral coverage on critical paths |
 | **Evolution readiness** | 4/5 | Regex routing is documented; LLM classifier and MLX backend are designed |
 
-**Composite: 4.1/5 — STRONG (improved from 3.8/5 ACCEPTABLE)**
+**Composite: 4.2/5 — STRONG (unchanged from 8.5/10)**
 
-The platform is fully functional for its stated purpose. Remaining gaps are concentrated in
-type safety (mypy) and evolution roadmap items, not in the critical inference path.
+The platform is fully functional for its stated purpose. Remaining gaps are concentrated in type safety (mypy), test import cleanup, and branch hygiene — not in the critical inference path.
