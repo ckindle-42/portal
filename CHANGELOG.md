@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.2] - 2026-03-01 — Dependency Fix & runtime_metrics Cleanup
+
+### Fixed
+- Added `aiohttp>=3.9.0` to `[slack]` optional dependency; `slack_sdk.web.async_client`
+  requires aiohttp transitively (was missing since TASK-13 removed it from core deps)
+- Corrected prior audit: `runtime_metrics.py` had 2 production callers (not 0)
+
+### Removed
+- **TASK-23R**: Migrated `agent_core.py` and `server.py` to import directly from
+  `portal.observability.metrics`; deleted `runtime_metrics.py` re-export shim
+
+---
+
 ## [1.4.1] - 2026-03-01 — Type Safety Fixes (TASK-24 through TASK-26)
 
 ### Fixed
