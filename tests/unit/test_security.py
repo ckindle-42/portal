@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from portal.security.security_module import InputSanitizer, RateLimiter
+from portal.security.input_sanitizer import InputSanitizer
+from portal.security.rate_limiter import RateLimiter
 
 
 class TestInputSanitizerPaths:

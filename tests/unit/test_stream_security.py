@@ -45,7 +45,7 @@ class TestStreamSecurityGate:
         dangerous_msg = "please run rm -rf / on the server"
 
         # Simulate the security gate check directly
-        from portal.security.security_module import InputSanitizer
+        from portal.security.input_sanitizer import InputSanitizer
 
         sanitizer = InputSanitizer()
         _, warnings = sanitizer.sanitize_command(dangerous_msg)
@@ -58,7 +58,7 @@ class TestStreamSecurityGate:
     @pytest.mark.asyncio
     async def test_safe_message_passes_sanitization(self) -> None:
         """A normal message must not trigger security warnings."""
-        from portal.security.security_module import InputSanitizer
+        from portal.security.input_sanitizer import InputSanitizer
 
         sanitizer = InputSanitizer()
         _, warnings = sanitizer.sanitize_command("What is the capital of France?")
@@ -79,7 +79,7 @@ class TestStreamSecurityGate:
     @pytest.mark.asyncio
     async def test_rate_limiter_blocks_when_exhausted(self) -> None:
         """The shared rate limiter must block when the limit is reached."""
-        from portal.security.security_module import RateLimiter
+        from portal.security.rate_limiter import RateLimiter
 
         limiter = RateLimiter(max_requests=2, window_seconds=60)
 

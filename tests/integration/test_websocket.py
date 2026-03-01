@@ -260,7 +260,7 @@ async def test_websocket_uses_shared_rate_limiter():
     mock_inner.get_tool_list = MagicMock(return_value=[])
     mock_inner.get_stats = AsyncMock(return_value={})
 
-    from portal.security.security_module import RateLimiter
+    from portal.security.rate_limiter import RateLimiter
 
     limiter = RateLimiter(max_requests=2, window_seconds=60)
     secure = SecurityMiddleware(mock_inner, rate_limiter=limiter, enable_rate_limiting=True)

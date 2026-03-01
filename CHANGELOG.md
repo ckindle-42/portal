@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.0] - 2026-03-01 — security_module Cleanup & Branch Hygiene
+
+### Fixed
+- **TASK-20**: Updated 13 test files to import directly from `portal.security.rate_limiter` and `portal.security.input_sanitizer` instead of the `security_module.py` shim
+- **TASK-22**: Pruned 10 stale remote tracking branches (5 AI agent branches + 5 dependabot branches)
+
+### Removed
+- **TASK-21**: Deleted `src/portal/security/security_module.py` re-export shim (middleware and tests now import directly)
+
+---
+
 ## [1.3.9] - 2026-03-01 — Type Safety & Hardening (TASK-1 through TASK-19)
 
 ### Fixed

@@ -93,7 +93,7 @@ async def test_rate_limiting_enforced(tmp_path):
     )
 
     from portal.core.exceptions import RateLimitError
-    from portal.security.security_module import RateLimiter
+    from portal.security.rate_limiter import RateLimiter
 
     # Very restrictive: 1 request per window; use tmp_path to avoid persistent state
     rate_limiter = RateLimiter(
@@ -131,7 +131,7 @@ async def test_rate_limiting_enforced(tmp_path):
 @pytest.mark.asyncio
 async def test_no_user_id_but_still_rate_limited_by_chat_id(tmp_path):
     """Requests without user_id are still rate limited using chat_id as fallback."""
-    from portal.security.security_module import RateLimiter
+    from portal.security.rate_limiter import RateLimiter
 
     core = AsyncMock()
     core.process_message = AsyncMock(
@@ -173,7 +173,7 @@ async def test_no_user_id_but_still_rate_limited_by_chat_id(tmp_path):
 @pytest.mark.asyncio
 async def test_rate_limiting_without_user_id_ip_fallback(tmp_path):
     """Rate limiting uses IP address when user_id and chat_id are unavailable."""
-    from portal.security.security_module import RateLimiter
+    from portal.security.rate_limiter import RateLimiter
 
     core = AsyncMock()
     core.process_message = AsyncMock(

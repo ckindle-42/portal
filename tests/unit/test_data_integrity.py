@@ -95,7 +95,7 @@ class TestPersistentRateLimiting:
     @pytest.mark.asyncio
     async def test_rate_limit_persists_across_restarts(self, tmp_path):
         """Verify rate limit data survives process restart"""
-        from portal.security.security_module import RateLimiter
+        from portal.security.rate_limiter import RateLimiter
 
         persist_path = tmp_path / "rate_limits.json"
 
@@ -119,7 +119,7 @@ class TestPersistentRateLimiting:
     @pytest.mark.asyncio
     async def test_rate_limit_prevents_restart_bypass(self, tmp_path):
         """Verify malicious user can't bypass limits by forcing restart"""
-        from portal.security.security_module import RateLimiter
+        from portal.security.rate_limiter import RateLimiter
 
         persist_path = tmp_path / "rate_limits.json"
         limiter1 = RateLimiter(max_requests=3, window_seconds=60, persist_path=persist_path)
@@ -140,7 +140,7 @@ class TestPersistentRateLimiting:
     @pytest.mark.asyncio
     async def test_rate_limit_cleans_old_data(self, tmp_path):
         """Verify old rate limit data is cleaned up"""
-        from portal.security.security_module import RateLimiter
+        from portal.security.rate_limiter import RateLimiter
 
         persist_path = tmp_path / "rate_limits.json"
         limiter = RateLimiter(max_requests=5, window_seconds=1, persist_path=persist_path)
@@ -294,7 +294,7 @@ class TestDataIntegrityIntegration:
     @pytest.mark.asyncio
     async def test_rate_limiter_under_load(self, tmp_path):
         """Test rate limiter performs well under load"""
-        from portal.security.security_module import RateLimiter
+        from portal.security.rate_limiter import RateLimiter
 
         persist_path = tmp_path / "load_test.json"
         limiter = RateLimiter(max_requests=100, window_seconds=60, persist_path=persist_path)
