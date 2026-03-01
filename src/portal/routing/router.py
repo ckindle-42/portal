@@ -13,6 +13,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
 from portal import __version__
+from portal.routing.workspace_registry import WorkspaceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ def _load_rules() -> dict:
 RULES = _load_rules()
 DEFAULT_MODEL = RULES.get("default_model", "qwen2.5:7b")
 MANUAL_PREFIX = RULES.get("manual_override_prefix", "@model:")
+_workspace_registry = WorkspaceRegistry(RULES.get("workspaces", {}))
 
 # Pre-compile regex rules sorted by priority (desc)
 _compiled_rules: list[tuple[int, str, list[re.Pattern], str]] = []
@@ -116,10 +118,9 @@ def resolve_model(requested_model: str, messages: list[dict]) -> tuple[str, str]
             pass
 
     # 2. Workspace model (virtual model names)
-    workspaces = RULES.get("workspaces", {})
-    if requested_model in workspaces:
-        ws = workspaces[requested_model]
-        return ws["model"], f"workspace: {requested_model}"
+    ws_model = _workspace_registry.get_model(requested_model)
+    if ws_model:
+        return ws_model, f"workspace: {requested_model}"
 
     # 3. Regex content rules
     for priority, name, patterns, model in _compiled_rules:

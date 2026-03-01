@@ -18,6 +18,7 @@ from portal.routing.intelligent_router import IntelligentRouter, RoutingStrategy
 from portal.routing.model_backends import BaseHTTPBackend
 from portal.routing.model_registry import ModelRegistry
 from portal.routing.task_classifier import TaskClassifier
+from portal.routing.workspace_registry import WorkspaceRegistry
 
 __all__ = [
     "BackendRegistry",
@@ -27,4 +28,5 @@ __all__ = [
     "ModelRegistry",
     "RoutingStrategy",
     "TaskClassifier",
+    "WorkspaceRegistry",
 ]

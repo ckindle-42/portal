@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry, RoutingStrategy
 from portal.routing.backend_registry import BackendRegistry
 from portal.routing.model_backends import OllamaBackend
+from portal.routing.workspace_registry import WorkspaceRegistry
 
 from .context_manager import ContextManager
 from .event_bus import EventBus
@@ -27,14 +28,28 @@ def create_model_registry(config: dict[str, Any]) -> ModelRegistry:  # noqa: ARG
     return ModelRegistry()
 
 
-def create_router(model_registry: ModelRegistry, config: dict[str, Any]) -> IntelligentRouter:
+def create_workspace_registry(config: dict[str, Any]) -> WorkspaceRegistry:
+    """Return a WorkspaceRegistry from *config* workspaces dict."""
+    workspaces = config.get("workspaces", {})
+    logger.info("Creating WorkspaceRegistry", count=len(workspaces))
+    return WorkspaceRegistry(workspaces)
+
+
+def create_router(
+    model_registry: ModelRegistry,
+    config: dict[str, Any],
+    workspace_registry: WorkspaceRegistry | None = None,
+) -> IntelligentRouter:
     """Return an IntelligentRouter configured from *config*."""
     strategy_name = config.get("routing_strategy", "AUTO").upper()
     routing_strategy = getattr(RoutingStrategy, strategy_name, RoutingStrategy.AUTO)
     model_preferences = config.get("model_preferences", {})
     logger.info("Creating IntelligentRouter", strategy=routing_strategy.value)
     return IntelligentRouter(
-        model_registry, strategy=routing_strategy, model_preferences=model_preferences
+        model_registry,
+        strategy=routing_strategy,
+        model_preferences=model_preferences,
+        workspace_registry=workspace_registry,
     )
 
 
@@ -101,7 +116,8 @@ class DependencyContainer:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.model_registry = create_model_registry(config)
-        self.router = create_router(self.model_registry, config)
+        self.workspace_registry = create_workspace_registry(config)
+        self.router = create_router(self.model_registry, config, self.workspace_registry)
         self.execution_engine = create_execution_engine(self.model_registry, self.router, config)
         self.context_manager = create_context_manager(config)
         self.event_bus = create_event_bus_instance(config)
