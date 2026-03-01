@@ -183,3 +183,30 @@ class TestAudioTranscriptionContracts:
                 )
         assert resp.status_code == 200
         assert "text" in resp.json()
+
+
+class TestBuildCorsOrigins:
+    """Tests for _build_cors_origins() URL validation (TASK-14)."""
+
+    def test_valid_origins_returned_unchanged(self):
+        from portal.interfaces.web.server import _build_cors_origins
+
+        origins = ["http://localhost:8080", "https://example.com"]
+        assert _build_cors_origins(origins) == origins
+
+    def test_malformed_origins_dropped(self):
+        from portal.interfaces.web.server import _build_cors_origins
+
+        origins = ["not-a-url", "ftp://bad-scheme.com", "https://good.com"]
+        result = _build_cors_origins(origins)
+        assert result == ["https://good.com"]
+
+    def test_empty_list_returns_default(self):
+        from portal.interfaces.web.server import _build_cors_origins
+
+        assert _build_cors_origins([]) == ["http://localhost:8080"]
+
+    def test_all_malformed_returns_default(self):
+        from portal.interfaces.web.server import _build_cors_origins
+
+        assert _build_cors_origins(["bad", "worse"]) == ["http://localhost:8080"]

@@ -69,9 +69,24 @@ class ChatCompletionRequest(BaseModel):
     tools: list[dict[str, Any]] = Field(default_factory=list)
 
 
+def _is_valid_origin(origin: str) -> bool:
+    """Return True if origin is a valid http/https URL with a netloc."""
+    from urllib.parse import urlparse
+
+    try:
+        p = urlparse(origin)
+        return p.scheme in ("http", "https") and bool(p.netloc)
+    except ValueError:
+        return False
+
+
 def _build_cors_origins(origins: list[str]) -> list[str]:
-    """Return CORS origins list, falling back to localhost:8080 if empty."""
-    return origins or ["http://localhost:8080"]
+    """Return validated CORS origins, falling back to localhost:8080 if none valid."""
+    valid = [o for o in origins if _is_valid_origin(o)]
+    if not valid:
+        logger.warning("No valid CORS origins found; defaulting to http://localhost:8080")
+        return ["http://localhost:8080"]
+    return valid
 
 
 def _cfg_str(obj: Any, attr: str, default: str) -> str:
