@@ -15,7 +15,7 @@ All dependencies are injected via the constructor.
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ChatAction
@@ -168,11 +168,14 @@ class TelegramInterface:
 
     def _is_authorized(self, update: Update) -> bool:
         """Check if user is authorized"""
-        return update.effective_user.id in self.authorized_user_ids
+        user = update.effective_user
+        if user is None:
+            return False
+        return user.id in self.authorized_user_ids
 
     async def _check_rate_limit(self, user_id: int) -> tuple[bool, str | None]:
         """Check rate limiting"""
-        return await self.rate_limiter.check_limit(user_id)
+        return await self.rate_limiter.check_limit(str(user_id))
 
     # ========================================================================
     # CONFIRMATION MIDDLEWARE INTEGRATION
@@ -219,6 +222,9 @@ class TelegramInterface:
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             # Send to admin chat
+            if self.application is None or self.application.bot is None:
+                logger.error("Telegram application not initialized")
+                return
             await self.application.bot.send_message(
                 chat_id=self.admin_chat_id,
                 text=message,
@@ -257,6 +263,10 @@ class TelegramInterface:
         # Check authorization
         if query.from_user.id != self.admin_chat_id:
             await query.edit_message_text("⛔ Unauthorized")
+            return
+
+        if self.confirmation_middleware is None:
+            await query.edit_message_text("⛔ Confirmation middleware not available")
             return
 
         # Parse callback data
@@ -378,7 +388,7 @@ class TelegramInterface:
         message = f"**Available Tools ({len(tools)}):**\n\n"
 
         # Group by category
-        by_category = {}
+        by_category: dict[str, list[dict[str, Any]]] = {}
         for tool in tools:
             cat = tool["category"]
             if cat not in by_category:
@@ -462,13 +472,18 @@ class TelegramInterface:
             return
 
         # Rate limiting check
-        user_id = update.effective_user.id
+        user = update.effective_user
+        if user is None:
+            return
+        user_id = user.id
         allowed, error_msg = await self._check_rate_limit(user_id)
         if not allowed:
-            await update.message.reply_text(error_msg)
+            await update.message.reply_text(error_msg or "Rate limited")
             return
 
         message = update.message.text
+        if message is None:
+            return
         chat_id = f"telegram_{update.effective_chat.id}"
 
         logger.info("Received message from user %s: %s...", user_id, message[:50])

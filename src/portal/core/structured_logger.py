@@ -56,15 +56,20 @@ class StructuredLogger:
         self.component = component
         self.logger = logger or logging.getLogger(component)
 
-    def _log(self, level: str, message: str, **kwargs) -> None:
+    def _log(self, level: str, message: str, *args, **kwargs) -> None:
         """
         Internal logging method
 
         Args:
             level: Log level ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
             message: Log message
+            *args: Positional args for %-style formatting (backward compat)
             **kwargs: Additional structured fields
         """
+        # Handle %-style formatting backward compatibility
+        if args:
+            message = message % args
+
         # Get current trace_id from context
         trace_id = _trace_id_var.get()
 
@@ -91,25 +96,25 @@ class StructuredLogger:
         log_method = getattr(self.logger, level.lower())
         log_method(json_log)
 
-    def debug(self, message: str, **kwargs) -> None:
+    def debug(self, message: str, *args, **kwargs) -> None:
         """Log debug message"""
-        self._log("DEBUG", message, **kwargs)
+        self._log("DEBUG", message, *args, **kwargs)
 
-    def info(self, message: str, **kwargs) -> None:
+    def info(self, message: str, *args, **kwargs) -> None:
         """Log info message"""
-        self._log("INFO", message, **kwargs)
+        self._log("INFO", message, *args, **kwargs)
 
-    def warning(self, message: str, **kwargs) -> None:
+    def warning(self, message: str, *args, **kwargs) -> None:
         """Log warning message"""
-        self._log("WARNING", message, **kwargs)
+        self._log("WARNING", message, *args, **kwargs)
 
-    def error(self, message: str, **kwargs) -> None:
+    def error(self, message: str, *args, **kwargs) -> None:
         """Log error message"""
-        self._log("ERROR", message, **kwargs)
+        self._log("ERROR", message, *args, **kwargs)
 
-    def critical(self, message: str, **kwargs) -> None:
+    def critical(self, message: str, *args, **kwargs) -> None:
         """Log critical message"""
-        self._log("CRITICAL", message, **kwargs)
+        self._log("CRITICAL", message, *args, **kwargs)
 
 
 class TraceContext:

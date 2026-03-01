@@ -85,7 +85,7 @@ class Runtime:
         """Bootstrap the application and return RuntimeContext."""
         if self._initialized:
             logger.warning("Runtime already initialized")
-            return self.context
+            return self.context  # type: ignore[return-value]
 
         logger.info("Bootstrapping Portal runtime")
         settings = self._load_settings()
@@ -326,7 +326,7 @@ class Runtime:
             logger.warning("Cannot register shutdown callback: Runtime not initialized")
             return
 
-        callback_name = name or getattr(callback, "__name__", "unknown")
+        callback_name: str = name if name is not None else getattr(callback, "__name__", "unknown")
         self.context.shutdown_callbacks.append(
             ShutdownCallback(
                 callback=callback, priority=priority, name=callback_name, timeout=timeout
@@ -337,8 +337,9 @@ class Runtime:
     def track_task(self, task: asyncio.Task):
         """Track an active task for graceful shutdown draining."""
         if self.context:
-            self.context.active_tasks.add(task)
-            task.add_done_callback(lambda t: self.context.active_tasks.discard(t))
+            ctx = self.context
+            ctx.active_tasks.add(task)
+            task.add_done_callback(lambda t: ctx.active_tasks.discard(t))
 
     def is_accepting_work(self) -> bool:
         """Check if runtime is accepting new work."""

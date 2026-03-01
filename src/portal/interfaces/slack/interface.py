@@ -22,6 +22,7 @@ import hmac
 import logging
 import time
 from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import HTTPException, Request
 from slack_sdk.web.async_client import AsyncWebClient
@@ -168,9 +169,10 @@ class SlackInterface(BaseInterface):
         """Nothing to tear down — routes live on the shared FastAPI app."""
         pass
 
-    async def send_message(self, chat_id: str, message: str, **kwargs) -> None:
+    async def send_message(self, chat_id: str, message: str, **kwargs: Any) -> bool:  # type: ignore[override]
         """Send a message to a Slack channel."""
         await self.client.chat_postMessage(channel=chat_id, text=message)
+        return True
 
     async def receive_message(self) -> AsyncIterator[IncomingMessage]:
         """Slack is push-based via webhook. This is not used."""
