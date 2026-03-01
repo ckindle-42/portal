@@ -12,6 +12,7 @@ Two independent routing layers:
 Both route to the same Ollama backend but use different selection logic.
 """
 
+from portal.routing.backend_registry import BackendRegistry
 from portal.routing.execution_engine import ExecutionEngine
 from portal.routing.intelligent_router import IntelligentRouter, RoutingStrategy
 from portal.routing.model_backends import BaseHTTPBackend
@@ -19,6 +20,7 @@ from portal.routing.model_registry import ModelRegistry
 from portal.routing.task_classifier import TaskClassifier
 
 __all__ = [
+    "BackendRegistry",
     "BaseHTTPBackend",
     "ExecutionEngine",
     "IntelligentRouter",

@@ -9,7 +9,7 @@ from typing import Any
 
 from .circuit_breaker import CircuitBreaker, CircuitState  # noqa: F401
 from .intelligent_router import IntelligentRouter, RoutingDecision
-from .model_backends import GenerationResult, OllamaBackend
+from .model_backends import GenerationResult, ModelBackend, OllamaBackend
 from .model_registry import ModelMetadata, ModelRegistry
 
 logger = logging.getLogger(__name__)
@@ -38,11 +38,12 @@ class ExecutionEngine:
         registry: ModelRegistry,
         router: IntelligentRouter,
         config: dict[str, Any] | None = None,
+        backends: dict[str, ModelBackend] | None = None,
     ):
         self.registry = registry
         self.router = router
         self.config = config or {}
-        self.backends = {
+        self.backends: dict[str, ModelBackend] = backends or {
             "ollama": OllamaBackend(
                 base_url=self.config.get("ollama_base_url", "http://localhost:11434")
             ),

@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry, RoutingStrategy
+from portal.routing.backend_registry import BackendRegistry
+from portal.routing.model_backends import OllamaBackend
 
 from .context_manager import ContextManager
 from .event_bus import EventBus
@@ -42,19 +44,25 @@ def create_execution_engine(
     config: dict[str, Any],
 ) -> ExecutionEngine:
     """Return an ExecutionEngine with backend/circuit-breaker config."""
+    ollama_url = config.get("ollama_base_url", "http://localhost:11434")
     backend_config = {
-        "ollama_base_url": config.get("ollama_base_url", "http://localhost:11434"),
+        "ollama_base_url": ollama_url,
         "circuit_breaker_enabled": config.get("circuit_breaker_enabled", True),
         "circuit_breaker_threshold": config.get("circuit_breaker_threshold", 3),
         "circuit_breaker_timeout": config.get("circuit_breaker_timeout", 60),
         "circuit_breaker_half_open_calls": config.get("circuit_breaker_half_open_calls", 1),
     }
+
+    registry = BackendRegistry()
+    registry.register("ollama", OllamaBackend(base_url=ollama_url))
+
     logger.info(
         "Creating ExecutionEngine",
-        ollama_url=backend_config["ollama_base_url"],
+        ollama_url=ollama_url,
         circuit_breaker=backend_config["circuit_breaker_enabled"],
+        backends=registry.available(),
     )
-    return ExecutionEngine(model_registry, router, backend_config)
+    return ExecutionEngine(model_registry, router, backend_config, backends=registry._backends)
 
 
 def create_context_manager(config: dict[str, Any]) -> ContextManager:
