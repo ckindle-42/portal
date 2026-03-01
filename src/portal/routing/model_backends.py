@@ -10,7 +10,7 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
 
-import aiohttp
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -85,16 +85,16 @@ class BaseHTTPBackend(ModelBackend):
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url.rstrip("/")
-        self._session: aiohttp.ClientSession | None = None
+        self._session: httpx.AsyncClient | None = None
 
-    async def _get_session(self) -> aiohttp.ClientSession:
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120))
+    async def _get_session(self) -> httpx.AsyncClient:
+        if self._session is None or self._session.is_closed:
+            self._session = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
         return self._session
 
     async def close(self) -> None:
-        if self._session and not self._session.closed:
-            await self._session.close()
+        if self._session and not self._session.is_closed:
+            await self._session.aclose()
 
     async def _post_json(self, endpoint: str, payload: dict) -> tuple[int, Any]:
         """POST JSON payload to an endpoint; return (http_status, parsed_body_or_text).
@@ -103,16 +103,16 @@ class BaseHTTPBackend(ModelBackend):
         On network/parse error re-raises.
         """
         session = await self._get_session()
-        async with session.post(f"{self.base_url}{endpoint}", json=payload) as response:
-            if response.status == 200:
-                return response.status, await response.json()
-            return response.status, await response.text()
+        response = await session.post(f"{self.base_url}{endpoint}", json=payload)
+        if response.status_code == 200:
+            return response.status_code, response.json()
+        return response.status_code, response.text
 
-    async def _stream_content(self, endpoint: str, payload: dict) -> AsyncGenerator[bytes, None]:
-        """POST JSON payload and yield raw content bytes line-by-line."""
+    async def _stream_content(self, endpoint: str, payload: dict) -> AsyncGenerator[str, None]:
+        """POST JSON payload and yield NDJSON lines as strings."""
         session = await self._get_session()
-        async with session.post(f"{self.base_url}{endpoint}", json=payload) as response:
-            async for line in response.content:
+        async with session.stream("POST", f"{self.base_url}{endpoint}", json=payload) as response:
+            async for line in response.aiter_lines():
                 if line:
                     yield line
 
@@ -135,8 +135,6 @@ class BaseHTTPBackend(ModelBackend):
         return chat_messages
 
 
-# TODO(Track B): Migrate from aiohttp to httpx for consistency with rest of Portal.
-# The rest of the codebase uses httpx; consolidating would remove a dual-dependency.
 class OllamaBackend(BaseHTTPBackend):
     """Ollama backend adapter"""
 
@@ -223,13 +221,13 @@ class OllamaBackend(BaseHTTPBackend):
             }
             async for line in self._stream_content("/api/chat", payload):
                 try:
-                    data = json.loads(line.decode("utf-8"))
+                    data = json.loads(line)
                     content = data.get("message", {}).get("content", "")
                     if content:
                         yield content
                 except json.JSONDecodeError:
                     continue
-        except (aiohttp.ClientError, json.JSONDecodeError, TimeoutError) as e:
+        except (httpx.HTTPError, json.JSONDecodeError, TimeoutError) as e:
             logger.error("Stream error from Ollama: %s", e, exc_info=True)
             raise
 
@@ -237,8 +235,8 @@ class OllamaBackend(BaseHTTPBackend):
         """Check if Ollama is available"""
         try:
             session = await self._get_session()
-            async with session.get(f"{self.base_url}/api/tags") as response:
-                return response.status == 200
+            response = await session.get(f"{self.base_url}/api/tags")
+            return response.status_code == 200
         except Exception:
             return False
 
@@ -246,10 +244,10 @@ class OllamaBackend(BaseHTTPBackend):
         """List available Ollama models"""
         try:
             session = await self._get_session()
-            async with session.get(f"{self.base_url}/api/tags") as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return [m["name"] for m in data.get("models", [])]
+            response = await session.get(f"{self.base_url}/api/tags")
+            if response.status_code == 200:
+                data = response.json()
+                return [m["name"] for m in data.get("models", [])]
         except Exception as e:
             logger.error("Failed to list Ollama models: %s", e)
         return []

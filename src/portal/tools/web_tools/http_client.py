@@ -3,6 +3,8 @@
 import json
 from typing import Any
 
+import httpx
+
 from portal.core.interfaces.tool import BaseTool, ToolCategory
 
 
@@ -50,8 +52,6 @@ class HTTPClientTool(BaseTool):
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Execute HTTP request"""
         try:
-            import aiohttp
-
             url = parameters.get("url", "")
             method = parameters.get("method", "GET").upper()
             headers_str = parameters.get("headers")
@@ -78,40 +78,34 @@ class HTTPClientTool(BaseTool):
                     body = body_str  # Use as raw string
 
             # Make request
-            async with aiohttp.ClientSession() as session:
-                request_kwargs = {
-                    "url": url,
-                    "headers": headers,
-                    "timeout": aiohttp.ClientTimeout(total=timeout),
-                }
+            async with httpx.AsyncClient(timeout=httpx.Timeout(timeout)) as client:
+                request_kwargs: dict[str, Any] = {"headers": headers}
 
                 if body:
                     if isinstance(body, dict):
                         request_kwargs["json"] = body
                     else:
-                        request_kwargs["data"] = body
+                        request_kwargs["content"] = body
 
-                async with session.request(method, **request_kwargs) as response:
-                    status = response.status
-                    response_headers = dict(response.headers)
+                response = await client.request(method, url, **request_kwargs)
+                status = response.status_code
+                response_headers = dict(response.headers)
 
-                    # Try to get response body
-                    try:
-                        response_body = await response.json()
-                    except Exception:
-                        response_body = await response.text()
+                # Try to get response body
+                try:
+                    response_body: Any = response.json()
+                except Exception:
+                    response_body = response.text
 
-                    return self._success_response(
-                        {
-                            "status": status,
-                            "headers": {k: v for k, v in list(response_headers.items())[:10]},
-                            "body": response_body
-                            if len(str(response_body)) < 5000
-                            else str(response_body)[:5000] + "...",
-                        }
-                    )
+                return self._success_response(
+                    {
+                        "status": status,
+                        "headers": {k: v for k, v in list(response_headers.items())[:10]},
+                        "body": response_body
+                        if len(str(response_body)) < 5000
+                        else str(response_body)[:5000] + "...",
+                    }
+                )
 
-        except ImportError:
-            return self._error_response("aiohttp not installed. Run: pip install aiohttp")
         except Exception as e:
             return self._error_response(str(e))
