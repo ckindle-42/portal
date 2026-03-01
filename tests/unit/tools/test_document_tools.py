@@ -19,12 +19,19 @@ from portal.tools.document_tools.pdf_ocr import PDFOCRTool
 _has_openpyxl = importlib.util.find_spec("openpyxl") is not None
 _has_docx = importlib.util.find_spec("docx") is not None
 
+try:
+    import pypdf  # noqa: F401
+    _has_pypdf = True
+except BaseException:
+    _has_pypdf = False
+
 
 @pytest.mark.unit
 class TestDocumentMetadataExtractorTool:
     """Test document_metadata tool"""
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(not _has_pypdf, reason="pypdf not importable in this environment")
     async def test_extract_metadata(self, temp_dir):
         """Test extracting document metadata"""
         tool = DocumentMetadataExtractorTool()
