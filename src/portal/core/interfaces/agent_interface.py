@@ -67,7 +67,7 @@ class BaseInterface(ABC):
     4. **Lifecycle Management**: Clear start/stop methods for resource management
     """
 
-    def __init__(self, agent_core: Any, config: dict[str, Any]) -> None:
+    def __init__(self, agent_core: Any, config: dict[str, Any] | None = None) -> None:
         """
         Initialize the interface.
 
@@ -76,7 +76,7 @@ class BaseInterface(ABC):
             config: Interface-specific configuration
         """
         self.agent_core = agent_core
-        self.config = config
+        self.config: dict[str, Any] = config if config is not None else {}
         self.is_running = False
         logger.info("Initialized %s", self.__class__.__name__)
 

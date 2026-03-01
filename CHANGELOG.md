@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-## [Unreleased] - 2026-03-01 — Modularization & Hardening (TASK-6 through TASK-18)
+## [1.3.9] - 2026-03-01 — Type Safety & Hardening (TASK-1 through TASK-19)
 
 ### Fixed
 - **TASK-6**: Silent `except Exception: pass` in `_warmup()` replaced with `logger.warning()`

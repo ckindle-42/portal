@@ -179,7 +179,7 @@ class WordProcessorTool(BaseTool):
 
             # Save
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            doc.save(file_path)
+            doc.save(str(file_path))
 
             return self._success_response(
                 result={"file_path": str(file_path)}, metadata={"title": title}
@@ -204,13 +204,13 @@ class WordProcessorTool(BaseTool):
 
         try:
             # Load document
-            doc = Document(file_path)
+            doc = Document(str(file_path))
 
             # Add heading
             doc.add_heading(heading, level=level)
 
             # Save
-            doc.save(file_path)
+            doc.save(str(file_path))
 
             return self._success_response(
                 result={"heading_added": heading}, metadata={"level": level}
@@ -236,7 +236,7 @@ class WordProcessorTool(BaseTool):
 
         try:
             # Load document
-            doc = Document(file_path)
+            doc = Document(str(file_path))
 
             # Add paragraph
             paragraph = doc.add_paragraph(text)
@@ -259,7 +259,7 @@ class WordProcessorTool(BaseTool):
                 paragraph.runs[0].underline = True
 
             # Save
-            doc.save(file_path)
+            doc.save(str(file_path))
 
             return self._success_response(
                 result={"paragraph_added": True}, metadata={"length": len(text), "style": style}
@@ -283,7 +283,7 @@ class WordProcessorTool(BaseTool):
 
         try:
             # Load document
-            doc = Document(file_path)
+            doc = Document(str(file_path))
 
             # Get table data
             headers = table_data.get("headers", [])
@@ -310,7 +310,7 @@ class WordProcessorTool(BaseTool):
                     row_cells[col_idx].text = str(cell_data)
 
             # Save
-            doc.save(file_path)
+            doc.save(str(file_path))
 
             return self._success_response(
                 result={"table_added": True}, metadata={"rows": len(rows), "columns": num_cols}
@@ -343,13 +343,13 @@ class WordProcessorTool(BaseTool):
 
         try:
             # Load document
-            doc = Document(file_path)
+            doc = Document(str(file_path))
 
             # Add image
             doc.add_picture(str(image_path), width=Inches(image_width))
 
             # Save
-            doc.save(file_path)
+            doc.save(str(file_path))
 
             return self._success_response(
                 result={"image_added": str(image_path)}, metadata={"width_inches": image_width}
@@ -369,7 +369,7 @@ class WordProcessorTool(BaseTool):
 
         try:
             # Load document
-            doc = Document(file_path)
+            doc = Document(str(file_path))
 
             # Extract content
             content = {

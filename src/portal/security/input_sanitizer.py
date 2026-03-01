@@ -70,7 +70,7 @@ class InputSanitizer:
         # Check for dangerous patterns
         for pattern, description in InputSanitizer.DANGEROUS_PATTERNS:
             if re.search(pattern, command, re.IGNORECASE):
-                warnings.append(f"âš ï¸ Dangerous pattern detected: {description}")
+                warnings.append(f"[WARNING] Dangerous pattern detected: {description}")
                 logger.warning("Dangerous command detected: %s", command[:100])
 
         # Basic sanitization (without breaking legitimate use)

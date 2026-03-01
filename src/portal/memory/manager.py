@@ -32,12 +32,12 @@ class MemoryManager:
 
     # Pruning configuration
     _PRUNE_INTERVAL = 100  # prune check every N inserts
-    _MAX_AGE_DAYS = int(os.getenv("PORTAL_MEMORY_RETENTION_DAYS", "90"))
 
     def __init__(self, db_path: str | Path | None = None) -> None:
         self.db_path = Path(db_path or os.getenv("PORTAL_MEMORY_DB", "data/memory.db"))
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.provider = os.getenv("PORTAL_MEMORY_PROVIDER", "auto").lower()
+        self._max_age_days = int(os.getenv("PORTAL_MEMORY_RETENTION_DAYS", "90"))
         self._mem0 = None
         self._insert_count = 0
         self._pool = ConnectionPool(self.db_path, pragmas=("PRAGMA journal_mode=WAL",))
@@ -93,7 +93,7 @@ class MemoryManager:
         if self._insert_count % self._PRUNE_INTERVAL == 0:
             deleted = await asyncio.to_thread(self._prune_old_memories)
             if deleted:
-                logger.info("Pruned %d old memories (>%d days)", deleted, self._MAX_AGE_DAYS)
+                logger.info("Pruned %d old memories (>%d days)", deleted, self._max_age_days)
 
     def _store_sqlite(self, user_id: str, content: str) -> None:
         conn = self._pool.get()
@@ -102,7 +102,7 @@ class MemoryManager:
 
     def _prune_old_memories(self) -> int:
         """Delete memories older than the retention period. Returns count deleted."""
-        cutoff = (datetime.now(tz=UTC) - timedelta(days=self._MAX_AGE_DAYS)).strftime(
+        cutoff = (datetime.now(tz=UTC) - timedelta(days=self._max_age_days)).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
         conn = self._pool.get()

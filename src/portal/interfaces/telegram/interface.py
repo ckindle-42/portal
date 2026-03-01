@@ -38,7 +38,7 @@ from portal.core.types import InterfaceType, ProcessingResult
 from portal.middleware import ConfirmationRequest, ToolConfirmationMiddleware
 
 # Import security module
-from portal.security.security_module import RateLimiter
+from portal.security.rate_limiter import RateLimiter
 
 if TYPE_CHECKING:
     from portal.config.settings import Settings
@@ -248,6 +248,9 @@ class TelegramInterface:
 
         This is called when the admin clicks Approve or Deny on a confirmation request.
         """
+        # Guard against missing callback_query
+        if update.callback_query is None:
+            return
         query = update.callback_query
         await query.answer()
 
@@ -319,6 +322,8 @@ class TelegramInterface:
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /start command"""
+        if update.message is None:
+            return
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
@@ -340,6 +345,8 @@ class TelegramInterface:
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /help command"""
+        if update.message is None:
+            return
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
@@ -360,6 +367,8 @@ class TelegramInterface:
 
     async def tools_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /tools command"""
+        if update.message is None:
+            return
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
@@ -387,6 +396,8 @@ class TelegramInterface:
 
     async def stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /stats command"""
+        if update.message is None:
+            return
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
@@ -409,6 +420,8 @@ class TelegramInterface:
 
     async def health_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /health command"""
+        if update.message is None:
+            return
         if not self._is_authorized(update):
             await update.message.reply_text("⛔ Unauthorized")
             return
@@ -435,6 +448,13 @@ class TelegramInterface:
 
     async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle text messages - the main interaction"""
+        # Guard against missing message
+        if update.message is None:
+            return
+        if update.effective_user is None:
+            return
+        if update.effective_chat is None:
+            return
 
         # Authorization check
         if not self._is_authorized(update):

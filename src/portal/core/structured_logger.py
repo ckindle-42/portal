@@ -11,7 +11,7 @@ import json
 import logging
 import re
 import uuid
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from datetime import UTC, datetime
 
 # Context variable to store trace_id for current request
@@ -130,7 +130,7 @@ class TraceContext:
             trace_id: Optional trace ID (generates new UUID if not provided)
         """
         self.trace_id = trace_id or self._generate_trace_id()
-        self.token = None
+        self.token: Token[str | None] | None = None
 
     def __enter__(self) -> str:
         """Enter trace context"""
@@ -139,7 +139,8 @@ class TraceContext:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit trace context"""
-        _trace_id_var.reset(self.token)
+        if self.token is not None:
+            _trace_id_var.reset(self.token)
 
     @staticmethod
     def _generate_trace_id() -> str:
