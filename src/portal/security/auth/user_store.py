@@ -21,7 +21,7 @@ class AuthContext:
 
 class UserStore:
     def __init__(self, db_path: str | Path | None = None) -> None:
-        self.db_path = Path(db_path or os.getenv("PORTAL_AUTH_DB", "data/auth.db"))
+        self.db_path = Path(db_path or os.getenv("PORTAL_AUTH_DB") or "data/auth.db")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._pool = ConnectionPool(
             self.db_path, pragmas=("PRAGMA journal_mode=WAL", "PRAGMA foreign_keys=ON")

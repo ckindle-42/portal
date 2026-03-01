@@ -4,7 +4,7 @@ import asyncio
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
@@ -33,11 +33,7 @@ class ConfirmationRequest:
     requested_at: datetime
     timeout_seconds: int
     trace_id: str | None = None
-    response_event: asyncio.Event = None
-
-    def __post_init__(self):
-        if self.response_event is None:
-            self.response_event = asyncio.Event()
+    response_event: asyncio.Event = field(default_factory=asyncio.Event)
 
     def is_expired(self) -> bool:
         return datetime.now(tz=UTC) > self.requested_at + timedelta(seconds=self.timeout_seconds)
@@ -71,7 +67,7 @@ class ToolConfirmationMiddleware:
         self.default_timeout = default_timeout
         self.cleanup_interval = cleanup_interval
         self._pending: dict[str, ConfirmationRequest] = {}
-        self._cleanup_task = None
+        self._cleanup_task: asyncio.Task[None] | None = None
         self._running = False
         logger.info(
             "ToolConfirmationMiddleware initialized", extra={"default_timeout": default_timeout}

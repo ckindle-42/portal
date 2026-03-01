@@ -66,12 +66,12 @@ class SandboxConfig:
     tmpfs_size: str = "100m"  # Size of /tmp
 
     # Security
-    drop_capabilities: list[str] = None  # Capabilities to drop
+    drop_capabilities: list[str] | None = None  # Capabilities to drop
     no_new_privileges: bool = True  # Prevent privilege escalation
 
     # Python environment
     python_version: str = "3.11"  # Python version
-    packages: list[str] = None  # Pre-installed packages
+    packages: list[str] | None = None  # Pre-installed packages
 
     def __post_init__(self) -> None:
         if self.drop_capabilities is None:
@@ -121,6 +121,7 @@ class DockerPythonSandbox:
     def _ensure_image(self) -> None:
         """Ensure sandbox Docker image exists"""
         self._require_client()
+        assert self.docker_client is not None
 
         try:
             # Check if image exists
@@ -139,7 +140,7 @@ class DockerPythonSandbox:
 FROM python:{self.config.python_version}-slim
 
 # Install common packages
-RUN pip install --no-cache-dir {" ".join(self.packages)}
+RUN pip install --no-cache-dir {" ".join(self.config.packages or [])}
 
 # Create non-root user
 RUN useradd -m -u 1000 sandbox && \\
@@ -163,6 +164,7 @@ CMD ["python3"]
                 dockerfile_path.write_text(dockerfile_content)
 
                 logger.info("Building Docker image...")
+                assert self.docker_client is not None
                 self.docker_client.images.build(
                     path=str(tmpdir), tag=self.image_name, rm=True, forcerm=True
                 )
@@ -196,6 +198,7 @@ CMD ["python3"]
 
     def _run_container(self, container_config: dict[str, Any], timeout: int) -> tuple[Any, int]:
         """Start container and wait for exit; returns (container, exit_code)."""
+        assert self.docker_client is not None
         container = self.docker_client.containers.run(**container_config)
         try:
             result = container.wait(timeout=timeout)
@@ -272,6 +275,7 @@ CMD ["python3"]
     def cleanup(self) -> None:
         """Cleanup resources"""
         self._require_client()
+        assert self.docker_client is not None
         self.docker_client.close()
 
 
