@@ -49,10 +49,12 @@ class LogRotator:
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
         logger.info(
             "LogRotator initialized",
-            log_file=str(self.log_file),
-            strategy=self.config.strategy.value,
-            max_bytes=self.config.max_bytes,
-            rotation_hours=self.config.rotation_interval_hours,
+            extra={
+                "log_file": str(self.log_file),
+                "strategy": self.config.strategy.value,
+                "max_bytes": self.config.max_bytes,
+                "rotation_hours": self.config.rotation_interval_hours,
+            },
         )
 
     async def start(self) -> None:

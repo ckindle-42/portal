@@ -89,9 +89,11 @@ class Watchdog:
         self._process = psutil.Process()
         logger.info(
             "Watchdog initialized",
-            check_interval=self.config.check_interval_seconds,
-            max_failures=self.config.max_consecutive_failures,
-            restart_enabled=self.config.restart_on_failure,
+            extra={
+                "check_interval": self.config.check_interval_seconds,
+                "max_failures": self.config.max_consecutive_failures,
+                "restart_enabled": self.config.restart_on_failure,
+            },
         )
 
     def register_component(
@@ -105,8 +107,7 @@ class Watchdog:
         logger.info(
             "Registered component for monitoring: %s",
             name,
-            critical=critical,
-            has_restart_func=restart_func is not None,
+            extra={"critical": critical, "has_restart_func": restart_func is not None},
         )
 
     def unregister_component(self, name: str) -> None:
@@ -122,8 +123,10 @@ class Watchdog:
         self._task = asyncio.create_task(self._monitoring_loop())
         logger.info(
             "Watchdog started",
-            components_count=len(self._components),
-            check_interval=self.config.check_interval_seconds,
+            extra={
+                "components_count": len(self._components),
+                "check_interval": self.config.check_interval_seconds,
+            },
         )
 
     async def stop(self) -> None:
@@ -174,8 +177,10 @@ class Watchdog:
                 logger.warning(
                     "Component %s is degraded",
                     component.name,
-                    consecutive_failures=component.health.consecutive_failures,
-                    message=result.message,
+                    extra={
+                        "consecutive_failures": component.health.consecutive_failures,
+                        "message": result.message,
+                    },
                 )
 
             elif result.status == HealthStatus.UNHEALTHY:
@@ -185,8 +190,10 @@ class Watchdog:
                 logger.error(
                     "Component %s failed",
                     component.name,
-                    consecutive_failures=component.health.consecutive_failures,
-                    error=result.message,
+                    extra={
+                        "consecutive_failures": component.health.consecutive_failures,
+                        "error": result.message,
+                    },
                 )
                 await self._attempt_recovery(component, result.message)
 
@@ -219,7 +226,7 @@ class Watchdog:
                 "Component %s has exceeded max restart attempts (%s)",
                 component.name,
                 self.config.max_restart_attempts,
-                restart_count=component.health.restart_count,
+                extra={"restart_count": component.health.restart_count},
             )
             return
         try:
@@ -228,8 +235,10 @@ class Watchdog:
             logger.info(
                 "Restarting component %s",
                 component.name,
-                restart_attempt=component.health.restart_count,
-                max_attempts=self.config.max_restart_attempts,
+                extra={
+                    "restart_attempt": component.health.restart_count,
+                    "max_attempts": self.config.max_restart_attempts,
+                },
             )
             if component.health.restart_count > 1:
                 backoff = self.config.restart_backoff_seconds * (
@@ -258,15 +267,17 @@ class Watchdog:
                 logger.warning(
                     "High memory usage: %.1f%%",
                     memory_percent,
-                    memory_mb=memory_info.rss / (1024 * 1024),
-                    threshold=self.config.memory_threshold_percent,
+                    extra={
+                        "memory_mb": memory_info.rss / (1024 * 1024),
+                        "threshold": self.config.memory_threshold_percent,
+                    },
                 )
             cpu_percent = self._process.cpu_percent(interval=1)
             if cpu_percent > self.config.cpu_threshold_percent:
                 logger.warning(
                     "High CPU usage: %.1f%%",
                     cpu_percent,
-                    threshold=self.config.cpu_threshold_percent,
+                    extra={"threshold": self.config.cpu_threshold_percent},
                 )
         except Exception as e:
             logger.error("Error checking system resources: %s", e)
