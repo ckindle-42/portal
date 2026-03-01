@@ -26,7 +26,7 @@ class Message:
     user_id: str
     content: str
     interface_type: str  # "telegram", "web", "slack", etc.
-    metadata: dict[str, Any] = None  # Interface-specific metadata
+    metadata: dict[str, Any] | None = None  # Interface-specific metadata
     chat_id: str | None = None
     message_id: str | None = None
 
@@ -45,7 +45,7 @@ class Response:
 
     content: str
     message_type: str = "text"  # "text", "image", "file", "code", etc.
-    metadata: dict[str, Any] = None
+    metadata: dict[str, Any] | None = None
     reply_to_message_id: str | None = None
 
     def __post_init__(self) -> None:
