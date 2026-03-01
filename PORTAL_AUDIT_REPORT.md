@@ -1,7 +1,7 @@
 # Portal — Full Codebase Audit Report
 
-**Date:** 2026-03-01
-**Version audited:** 1.4.0
+**Date:** 2026-03-01 (delta run)
+**Version audited:** 1.4.1
 **Auditor:** Claude Code (claude-sonnet-4-6)
 **Repository:** https://github.com/ckindle-42/portal
 
@@ -9,54 +9,79 @@
 
 ## 1. Executive Summary
 
-**Health Score: 8.5 / 10 — STRONG (unchanged from prior)**
+**Health Score: 8.5 / 10 — STRONG (unchanged)**
 
-Portal 1.4.0 is in excellent shape. All Tier 1 tasks from the previous action prompt have been completed: security_module.py shim removed, tests updated to import directly, orphan branches pruned, and version bumped. Remaining work is primarily type safety (mypy) in lifecycle and telegram interfaces.
+Portal 1.4.1 continues in strong shape. Since the prior audit:
+- TASK-24/25/26 (mypy fixes for lifecycle, telegram, slack) are **complete** — mypy errors dropped 123 → 103
+- Version was bumped to 1.4.1
+- One new **bug found and fixed** this run: `aiohttp` was missing from the `[slack]` optional dependency, causing `test_registered_interfaces_accessible` to fail in clean installs
+- One prior **finding corrected**: F-04/TASK-23 claimed `runtime_metrics.py` had "no production callers" — this was wrong. Two production modules import from it (`agent_core.py`, `server.py`). TASK-23 as written would break production.
 
 | # | Area | Prior | Current | Status |
 |---|------|-------|---------|--------|
-| 1 | **mypy errors** | 124 | 123 | UNCHANGED |
-| 2 | **security_module.py** | shim removed, tests using it | FILE DELETED, tests updated | COMPLETE |
-| 3 | **Version** | 1.3.9 | 1.4.0 | BUMPED |
-| 4 | **Tests** | 874 | 875 | +1 |
-| 5 | **Lint violations** | 0 | 0 | CLEAN |
-| 6 | **Remote branches** | 11 orphans | 1 (origin/main only) | CLEAN |
+| 1 | **mypy errors** | 123 | 103 | -20 (TASK-24/25/26 complete) |
+| 2 | **Tests** | 874 pass / 1 skip | 874 pass / 1 skip | UNCHANGED |
+| 3 | **Lint violations** | 0 | 0 | CLEAN |
+| 4 | **aiohttp [slack] dep** | MISSING (bug) | FIXED | FIXED this run |
+| 5 | **runtime_metrics.py callers** | "0 callers" (incorrect) | 2 production callers confirmed | FINDING CORRECTED |
+| 6 | **Version** | 1.4.0 | 1.4.1 | BUMPED |
+| 7 | **Remote branches** | 1 (origin/main) | 2 (origin/main + review branch) | EXPECTED (active session) |
 
 **LOC breakdown:**
-- Source (src/portal): ~15,800 lines across 97 Python files
-- Tests: ~14,000 lines across 67 Python files
-- Test/source ratio: ~0.89 (healthy)
+- Source (`src/portal/`): ~31,726 lines across 97 Python files
+- Tests: ~27,066 lines across 68 Python files
+- Test/source ratio: ~0.85 (healthy)
 
-**Parity risks from this audit:** NONE. No behavioral changes recommended in this audit.
+**Parity risks from this audit:** NONE. No behavioral changes introduced.
 
 ---
 
 ## 2. Delta Summary
 
-### Changes Since Prior Audit (2026-03-01)
+### Changes Since Prior Audit (2026-03-01, v1.4.0)
 
 | Metric | Prior | Current | Delta |
 |--------|-------|---------|-------|
 | Health Score | 8.5/10 | 8.5/10 | — |
-| mypy errors | 124 | 123 | -1 |
-| Test count | 874 | 875 | +1 |
-| Version | 1.3.9 | 1.4.0 | +0.1 |
+| mypy errors | 123 | 103 | -20 |
+| Test count | 874 pass / 1 skip | 874 pass / 1 skip | — |
+| Version | 1.4.0 | 1.4.1 | +0.1 |
 | Lint violations | 0 | 0 | — |
-| Remote branches | 11 | 1 | -10 |
 
-### Completed Work
+### Completed Work Since Prior Audit
 
-- **TASK-20 (security_module.py import cleanup):** Updated 13 test files to import RateLimiter and InputSanitizer directly from `portal.security.rate_limiter` and `portal.security.input_sanitizer` instead of the shim.
-- **TASK-21 (security_module.py deletion):** Deleted `src/portal/security/security_module.py` after confirming all imports were updated.
-- **TASK-22 (orphan branch cleanup):** Pruned 10 stale remote tracking branches (5 AI agent + 5 dependabot branches).
-- **Version bump:** Bumped to 1.4.0 in `__init__.py` and `pyproject.toml`.
+- **TASK-24 (lifecycle.py mypy):** Fixed `StructuredLogger` now accepts `*args` for %-style formatting, added `RuntimeContext` None guards. ~8 errors resolved.
+- **TASK-25 (telegram mypy):** Added None guards for `User`, `Message`, `confirmation_middleware`; added type annotation for `by_category`. ~10 errors resolved.
+- **TASK-26 (slack mypy):** Fixed `send_message` return type to match supertype; fixed `__init__.py` exports. ~3 errors resolved.
+- **Version bump:** 1.4.0 → 1.4.1 via `7b0eeda`.
 
-### New Findings
+### New Findings This Run
 
-| Category | Count | Notes |
-|----------|-------|-------|
-| mypy errors | 123 | lifecycle.py (~8), telegram interface (~10), slack interface (2), misc |
-| Documentation sync | Minor | CLAUDE.md references ROADMAP.md; PORTAL_ROADMAP.md exists separately |
+| Category | ID | Description | Action |
+|----------|-----|-------------|--------|
+| BUG (FIXED) | — | `aiohttp` missing from `[slack]` optional dep; `slack_sdk.web.async_client` needs it | Fixed in `pyproject.toml` this run |
+| FINDING CORRECTION | F-04 | `runtime_metrics.py` has 2 production callers — `agent_core.py:20` and `server.py:44` | TASK-23 must be revised (see below) |
+| TYPE_SAFETY | F-05 | `agent_core.py:504` — `health_check()` returns `dict` but method declared `-> bool` | Tier 2 fix |
+| TYPE_SAFETY | F-06 | `agent_core.py:546` — `mcp_registry` may be None but `.call_tool()` called without guard | Tier 2 fix |
+| TYPE_SAFETY | F-07 | `agent_interface.py:29,48` — `metadata: dict[str, Any] = None` annotation allows None but type says dict | Tier 2 fix |
+
+### TASK-23 Revision Required
+
+The prior action prompt included:
+> `TASK-23: Delete runtime_metrics.py after verifying no imports exist`
+
+This was based on an incorrect finding. **Do NOT execute TASK-23 as written.** The file has active production callers:
+
+```
+src/portal/core/agent_core.py:20:from portal.observability.runtime_metrics import MCP_TOOL_USAGE
+src/portal/interfaces/web/server.py:44:from portal.observability.runtime_metrics import (TOKENS_PER_SECOND, TTFT_MS, mark_request, set_memory_stats)
+```
+
+The correct multi-step action (see TASK-23R in ACTION_PROMPT) is:
+1. Update `agent_core.py` to import `MCP_TOOL_USAGE` from `portal.observability.metrics` directly
+2. Update `server.py` to import the four symbols from `portal.observability.metrics` directly
+3. Verify `grep -r "runtime_metrics" src/ → 0` (excluding the shim itself)
+4. Delete `runtime_metrics.py`
 
 ---
 
@@ -64,20 +89,24 @@ Portal 1.4.0 is in excellent shape. All Tier 1 tasks from the previous action pr
 
 ### Commit Themes (Since Prior Audit)
 
-| Commit Range | Theme | Status | Debt/TODOs Left |
-|-------------|-------|--------|-----------------|
-| 4b8a98a | Version bump to 1.4.0 | COMPLETE | None |
-| ed6181a | docs(audit): update audit report | COMPLETE | None |
-| e407996 | refactor(security): remove security_module.py shim | COMPLETE | None |
+| Commit | Theme | Status | Debt/TODOs Left |
+|--------|-------|--------|-----------------|
+| `6cfa24d` | fix(deps): aiohttp to [slack] optional dep | COMPLETE (this run) | None |
+| `ee9cd49` | Delete PORTAL_CODEBASE_REVIEW_AGENT_v3.md | COMPLETE | None |
+| `3a72ee0` | Add PORTAL_CODEBASE_REVIEW_AGENT_v4.md | COMPLETE | None |
+| `7b0eeda` | bump: version to 1.4.1 | COMPLETE | None |
+| `e44c408` | TASK-24/25/26: mypy fixes lifecycle/telegram/slack | COMPLETE | mypy still 103 |
+| `bbf644f` | docs(audit): update prior audit artifacts | COMPLETE | None |
 
 ### Contributor Patterns
 
-Single-owner project (ckindle-42) with AI-assisted development. Clear pattern of problem-identification → audit → targeted refactor → test verification.
+Single-owner project (ckindle-42) with AI-assisted development. Consistent pattern: audit → identify → fix → verify. Health trajectory is stable and improving.
 
 ### Unfinished Work Register
 
 | Source | Description | Evidence | Priority |
 |--------|------------|----------|----------|
+| ACTION_PROMPT | TASK-23R: migrate runtime_metrics callers, then delete | `agent_core.py:20`, `server.py:44` | P2-HIGH |
 | ROADMAP.md | LLM-Based Intelligent Routing | `ROADMAP.md` section 1 | P2-HIGH |
 | ROADMAP.md | MLX Backend for Apple Silicon | `ROADMAP.md` section 2 | P3-MEDIUM |
 
@@ -86,20 +115,34 @@ Single-owner project (ckindle-42) with AI-assisted development. Clear pattern of
 ## 4. Baseline Status
 
 ```
+ENVIRONMENT STATUS
+------------------
+Python:     3.11.14
+Venv:       .venv (active)
+Project:    portal 1.4.1 installed (editable)
+Core deps:  fastapi=0.135.1  pydantic=2.12.5  uvicorn=0.41.0  httpx=0.28.1
+Dev tools:  ruff=0.15.4  pytest=9.0.2  mypy=1.19.1
+Import:     portal package OK (version: 1.4.1)
+Test collection: 875 collected (874 pass, 1 skip, 27 deselected)
+API routes: confirmed
+
 BASELINE STATUS
 ---------------
-Tests:    PASS=874  FAIL=0  SKIP=1  ERROR=0  (875 collected, 27 deselected)
-Lint:     VIOLATIONS=0 (ruff check passes)
-Mypy:     ERRORS=123 in ~20 files (strict=false; not blocking CI)
-API routes confirmed: YES
-  - POST /v1/chat/completions  (server.py:359)
-  - GET  /v1/models            (server.py:371)
-  - GET  /health               (server.py:507)
-  - WS   /ws                   (server.py:541)
-  - POST /v1/audio/transcriptions (server.py:365)
-  - GET  /health (router)      (router.py:138)
-Python:   3.14.3
-Proceed: YES
+Environment:  Python 3.11.14 | venv active | portal importable
+Dev tools:    ruff=0.15.4  pytest=9.0.2
+Tests:        PASS=874  FAIL=0  SKIP=1  ERROR=0
+Lint:         VIOLATIONS=0
+Mypy:         ERRORS=103 in 28 files (strict=false; not blocking CI)
+Branches:     LOCAL=2  REMOTE=2  (master + active review branch)
+CLAUDE.md:    git policy PRESENT
+API routes:   confirmed
+Proceed:      YES
+
+BRANCH HYGIENE
+--------------
+Local:  claude/execute-codebase-review-BTJbC (active), master
+Remote: origin/claude/execute-codebase-review-BTJbC (active), origin/main
+Note:   master local branch diverged from origin/main — cleanup pending after merge
 ```
 
 ---
@@ -169,34 +212,34 @@ Proceed: YES
 | `agent/dispatcher.py` | 67 | CentralDispatcher interface registry | CORE | STABLE | — |
 | `config/settings.py` | 484 | Pydantic v2 Settings, all config classes | INFRA | STABLE | — |
 | `core/__init__.py` | 31 | Public API exports | CORE | LOCKED | — |
-| `core/agent_core.py` | 657 | AgentCore — main orchestrator | CORE | STABLE | ~5 mypy errors |
+| `core/agent_core.py` | 657 | AgentCore — main orchestrator | CORE | STABLE | 2 mypy errors (F-05, F-06) |
 | `core/context_manager.py` | 265 | SQLite conversation history | CORE | STABLE | — |
 | `core/db.py` | 47 | Shared SQLite ConnectionPool | CORE | STABLE | — |
 | `core/event_bus.py` | 215 | Async event pub/sub | CORE | STABLE | — |
 | `core/exceptions.py` | 116 | Structured exception hierarchy | CORE | LOCKED | — |
-| `core/factories.py` | 178 | DI container and dependency wiring | CORE | STABLE | ~2 mypy errors |
-| `core/interfaces/agent_interface.py` | 194 | BaseInterface ABC | CORE | LOCKED | Fixed: config default |
+| `core/factories.py` | 178 | DI container and dependency wiring | CORE | STABLE | 1 mypy error |
+| `core/interfaces/agent_interface.py` | 194 | BaseInterface ABC | CORE | LOCKED | 2 mypy errors (F-07) |
 | `core/interfaces/tool.py` | 153 | BaseTool ABC | CORE | LOCKED | — |
 | `core/prompt_manager.py` | 129 | System prompt template loader | CORE | STABLE | — |
-| `core/structured_logger.py` | 165 | JSON structured logger + TraceContext | CORE | STABLE | Fixed: token type |
+| `core/structured_logger.py` | 165 | JSON structured logger + TraceContext | CORE | STABLE | Fixed: *args support |
 | `core/types.py` | 97 | IncomingMessage, ProcessingResult, InterfaceType | CORE | LOCKED | — |
-| `interfaces/telegram/interface.py` | 545 | Telegram bot adapter | ADAPTER | EVOLVING | ~10 mypy errors |
-| `interfaces/web/server.py` | 754 | FastAPI WebInterface: routes, handlers | ADAPTER | STABLE | ~3 mypy errors |
-| `interfaces/slack/interface.py` | 181 | Slack webhook adapter | ADAPTER | STABLE | 2 mypy errors |
-| `lifecycle.py` | 345 | Runtime bootstrap/shutdown | INFRA | STABLE | ~8 mypy errors |
-| `memory/manager.py` | 161 | MemoryManager (SQLite or Mem0) | CORE | STABLE | Fixed: env in constructor |
+| `interfaces/telegram/interface.py` | 545 | Telegram bot adapter | ADAPTER | STABLE | Fixed (TASK-25) |
+| `interfaces/web/server.py` | 754 | FastAPI WebInterface: routes, handlers | ADAPTER | STABLE | 3 mypy errors |
+| `interfaces/slack/interface.py` | 181 | Slack webhook adapter | ADAPTER | STABLE | Fixed (TASK-26); needs aiohttp |
+| `lifecycle.py` | 345 | Runtime bootstrap/shutdown | INFRA | STABLE | Fixed (TASK-24) |
+| `memory/manager.py` | 161 | MemoryManager (SQLite or Mem0) | CORE | STABLE | 1 mypy error |
 | `middleware/hitl_approval.py` | 56 | Redis-backed HITL approval | CORE | EVOLVING | — |
-| `middleware/tool_confirmation_middleware.py` | 252 | Tool confirmation gate | CORE | STABLE | — |
-| `observability/config_watcher.py` | 275 | YAML config hot-reload watcher | INFRA | STABLE | — |
+| `middleware/tool_confirmation_middleware.py` | 252 | Tool confirmation gate | CORE | STABLE | 1 mypy error |
+| `observability/config_watcher.py` | 275 | YAML config hot-reload watcher | INFRA | STABLE | 2 mypy errors (import-untyped) |
 | `observability/health.py` | 160 | K8s-style health check system | INFRA | STABLE | — |
-| `observability/log_rotation.py` | 248 | Log file rotation | INFRA | STABLE | — |
+| `observability/log_rotation.py` | 248 | Log file rotation | INFRA | STABLE | 4 mypy errors (logger kwargs) |
 | `observability/metrics.py` | 246 | Prometheus metrics collector + re-exports | INFRA | STABLE | — |
-| `observability/runtime_metrics.py` | 13 | Re-export shim for backward compat | INFRA | CANDIDATE | Could be removed |
-| `observability/watchdog.py` | 361 | Component health + auto-restart watchdog | INFRA | STABLE | 2 mypy errors |
-| `protocols/mcp/mcp_registry.py` | 183 | MCP server connection registry | ADAPTER | STABLE | Fixed: NOTE removed |
+| `observability/runtime_metrics.py` | 13 | Re-export shim (backward compat) | INFRA | CANDIDATE | Active callers: agent_core, server |
+| `observability/watchdog.py` | 361 | Component health + auto-restart watchdog | INFRA | STABLE | ~2 mypy errors |
+| `protocols/mcp/mcp_registry.py` | 183 | MCP server connection registry | ADAPTER | STABLE | — |
 | `routing/backend_registry.py` | 32 | ModelBackend instance registry | CORE | STABLE | — |
 | `routing/circuit_breaker.py` | 91 | CircuitBreaker for backend health | CORE | STABLE | — |
-| `routing/execution_engine.py` | 309 | Execution with circuit-breaker + fallback | CORE | STABLE | 1 mypy error |
+| `routing/execution_engine.py` | 309 | Execution with circuit-breaker + fallback | CORE | STABLE | 2 mypy errors |
 | `routing/intelligent_router.py` | 217 | Task-based model selection | CORE | STABLE | — |
 | `routing/model_backends.py` | 253 | OllamaBackend + BaseHTTPBackend | ADAPTER | STABLE | — |
 | `routing/model_registry.py` | 249 | Model catalog and discovery | CORE | STABLE | — |
@@ -204,11 +247,11 @@ Proceed: YES
 | `routing/task_classifier.py` | 274 | Regex heuristic task classifier | CORE | EVOLVING | Future: LLM classifier |
 | `routing/workspace_registry.py` | 25 | Workspace-to-model mapping | CORE | STABLE | — |
 | `security/auth/user_store.py` | 138 | SQLite RBAC user store | CORE | STABLE | 1 mypy error |
-| `security/input_sanitizer.py` | 256 | Input sanitization and validation | CORE | STABLE | Fixed: emoji encoding |
-| `security/middleware.py` | 284 | SecurityMiddleware wrapper | CORE | STABLE | Fixed: direct imports |
+| `security/input_sanitizer.py` | 256 | Input sanitization and validation | CORE | STABLE | — |
+| `security/middleware.py` | 284 | SecurityMiddleware wrapper | CORE | STABLE | 3 mypy errors |
 | `security/rate_limiter.py` | 192 | Sliding-window rate limiter with persistence | CORE | STABLE | — |
-| `security/sandbox/docker_sandbox.py` | 406 | Docker sandbox for code execution | INFRA | STABLE | Fixed: None guards |
-| `tools/` | ~4200 | Tool implementations | ADAPTER | EVOLVING | Various mypy errors |
+| `security/sandbox/docker_sandbox.py` | 406 | Docker sandbox for code execution | INFRA | STABLE | 7 mypy errors (None guards) |
+| `tools/` | ~13,000 | Tool implementations | ADAPTER | EVOLVING | Various mypy errors |
 
 ---
 
@@ -216,8 +259,9 @@ Proceed: YES
 
 | File | Issue | Current Text | Required Correction | Impact |
 |------|-------|-------------|---------------------|--------|
-| CLAUDE.md | References ROADMAP.md | `ROADMAP.md` | Could reference `PORTAL_ROADMAP.md` for unified roadmap | LOW |
-| `runtime_metrics.py` | Backward compat shim | Re-exports from metrics | Could be removed (no production callers) | LOW |
+| `CHANGELOG.md` | Missing 1.4.2 entry for aiohttp fix | — | Add `[1.4.2]` section documenting aiohttp added to [slack] dep | LOW |
+| `CLAUDE.md` | References `ROADMAP.md` | `See ROADMAP.md` | Could reference `PORTAL_ROADMAP.md` for unified roadmap | LOW |
+| `observability/runtime_metrics.py` docstring | Says "backward compat" but has 2 active production callers | "re-exports from metrics.py for backward compatibility" | Document that agent_core and server import from this | LOW |
 
 ---
 
@@ -235,6 +279,7 @@ HIGH COUPLING (imported by 5+ modules):
 
 MEDIUM COUPLING:
   portal.observability.metrics  -- used by runtime_metrics (shim), server
+  portal.observability.runtime_metrics -- used by agent_core, server (2 callers)
   portal.core.db                -- used by context_manager, memory, auth
   portal.security.input_sanitizer -- used by middleware
 
@@ -246,7 +291,7 @@ LOW COUPLING (isolated, healthy):
   portal.middleware.hitl_approval    -- agent_core only
 ```
 
-No circular imports detected. All `TYPE_CHECKING` guards properly used.
+No circular imports detected.
 
 ---
 
@@ -254,10 +299,16 @@ No circular imports detected. All `TYPE_CHECKING` guards properly used.
 
 | # | File | Lines | Category | Finding | Action | Risk | Blast Radius |
 |---|------|-------|----------|---------|--------|------|--------------|
-| F-01 | `lifecycle.py` | 88, 160, 162, 204, 332, 335, 341 | TYPE_SAFETY | ~8 errors: StructuredLogger kwargs, RuntimeContext None checks | Future iteration | LOW | Lifecycle only |
-| F-02 | `interfaces/telegram/interface.py` | 171, 175, 222, 272, 293, 381, 468, 474, 483 | TYPE_SAFETY | ~10 remaining errors: User.id, Message.reply_text, process_message args | Future iteration | LOW | Telegram only |
-| F-03 | `interfaces/slack/interface.py` | 171, __init__ | TYPE_SAFETY | 2 errors: send_message signature, __init__ assignment | Future iteration | LOW | Slack only |
-| F-04 | `observability/runtime_metrics.py` | full file | DEAD_CODE_CANDIDATE | Backward compat shim, no production callers | Consider removal | LOW | None if removed |
+| F-01 | `pyproject.toml` | slack extras | BUG (FIXED) | `aiohttp` missing from `[slack]` optional dep; `slack_sdk.web.async_client` requires it | Fixed this run | LOW | Clean installs of portal[slack] |
+| F-02 | `runtime_metrics.py` | full file | FINDING_CORRECTION | Prior audit incorrectly said "no production callers"; `agent_core.py:20` and `server.py:44` import from it | Revise TASK-23 (see TASK-23R) | MEDIUM if deleted without migration | agent_core, server |
+| F-03 | `core/agent_core.py` | 504 | TYPE_SAFETY | `health_check()` can return `dict` but method declares `-> bool` | Fix return type annotation | LOW | agent_core only |
+| F-04 | `core/agent_core.py` | 546 | TYPE_SAFETY | `mcp_registry` may be `None` when `.call_tool()` is called | Add None guard | LOW | MCP tool dispatch |
+| F-05 | `core/interfaces/agent_interface.py` | 29, 48 | TYPE_SAFETY | `metadata: dict[str, Any] = None` — annotation inconsistency; `__post_init__` handles it correctly but mypy flags it | Use `field(default_factory=dict)` or `dict[str, Any] \| None = None` | LOW | Interface subclasses |
+| F-06 | `core/factories.py` | 149 | TYPE_SAFETY | `MCPRegistry` assigned to variable typed `None` | Fix type annotation | LOW | Factories only |
+| F-07 | `security/sandbox/docker_sandbox.py` | 69, 74, 127, 142, 166, 199, 275 | TYPE_SAFETY | 7 errors: `None` assigned to `list[str]`, docker client None guards | Add None guards per mypy | LOW | Sandbox only |
+| F-08 | `security/middleware.py` | 30, 185, 189 | TYPE_SAFETY | 3 errors: list init, `re.search` with `str \| None`, `RateLimitError(str \| None)` | Add None coalescing | LOW | Security middleware |
+| F-09 | `observability/log_rotation.py` | 50 | TYPE_SAFETY | `logger.info()` called with structured kwargs (`log_file=`, `strategy=`) — standard Logger doesn't accept these | Use `logger.info(msg, extra={...})` pattern | LOW | Log rotation only |
+| F-10 | `tools/` layer | various | TYPE_SAFETY | ~60+ mypy errors across document processing, math viz, file compressor, git tools, docker tools | Batch fix per file | LOW | Tools only |
 
 ---
 
@@ -265,6 +316,7 @@ No circular imports detected. All `TYPE_CHECKING` guards properly used.
 
 ### Current State
 - 875 collected, 874 pass, 1 skip, 27 deselected (e2e + integration markers)
+- No test failures (after aiohttp fix in Phase 0)
 
 ### Test Categories
 
@@ -291,8 +343,7 @@ No circular imports detected. All `TYPE_CHECKING` guards properly used.
 | MCP tool invocation | YES | `tests/unit/test_mcp_tool_loop.py` |
 | `portal doctor` | YES | `tests/e2e/test_cli_commands.py` |
 | Audio transcription | YES | `tests/unit/test_web_interface.py` |
-| `/v1/models` Ollama-unreachable fallback | YES | `tests/integration/test_web_interface.py` |
-| OpenAI `usage` field | YES | `tests/integration/test_web_interface.py` |
+| Slack interface importable (with aiohttp) | YES | `tests/unit/test_router.py` |
 
 ---
 
@@ -316,10 +367,11 @@ No circular imports detected. All `TYPE_CHECKING` guards properly used.
 | `security.auth.user_store` | RBAC SQLite store | `authenticate`, `add_tokens` | core.db | web interface |
 | `observability.health` | K8s health probes | `HealthCheckSystem`, `register_health_endpoints` | — | lifecycle, web |
 | `observability.watchdog` | Auto-restart monitoring | `Watchdog`, `register_component` | health | lifecycle |
+| `observability.runtime_metrics` | Re-export shim | MCP_TOOL_USAGE, TOKENS_PER_SECOND, TTFT_MS, etc. | observability.metrics | agent_core, server |
 | `protocols.mcp.mcp_registry` | MCP server connections | `register`, `call_tool`, `list_tools` | httpx | factories, agent_core |
 | `interfaces.web.server` | FastAPI OpenAI endpoint | `WebInterface`, `create_app` | agent_core, security | lifecycle |
 | `interfaces.telegram` | Telegram bot adapter | `TelegramInterface` | agent_core, security | lifecycle (optional) |
-| `interfaces.slack` | Slack webhook adapter | `SlackInterface` | web interface | lifecycle (optional) |
+| `interfaces.slack` | Slack webhook adapter | `SlackInterface` | web interface; requires aiohttp via slack_sdk | lifecycle (optional) |
 | `lifecycle` | Runtime bootstrap/shutdown | `Runtime`, `RuntimeContext` | all | cli, main |
 | `memory.manager` | Long-term memory | `add_message`, `build_context_block` | core.db | agent_core |
 
@@ -332,11 +384,11 @@ No circular imports detected. All `TYPE_CHECKING` guards properly used.
 5. **Circuit breaker** — backend failures do not cascade; proper fallback chain
 6. **HITL middleware** — high-risk tools gated; Redis-backed for persistence
 
-### Remaining Improvements
+### Remaining Architecture Concerns
 
-1. **mypy coverage** — 123 errors remain in lifecycle.py, telegram, slack
-2. **runtime_metrics.py** — backward compat shim could be removed
-3. **Branch cleanup** — completed (1 remote branch remains: origin/main)
+1. **mypy coverage** — 103 errors remain, concentrated in tools layer and security/docker sandbox
+2. **runtime_metrics.py** — backward compat shim still in use; needs caller migration before removal
+3. **Type annotations in core** — `agent_interface.py` and `agent_core.py` have annotation inconsistencies
 
 ---
 
@@ -346,8 +398,9 @@ No circular imports detected. All `TYPE_CHECKING` guards properly used.
 |----|------|--------------|--------------|--------|------|----------|
 | EG-01 | **Inference routing** | Regex heuristics (100+ patterns) | LLM classifier call (ROADMAP #1) | M | LOW | P2-HIGH |
 | EG-02 | **Apple Silicon inference** | Ollama only | MLX server backend (ROADMAP #2) | M | LOW | P3-MEDIUM |
-| EG-03 | **mypy errors** | 123 errors in ~20 files | Under 30 errors | M | LOW | P3-MEDIUM |
-| EG-04 | **runtime_metrics.py** | Kept for backward compat | Consider removal | S | LOW | P4-LOW |
+| EG-03 | **mypy errors** | 103 errors in 28 files | Under 30 errors | M | LOW | P3-MEDIUM |
+| EG-04 | **runtime_metrics.py** | Shim with 2 active callers | Migrate callers → delete shim | S | LOW | P3-MEDIUM |
+| EG-05 | **log_rotation structured logging** | `logger.info(msg, log_file=...)` — stdlib doesn't accept extra kwargs | Use `logger.info(msg, extra={...})` pattern | S | LOW | P4-LOW |
 
 ---
 
@@ -358,13 +411,13 @@ No circular imports detected. All `TYPE_CHECKING` guards properly used.
 | **Env config separation** | 5/5 | Pydantic Settings with env override; class-scope reads eliminated |
 | **Error handling / observability** | 4/5 | Structured logging, trace IDs, exception hierarchy, Prometheus metrics |
 | **Security posture** | 4/5 | HMAC auth, input sanitization, rate limiting, CORS validation, HITL middleware |
-| **Dependency hygiene** | 5/5 | No cloud deps, pinned in uv.lock, Dependabot configured, all optional deps isolated |
+| **Dependency hygiene** | 4/5 | aiohttp dep gap found and fixed; otherwise clean. No cloud deps, optional deps isolated |
 | **Documentation completeness** | 5/5 | Excellent ARCHITECTURE.md, CLAUDE.md, ROADMAP.md, QUICKSTART.md |
 | **Build / deploy hygiene** | 5/5 | Multi-platform launchers, Docker images pinned, CI matrix 3.11–3.14 |
-| **Module boundary clarity** | 5/5 | Clean DI, direct imports, security_module shim removed |
-| **Test coverage quality** | 5/5 | 875 tests, high behavioral coverage on critical paths |
+| **Module boundary clarity** | 5/5 | Clean DI, direct imports; runtime_metrics shim documented |
+| **Test coverage quality** | 5/5 | 875 tests, high behavioral coverage on critical paths, 0 failures |
 | **Evolution readiness** | 4/5 | Regex routing is documented; LLM classifier and MLX backend are designed |
 
-**Composite: 4.2/5 — STRONG (unchanged from 8.5/10)**
+**Composite: 4.1/5 — STRONG**
 
-The platform is fully functional for its stated purpose. Remaining gaps are concentrated in type safety (mypy) and minor cleanup items — not in the critical inference path.
+The platform is fully functional for its stated purpose. The minor dip from 4.2 to 4.1 reflects the aiohttp dependency gap found and the correction of a prior false-positive finding. With TASK-23R and the remaining type safety work, this will return to 4.2+.
