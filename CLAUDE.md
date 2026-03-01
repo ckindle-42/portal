@@ -30,7 +30,7 @@ Portal is a **local-first AI platform** that runs entirely on user hardware. It 
 | **Tests (all)** | `pytest tests/ -v --tb=short` or `make test` | Includes integration (not e2e) |
 | **Tests (coverage)** | `make test-cov` | With `--cov=src/portal` |
 | **Full CI** | `make ci` | install → lint → typecheck → test-cov |
-| **Python** | 3.11+ required, <3.13 | Per `pyproject.toml` |
+| **Python** | 3.11+ required | Per `pyproject.toml` |
 | **Framework** | FastAPI + Pydantic v2 | Async throughout |
 
 ---

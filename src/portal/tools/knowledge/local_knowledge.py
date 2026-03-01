@@ -2,6 +2,7 @@
 
 import fcntl
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -16,6 +17,8 @@ except ImportError:
     HAS_AIOFILES = False
 
 from portal.core.interfaces.tool import BaseTool, ToolCategory
+
+logger = logging.getLogger(__name__)
 
 
 class LocalKnowledgeTool(BaseTool):
@@ -64,7 +67,7 @@ class LocalKnowledgeTool(BaseTool):
             embedding = LocalKnowledgeTool._embeddings_model.encode([text])[0]
             return embedding.tolist()
         except Exception as e:
-            print(f"Warning: Could not generate embedding: {e}")
+            logger.warning("Could not generate embedding: %s", e)
             return []
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -239,7 +242,7 @@ class LocalKnowledgeTool(BaseTool):
                     data = json.load(f)
                     LocalKnowledgeTool._documents = data.get("documents", [])
             except Exception as e:
-                print(f"Error loading knowledge base: {e}")
+                logger.error("Error loading knowledge base: %s", e)
 
     def _save_db(self) -> None:
         """
@@ -258,7 +261,7 @@ class LocalKnowledgeTool(BaseTool):
                 try:
                     shutil.copy2(self.DB_PATH, backup_path)
                 except Exception as e:
-                    print(f"Warning: Could not create backup: {e}")
+                    logger.warning("Could not create backup: %s", e)
 
             # Write to temporary file first (atomic write pattern)
             temp_fd, temp_path = tempfile.mkstemp(
@@ -271,7 +274,7 @@ class LocalKnowledgeTool(BaseTool):
                     try:
                         fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     except OSError:
-                        print("Warning: Another process is writing to the database")
+                        logger.warning("Another process is writing to the database")
                         # Continue anyway, but this indicates a concurrency issue
 
                     # Write data to temporary file
@@ -291,12 +294,12 @@ class LocalKnowledgeTool(BaseTool):
                 raise
 
         except Exception as e:
-            print(f"Error saving knowledge base: {e}")
+            logger.error("Error saving knowledge base: %s", e)
             # Attempt recovery from backup
             if backup_path.exists():
-                print("Attempting to restore from backup...")
+                logger.warning("Attempting to restore from backup...")
                 try:
                     shutil.copy2(backup_path, self.DB_PATH)
-                    print("Successfully restored from backup")
+                    logger.info("Successfully restored from backup")
                 except Exception as restore_error:
-                    print(f"Failed to restore from backup: {restore_error}")
+                    logger.error("Failed to restore from backup: %s", restore_error)

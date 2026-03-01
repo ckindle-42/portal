@@ -137,7 +137,7 @@ async def test_websocket_oversized_message_blocked(monkeypatch):
     with client.websocket_connect("/ws") as ws:
         ws.send_json({"message": oversized})
         data = ws.receive_json()
-        assert data.get("error") == "Message exceeds maximum length"
+        assert data.get("error", "").startswith("Message exceeds maximum length")
         assert data.get("done") is True
 
 

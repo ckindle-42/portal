@@ -8,7 +8,7 @@ Thanks for helping improve Portal.
 git clone https://github.com/ckindle-42/portal
 cd portal
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[all,dev]"
+pip install -e ".[dev]"
 ```
 
 ## Running Tests
@@ -34,7 +34,7 @@ ruff check src/ tests/
 ruff format src/ tests/
 
 # Type check
-mypy src/portal --ignore-missing-imports
+mypy src/portal
 ```
 
 The CI pipeline (`ci.yml`) runs all three on every push and PR.
