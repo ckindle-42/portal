@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-01
-**Current version:** 1.4.0 (security_module cleanup complete)
+**Generated:** 2026-03-01 (delta update — second run)
+**Current version:** 1.4.1 (1.4.2 pending TASK-27)
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -12,19 +12,20 @@ file which contained only future design sketches.
 
 ## Changelog
 
-- **2026-03-01:** Version bumped to 1.4.0. ROAD-C12 (security_module cleanup) COMPLETE. ROAD-C13 (runtime_metrics cleanup) added as candidate. All TASK-20-22 completed.
-- **2026-03-01 (prior):** Added ROAD-C12 (security_module cleanup - in progress). Updated TASK-20, TASK-21, TASK-22 in action prompt.
+- **2026-03-01 (run 2):** aiohttp dep gap found and fixed (pyproject.toml). ROAD-C13 status updated: runtime_metrics.py has 2 production callers — caller migration required before deletion (TASK-23R). TASK-24/25/26 confirmed complete. ROAD-C14 (aiohttp dep fix) added. ROAD-C15 (core mypy fixes) added. Health score stable at 8.5/10.
+- **2026-03-01:** Version bumped to 1.4.0 then 1.4.1. ROAD-C12 (security_module cleanup) COMPLETE. All TASK-20-26 completed (20-22 prior run; 24-26 this delta).
+- **2026-03-01 (prior):** Added ROAD-C12 (security_module cleanup — in progress). Updated TASK-20, TASK-21, TASK-22 in action prompt.
 
 ---
 
 ## 1. Current Release State
 
-Portal 1.4.0 is fully operational for its stated purpose:
+Portal 1.4.1 is fully operational for its stated purpose:
 
 - **OpenAI-compatible REST API** at `:8081/v1/*` — works with Open WebUI and LibreChat
 - **Ollama proxy router** at `:8000` — workspace routing, regex rules, virtual models
 - **Telegram interface** — polling mode, per-user auth, HITL confirmation, rate limiting
-- **Slack interface** — webhook events, channel whitelist, streaming replies
+- **Slack interface** — webhook events, channel whitelist, streaming replies; requires aiohttp
 - **MCP tool dispatch** — via mcpo proxy (openapi transport) and streamable-http
 - **Circuit breaker** — per-backend failure isolation and automatic recovery
 - **Prometheus metrics** — at `/metrics`, all key request/token counters
@@ -36,7 +37,8 @@ Portal 1.4.0 is fully operational for its stated purpose:
 - **Structured logging** — JSON with trace IDs, secret redaction
 
 **CI status:** 874 tests passing, 0 lint errors, Python 3.11–3.14 matrix.
-**Type safety:** 123 mypy errors (unchanged from prior).
+**Type safety:** 103 mypy errors (down from 123 in prior audit — TASK-24/25/26 complete).
+**Dependency note:** `[slack]` extra now includes `aiohttp>=3.9.0` (required by slack_sdk async client).
 
 ---
 
@@ -91,15 +93,17 @@ Description:  CircuitBreaker extracted to own module. security_module.py split
 Evidence:     PR #66 (2026-02-28)
 ```
 
-### [ROAD-C05] aiohttp → httpx Migration
+### [ROAD-C05] aiohttp → httpx Migration (Core)
 
 ```
 Status:       COMPLETE
 Priority:     P2-HIGH
 Effort:       S
 Description:  Replaced all aiohttp usage with httpx in OllamaBackend and
-              HTTPClientTool. aiohttp removed from pyproject.toml.
-Evidence:     TASK-13 (PR #82)
+              HTTPClientTool. aiohttp removed from pyproject.toml CORE dependencies.
+              Note: aiohttp remains required by slack_sdk[asyncio] for the Slack
+              interface (see ROAD-C14 for the dep declaration fix).
+Evidence:     TASK-13 (PR #82); CHANGELOG 1.3.9
 ```
 
 ### [ROAD-C06] os.getenv Migration to Pydantic Settings
@@ -165,32 +169,23 @@ Description:  Python 3.13 + 3.14 added to CI matrix. Docker images pinned to
 Evidence:     PR #70 (v1.3.8)
 ```
 
-### [ROAD-C11] Type Safety Uplift (TASK-1 through TASK-19)
+### [ROAD-C11] Type Safety Uplift (TASK-1 through TASK-26)
 
 ```
 Status:       COMPLETE
 Priority:     P2-HIGH
-Effort:       M
-Description:  19 targeted type safety and hardening tasks completed:
-              - TextTransformer returns "" not None (T1)
-              - TraceContext token type fixed (T1)
-              - BaseInterface config annotation fixed (T1)
-              - CLI port check for optional services (T1)
-              - Input sanitizer emoji encoding fixed (T1)
-              - Documentation fixes: ARCHITECTURE.md, .env.example, CONTRIBUTING.md (T1)
-              - Telegram None guards added — 29 union-attr errors fixed (T2)
-              - Telegram import updated to use rate_limiter directly (T2)
-              - DockerSandbox None guards added (T2)
-              - ToolRegistry entry_points API fixed (T2)
-              - WordProcessor Path→str conversion fixed (T2)
-              - ContextManager env read moved to constructor (T2)
-              - MemoryManager env read moved to constructor (T2)
-              - TextTransformer failure tests added (T3)
-              - Telegram None guard tests added (T3)
-              - MCP endpoint URL format verified (T3)
-              - Version bumped to 1.3.9 (T3)
-Evidence:     PR #84 (v1.3.9)
-Result:       mypy errors reduced from 170 to 124
+Effort:       L
+Description:  26 targeted type safety and hardening tasks completed:
+              - T1-T19: TextTransformer, TraceContext, BaseInterface, CLI port checks,
+                input sanitizer, documentation, Telegram None guards, DockerSandbox,
+                ToolRegistry, WordProcessor, ContextManager, MemoryManager fixes.
+                mypy errors reduced: 170 → 124
+              - T20-22: security_module.py import cleanup + deletion. 13 test files
+                updated. 10 orphan remote branches pruned.
+              - T24-26: lifecycle.py StructuredLogger *args, Telegram None guards
+                and type annotations, Slack return type + __init__.py exports.
+                mypy errors reduced: 124 → 103
+Evidence:     PR #84 (v1.3.9); commits e407996, e44c408, 7b0eeda (v1.4.0-1.4.1)
 ```
 
 ### [ROAD-C12] security_module.py Cleanup
@@ -201,17 +196,48 @@ Priority:     P2-HIGH
 Effort:       S
 Description:  Remove security_module.py re-export shim:
               - middleware.py updated to import directly (prior run)
-              - 13 test files updated to import directly (this run)
-              - security_module.py file deleted (this run)
-Evidence:     e407996 (middleware.py update); 4b8a98a (version bump)
-Result:       Tests pass, no production callers remain
+              - 13 test files updated to import directly (TASK-20)
+              - security_module.py file deleted (TASK-21)
+Evidence:     e407996 (middleware.py update); TASK-20/21 (test files + deletion)
+```
+
+### [ROAD-C14] aiohttp Dependency Declaration Fix
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Effort:       XS
+Description:  TASK-13 (v1.3.9) removed aiohttp from core dependencies when httpx
+              was adopted for OllamaBackend and HTTPClientTool. However, slack_sdk's
+              AsyncWebClient has a transitive dependency on aiohttp that was not
+              accounted for. This caused test_registered_interfaces_accessible to
+              fail in clean installs. Fixed by adding aiohttp>=3.9.0 to [slack]
+              and [all] optional extras.
+Evidence:     commit 6cfa24d (2026-03-01, this audit run)
 ```
 
 ---
 
 ## 3. In Progress
 
-No items currently in progress. All immediate cleanup tasks from prior run are complete.
+### [ROAD-C13] runtime_metrics.py Caller Migration and Removal
+
+```
+Status:       IN-PROGRESS
+Priority:     P2-HIGH
+Effort:       XS
+Description:  observability/runtime_metrics.py is a backward compatibility re-export
+              shim. Prior audit incorrectly identified it as dead code (TASK-23).
+              Correct action requires:
+              1. Migrate agent_core.py:20 to import MCP_TOOL_USAGE from metrics.py
+              2. Migrate server.py:44-48 to import 4 symbols from metrics.py
+              3. Verify no remaining imports of runtime_metrics
+              4. Delete runtime_metrics.py
+              See TASK-23R in ACTION_PROMPT_FOR_CODING_AGENT.md.
+Evidence:     F-02 from 2026-03-01 audit (this run); TASK-23R
+Current state: aiohttp fix committed; caller migration not yet started
+What remains: Execute TASK-23R steps 1-4
+```
 
 ---
 
@@ -270,6 +296,28 @@ Description:  Add MLXServerBackend(BaseHTTPBackend) targeting mlx_lm.server
 
               See: ROADMAP.md section 2 for full design spec.
 Evidence:     ROADMAP.md section 2 (designed 2026-02-28)
+```
+
+### [ROAD-P03] mypy Error Reduction to < 30
+
+```
+Status:       PLANNED
+Priority:     P3-MEDIUM
+Effort:       M
+Dependencies: ROAD-C11 COMPLETE (provides foundation)
+Description:  Reduce mypy errors from 103 to under 30. Current 103 errors are
+              concentrated in:
+              - Core (5 errors): agent_core.py, agent_interface.py, factories.py
+              - Security (12 errors): middleware.py, docker_sandbox.py, user_store.py
+              - Observability (8 errors): log_rotation.py, config_watcher.py, watchdog.py
+              - Tools (60+ errors): document processing, math viz, git tools, docker tools
+
+              Tasks:
+              - TASK-28: core module mypy fixes
+              - TASK-29: security/middleware mypy fixes
+              - TASK-30: observability mypy fixes
+              - TASK-31: tools layer batch mypy fixes
+Evidence:     2026-03-01 audit — mypy: 103 errors in 28 files
 ```
 
 ---
@@ -357,19 +405,6 @@ Description:  HITL approval requires Redis. Add an in-memory fallback for
 Evidence:     middleware/hitl_approval.py
 ```
 
-### [ROAD-F07] runtime_metrics.py Cleanup
-
-```
-Status:       DISCUSSED
-Priority:     P4-LOW
-Effort:       S
-Dependencies: None
-Description:  observability/runtime_metrics.py is a backward compatibility shim
-              that re-exports from metrics.py but has no production callers.
-              Consider removal.
-Evidence:     2026-03-01 audit finding
-```
-
 ---
 
 ## 6. Explicitly Deferred / Out of Scope
@@ -430,4 +465,5 @@ Why deferred: Not needed; existing CLI + third-party UIs cover the use case.
 *This roadmap is maintained as part of the Portal source tree. Update it whenever a
 significant item is completed, started, or added.*
 
-*Last updated: 2026-03-01 — Version 1.4.0 released, ROAD-C12 complete.*
+*Last updated: 2026-03-01 (run 2) — aiohttp dep fix complete (ROAD-C14). runtime_metrics
+caller migration in progress (ROAD-C13, TASK-23R). mypy at 103 errors.*
