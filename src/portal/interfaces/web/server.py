@@ -267,8 +267,8 @@ class WebInterface(BaseInterface):
                 try:
                     if hasattr(self.agent_core, "health_check"):
                         await self.agent_core.health_check()
-                except Exception:
-                    logger.warning("Agent warmup health check failed", exc_info=True)
+                except Exception as e:
+                    logger.warning("Agent warmup health check failed: %s", e, exc_info=True)
                 finally:
                     _agent_ready.set()
 
@@ -476,7 +476,7 @@ class WebInterface(BaseInterface):
                     for m in data.get("models", [])
                 ],
             }
-        except Exception:
+        except (httpx.HTTPError, json.JSONDecodeError):
             return {
                 "object": "list",
                 "data": [
@@ -525,14 +525,14 @@ class WebInterface(BaseInterface):
                 return JSONResponse(body, status_code=200)
             try:
                 healthy = await self.agent_core.health_check()
-            except Exception:
+            except (TimeoutError, RuntimeError):
                 healthy = False
             body["agent_core"] = "ok" if healthy else "degraded"
             mcp_status = {}
             if hasattr(self.agent_core, "mcp_registry") and self.agent_core.mcp_registry:
                 try:
                     mcp_status = await self.agent_core.mcp_registry.health_check_all()
-                except Exception:
+                except (TimeoutError, RuntimeError):
                     mcp_status = {"error": "health check failed"}
             body["mcp"] = mcp_status
             return JSONResponse(body, status_code=200)
@@ -625,7 +625,7 @@ class WebInterface(BaseInterface):
             logger.error("WebSocket error: %s", e, exc_info=True)
             try:
                 await websocket.send_json({"error": "Internal error", "done": True})
-            except Exception:
+            except (RuntimeError, OSError):
                 pass
             return
 

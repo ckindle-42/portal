@@ -200,7 +200,7 @@ class RotatingStructuredLogHandler(logging.Handler):
             if self._should_rotate_sync():
                 self._rotate_sync()
             self._file_handler.emit(record)
-        except Exception:
+        except OSError:
             self.handleError(record)
 
     def _should_rotate_sync(self) -> bool:

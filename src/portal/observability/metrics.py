@@ -44,7 +44,7 @@ class MetricsCollector:
             from importlib.metadata import version as _pkg_version
 
             _version = _pkg_version("portal")
-        except Exception:
+        except ValueError:
             _version = "0.0.0-dev"
         self._metrics["service_info"].info({"service": self.service_name, "version": _version})
         self._metrics["http_requests_total"] = Counter(

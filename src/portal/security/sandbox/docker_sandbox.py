@@ -241,7 +241,7 @@ CMD ["python3"]
             if container:
                 try:
                     container.remove(force=True)
-                except Exception:
+                except (RuntimeError, OSError):
                     pass
 
     async def execute_script(self, script_path: str, timeout: int | None = None) -> dict[str, Any]:

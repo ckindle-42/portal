@@ -237,7 +237,7 @@ class OllamaBackend(BaseHTTPBackend):
             session = await self._get_session()
             response = await session.get(f"{self.base_url}/api/tags")
             return response.status_code == 200
-        except Exception:
+        except (httpx.HTTPError, OSError):
             return False
 
     async def list_models(self) -> list:

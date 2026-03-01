@@ -313,7 +313,7 @@ class LocalKnowledgeTool(BaseTool):
                 # the old file exists OR the new file exists, never partial data
                 shutil.move(temp_path, self.DB_PATH)
 
-            except Exception:
+            except OSError:
                 # Clean up temp file on error
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)

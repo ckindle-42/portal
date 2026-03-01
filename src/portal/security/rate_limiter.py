@@ -183,7 +183,7 @@ class RateLimiter:
                 # Atomic rename
                 shutil.move(temp_path, self.persist_path)
 
-            except Exception:
+            except OSError:
                 if Path(temp_path).exists():
                     Path(temp_path).unlink()
                 raise

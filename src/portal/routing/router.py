@@ -28,7 +28,7 @@ try:
     OLLAMA_HOST = _routing.ollama_host
     ROUTER_PORT = _routing.port
     ROUTER_TOKEN = _routing.token
-except Exception:
+except (ImportError, ValueError):
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     ROUTER_PORT = int(os.getenv("ROUTER_PORT", "8000"))
     ROUTER_TOKEN = os.getenv("ROUTER_TOKEN", "")

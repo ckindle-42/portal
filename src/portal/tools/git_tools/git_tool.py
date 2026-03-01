@@ -225,7 +225,7 @@ class GitTool(BaseTool):
                 status_info.update(
                     {"ahead": ahead, "behind": behind, "tracking": tracking_branch.name}
                 )
-        except Exception:
+        except (TypeError, AttributeError, ValueError):
             pass
 
         parts = [f"On branch {status_info['branch']}"]

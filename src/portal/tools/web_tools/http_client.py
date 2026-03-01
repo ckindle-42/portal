@@ -94,7 +94,7 @@ class HTTPClientTool(BaseTool):
                 # Try to get response body
                 try:
                     response_body: Any = response.json()
-                except Exception:
+                except (json.JSONDecodeError, ValueError):
                     response_body = response.text
 
                 return self._success_response(

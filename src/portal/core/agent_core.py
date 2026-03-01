@@ -95,7 +95,7 @@ class AgentCore:
             return None
         try:
             return HITLApprovalMiddleware()
-        except Exception:
+        except (RuntimeError, OSError, ImportError):
             logger.warning("HITL approval middleware unavailable (Redis not reachable)")
             return None
 
@@ -504,7 +504,7 @@ class AgentCore:
                 return await self.execution_engine.health_check()
             # Minimal liveness: just check that start_time is set
             return self.start_time is not None
-        except Exception:
+        except (TimeoutError, RuntimeError):
             return False
 
     async def _dispatch_mcp_tools(

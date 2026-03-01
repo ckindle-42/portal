@@ -29,6 +29,7 @@ def _make_interface(stream_tokens=None, health_ok=True, web_api_key=""):
     # stream_response is called without await, so use MagicMock returning an async gen
     agent.stream_response = MagicMock(side_effect=lambda _: aiter(_tokens))
     agent.health_check = AsyncMock(return_value=health_ok)
+    agent.mcp_registry = None  # prevent auto-MagicMock being awaited in health endpoint
 
     secure = MagicMock()
     secure.process_message = AsyncMock(

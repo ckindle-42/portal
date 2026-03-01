@@ -81,7 +81,7 @@ class TextTransformerTool(BaseTool):
 
                 return toml.loads(content)
             return None
-        except Exception:
+        except (ValueError, UnicodeDecodeError, KeyError):
             return None
 
     def _serialize(self, data: Any, fmt: str) -> str:
@@ -102,5 +102,5 @@ class TextTransformerTool(BaseTool):
 
                 return toml.dumps(data)
             return None
-        except Exception:
+        except (ValueError, UnicodeDecodeError, KeyError):
             return None

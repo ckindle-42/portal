@@ -18,6 +18,7 @@ def _make_interface(stream_tokens=None):
     agent = MagicMock()
     agent.stream_response = MagicMock(side_effect=lambda _: aiter(_tokens))
     agent.health_check = AsyncMock(return_value=True)
+    agent.mcp_registry = None  # prevent auto-MagicMock being awaited in health endpoint
 
     secure = MagicMock()
     secure.process_message = AsyncMock(
