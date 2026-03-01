@@ -138,6 +138,18 @@ Only when the user asks for a full audit or debt removal session:
 - Commit prefixes: `feat:`, `fix:`, `refactor:`, `docs:`, `chore:`, `test:`, `perf:`
 - Include scope when useful: `fix(router): source health version from __version__`
 
+## Git Workflow
+
+- Work directly on `main`. Do NOT create feature branches unless explicitly instructed.
+- Commit early and often with conventional commits (fix:, refactor:, test:, docs:, chore:).
+- One commit per logical change — do not batch unrelated changes.
+- After completing work, verify no stale branches remain:
+  `git branch | grep -v main` should return nothing.
+- If a branch was created during the session, merge to main and delete it before ending:
+  `git checkout main && git merge <branch> && git branch -d <branch>`
+- Never push branches to origin — only push main.
+- Never leave branches behind. Branch lifespan must not exceed the session that created it.
+
 ---
 
 ## Planned Features (Do Not Implement Without Explicit Request)
