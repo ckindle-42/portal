@@ -19,7 +19,7 @@ async def aiter(items):
         yield item
 
 
-def _make_interface(stream_tokens=None, health_ok=True):
+def _make_interface(stream_tokens=None, health_ok=True, web_api_key=""):
     """Build a WebInterface backed by a fully mocked AgentCore."""
     from portal.interfaces.web.server import WebInterface
 
@@ -43,6 +43,7 @@ def _make_interface(stream_tokens=None, health_ok=True):
     config = MagicMock()
     config.interfaces.web.port = 8082
     config.llm.router_port = 8000
+    config.security.web_api_key = web_api_key  # Empty = no auth guard
 
     return WebInterface(agent_core=agent, config=config, secure_agent=secure)
 
@@ -173,13 +174,11 @@ async def test_all_required_routes_exist():
 
 
 @pytest.mark.asyncio
-async def test_api_key_guard_blocks_without_key(monkeypatch):
-    """/v1/chat/completions returns 401 when WEB_API_KEY is set and header is missing."""
+async def test_api_key_guard_blocks_without_key():
+    """/v1/chat/completions returns 401 when web_api_key is set in config and header is missing."""
     from fastapi.testclient import TestClient
 
     from portal.interfaces.web.server import WebInterface
-
-    monkeypatch.setenv("WEB_API_KEY", "test-secret-key")
 
     agent = MagicMock()
     agent.stream_response = MagicMock(side_effect=lambda _: aiter(["hi"]))
@@ -193,7 +192,9 @@ async def test_api_key_guard_blocks_without_key(monkeypatch):
             completion_tokens=1,
         )
     )
-    iface = WebInterface(agent_core=agent, config=MagicMock(), secure_agent=secure)
+    config = MagicMock()
+    config.security.web_api_key = "test-secret-key"
+    iface = WebInterface(agent_core=agent, config=config, secure_agent=secure)
     with TestClient(iface.app, raise_server_exceptions=False) as client:
         payload = {
             "model": "auto",
@@ -205,13 +206,11 @@ async def test_api_key_guard_blocks_without_key(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_api_key_guard_passes_with_bearer(monkeypatch):
+async def test_api_key_guard_passes_with_bearer():
     """/v1/models returns 200 when correct Bearer token is provided."""
     from fastapi.testclient import TestClient
 
     from portal.interfaces.web.server import WebInterface
-
-    monkeypatch.setenv("WEB_API_KEY", "test-secret-key")
 
     agent = MagicMock()
     agent.health_check = AsyncMock(return_value=True)
@@ -224,7 +223,9 @@ async def test_api_key_guard_passes_with_bearer(monkeypatch):
             completion_tokens=1,
         )
     )
-    iface = WebInterface(agent_core=agent, config=MagicMock(), secure_agent=secure)
+    config = MagicMock()
+    config.security.web_api_key = "test-secret-key"
+    iface = WebInterface(agent_core=agent, config=config, secure_agent=secure)
     with TestClient(iface.app) as client:
         resp = client.get(
             "/v1/models",

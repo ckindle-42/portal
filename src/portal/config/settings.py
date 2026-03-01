@@ -82,6 +82,8 @@ class SecurityConfig(BaseModel):
     mcp_api_key: str | None = Field(
         None, description="MCP server API key (must not be a placeholder in production)"
     )
+    web_api_key: str = Field("", description="Bearer token for web API access")
+    require_api_key: bool = Field(False, description="Require API key for all requests")
 
     @field_validator("mcp_api_key")
     @classmethod
@@ -199,9 +201,24 @@ class WebConfig(BaseModel):
     port: int = Field(8081, ge=1, le=65535, description="Port to bind to")
     enable_websocket: bool = Field(True, description="Enable WebSocket support")
     enable_cors: bool = Field(False, description="Enable CORS")
-    cors_origins: list[str] = Field(default_factory=list, description="Allowed CORS origins")
+    cors_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:8080", "http://127.0.0.1:8080"],
+        description="Allowed CORS origins",
+    )
     ssl_cert: Path | None = Field(None, description="Path to SSL certificate")
     ssl_key: Path | None = Field(None, description="Path to SSL key")
+    max_audio_mb: int = Field(25, ge=1, le=500, description="Max audio upload size in MB")
+    whisper_url: str = Field(
+        "http://localhost:10300/inference", description="Whisper inference endpoint URL"
+    )
+    vision_model: str = Field("llava", description="Vision model for image-containing messages")
+    csp_policy: str = Field(
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: blob:; frame-ancestors 'none'; base-uri 'self'",
+        description="Content-Security-Policy header value",
+    )
+    hsts_enabled: bool = Field(False, description="Enable Strict-Transport-Security header")
+    ws_rate_limit: int = Field(10, ge=1, description="Max WebSocket messages per rate window")
+    ws_rate_window: float = Field(60.0, gt=0, description="WebSocket rate limit window in seconds")
 
     model_config = ConfigDict(extra="allow")
 
@@ -259,6 +276,17 @@ class ContextConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class RoutingConfig(BaseModel):
+    """Model router configuration"""
+
+    token: str = Field("", description="Auth token for the router service (ROUTER_TOKEN)")
+    bind_ip: str = Field("0.0.0.0", description="IP address to bind the router service")
+    port: int = Field(8000, ge=1, le=65535, description="Router service port")
+    ollama_host: str = Field("http://localhost:11434", description="Ollama API URL for the router")
+
+    model_config = ConfigDict(extra="allow")
+
+
 class LoggingConfig(BaseModel):
     """Logging configuration"""
 
@@ -306,6 +334,7 @@ class Settings(BaseSettings):
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     context: ContextConfig = Field(default_factory=ContextConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    routing: RoutingConfig = Field(default_factory=RoutingConfig)
 
     # Project metadata
     project_name: str = Field("Portal", description="Project name")
@@ -450,5 +479,6 @@ __all__ = [
     "ToolsConfig",
     "ContextConfig",
     "LoggingConfig",
+    "RoutingConfig",
     "load_settings",
 ]

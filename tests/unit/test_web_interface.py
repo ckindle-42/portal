@@ -31,31 +31,27 @@ def _make_interface(stream_tokens=None):
     # No rate_limiter on the mock — tests that need it set it explicitly
     del secure.rate_limiter
 
-    return WebInterface(agent_core=agent, config={}, secure_agent=secure)
+    config = MagicMock()
+    config.security.web_api_key = ""  # No API key guard for generic tests
+
+    return WebInterface(agent_core=agent, config=config, secure_agent=secure)
 
 
 class TestAudioSizeLimit:
     """S4: /v1/audio/transcriptions must reject oversized uploads."""
 
-    def test_oversized_audio_returns_413(self, monkeypatch) -> None:
-        """Uploading a file larger than PORTAL_MAX_AUDIO_MB returns 413."""
+    def test_oversized_audio_returns_413(self) -> None:
+        """Uploading a file larger than max_audio_mb returns 413."""
         from fastapi.testclient import TestClient
-
-        monkeypatch.setenv("PORTAL_MAX_AUDIO_MB", "1")
-        monkeypatch.delenv("WEB_API_KEY", raising=False)
-
-        # Rebuild the module-level constant for this test
-        import importlib
-
-        import portal.interfaces.web.server as srv
-
-        importlib.reload(srv)
 
         from portal.interfaces.web.server import WebInterface
 
         agent = MagicMock()
         agent.health_check = AsyncMock(return_value=True)
-        iface = WebInterface(agent_core=agent, config={}, secure_agent=None)
+        config = MagicMock()
+        config.security.web_api_key = ""
+        config.interfaces.web.max_audio_mb = 1
+        iface = WebInterface(agent_core=agent, config=config, secure_agent=None)
 
         # Create a file bigger than 1MB
         big_content = b"x" * (1 * 1024 * 1024 + 1)
@@ -66,24 +62,18 @@ class TestAudioSizeLimit:
             )
         assert resp.status_code == 413
 
-    def test_small_audio_is_forwarded(self, monkeypatch) -> None:
+    def test_small_audio_is_forwarded(self) -> None:
         """Uploading a file within the limit is forwarded to the whisper endpoint."""
         from fastapi.testclient import TestClient
-
-        monkeypatch.setenv("PORTAL_MAX_AUDIO_MB", "25")
-        monkeypatch.delenv("WEB_API_KEY", raising=False)
-
-        import importlib
-
-        import portal.interfaces.web.server as srv
-
-        importlib.reload(srv)
 
         from portal.interfaces.web.server import WebInterface
 
         agent = MagicMock()
         agent.health_check = AsyncMock(return_value=True)
-        iface = WebInterface(agent_core=agent, config={}, secure_agent=None)
+        config = MagicMock()
+        config.security.web_api_key = ""
+        config.interfaces.web.max_audio_mb = 25
+        iface = WebInterface(agent_core=agent, config=config, secure_agent=None)
 
         small_content = b"x" * 1024  # 1 KB
 
@@ -110,21 +100,19 @@ class TestAudioSizeLimit:
 class TestRequestIdHeader:
     """E3: Every response must include an X-Request-Id header."""
 
-    def test_response_includes_request_id(self, monkeypatch) -> None:
+    def test_response_includes_request_id(self) -> None:
         """GET /health includes X-Request-Id in the response."""
         from fastapi.testclient import TestClient
 
-        monkeypatch.delenv("WEB_API_KEY", raising=False)
         iface = _make_interface()
         with TestClient(iface.app) as client:
             resp = client.get("/health")
         assert "x-request-id" in resp.headers
 
-    def test_client_supplied_request_id_is_echoed(self, monkeypatch) -> None:
+    def test_client_supplied_request_id_is_echoed(self) -> None:
         """If the client supplies X-Request-Id it is echoed back unchanged."""
         from fastapi.testclient import TestClient
 
-        monkeypatch.delenv("WEB_API_KEY", raising=False)
         iface = _make_interface()
         custom_id = "my-trace-id-42"
         with TestClient(iface.app) as client:
@@ -148,19 +136,20 @@ class TestVersionNotHardcoded:
 class TestAudioTranscriptionContracts:
     """Contract tests for /v1/audio/transcriptions endpoint."""
 
-    def _make_iface(self):
+    def _make_iface(self, web_api_key: str = ""):
         from portal.interfaces.web.server import WebInterface
 
         agent = MagicMock()
         agent.health_check = AsyncMock(return_value=True)
-        return WebInterface(agent_core=agent, config={}, secure_agent=None)
+        config = MagicMock()
+        config.security.web_api_key = web_api_key
+        return WebInterface(agent_core=agent, config=config, secure_agent=None)
 
-    def test_audio_401_without_auth_when_key_required(self, monkeypatch) -> None:
-        """Returns 401 when WEB_API_KEY is set and request has no Bearer token."""
+    def test_audio_401_without_auth_when_key_required(self) -> None:
+        """Returns 401 when web_api_key is set in config and request has no Bearer token."""
         from fastapi.testclient import TestClient
 
-        monkeypatch.setenv("WEB_API_KEY", "secret-key")
-        iface = self._make_iface()
+        iface = self._make_iface(web_api_key="secret-key")
         with TestClient(iface.app, raise_server_exceptions=False) as client:
             resp = client.post(
                 "/v1/audio/transcriptions",
@@ -169,13 +158,12 @@ class TestAudioTranscriptionContracts:
             )
         assert resp.status_code == 401
 
-    def test_audio_returns_text_field(self, monkeypatch) -> None:
+    def test_audio_returns_text_field(self) -> None:
         """Successful Whisper proxy returns JSON with 'text' field."""
         import io
 
         from fastapi.testclient import TestClient
 
-        monkeypatch.delenv("WEB_API_KEY", raising=False)
         iface = self._make_iface()
 
         fake_resp = MagicMock()

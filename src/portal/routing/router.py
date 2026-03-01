@@ -16,9 +16,22 @@ from portal import __version__
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-ROUTER_PORT = int(os.getenv("ROUTER_PORT", "8000"))
-ROUTER_TOKEN = os.getenv("ROUTER_TOKEN", "")
+try:
+    from portal.config.settings import RoutingConfig as _RoutingConfig
+
+    _routing = _RoutingConfig(
+        token=os.getenv("ROUTER_TOKEN", ""),
+        bind_ip=os.getenv("ROUTER_BIND_IP", "0.0.0.0"),
+        port=int(os.getenv("ROUTER_PORT", "8000")),
+        ollama_host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+    )
+    OLLAMA_HOST = _routing.ollama_host
+    ROUTER_PORT = _routing.port
+    ROUTER_TOKEN = _routing.token
+except Exception:
+    OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    ROUTER_PORT = int(os.getenv("ROUTER_PORT", "8000"))
+    ROUTER_TOKEN = os.getenv("ROUTER_TOKEN", "")
 
 # Load rules from JSON file next to this module
 _RULES_FILE = Path(__file__).parent / "router_rules.json"

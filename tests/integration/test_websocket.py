@@ -19,7 +19,9 @@ async def aiter(items):
         yield item
 
 
-def _make_interface(stream_tokens=None, health_ok=True):
+def _make_interface(
+    stream_tokens=None, health_ok=True, web_api_key="", ws_rate_limit=10, ws_rate_window=60.0
+):
     """Build a WebInterface backed by a fully mocked AgentCore."""
     from portal.interfaces.web.server import WebInterface
 
@@ -42,6 +44,9 @@ def _make_interface(stream_tokens=None, health_ok=True):
     config = MagicMock()
     config.interfaces.web.port = 8082
     config.llm.router_port = 8000
+    config.security.web_api_key = web_api_key
+    config.interfaces.web.ws_rate_limit = ws_rate_limit
+    config.interfaces.web.ws_rate_window = ws_rate_window
 
     return WebInterface(agent_core=agent, config=config, secure_agent=secure)
 
@@ -52,13 +57,11 @@ def _make_interface(stream_tokens=None, health_ok=True):
 
 
 @pytest.mark.asyncio
-async def test_websocket_valid_api_key_connects(monkeypatch):
+async def test_websocket_valid_api_key_connects():
     """WebSocket with correct api_key query param connects and streams tokens."""
     from fastapi.testclient import TestClient
 
-    monkeypatch.setenv("WEB_API_KEY", "test-ws-key")
-
-    iface = _make_interface(stream_tokens=["Hi"])
+    iface = _make_interface(stream_tokens=["Hi"], web_api_key="test-ws-key")
     client = TestClient(iface.app)
 
     with client.websocket_connect("/ws?api_key=test-ws-key") as ws:
@@ -69,13 +72,11 @@ async def test_websocket_valid_api_key_connects(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_websocket_invalid_api_key_closes_4001(monkeypatch):
+async def test_websocket_invalid_api_key_closes_4001():
     """WebSocket with wrong api_key is rejected with close code 4001."""
     from fastapi.testclient import TestClient
 
-    monkeypatch.setenv("WEB_API_KEY", "correct-key")
-
-    iface = _make_interface()
+    iface = _make_interface(web_api_key="correct-key")
     client = TestClient(iface.app)
 
     with pytest.raises(Exception):
@@ -85,15 +86,10 @@ async def test_websocket_invalid_api_key_closes_4001(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_websocket_no_api_key_when_guard_disabled():
-    """WebSocket connects without api_key when WEB_API_KEY is not set."""
-    import os
-
+    """WebSocket connects without api_key when web_api_key is not set in config."""
     from fastapi.testclient import TestClient
 
-    # Ensure WEB_API_KEY is not set
-    os.environ.pop("WEB_API_KEY", None)
-
-    iface = _make_interface(stream_tokens=["Hi"])
+    iface = _make_interface(stream_tokens=["Hi"])  # web_api_key="" → no guard
     client = TestClient(iface.app)
 
     with client.websocket_connect("/ws") as ws:
@@ -103,13 +99,9 @@ async def test_websocket_no_api_key_when_guard_disabled():
 
 
 @pytest.mark.asyncio
-async def test_websocket_dangerous_input_blocked(monkeypatch):
+async def test_websocket_dangerous_input_blocked():
     """WebSocket blocks messages containing dangerous shell commands."""
-    import os
-
     from fastapi.testclient import TestClient
-
-    os.environ.pop("WEB_API_KEY", None)
 
     iface = _make_interface()
     client = TestClient(iface.app)
@@ -122,13 +114,9 @@ async def test_websocket_dangerous_input_blocked(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_websocket_oversized_message_blocked(monkeypatch):
+async def test_websocket_oversized_message_blocked():
     """WebSocket blocks messages that exceed the 10 000-character limit."""
-    import os
-
     from fastapi.testclient import TestClient
-
-    os.environ.pop("WEB_API_KEY", None)
 
     iface = _make_interface()
     client = TestClient(iface.app)
@@ -142,17 +130,11 @@ async def test_websocket_oversized_message_blocked(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_websocket_rate_limit_rejects_after_n_messages(monkeypatch):
-    """WebSocket per-connection rate limiter fires after WS_RATE_LIMIT messages."""
-    import os
-
+async def test_websocket_rate_limit_rejects_after_n_messages():
+    """WebSocket per-connection rate limiter fires after ws_rate_limit messages."""
     from fastapi.testclient import TestClient
 
-    os.environ.pop("WEB_API_KEY", None)
-    monkeypatch.setenv("WS_RATE_LIMIT", "2")
-    monkeypatch.setenv("WS_RATE_WINDOW", "60")
-
-    iface = _make_interface(stream_tokens=["ok"])
+    iface = _make_interface(stream_tokens=["ok"], ws_rate_limit=2, ws_rate_window=60.0)
     client = TestClient(iface.app)
 
     with client.websocket_connect("/ws") as ws:
@@ -180,11 +162,7 @@ async def test_websocket_rate_limit_rejects_after_n_messages(monkeypatch):
 @pytest.mark.asyncio
 async def test_streaming_response_emits_sse_lines():
     """Streaming /v1/chat/completions emits data: lines and ends with [DONE]."""
-    import os
-
     from fastapi.testclient import TestClient
-
-    os.environ.pop("WEB_API_KEY", None)
 
     iface = _make_interface(stream_tokens=["Hello", " world"])
     with TestClient(iface.app) as client:
@@ -203,11 +181,7 @@ async def test_streaming_response_emits_sse_lines():
 @pytest.mark.asyncio
 async def test_non_streaming_response_returns_openai_format():
     """Non-streaming /v1/chat/completions returns OpenAI-compatible JSON."""
-    import os
-
     from fastapi.testclient import TestClient
-
-    os.environ.pop("WEB_API_KEY", None)
 
     iface = _make_interface()
     with TestClient(iface.app) as client:
@@ -227,11 +201,7 @@ async def test_non_streaming_response_returns_openai_format():
 @pytest.mark.asyncio
 async def test_empty_message_validation():
     """Empty message to /v1/chat/completions returns 400 or 422 error."""
-    import os
-
     from fastapi.testclient import TestClient
-
-    os.environ.pop("WEB_API_KEY", None)
 
     # Make secure_agent raise ValidationError on empty message
     from portal.core.exceptions import ValidationError
@@ -247,6 +217,7 @@ async def test_empty_message_validation():
     )
 
     config = MagicMock()
+    config.security.web_api_key = ""
     iface = WebInterface(agent_core=agent, config=config, secure_agent=secure)
     with TestClient(iface.app, raise_server_exceptions=False) as client:
         payload = {
@@ -265,14 +236,10 @@ async def test_empty_message_validation():
 
 
 @pytest.mark.asyncio
-async def test_websocket_uses_shared_rate_limiter(monkeypatch):
+async def test_websocket_uses_shared_rate_limiter():
     """WebSocket endpoint uses the same shared rate_limiter as SecurityMiddleware (S2)."""
-    import os
-
     from portal.interfaces.web.server import WebInterface
     from portal.security import SecurityMiddleware
-
-    os.environ.pop("WEB_API_KEY", None)
 
     agent = MagicMock()
     agent.stream_response = MagicMock(side_effect=lambda _: aiter(["ok"]))
