@@ -6,6 +6,7 @@ from enum import Enum
 
 from .model_registry import ModelCapability, ModelMetadata, ModelRegistry
 from .task_classifier import TaskCategory, TaskClassification, TaskClassifier, TaskComplexity
+from .workspace_registry import WorkspaceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -36,15 +37,45 @@ class IntelligentRouter:
         registry: ModelRegistry,
         strategy: RoutingStrategy = RoutingStrategy.AUTO,
         model_preferences: dict[str, list[str]] | None = None,
+        workspace_registry: WorkspaceRegistry | None = None,
     ) -> None:
         self.registry = registry
         self.strategy = strategy
         self.classifier = TaskClassifier()
         self.model_preferences = model_preferences if model_preferences is not None else {}
+        self.workspace_registry = workspace_registry
         self._verify_model_preferences()
 
-    def route(self, query: str, max_cost: float = 1.0) -> RoutingDecision:
-        """Route query to optimal model. Returns RoutingDecision with fallbacks."""
+    def route(
+        self, query: str, max_cost: float = 1.0, workspace_id: str | None = None
+    ) -> RoutingDecision:
+        """Route query to optimal model. Returns RoutingDecision with fallbacks.
+
+        If *workspace_id* is provided and a WorkspaceRegistry is configured,
+        consult the registry before task classification to honour persona routing.
+        """
+        # Workspace routing takes priority over task classification
+        if workspace_id and self.workspace_registry:
+            ws_model = self.workspace_registry.get_model(workspace_id)
+            if ws_model:
+                classification = self.classifier.classify(query)
+                ws_metadata = self.registry.get_model(ws_model) or ModelMetadata(
+                    model_id=ws_model,
+                    backend="ollama",
+                    display_name=ws_model,
+                    parameters="unknown",
+                    quantization="unknown",
+                )
+                logger.debug("Workspace routing: %s → %s", workspace_id, ws_model)
+                return RoutingDecision(
+                    model_id=ws_model,
+                    model_metadata=ws_metadata,
+                    classification=classification,
+                    strategy_used=self.strategy,
+                    fallback_models=[],
+                    reasoning=f"workspace: {workspace_id}",
+                )
+
         classification = self.classifier.classify(query)
         strategy_dispatch = {
             RoutingStrategy.SPEED: lambda c: self._route_speed(c),

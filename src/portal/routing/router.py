@@ -13,12 +13,26 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
 from portal import __version__
+from portal.routing.workspace_registry import WorkspaceRegistry
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-ROUTER_PORT = int(os.getenv("ROUTER_PORT", "8000"))
-ROUTER_TOKEN = os.getenv("ROUTER_TOKEN", "")
+try:
+    from portal.config.settings import RoutingConfig as _RoutingConfig
+
+    _routing = _RoutingConfig(
+        token=os.getenv("ROUTER_TOKEN", ""),
+        bind_ip=os.getenv("ROUTER_BIND_IP", "0.0.0.0"),
+        port=int(os.getenv("ROUTER_PORT", "8000")),
+        ollama_host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+    )
+    OLLAMA_HOST = _routing.ollama_host
+    ROUTER_PORT = _routing.port
+    ROUTER_TOKEN = _routing.token
+except (ImportError, ValueError):
+    OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    ROUTER_PORT = int(os.getenv("ROUTER_PORT", "8000"))
+    ROUTER_TOKEN = os.getenv("ROUTER_TOKEN", "")
 
 # Load rules from JSON file next to this module
 _RULES_FILE = Path(__file__).parent / "router_rules.json"
@@ -42,6 +56,7 @@ def _load_rules() -> dict:
 RULES = _load_rules()
 DEFAULT_MODEL = RULES.get("default_model", "qwen2.5:7b")
 MANUAL_PREFIX = RULES.get("manual_override_prefix", "@model:")
+_workspace_registry = WorkspaceRegistry(RULES.get("workspaces", {}))
 
 # Pre-compile regex rules sorted by priority (desc)
 _compiled_rules: list[tuple[int, str, list[re.Pattern], str]] = []
@@ -103,10 +118,9 @@ def resolve_model(requested_model: str, messages: list[dict]) -> tuple[str, str]
             pass
 
     # 2. Workspace model (virtual model names)
-    workspaces = RULES.get("workspaces", {})
-    if requested_model in workspaces:
-        ws = workspaces[requested_model]
-        return ws["model"], f"workspace: {requested_model}"
+    ws_model = _workspace_registry.get_model(requested_model)
+    if ws_model:
+        return ws_model, f"workspace: {requested_model}"
 
     # 3. Regex content rules
     for priority, name, patterns, model in _compiled_rules:

@@ -83,13 +83,49 @@ class EnhancedKnowledgeTool(BaseTool):
         "version": "2.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Action: add, search, list, delete, stats, migrate", "required": True},
-            {"name": "query", "param_type": "string", "description": "Search query (for search action)", "required": False},
-            {"name": "path", "param_type": "string", "description": "File path (for add action)", "required": False},
-            {"name": "content", "param_type": "string", "description": "Text content (for add action)", "required": False},
-            {"name": "doc_id", "param_type": "int", "description": "Document ID (for delete action)", "required": False},
-            {"name": "limit", "param_type": "int", "description": "Number of results (for search/list)", "required": False, "default": 5},
-            {"name": "metadata", "param_type": "object", "description": "Document metadata (tags, author, etc.)", "required": False},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Action: add, search, list, delete, stats, migrate",
+                "required": True,
+            },
+            {
+                "name": "query",
+                "param_type": "string",
+                "description": "Search query (for search action)",
+                "required": False,
+            },
+            {
+                "name": "path",
+                "param_type": "string",
+                "description": "File path (for add action)",
+                "required": False,
+            },
+            {
+                "name": "content",
+                "param_type": "string",
+                "description": "Text content (for add action)",
+                "required": False,
+            },
+            {
+                "name": "doc_id",
+                "param_type": "int",
+                "description": "Document ID (for delete action)",
+                "required": False,
+            },
+            {
+                "name": "limit",
+                "param_type": "int",
+                "description": "Number of results (for search/list)",
+                "required": False,
+                "default": 5,
+            },
+            {
+                "name": "metadata",
+                "param_type": "object",
+                "description": "Document metadata (tags, author, etc.)",
+                "required": False,
+            },
         ],
     }
 
@@ -225,6 +261,7 @@ class EnhancedKnowledgeTool(BaseTool):
                 content = file_path.read_text(encoding="utf-8")
                 source = str(file_path)
             except Exception as e:
+                logger.error("Failed to read file %s: %s", file_path, e)
                 return self._error_response(f"Failed to read file: {e}")
         else:
             source = f"text_{datetime.now(tz=UTC).isoformat()}"
@@ -379,6 +416,7 @@ class EnhancedKnowledgeTool(BaseTool):
                 return self._success_response(result=documents)
 
         except Exception as e:
+            logger.error("List documents error: %s", e)
             return self._error_response(f"List error: {e}")
 
     async def _delete_document(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -403,6 +441,7 @@ class EnhancedKnowledgeTool(BaseTool):
             return self._success_response(result={"deleted_id": doc_id})
 
         except Exception as e:
+            logger.error("Delete document error: %s", e)
             return self._error_response(f"Delete error: {e}")
 
     async def _get_stats(self, parameters: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -442,6 +481,7 @@ class EnhancedKnowledgeTool(BaseTool):
                 )
 
         except Exception as e:
+            logger.error("Stats error: %s", e)
             return self._error_response(f"Stats error: {e}")
 
     async def _migrate_from_json(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -490,6 +530,7 @@ class EnhancedKnowledgeTool(BaseTool):
             )
 
         except Exception as e:
+            logger.error("JSON migration error: %s", e)
             return self._error_response(f"Migration error: {e}")
 
     _DISPATCH: dict[str, Any] = {

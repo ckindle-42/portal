@@ -26,11 +26,36 @@ class ProcessMonitorTool(BaseTool):
         "category": ToolCategory.UTILITY,
         "requires_confirmation": False,
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Action: list, search, info, kill (default: list)", "required": False},
-            {"name": "query", "param_type": "string", "description": "Search query for process name (for search action)", "required": False},
-            {"name": "pid", "param_type": "int", "description": "Process ID (for info/kill actions)", "required": False},
-            {"name": "sort_by", "param_type": "string", "description": "Sort by: cpu, memory, name (default: cpu)", "required": False},
-            {"name": "limit", "param_type": "int", "description": "Limit number of results (default: 10)", "required": False},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Action: list, search, info, kill (default: list)",
+                "required": False,
+            },
+            {
+                "name": "query",
+                "param_type": "string",
+                "description": "Search query for process name (for search action)",
+                "required": False,
+            },
+            {
+                "name": "pid",
+                "param_type": "int",
+                "description": "Process ID (for info/kill actions)",
+                "required": False,
+            },
+            {
+                "name": "sort_by",
+                "param_type": "string",
+                "description": "Sort by: cpu, memory, name (default: cpu)",
+                "required": False,
+            },
+            {
+                "name": "limit",
+                "param_type": "int",
+                "description": "Limit number of results (default: 10)",
+                "required": False,
+            },
         ],
     }
 

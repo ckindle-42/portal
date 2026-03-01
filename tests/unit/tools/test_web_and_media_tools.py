@@ -19,22 +19,20 @@ class TestHTTPClientTool:
         """Test HTTP GET request"""
         tool = HTTPClientTool()
 
-        # Tool: async with aiohttp.ClientSession() as session:
-        #           async with session.request(method, **kwargs) as response:
         mock_response = MagicMock()
-        mock_response.status = 200
+        mock_response.status_code = 200
         mock_response.headers = {"Content-Type": "application/json"}
-        mock_response.json = AsyncMock(return_value={"status": "ok"})
-        mock_response.text = AsyncMock(return_value='{"status": "ok"}')
-        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
-        mock_response.__aexit__ = AsyncMock(return_value=False)
+        mock_response.json = Mock(return_value={"status": "ok"})
+        mock_response.text = '{"status": "ok"}'
 
-        mock_session = MagicMock()
-        mock_session.request = Mock(return_value=mock_response)
-        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("aiohttp.ClientSession", return_value=mock_session):
+        with patch(
+            "portal.tools.web_tools.http_client.httpx.AsyncClient", return_value=mock_client
+        ):
             result = await tool.execute(
                 {
                     "method": "GET",
@@ -51,19 +49,19 @@ class TestHTTPClientTool:
         tool = HTTPClientTool()
 
         mock_response = MagicMock()
-        mock_response.status = 201
+        mock_response.status_code = 201
         mock_response.headers = {"Content-Type": "application/json"}
-        mock_response.json = AsyncMock(return_value={"id": 123})
-        mock_response.text = AsyncMock(return_value='{"id": 123}')
-        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
-        mock_response.__aexit__ = AsyncMock(return_value=False)
+        mock_response.json = Mock(return_value={"id": 123})
+        mock_response.text = '{"id": 123}'
 
-        mock_session = MagicMock()
-        mock_session.request = Mock(return_value=mock_response)
-        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("aiohttp.ClientSession", return_value=mock_session):
+        with patch(
+            "portal.tools.web_tools.http_client.httpx.AsyncClient", return_value=mock_client
+        ):
             result = await tool.execute(
                 {
                     "method": "POST",

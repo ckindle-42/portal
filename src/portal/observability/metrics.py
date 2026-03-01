@@ -44,7 +44,7 @@ class MetricsCollector:
             from importlib.metadata import version as _pkg_version
 
             _version = _pkg_version("portal")
-        except Exception:
+        except ValueError:
             _version = "0.0.0-dev"
         self._metrics["service_info"].info({"service": self.service_name, "version": _version})
         self._metrics["http_requests_total"] = Counter(
@@ -204,9 +204,7 @@ if PROMETHEUS_AVAILABLE:
         "Time to first token",
         buckets=(10, 50, 100, 250, 500, 1000, 2000, 5000),
     )
-    MCP_TOOL_USAGE = Counter(
-        "portal_mcp_tool_usage_total", "MCP tool calls", ["tool_name"]
-    )
+    MCP_TOOL_USAGE = Counter("portal_mcp_tool_usage_total", "MCP tool calls", ["tool_name"])
     VRAM_MB = Gauge("portal_vram_usage_mb", "VRAM usage in MB")
     UNIFIED_MEM_MB = Gauge("portal_unified_memory_usage_mb", "Unified memory usage in MB")
 else:
@@ -215,7 +213,8 @@ else:
         def observe(self, *a, **kw) -> None: ...
         def inc(self, *a, **kw) -> None: ...
         def set(self, *a, **kw) -> None: ...
-        def labels(self, *a, **kw) -> "_Stub": return self
+        def labels(self, *a, **kw) -> "_Stub":
+            return self
 
     REQUESTS_PER_MINUTE = _Stub()  # type: ignore[assignment]
     ACTIVE_USERS = _Stub()  # type: ignore[assignment]

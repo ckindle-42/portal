@@ -155,6 +155,6 @@ async def run_health_check() -> None:
             try:
                 resp = await client.get(url)
                 status = "OK" if resp.status_code < 500 else "DEGRADED"
-            except Exception:
+            except (httpx.HTTPError, OSError):
                 status = "FAIL"
             print(f"  [{status}] {name}")

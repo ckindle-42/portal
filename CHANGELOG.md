@@ -5,6 +5,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [Unreleased] - 2026-03-01 — Modularization & Hardening (TASK-6 through TASK-18)
+
+### Fixed
+- **TASK-6**: Silent `except Exception: pass` in `_warmup()` replaced with `logger.warning()`
+- **TASK-7**: Narrowed `except Exception:` in `OllamaBackend.generate_stream` to typed errors; propagates
+- **TASK-8**: Narrowed `except Exception:` in pandoc version check to `(FileNotFoundError, SubprocessError, OSError)`
+- **TASK-14**: CORS origins validated with `urlparse`; malformed entries dropped with warning, not silently passed
+- **TASK-15**: All 20 bare `except Exception:` handlers across 13 files narrowed to specific exception types
+  (`grep "except Exception:" src/ → 0 results`)
+
+### Added
+- **TASK-9**: Integration test for `/v1/models` Ollama-unreachable fallback behavior
+- **TASK-10**: Integration test for `/v1/chat/completions` `usage` field (OpenAI spec)
+- **TASK-11**: API Endpoints section added to README.md (`/ws`, `/v1/audio/transcriptions` documented)
+- **TASK-16**: `logger.error()` calls added to all silent exception paths in `knowledge_base_sqlite.py`
+- **TASK-17**: `BackendRegistry` — register/get/available API for ModelBackend instances
+  (`routing/backend_registry.py`); ExecutionEngine accepts pre-built backends dict; factories wires it
+- **TASK-18**: `WorkspaceRegistry` — workspace→model mapping (`routing/workspace_registry.py`);
+  `IntelligentRouter.route()` accepts `workspace_id`; proxy router uses registry; DependencyContainer wires it
+
+### Changed
+- **TASK-12**: 11× `os.getenv()` in `server.py` and 3× in `router.py` moved to Pydantic Settings:
+  `web_api_key`, `require_api_key` → `SecurityConfig`; `max_audio_mb`, `whisper_url`, `vision_model`,
+  `csp_policy`, `hsts_enabled`, `ws_rate_limit`, `ws_rate_window` → `WebConfig`; `RoutingConfig` added
+- **TASK-13**: `aiohttp` replaced with `httpx` in `OllamaBackend` and `HTTPClientTool`; `aiohttp` removed
+  from `pyproject.toml` core dependencies (`grep "import aiohttp" src/ → 0 results`)
+
+### Metrics
+- Tests: 808 → 862 (+54 new tests)
+- `except Exception:` bare handlers: 20 → 0
+- `os.getenv()` in server.py: 11 → 0
+- `import aiohttp` in src/: 5 → 0
+
+---
+
 ## [1.3.8] - 2026-02-28
 
 ### Fixed

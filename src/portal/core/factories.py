@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry, RoutingStrategy
+from portal.routing.backend_registry import BackendRegistry
+from portal.routing.model_backends import OllamaBackend
+from portal.routing.workspace_registry import WorkspaceRegistry
 
 from .context_manager import ContextManager
 from .event_bus import EventBus
@@ -25,14 +28,28 @@ def create_model_registry(config: dict[str, Any]) -> ModelRegistry:  # noqa: ARG
     return ModelRegistry()
 
 
-def create_router(model_registry: ModelRegistry, config: dict[str, Any]) -> IntelligentRouter:
+def create_workspace_registry(config: dict[str, Any]) -> WorkspaceRegistry:
+    """Return a WorkspaceRegistry from *config* workspaces dict."""
+    workspaces = config.get("workspaces", {})
+    logger.info("Creating WorkspaceRegistry", count=len(workspaces))
+    return WorkspaceRegistry(workspaces)
+
+
+def create_router(
+    model_registry: ModelRegistry,
+    config: dict[str, Any],
+    workspace_registry: WorkspaceRegistry | None = None,
+) -> IntelligentRouter:
     """Return an IntelligentRouter configured from *config*."""
     strategy_name = config.get("routing_strategy", "AUTO").upper()
     routing_strategy = getattr(RoutingStrategy, strategy_name, RoutingStrategy.AUTO)
     model_preferences = config.get("model_preferences", {})
     logger.info("Creating IntelligentRouter", strategy=routing_strategy.value)
     return IntelligentRouter(
-        model_registry, strategy=routing_strategy, model_preferences=model_preferences
+        model_registry,
+        strategy=routing_strategy,
+        model_preferences=model_preferences,
+        workspace_registry=workspace_registry,
     )
 
 
@@ -42,19 +59,25 @@ def create_execution_engine(
     config: dict[str, Any],
 ) -> ExecutionEngine:
     """Return an ExecutionEngine with backend/circuit-breaker config."""
+    ollama_url = config.get("ollama_base_url", "http://localhost:11434")
     backend_config = {
-        "ollama_base_url": config.get("ollama_base_url", "http://localhost:11434"),
+        "ollama_base_url": ollama_url,
         "circuit_breaker_enabled": config.get("circuit_breaker_enabled", True),
         "circuit_breaker_threshold": config.get("circuit_breaker_threshold", 3),
         "circuit_breaker_timeout": config.get("circuit_breaker_timeout", 60),
         "circuit_breaker_half_open_calls": config.get("circuit_breaker_half_open_calls", 1),
     }
+
+    registry = BackendRegistry()
+    registry.register("ollama", OllamaBackend(base_url=ollama_url))
+
     logger.info(
         "Creating ExecutionEngine",
-        ollama_url=backend_config["ollama_base_url"],
+        ollama_url=ollama_url,
         circuit_breaker=backend_config["circuit_breaker_enabled"],
+        backends=registry.available(),
     )
-    return ExecutionEngine(model_registry, router, backend_config)
+    return ExecutionEngine(model_registry, router, backend_config, backends=registry._backends)
 
 
 def create_context_manager(config: dict[str, Any]) -> ContextManager:
@@ -93,7 +116,8 @@ class DependencyContainer:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.model_registry = create_model_registry(config)
-        self.router = create_router(self.model_registry, config)
+        self.workspace_registry = create_workspace_registry(config)
+        self.router = create_router(self.model_registry, config, self.workspace_registry)
         self.execution_engine = create_execution_engine(self.model_registry, self.router, config)
         self.context_manager = create_context_manager(config)
         self.event_bus = create_event_bus_instance(config)

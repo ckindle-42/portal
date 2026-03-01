@@ -19,10 +19,31 @@ class FileCompressorTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": True,
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Action: compress or extract", "required": True},
-            {"name": "files", "param_type": "list", "description": "List of file paths to compress", "required": False},
-            {"name": "archive_path", "param_type": "string", "description": "Path to archive file", "required": True},
-            {"name": "format", "param_type": "string", "description": "Archive format: zip, tar, tar.gz", "required": False, "default": "zip"},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Action: compress or extract",
+                "required": True,
+            },
+            {
+                "name": "files",
+                "param_type": "list",
+                "description": "List of file paths to compress",
+                "required": False,
+            },
+            {
+                "name": "archive_path",
+                "param_type": "string",
+                "description": "Path to archive file",
+                "required": True,
+            },
+            {
+                "name": "format",
+                "param_type": "string",
+                "description": "Archive format: zip, tar, tar.gz",
+                "required": False,
+                "default": "zip",
+            },
         ],
         "examples": ["Compress files to backup.zip"],
     }

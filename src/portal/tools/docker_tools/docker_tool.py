@@ -14,6 +14,7 @@ from portal.core.interfaces.tool import BaseTool, ToolCategory
 try:
     import docker
     import docker.errors
+
     DOCKER_AVAILABLE = True
 except ImportError:
     DOCKER_AVAILABLE = False
@@ -31,25 +32,100 @@ class DockerTool(BaseTool):
         "category": ToolCategory.DEV,
         "requires_confirmation": False,  # set per-action in execute()
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Action: ps, logs, run, stop", "required": True},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Action: ps, logs, run, stop",
+                "required": True,
+            },
             # ps parameters
-            {"name": "all", "param_type": "bool", "description": "Show all containers including stopped (ps)", "required": False},
-            {"name": "filters", "param_type": "object", "description": "Filter containers (ps)", "required": False},
+            {
+                "name": "all",
+                "param_type": "bool",
+                "description": "Show all containers including stopped (ps)",
+                "required": False,
+            },
+            {
+                "name": "filters",
+                "param_type": "object",
+                "description": "Filter containers (ps)",
+                "required": False,
+            },
             # logs parameters
-            {"name": "container", "param_type": "string", "description": "Container ID or name (logs, stop)", "required": False},
-            {"name": "tail", "param_type": "int", "description": "Number of log lines from end (logs, default: 100)", "required": False},
-            {"name": "timestamps", "param_type": "bool", "description": "Show timestamps in logs", "required": False},
+            {
+                "name": "container",
+                "param_type": "string",
+                "description": "Container ID or name (logs, stop)",
+                "required": False,
+            },
+            {
+                "name": "tail",
+                "param_type": "int",
+                "description": "Number of log lines from end (logs, default: 100)",
+                "required": False,
+            },
+            {
+                "name": "timestamps",
+                "param_type": "bool",
+                "description": "Show timestamps in logs",
+                "required": False,
+            },
             # run parameters
-            {"name": "image", "param_type": "string", "description": "Docker image name (run)", "required": False},
-            {"name": "name", "param_type": "string", "description": "Container name (run)", "required": False},
-            {"name": "ports", "param_type": "object", "description": "Port mappings e.g. {'80/tcp': 8080} (run)", "required": False},
-            {"name": "environment", "param_type": "object", "description": "Environment variables (run)", "required": False},
-            {"name": "volumes", "param_type": "object", "description": "Volume mappings (run)", "required": False},
-            {"name": "detach", "param_type": "bool", "description": "Run in background (run, default: True)", "required": False},
-            {"name": "remove", "param_type": "bool", "description": "Auto-remove when stopped (run/stop)", "required": False},
+            {
+                "name": "image",
+                "param_type": "string",
+                "description": "Docker image name (run)",
+                "required": False,
+            },
+            {
+                "name": "name",
+                "param_type": "string",
+                "description": "Container name (run)",
+                "required": False,
+            },
+            {
+                "name": "ports",
+                "param_type": "object",
+                "description": "Port mappings e.g. {'80/tcp': 8080} (run)",
+                "required": False,
+            },
+            {
+                "name": "environment",
+                "param_type": "object",
+                "description": "Environment variables (run)",
+                "required": False,
+            },
+            {
+                "name": "volumes",
+                "param_type": "object",
+                "description": "Volume mappings (run)",
+                "required": False,
+            },
+            {
+                "name": "detach",
+                "param_type": "bool",
+                "description": "Run in background (run, default: True)",
+                "required": False,
+            },
+            {
+                "name": "remove",
+                "param_type": "bool",
+                "description": "Auto-remove when stopped (run/stop)",
+                "required": False,
+            },
             # stop parameters
-            {"name": "containers", "param_type": "list", "description": "Container IDs or names to stop (stop)", "required": False},
-            {"name": "timeout", "param_type": "int", "description": "Seconds before kill (stop, default: 10)", "required": False},
+            {
+                "name": "containers",
+                "param_type": "list",
+                "description": "Container IDs or names to stop (stop)",
+                "required": False,
+            },
+            {
+                "name": "timeout",
+                "param_type": "int",
+                "description": "Seconds before kill (stop, default: 10)",
+                "required": False,
+            },
         ],
     }
 
@@ -124,7 +200,11 @@ class DockerTool(BaseTool):
                 log_text = "(No logs available)"
             return self._success_response(
                 result=f"Logs for {container.name}:\n\n{log_text}",
-                metadata={"container": container.name, "container_id": container.short_id, "tail": tail},
+                metadata={
+                    "container": container.name,
+                    "container_id": container.short_id,
+                    "tail": tail,
+                },
             )
         except docker.errors.NotFound:
             return self._error_response(f"Container not found: {container_id}")
@@ -161,10 +241,17 @@ class DockerTool(BaseTool):
             )
             return self._success_response(
                 result=f"Started container {container.name} from {image}",
-                metadata={"container_id": container.short_id, "container_name": container.name, "image": image, "status": container.status},
+                metadata={
+                    "container_id": container.short_id,
+                    "container_name": container.name,
+                    "image": image,
+                    "status": container.status,
+                },
             )
         except docker.errors.ImageNotFound:
-            return self._error_response(f"Image not found: {image}. Pull it first with 'docker pull {image}'")
+            return self._error_response(
+                f"Image not found: {image}. Pull it first with 'docker pull {image}'"
+            )
         except docker.errors.APIError as e:
             return self._error_response(f"Docker API error: {e}")
         except Exception as e:

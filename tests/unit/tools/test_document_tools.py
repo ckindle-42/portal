@@ -21,6 +21,7 @@ _has_docx = importlib.util.find_spec("docx") is not None
 
 try:
     import pypdf  # noqa: F401
+
     _has_pypdf = True
 except BaseException:
     _has_pypdf = False

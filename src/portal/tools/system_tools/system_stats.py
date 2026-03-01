@@ -25,7 +25,12 @@ class SystemStatsTool(BaseTool):
         "description": "Get system resource usage (CPU, RAM, disk)",
         "category": ToolCategory.UTILITY,
         "parameters": [
-            {"name": "detailed", "param_type": "bool", "description": "Include detailed per-core/disk stats", "required": False},
+            {
+                "name": "detailed",
+                "param_type": "bool",
+                "description": "Include detailed per-core/disk stats",
+                "required": False,
+            },
         ],
     }
 

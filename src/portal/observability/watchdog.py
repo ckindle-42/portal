@@ -290,7 +290,7 @@ class Watchdog:
         try:
             memory_percent = self._process.memory_percent()
             cpu_percent = self._process.cpu_percent()
-        except Exception:
+        except (RuntimeError, OSError):
             memory_percent = 0.0
             cpu_percent = 0.0
         return {

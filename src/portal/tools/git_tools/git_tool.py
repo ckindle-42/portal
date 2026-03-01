@@ -22,46 +22,158 @@ class GitTool(BaseTool):
     METADATA = {
         "name": "git",
         "description": (
-            "Manage Git repositories: status, log, diff, branch, commit, "
-            "clone, pull, push, merge"
+            "Manage Git repositories: status, log, diff, branch, commit, clone, pull, push, merge"
         ),
         "category": ToolCategory.DEV,
         "requires_confirmation": False,  # set per-action in execute()
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Action: status, log, diff, branch, commit, clone, pull, push, merge", "required": True},
-            {"name": "repo_path", "param_type": "string", "description": "Path to repository (default: current directory)", "required": False},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Action: status, log, diff, branch, commit, clone, pull, push, merge",
+                "required": True,
+            },
+            {
+                "name": "repo_path",
+                "param_type": "string",
+                "description": "Path to repository (default: current directory)",
+                "required": False,
+            },
             # branch params
-            {"name": "branch_name", "param_type": "string", "description": "Branch name (branch: create/delete/checkout; merge/pull/push: target branch)", "required": False},
-            {"name": "force", "param_type": "bool", "description": "Force operation (branch delete, push)", "required": False},
+            {
+                "name": "branch_name",
+                "param_type": "string",
+                "description": "Branch name (branch: create/delete/checkout; merge/pull/push: target branch)",
+                "required": False,
+            },
+            {
+                "name": "force",
+                "param_type": "bool",
+                "description": "Force operation (branch delete, push)",
+                "required": False,
+            },
             # commit params
-            {"name": "message", "param_type": "string", "description": "Commit message (commit) or merge commit message (merge)", "required": False},
-            {"name": "add_all", "param_type": "bool", "description": "Stage all modified files before committing", "required": False},
-            {"name": "files", "param_type": "list", "description": "Specific files to stage before committing", "required": False},
+            {
+                "name": "message",
+                "param_type": "string",
+                "description": "Commit message (commit) or merge commit message (merge)",
+                "required": False,
+            },
+            {
+                "name": "add_all",
+                "param_type": "bool",
+                "description": "Stage all modified files before committing",
+                "required": False,
+            },
+            {
+                "name": "files",
+                "param_type": "list",
+                "description": "Specific files to stage before committing",
+                "required": False,
+            },
             # diff params
-            {"name": "staged", "param_type": "bool", "description": "Show staged changes (diff)", "required": False},
-            {"name": "commit", "param_type": "string", "description": "Compare against specific commit (diff)", "required": False},
-            {"name": "file_path", "param_type": "string", "description": "Limit diff/log to a specific file path", "required": False},
+            {
+                "name": "staged",
+                "param_type": "bool",
+                "description": "Show staged changes (diff)",
+                "required": False,
+            },
+            {
+                "name": "commit",
+                "param_type": "string",
+                "description": "Compare against specific commit (diff)",
+                "required": False,
+            },
+            {
+                "name": "file_path",
+                "param_type": "string",
+                "description": "Limit diff/log to a specific file path",
+                "required": False,
+            },
             # log params
-            {"name": "max_count", "param_type": "int", "description": "Maximum commits to show (log, default: 10)", "required": False},
-            {"name": "author", "param_type": "string", "description": "Filter commits by author (log)", "required": False},
-            {"name": "since", "param_type": "string", "description": "Show commits since date e.g. '2 weeks ago' (log)", "required": False},
+            {
+                "name": "max_count",
+                "param_type": "int",
+                "description": "Maximum commits to show (log, default: 10)",
+                "required": False,
+            },
+            {
+                "name": "author",
+                "param_type": "string",
+                "description": "Filter commits by author (log)",
+                "required": False,
+            },
+            {
+                "name": "since",
+                "param_type": "string",
+                "description": "Show commits since date e.g. '2 weeks ago' (log)",
+                "required": False,
+            },
             # clone params
-            {"name": "url", "param_type": "string", "description": "Repository URL (clone)", "required": False},
-            {"name": "destination", "param_type": "string", "description": "Destination directory (clone)", "required": False},
-            {"name": "depth", "param_type": "int", "description": "Shallow clone depth (clone)", "required": False},
+            {
+                "name": "url",
+                "param_type": "string",
+                "description": "Repository URL (clone)",
+                "required": False,
+            },
+            {
+                "name": "destination",
+                "param_type": "string",
+                "description": "Destination directory (clone)",
+                "required": False,
+            },
+            {
+                "name": "depth",
+                "param_type": "int",
+                "description": "Shallow clone depth (clone)",
+                "required": False,
+            },
             # pull/push params
-            {"name": "remote", "param_type": "string", "description": "Remote name (pull/push, default: origin)", "required": False},
-            {"name": "branch", "param_type": "string", "description": "Remote branch (pull/push, default: current branch)", "required": False},
-            {"name": "rebase", "param_type": "bool", "description": "Rebase instead of merge (pull)", "required": False},
-            {"name": "set_upstream", "param_type": "bool", "description": "Set upstream tracking (push)", "required": False},
+            {
+                "name": "remote",
+                "param_type": "string",
+                "description": "Remote name (pull/push, default: origin)",
+                "required": False,
+            },
+            {
+                "name": "branch",
+                "param_type": "string",
+                "description": "Remote branch (pull/push, default: current branch)",
+                "required": False,
+            },
+            {
+                "name": "rebase",
+                "param_type": "bool",
+                "description": "Rebase instead of merge (pull)",
+                "required": False,
+            },
+            {
+                "name": "set_upstream",
+                "param_type": "bool",
+                "description": "Set upstream tracking (push)",
+                "required": False,
+            },
             # merge params
-            {"name": "no_ff", "param_type": "bool", "description": "Create merge commit even if fast-forward possible", "required": False},
+            {
+                "name": "no_ff",
+                "param_type": "bool",
+                "description": "Create merge commit even if fast-forward possible",
+                "required": False,
+            },
             # branch sub-action
-            {"name": "sub_action", "param_type": "string", "description": "Branch sub-action: list, create, delete, checkout (default: list)", "required": False},
+            {
+                "name": "sub_action",
+                "param_type": "string",
+                "description": "Branch sub-action: list, create, delete, checkout (default: list)",
+                "required": False,
+            },
         ],
     }
 
-    _GIT_UNAVAILABLE = {"success": False, "error": "GitPython not installed. Run: pip install GitPython"}
+    _GIT_UNAVAILABLE = {
+        "success": False,
+        "error": "GitPython not installed. Run: pip install GitPython",
+    }
 
     async def execute(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """Dispatch to the appropriate Git action."""
@@ -110,8 +222,10 @@ class GitTool(BaseTool):
             if tracking_branch:
                 ahead = len(list(repo.iter_commits(f"{tracking_branch}..{repo.active_branch}")))
                 behind = len(list(repo.iter_commits(f"{repo.active_branch}..{tracking_branch}")))
-                status_info.update({"ahead": ahead, "behind": behind, "tracking": tracking_branch.name})
-        except Exception:
+                status_info.update(
+                    {"ahead": ahead, "behind": behind, "tracking": tracking_branch.name}
+                )
+        except (TypeError, AttributeError, ValueError):
             pass
 
         parts = [f"On branch {status_info['branch']}"]
@@ -142,13 +256,21 @@ class GitTool(BaseTool):
             kwargs["author"] = author
         if since:
             kwargs["since"] = since
-        commits = list(repo.iter_commits(paths=file_path, **kwargs) if file_path else repo.iter_commits(**kwargs))
+        commits = list(
+            repo.iter_commits(paths=file_path, **kwargs)
+            if file_path
+            else repo.iter_commits(**kwargs)
+        )
         if not commits:
-            return self._success_response(result="No commits found matching criteria", metadata={"count": 0})
+            return self._success_response(
+                result="No commits found matching criteria", metadata={"count": 0}
+            )
         log_lines = []
         for c in commits:
             commit_date = datetime.fromtimestamp(c.committed_date).strftime("%Y-%m-%d %H:%M")
-            log_lines.append(f"• {c.hexsha[:8]} - {c.author.name}\n  {commit_date}\n  {c.message.strip()}\n")
+            log_lines.append(
+                f"• {c.hexsha[:8]} - {c.author.name}\n  {commit_date}\n  {c.message.strip()}\n"
+            )
         result = "\n".join(log_lines)
         max_length = 3000
         if len(result) > max_length:
@@ -170,10 +292,16 @@ class GitTool(BaseTool):
             diff_text = repo.git.diff(file_path or "")
             diff_type = "Unstaged changes"
         if not diff_text:
-            return self._success_response(result=f"No {diff_type.lower()} to display", metadata={"diff_type": diff_type, "has_changes": False})
+            return self._success_response(
+                result=f"No {diff_type.lower()} to display",
+                metadata={"diff_type": diff_type, "has_changes": False},
+            )
         max_length = 3000
         if len(diff_text) > max_length:
-            diff_text = diff_text[:max_length] + f"\n\n... (truncated, {len(diff_text) - max_length} more chars)"
+            diff_text = (
+                diff_text[:max_length]
+                + f"\n\n... (truncated, {len(diff_text) - max_length} more chars)"
+            )
         return self._success_response(
             result=f"{diff_type}:\n\n```diff\n{diff_text}\n```",
             metadata={"diff_type": diff_type, "has_changes": True, "length": len(diff_text)},
@@ -194,26 +322,39 @@ class GitTool(BaseTool):
                 branches.append(f"{prefix}{b.name}")
             return self._success_response(
                 result="Branches:\n" + "\n".join(branches),
-                metadata={"current": repo.active_branch.name, "branches": [b.name for b in repo.branches]},
+                metadata={
+                    "current": repo.active_branch.name,
+                    "branches": [b.name for b in repo.branches],
+                },
             )
         elif sub_action == "create":
             if not branch_name:
                 return self._error_response("branch_name required for create")
             new_branch = repo.create_head(branch_name)
-            return self._success_response(result=f"Created branch: {branch_name}", metadata={"branch": branch_name, "commit": new_branch.commit.hexsha[:8]})
+            return self._success_response(
+                result=f"Created branch: {branch_name}",
+                metadata={"branch": branch_name, "commit": new_branch.commit.hexsha[:8]},
+            )
         elif sub_action == "delete":
             if not branch_name:
                 return self._error_response("branch_name required for delete")
             force = parameters.get("force", False)
             repo.delete_head(branch_name, force=force)
-            return self._success_response(result=f"Deleted branch: {branch_name}", metadata={"branch": branch_name, "forced": force})
+            return self._success_response(
+                result=f"Deleted branch: {branch_name}",
+                metadata={"branch": branch_name, "forced": force},
+            )
         elif sub_action == "checkout":
             if not branch_name:
                 return self._error_response("branch_name required for checkout")
             repo.git.checkout(branch_name)
-            return self._success_response(result=f"Switched to branch: {branch_name}", metadata={"branch": branch_name})
+            return self._success_response(
+                result=f"Switched to branch: {branch_name}", metadata={"branch": branch_name}
+            )
         else:
-            return self._error_response(f"Unknown branch sub_action: {sub_action}. Use: list, create, delete, checkout")
+            return self._error_response(
+                f"Unknown branch sub_action: {sub_action}. Use: list, create, delete, checkout"
+            )
 
     async def _commit(self, parameters: dict[str, Any], repo: Any) -> dict[str, Any]:
         """Commit staged changes."""
@@ -231,7 +372,12 @@ class GitTool(BaseTool):
         commit = repo.index.commit(message)
         return self._success_response(
             result=f"Created commit {commit.hexsha[:8]}: {message}",
-            metadata={"commit": commit.hexsha[:8], "message": message, "author": f"{commit.author.name} <{commit.author.email}>", "files_changed": len(commit.stats.files)},
+            metadata={
+                "commit": commit.hexsha[:8],
+                "message": message,
+                "author": f"{commit.author.name} <{commit.author.email}>",
+                "files_changed": len(commit.stats.files),
+            },
         )
 
     async def _clone(self, parameters: dict[str, Any], *_: Any) -> dict[str, Any]:
@@ -252,7 +398,12 @@ class GitTool(BaseTool):
             repo = Repo.clone_from(url, destination or None, **kwargs)
             return self._success_response(
                 result=f"Successfully cloned to {repo.working_dir}",
-                metadata={"url": url, "path": str(repo.working_dir), "branch": repo.active_branch.name, "commit": repo.head.commit.hexsha[:8]},
+                metadata={
+                    "url": url,
+                    "path": str(repo.working_dir),
+                    "branch": repo.active_branch.name,
+                    "commit": repo.head.commit.hexsha[:8],
+                },
             )
         except GitCommandError as e:
             return self._error_response(f"Git clone failed: {e}")
@@ -262,7 +413,9 @@ class GitTool(BaseTool):
     async def _pull(self, parameters: dict[str, Any], repo: Any) -> dict[str, Any]:
         """Pull from remote."""
         if repo.is_dirty():
-            return self._error_response("Working tree has uncommitted changes. Commit or stash them first.")
+            return self._error_response(
+                "Working tree has uncommitted changes. Commit or stash them first."
+            )
         remote_name = parameters.get("remote", "origin")
         if remote_name not in [r.name for r in repo.remotes]:
             return self._error_response(f"Remote '{remote_name}' not found")
@@ -281,8 +434,21 @@ class GitTool(BaseTool):
         else:
             await loop.run_in_executor(None, lambda: remote.pull(branch))
         new_commit = repo.head.commit.hexsha[:8]
-        result = "Already up to date" if old_commit == new_commit else f"Updated from {old_commit} to {new_commit}"
-        return self._success_response(result=result, metadata={"remote": remote_name, "branch": branch, "old_commit": old_commit, "new_commit": new_commit, "rebased": rebase})
+        result = (
+            "Already up to date"
+            if old_commit == new_commit
+            else f"Updated from {old_commit} to {new_commit}"
+        )
+        return self._success_response(
+            result=result,
+            metadata={
+                "remote": remote_name,
+                "branch": branch,
+                "old_commit": old_commit,
+                "new_commit": new_commit,
+                "rebased": rebase,
+            },
+        )
 
     async def _push(self, parameters: dict[str, Any], repo: Any) -> dict[str, Any]:
         """Push to remote."""
@@ -311,7 +477,12 @@ class GitTool(BaseTool):
                 return self._error_response(f"Push failed: {info.summary}")
         return self._success_response(
             result=f"Successfully pushed {branch} to {remote_name}",
-            metadata={"remote": remote_name, "branch": branch, "forced": force, "upstream_set": set_upstream},
+            metadata={
+                "remote": remote_name,
+                "branch": branch,
+                "forced": force,
+                "upstream_set": set_upstream,
+            },
         )
 
     async def _merge(self, parameters: dict[str, Any], repo: Any) -> dict[str, Any]:
@@ -320,7 +491,9 @@ class GitTool(BaseTool):
         if not branch_name:
             return self._error_response("Branch name is required for merge")
         if repo.is_dirty():
-            return self._error_response("Working tree has uncommitted changes. Commit or stash them first.")
+            return self._error_response(
+                "Working tree has uncommitted changes. Commit or stash them first."
+            )
         if branch_name not in [b.name for b in repo.branches]:
             return self._error_response(f"Branch '{branch_name}' not found")
         current_branch = repo.active_branch.name
@@ -339,11 +512,19 @@ class GitTool(BaseTool):
             was_ff = current_commit != new_commit and not no_ff
             return self._success_response(
                 result=f"Successfully merged {branch_name} into {current_branch}",
-                metadata={"current_branch": current_branch, "merged_branch": branch_name, "old_commit": current_commit, "new_commit": new_commit, "fast_forward": was_ff},
+                metadata={
+                    "current_branch": current_branch,
+                    "merged_branch": branch_name,
+                    "old_commit": current_commit,
+                    "new_commit": new_commit,
+                    "fast_forward": was_ff,
+                },
             )
         except GitCommandError as e:
             if "CONFLICT" in str(e):
-                return self._error_response(f"Merge conflict detected. Resolve conflicts and commit manually.\n{e}")
+                return self._error_response(
+                    f"Merge conflict detected. Resolve conflicts and commit manually.\n{e}"
+                )
             raise
 
     _DISPATCH: dict[str, Any] = {

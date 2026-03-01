@@ -21,12 +21,42 @@ class DockerComposeTool(BaseTool):
         "category": ToolCategory.DEV,
         "requires_confirmation": True,
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Action: up, down, ps, logs, restart", "required": True},
-            {"name": "compose_file", "param_type": "string", "description": "Path to docker-compose.yml (default: ./docker-compose.yml)", "required": False},
-            {"name": "project_name", "param_type": "string", "description": "Project name (default: directory name)", "required": False},
-            {"name": "services", "param_type": "list", "description": "Specific services to target", "required": False},
-            {"name": "detach", "param_type": "bool", "description": "Run in background (for 'up', default: True)", "required": False},
-            {"name": "build", "param_type": "bool", "description": "Build images before starting (for 'up', default: False)", "required": False},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Action: up, down, ps, logs, restart",
+                "required": True,
+            },
+            {
+                "name": "compose_file",
+                "param_type": "string",
+                "description": "Path to docker-compose.yml (default: ./docker-compose.yml)",
+                "required": False,
+            },
+            {
+                "name": "project_name",
+                "param_type": "string",
+                "description": "Project name (default: directory name)",
+                "required": False,
+            },
+            {
+                "name": "services",
+                "param_type": "list",
+                "description": "Specific services to target",
+                "required": False,
+            },
+            {
+                "name": "detach",
+                "param_type": "bool",
+                "description": "Run in background (for 'up', default: True)",
+                "required": False,
+            },
+            {
+                "name": "build",
+                "param_type": "bool",
+                "description": "Build images before starting (for 'up', default: False)",
+                "required": False,
+            },
         ],
     }
 

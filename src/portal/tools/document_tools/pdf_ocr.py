@@ -28,9 +28,24 @@ class PDFOCRTool(BaseTool):
         "description": "Extract text from PDF files using OCR",
         "category": ToolCategory.DATA,
         "parameters": [
-            {"name": "pdf_path", "param_type": "string", "description": "Path to PDF file", "required": True},
-            {"name": "language", "param_type": "string", "description": "OCR language (default: eng)", "required": False},
-            {"name": "dpi", "param_type": "int", "description": "Image DPI for conversion (default: 300)", "required": False},
+            {
+                "name": "pdf_path",
+                "param_type": "string",
+                "description": "Path to PDF file",
+                "required": True,
+            },
+            {
+                "name": "language",
+                "param_type": "string",
+                "description": "OCR language (default: eng)",
+                "required": False,
+            },
+            {
+                "name": "dpi",
+                "param_type": "int",
+                "description": "Image DPI for conversion (default: 300)",
+                "required": False,
+            },
         ],
     }
 

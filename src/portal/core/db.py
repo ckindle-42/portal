@@ -1,4 +1,5 @@
 """Shared SQLite connection pool for Portal modules."""
+
 import sqlite3
 import threading
 from pathlib import Path
@@ -7,7 +8,9 @@ from pathlib import Path
 class ConnectionPool:
     """Thread-local SQLite connection cache with configurable PRAGMAs."""
 
-    def __init__(self, db_path: Path, pragmas: tuple[str, ...] = ("PRAGMA journal_mode=WAL",)) -> None:
+    def __init__(
+        self, db_path: Path, pragmas: tuple[str, ...] = ("PRAGMA journal_mode=WAL",)
+    ) -> None:
         self._db_path = db_path
         self._local = threading.local()
         self._pragmas = pragmas

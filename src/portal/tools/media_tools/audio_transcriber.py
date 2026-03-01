@@ -16,9 +16,26 @@ class AudioTranscribeTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "audio_files", "param_type": "list", "description": "List of audio file paths", "required": True},
-            {"name": "model_size", "param_type": "string", "description": "Model size: tiny, base, small, medium, large", "required": False, "default": "base"},
-            {"name": "language", "param_type": "string", "description": "Language code (e.g., 'en', 'es') or 'auto'", "required": False, "default": "auto"},
+            {
+                "name": "audio_files",
+                "param_type": "list",
+                "description": "List of audio file paths",
+                "required": True,
+            },
+            {
+                "name": "model_size",
+                "param_type": "string",
+                "description": "Model size: tiny, base, small, medium, large",
+                "required": False,
+                "default": "base",
+            },
+            {
+                "name": "language",
+                "param_type": "string",
+                "description": "Language code (e.g., 'en', 'es') or 'auto'",
+                "required": False,
+                "default": "auto",
+            },
         ],
         "examples": ["Transcribe audio.mp3"],
     }

@@ -126,6 +126,16 @@ http://localhost:8081/v1
 bash launch.sh down
 ```
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | System health — version, agent_core status, MCP status |
+| `GET` | `/v1/models` | OpenAI-compatible model list |
+| `POST` | `/v1/chat/completions` | Chat completions — streaming and non-streaming |
+| `POST` | `/v1/audio/transcriptions` | Audio transcription via Whisper |
+| `WS` | `/ws` | WebSocket streaming chat |
+
 ## Security Notes
 
 | Setting | What to do |

@@ -19,7 +19,7 @@ async def aiter(items):
         yield item
 
 
-def _make_interface(stream_tokens=None, health_ok=True):
+def _make_interface(stream_tokens=None, health_ok=True, web_api_key=""):
     """Build a WebInterface backed by a fully mocked AgentCore."""
     from portal.interfaces.web.server import WebInterface
 
@@ -29,6 +29,7 @@ def _make_interface(stream_tokens=None, health_ok=True):
     # stream_response is called without await, so use MagicMock returning an async gen
     agent.stream_response = MagicMock(side_effect=lambda _: aiter(_tokens))
     agent.health_check = AsyncMock(return_value=health_ok)
+    agent.mcp_registry = None  # prevent auto-MagicMock being awaited in health endpoint
 
     secure = MagicMock()
     secure.process_message = AsyncMock(
@@ -43,6 +44,7 @@ def _make_interface(stream_tokens=None, health_ok=True):
     config = MagicMock()
     config.interfaces.web.port = 8082
     config.llm.router_port = 8000
+    config.security.web_api_key = web_api_key  # Empty = no auth guard
 
     return WebInterface(agent_core=agent, config=config, secure_agent=secure)
 
@@ -173,13 +175,11 @@ async def test_all_required_routes_exist():
 
 
 @pytest.mark.asyncio
-async def test_api_key_guard_blocks_without_key(monkeypatch):
-    """/v1/chat/completions returns 401 when WEB_API_KEY is set and header is missing."""
+async def test_api_key_guard_blocks_without_key():
+    """/v1/chat/completions returns 401 when web_api_key is set in config and header is missing."""
     from fastapi.testclient import TestClient
 
     from portal.interfaces.web.server import WebInterface
-
-    monkeypatch.setenv("WEB_API_KEY", "test-secret-key")
 
     agent = MagicMock()
     agent.stream_response = MagicMock(side_effect=lambda _: aiter(["hi"]))
@@ -193,7 +193,9 @@ async def test_api_key_guard_blocks_without_key(monkeypatch):
             completion_tokens=1,
         )
     )
-    iface = WebInterface(agent_core=agent, config=MagicMock(), secure_agent=secure)
+    config = MagicMock()
+    config.security.web_api_key = "test-secret-key"
+    iface = WebInterface(agent_core=agent, config=config, secure_agent=secure)
     with TestClient(iface.app, raise_server_exceptions=False) as client:
         payload = {
             "model": "auto",
@@ -205,13 +207,11 @@ async def test_api_key_guard_blocks_without_key(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_api_key_guard_passes_with_bearer(monkeypatch):
+async def test_api_key_guard_passes_with_bearer():
     """/v1/models returns 200 when correct Bearer token is provided."""
     from fastapi.testclient import TestClient
 
     from portal.interfaces.web.server import WebInterface
-
-    monkeypatch.setenv("WEB_API_KEY", "test-secret-key")
 
     agent = MagicMock()
     agent.health_check = AsyncMock(return_value=True)
@@ -224,7 +224,9 @@ async def test_api_key_guard_passes_with_bearer(monkeypatch):
             completion_tokens=1,
         )
     )
-    iface = WebInterface(agent_core=agent, config=MagicMock(), secure_agent=secure)
+    config = MagicMock()
+    config.security.web_api_key = "test-secret-key"
+    iface = WebInterface(agent_core=agent, config=config, secure_agent=secure)
     with TestClient(iface.app) as client:
         resp = client.get(
             "/v1/models",
@@ -488,3 +490,68 @@ async def test_audio_transcription_whisper_error():
 
     # Should return 500 or handle error gracefully
     assert resp.status_code in (500, 502, 503)
+
+
+# ---------------------------------------------------------------------------
+# TASK-9: /v1/models fallback when Ollama is unreachable
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_models_fallback_when_ollama_unreachable(monkeypatch):
+    """/v1/models returns 200 with non-empty data list when Ollama is unreachable."""
+    import httpx
+    from fastapi.testclient import TestClient
+
+    iface = _make_interface()
+
+    # Patch the shared client's get() to simulate Ollama being unreachable
+    async def mock_get(*args, **kwargs):
+        raise httpx.ConnectError("Connection refused")
+
+    iface._ollama_client = MagicMock()
+    iface._ollama_client.get = mock_get
+
+    with TestClient(iface.app) as client:
+        resp = client.get("/v1/models")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["object"] == "list"
+    assert isinstance(body["data"], list)
+    assert len(body["data"]) > 0
+
+
+# ---------------------------------------------------------------------------
+# TASK-10: /v1/chat/completions non-streaming usage field
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_chat_completions_non_streaming_usage_field():
+    """/v1/chat/completions stream=False response includes valid usage field."""
+    import os
+
+    from fastapi.testclient import TestClient
+
+    os.environ.pop("WEB_API_KEY", None)
+
+    iface = _make_interface()
+    with TestClient(iface.app) as client:
+        payload = {
+            "model": "auto",
+            "messages": [{"role": "user", "content": "hello"}],
+            "stream": False,
+        }
+        resp = client.post("/v1/chat/completions", json=payload)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "usage" in body
+    usage = body["usage"]
+    assert "prompt_tokens" in usage
+    assert "completion_tokens" in usage
+    assert "total_tokens" in usage
+    assert isinstance(usage["prompt_tokens"], int) and usage["prompt_tokens"] >= 0
+    assert isinstance(usage["completion_tokens"], int) and usage["completion_tokens"] >= 0
+    assert isinstance(usage["total_tokens"], int) and usage["total_tokens"] >= 0

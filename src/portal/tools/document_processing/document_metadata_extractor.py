@@ -48,8 +48,19 @@ class DocumentMetadataExtractorTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "file_path", "param_type": "string", "description": "Path to document file", "required": True},
-            {"name": "detailed", "param_type": "bool", "description": "Include detailed metadata (default: False)", "required": False, "default": False},
+            {
+                "name": "file_path",
+                "param_type": "string",
+                "description": "Path to document file",
+                "required": True,
+            },
+            {
+                "name": "detailed",
+                "param_type": "bool",
+                "description": "Include detailed metadata (default: False)",
+                "required": False,
+                "default": False,
+            },
         ],
     }
 

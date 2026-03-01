@@ -6,7 +6,6 @@ import asyncio
 import hmac
 import json
 import logging
-import os
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -53,8 +52,7 @@ from portal.security.middleware import SecurityMiddleware
 
 logger = logging.getLogger(__name__)
 
-# Maximum audio upload size (configurable via env var, default 25 MB)
-_MAX_AUDIO_BYTES = int(os.getenv("PORTAL_MAX_AUDIO_MB", "25")) * 1024 * 1024
+_DEFAULT_CSP = "default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: blob:; frame-ancestors 'none'; base-uri 'self'"
 
 
 class ChatMessage(BaseModel):
@@ -71,23 +69,62 @@ class ChatCompletionRequest(BaseModel):
     tools: list[dict[str, Any]] = Field(default_factory=list)
 
 
-def _build_cors_origins() -> list[str]:
-    raw = os.getenv(
-        "ALLOWED_ORIGINS",
-        "http://localhost:8080,http://127.0.0.1:8080",
-    )
-    origins = [o.strip() for o in raw.split(",") if o.strip()]
-    return origins or ["http://localhost:8080"]
+def _is_valid_origin(origin: str) -> bool:
+    """Return True if origin is a valid http/https URL with a netloc."""
+    from urllib.parse import urlparse
+
+    try:
+        p = urlparse(origin)
+        return p.scheme in ("http", "https") and bool(p.netloc)
+    except ValueError:
+        return False
 
 
-def _bool_env(name: str, default: bool = False) -> bool:
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.lower() in {"1", "true", "yes", "on"}
+def _build_cors_origins(origins: list[str]) -> list[str]:
+    """Return validated CORS origins, falling back to localhost:8080 if none valid."""
+    valid = [o for o in origins if _is_valid_origin(o)]
+    if not valid:
+        logger.warning("No valid CORS origins found; defaulting to http://localhost:8080")
+        return ["http://localhost:8080"]
+    return valid
+
+
+def _cfg_str(obj: Any, attr: str, default: str) -> str:
+    """Safely read a string attribute from config, returning default if missing or wrong type."""
+    v = getattr(obj, attr, default) if obj is not None else default
+    return v if isinstance(v, str) else default
+
+
+def _cfg_int(obj: Any, attr: str, default: int) -> int:
+    """Safely read an int attribute from config, returning default if missing or wrong type."""
+    v = getattr(obj, attr, default) if obj is not None else default
+    return v if type(v) is int else default
+
+
+def _cfg_float(obj: Any, attr: str, default: float) -> float:
+    """Safely read a float/int attribute from config as float."""
+    v = getattr(obj, attr, default) if obj is not None else default
+    return float(v) if isinstance(v, (int, float)) and type(v) is not bool else default
+
+
+def _cfg_bool(obj: Any, attr: str, default: bool) -> bool:
+    """Safely read a bool attribute from config, returning default if missing or wrong type."""
+    v = getattr(obj, attr, default) if obj is not None else default
+    return v if type(v) is bool else default
+
+
+def _cfg_list(obj: Any, attr: str, default: list) -> list:
+    """Safely read a list attribute from config, returning default if missing or wrong type."""
+    v = getattr(obj, attr, default) if obj is not None else default
+    return v if isinstance(v, list) else default
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, csp_policy: str = _DEFAULT_CSP, hsts_enabled: bool = False) -> None:
+        super().__init__(app)
+        self._csp_policy = csp_policy
+        self._hsts_enabled = hsts_enabled
+
     async def dispatch(self, request: Request, call_next) -> Response:
         # Echo or generate a request ID for distributed tracing
         request_id = request.headers.get("X-Request-Id", str(uuid.uuid4())[:8])
@@ -97,12 +134,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        csp = os.getenv(
-            "PORTAL_CSP",
-            "default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: blob:; frame-ancestors 'none'; base-uri 'self'",
-        )
-        response.headers["Content-Security-Policy"] = csp
-        if _bool_env("PORTAL_HSTS"):
+        response.headers["Content-Security-Policy"] = self._csp_policy
+        if self._hsts_enabled:
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
 
@@ -125,6 +158,34 @@ class WebInterface(BaseInterface):
             if isinstance(secure_agent, SecurityMiddleware)
             else _InputSanitizer()
         )
+
+        # Extract typed settings from config with safe fallbacks for dicts/mocks
+        _sec = getattr(config, "security", None)
+        _ifaces = getattr(config, "interfaces", None)
+        _web = getattr(_ifaces, "web", None) if _ifaces is not None else None
+        _be = getattr(config, "backends", None)
+
+        self._web_api_key: str = _cfg_str(_sec, "web_api_key", "")
+        self._require_api_key: bool = _cfg_bool(_sec, "require_api_key", False)
+        self._max_audio_bytes: int = _cfg_int(_web, "max_audio_mb", 25) * 1024 * 1024
+        self._whisper_url: str = _cfg_str(_web, "whisper_url", "http://localhost:10300/inference")
+        self._vision_model: str = _cfg_str(_web, "vision_model", "llava")
+        self._ollama_host: str = _cfg_str(_be, "ollama_url", "http://localhost:11434")
+        self._ws_rate_limit: int = _cfg_int(_web, "ws_rate_limit", 10)
+        self._ws_rate_window: float = _cfg_float(_web, "ws_rate_window", 60.0)
+        _cors = _cfg_list(_web, "cors_origins", [])
+        self._cors_origins: list[str] = (
+            _cors
+            if _cors
+            else [
+                "http://localhost:8080",
+                "http://127.0.0.1:8080",
+            ]
+        )
+        self._csp_policy: str = _cfg_str(_web, "csp_policy", _DEFAULT_CSP)
+        self._hsts_enabled: bool = _cfg_bool(_web, "hsts_enabled", False)
+        self._web_port: int = _cfg_int(_web, "port", 8081)
+
         self.app = self._build_app()
 
     def _extract_user_id(self, request: Request) -> str:
@@ -144,8 +205,8 @@ class WebInterface(BaseInterface):
         if authorization and authorization.startswith("Bearer "):
             token = authorization.removeprefix("Bearer ").strip()
 
-        static_web_api_key = os.getenv("WEB_API_KEY", "").strip()
-        require_api_key = _bool_env("REQUIRE_API_KEY", default=bool(static_web_api_key))
+        static_web_api_key = self._web_api_key
+        require_api_key = self._require_api_key or bool(static_web_api_key)
 
         if static_web_api_key:
             # Use hmac.compare_digest to prevent timing-attack enumeration of the key
@@ -162,9 +223,7 @@ class WebInterface(BaseInterface):
             raise HTTPException(status_code=401, detail=str(exc)) from exc
         return {"user_id": ctx.user_id, "role": ctx.role}
 
-    async def _validate_request(
-        self, user_id: str, message: str
-    ) -> tuple[str, list[str]]:
+    async def _validate_request(self, user_id: str, message: str) -> tuple[str, list[str]]:
         """
         Shared security validation for all request paths (HTTP streaming, WebSocket).
 
@@ -208,8 +267,8 @@ class WebInterface(BaseInterface):
                 try:
                     if hasattr(self.agent_core, "health_check"):
                         await self.agent_core.health_check()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Agent warmup health check failed: %s", e, exc_info=True)
                 finally:
                     _agent_ready.set()
 
@@ -278,10 +337,14 @@ class WebInterface(BaseInterface):
             )
 
     def _register_middleware(self, app: FastAPI) -> None:
-        app.add_middleware(SecurityHeadersMiddleware)
+        app.add_middleware(
+            SecurityHeadersMiddleware,
+            csp_policy=self._csp_policy,
+            hsts_enabled=self._hsts_enabled,
+        )
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=_build_cors_origins(),
+            allow_origins=_build_cors_origins(self._cors_origins),
             allow_credentials=True,
             allow_methods=["POST", "GET", "OPTIONS"],
             allow_headers=["Authorization", "Content-Type", "X-Portal-User-Id", "X-User-Id"],
@@ -338,7 +401,7 @@ class WebInterface(BaseInterface):
         image_present = any(isinstance(m.content, list) for m in payload.messages)
         selected_model = payload.model
         if image_present and payload.model == "auto":
-            selected_model = os.getenv("PORTAL_VISION_MODEL", "llava")
+            selected_model = self._vision_model
 
         incoming = IncomingMessage(
             id=str(uuid.uuid4()),
@@ -377,11 +440,11 @@ class WebInterface(BaseInterface):
 
     async def _handle_audio_transcriptions(self, file: UploadFile, auth: dict) -> dict:
         """Handle /v1/audio/transcriptions — proxy to Whisper with size guard."""
-        data = await file.read(_MAX_AUDIO_BYTES + 1)
-        if len(data) > _MAX_AUDIO_BYTES:
+        data = await file.read(self._max_audio_bytes + 1)
+        if len(data) > self._max_audio_bytes:
             raise HTTPException(
                 status_code=413,
-                detail=f"Audio file exceeds {_MAX_AUDIO_BYTES // (1024 * 1024)}MB limit",
+                detail=f"Audio file exceeds {self._max_audio_bytes // (1024 * 1024)}MB limit",
             )
         client = self._ollama_client or httpx.AsyncClient(timeout=60.0)
         files = {
@@ -391,9 +454,7 @@ class WebInterface(BaseInterface):
                 file.content_type or "application/octet-stream",
             )
         }
-        resp = await client.post(
-            os.getenv("WHISPER_URL", "http://localhost:10300/inference"), files=files
-        )
+        resp = await client.post(self._whisper_url, files=files)
         out = resp.json()
         return {"text": out.get("text", "")}
 
@@ -401,9 +462,7 @@ class WebInterface(BaseInterface):
         """Handle /v1/models — return available Ollama models with OpenAI schema."""
         try:
             client = self._ollama_client or httpx.AsyncClient(timeout=3.0)
-            resp = await client.get(
-                f"{os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/tags"
-            )
+            resp = await client.get(f"{self._ollama_host}/api/tags")
             data = resp.json()
             return {
                 "object": "list",
@@ -417,7 +476,7 @@ class WebInterface(BaseInterface):
                     for m in data.get("models", [])
                 ],
             }
-        except Exception:
+        except (httpx.HTTPError, json.JSONDecodeError):
             return {
                 "object": "list",
                 "data": [
@@ -466,14 +525,14 @@ class WebInterface(BaseInterface):
                 return JSONResponse(body, status_code=200)
             try:
                 healthy = await self.agent_core.health_check()
-            except Exception:
+            except (TimeoutError, RuntimeError):
                 healthy = False
             body["agent_core"] = "ok" if healthy else "degraded"
             mcp_status = {}
             if hasattr(self.agent_core, "mcp_registry") and self.agent_core.mcp_registry:
                 try:
                     mcp_status = await self.agent_core.mcp_registry.health_check_all()
-                except Exception:
+                except (TimeoutError, RuntimeError):
                     mcp_status = {"error": "health check failed"}
             body["mcp"] = mcp_status
             return JSONResponse(body, status_code=200)
@@ -485,10 +544,9 @@ class WebInterface(BaseInterface):
 
     async def _handle_websocket(self, websocket: WebSocket) -> None:
         """Handle /ws — authenticated, rate-limited, streaming WebSocket chat."""
-        static_key = os.getenv("WEB_API_KEY", "").strip()
-        if static_key:
+        if self._web_api_key:
             token = websocket.query_params.get("api_key", "")
-            if not hmac.compare_digest(token.encode(), static_key.encode()):
+            if not hmac.compare_digest(token.encode(), self._web_api_key.encode()):
                 await websocket.close(code=4001, reason="Unauthorized")
                 return
         await websocket.accept()
@@ -502,8 +560,8 @@ class WebInterface(BaseInterface):
         ws_user_id = websocket.query_params.get("user_id", "ws-anonymous")
 
         # Fallback per-connection rate limiter (used only when no shared limiter is present)
-        ws_rate_limit = int(os.getenv("WS_RATE_LIMIT", "10"))
-        ws_rate_window = float(os.getenv("WS_RATE_WINDOW", "60"))
+        ws_rate_limit = self._ws_rate_limit
+        ws_rate_window = self._ws_rate_window
         message_timestamps: list[float] = []
 
         try:
@@ -546,7 +604,10 @@ class WebInterface(BaseInterface):
                 )
                 if len(sanitized_text) > max_len:
                     await websocket.send_json(
-                        {"error": f"Message exceeds maximum length of {max_len} characters", "done": True}
+                        {
+                            "error": f"Message exceeds maximum length of {max_len} characters",
+                            "done": True,
+                        }
                     )
                     continue
 
@@ -564,7 +625,7 @@ class WebInterface(BaseInterface):
             logger.error("WebSocket error: %s", e, exc_info=True)
             try:
                 await websocket.send_json({"error": "Internal error", "done": True})
-            except Exception:
+            except (RuntimeError, OSError):
                 pass
             return
 
@@ -662,9 +723,7 @@ class WebInterface(BaseInterface):
     async def start(self) -> None:
         import uvicorn
 
-        config = uvicorn.Config(
-            self.app, host="0.0.0.0", port=int(os.getenv("WEB_PORT", "8081")), log_level="info"
-        )
+        config = uvicorn.Config(self.app, host="0.0.0.0", port=self._web_port, log_level="info")
         self._server = uvicorn.Server(config)
         await self._server.serve()
 
@@ -679,7 +738,7 @@ def create_app(agent_core=None, config: dict | None = None, secure_agent=None) -
 
         cfg = config or {
             "routing_strategy": "AUTO",
-            "ollama_base_url": os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+            "ollama_base_url": "http://localhost:11434",
             "max_context_messages": 100,
         }
         agent_core = _create(cfg)

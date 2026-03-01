@@ -160,7 +160,7 @@ def create_mock_tool_response(success: bool = True, **kwargs) -> dict[str, Any]:
 def pytest_configure(config):
     """Validate test environment and configure pytest with custom markers."""
     missing = []
-    for mod in ("httpx", "aiohttp", "fastapi", "pydantic"):
+    for mod in ("httpx", "fastapi", "pydantic"):
         try:
             __import__(mod)
         except ImportError:

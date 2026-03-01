@@ -106,7 +106,18 @@ class InputSanitizer:
             # Get all path components
             parts = resolved.parts
             # Check if any component is a sensitive directory name
-            sensitive_names = {"etc", "boot", "sys", "proc", "dev", "root", "sbin", "bin", "lib", "usr"}
+            sensitive_names = {
+                "etc",
+                "boot",
+                "sys",
+                "proc",
+                "dev",
+                "root",
+                "sbin",
+                "bin",
+                "lib",
+                "usr",
+            }
             for part in parts:
                 if part.lower() in sensitive_names:
                     return False, f"Access to /{part} is restricted"

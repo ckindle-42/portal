@@ -13,21 +13,27 @@ from portal.routing.model_backends import (
 
 
 class _FakeResponse:
-    def __init__(self, status=200, json_data=None, text_data="", lines=None):
-        self.status = status
-        self._json_data = json_data or {}
-        self._text_data = text_data
-        self._lines = lines or []
+    """httpx-compatible fake response for unit tests."""
 
-    async def json(self):
+    def __init__(self, status_code=200, json_data=None, text_data="", lines=None):
+        self.status_code = status_code
+        self._json_data = json_data or {}
+        self._text = text_data
+        self._lines = lines or []  # list of bytes or str
+
+    def json(self):
         return self._json_data
 
-    async def text(self):
-        return self._text_data
-
     @property
-    def content(self):
-        return _FakeContent(self._lines)
+    def text(self):
+        return self._text
+
+    async def aiter_lines(self):
+        for line in self._lines:
+            if isinstance(line, bytes):
+                line = line.decode("utf-8")
+            if line:
+                yield line
 
     async def __aenter__(self):
         return self
@@ -36,38 +42,24 @@ class _FakeResponse:
         pass
 
 
-class _FakeContent:
-    def __init__(self, lines):
-        self._lines = lines
-
-    def __aiter__(self):
-        return _FakeContentIter(self._lines)
-
-
-class _FakeContentIter:
-    def __init__(self, lines):
-        self._iter = iter(lines)
-
-    async def __anext__(self):
-        try:
-            return next(self._iter)
-        except StopIteration:
-            raise StopAsyncIteration
-
-
 class _FakeSession:
+    """httpx-compatible fake async client for unit tests."""
+
     def __init__(self, response=None):
         self._response = response or _FakeResponse()
-        self.closed = False
+        self.is_closed = False
 
-    def post(self, url, **kwargs):
+    async def post(self, url, **kwargs):
         return self._response
 
-    def get(self, url, **kwargs):
+    async def get(self, url, **kwargs):
         return self._response
 
-    async def close(self):
-        self.closed = True
+    def stream(self, method, url, **kwargs):
+        return self._response
+
+    async def aclose(self):
+        self.is_closed = True
 
 
 class TestGenerationResult:
@@ -203,11 +195,12 @@ class TestOllamaStream:
         assert tokens == ["ok"]
 
     @pytest.mark.asyncio
-    async def test_exception_yields_nothing(self):
+    async def test_exception_propagates(self):
+        """Unhandled exceptions from _get_session now propagate out of generate_stream."""
         backend = OllamaBackend()
-        with patch.object(backend, "_get_session", side_effect=ConnectionError):
-            tokens = [t async for t in backend.generate_stream("hi", "test-model")]
-        assert tokens == []
+        with pytest.raises(ConnectionError):
+            with patch.object(backend, "_get_session", side_effect=ConnectionError):
+                _ = [t async for t in backend.generate_stream("hi", "test-model")]
 
 
 class TestOllamaAvailability:
@@ -242,36 +235,36 @@ class TestBaseHTTPBackendSession:
     @pytest.mark.asyncio
     async def test_creates_session(self):
         backend = OllamaBackend()
-        with patch("portal.routing.model_backends.aiohttp.ClientSession") as MockSession:
-            mock = MagicMock(closed=False)
-            MockSession.return_value = mock
+        with patch("portal.routing.model_backends.httpx.AsyncClient") as MockClient:
+            mock = MagicMock(is_closed=False)
+            MockClient.return_value = mock
             session = await backend._get_session()
-        assert session is mock and MockSession.call_count == 1
+        assert session is mock and MockClient.call_count == 1
 
     @pytest.mark.asyncio
     async def test_reuses_existing_session(self):
         backend = OllamaBackend()
-        mock = MagicMock(closed=False)
+        mock = MagicMock(is_closed=False)
         backend._session = mock
         assert await backend._get_session() is mock
 
     @pytest.mark.asyncio
     async def test_recreates_closed_session(self):
         backend = OllamaBackend()
-        backend._session = MagicMock(closed=True)
-        with patch("portal.routing.model_backends.aiohttp.ClientSession") as MockSession:
-            new = MagicMock(closed=False)
-            MockSession.return_value = new
+        backend._session = MagicMock(is_closed=True)
+        with patch("portal.routing.model_backends.httpx.AsyncClient") as MockClient:
+            new = MagicMock(is_closed=False)
+            MockClient.return_value = new
             session = await backend._get_session()
         assert session is new
 
     @pytest.mark.asyncio
     async def test_close_closes_open_session(self):
         backend = OllamaBackend()
-        mock = AsyncMock(closed=False)
+        mock = AsyncMock(is_closed=False)
         backend._session = mock
         await backend.close()
-        mock.close.assert_called_once()
+        mock.aclose.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_close_noop_when_no_session(self):
