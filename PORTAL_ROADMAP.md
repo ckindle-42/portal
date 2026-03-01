@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
 **Generated:** 2026-03-01
-**Current version:** 1.3.9 (security_module shim partially removed)
+**Current version:** 1.4.0 (security_module cleanup complete)
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -12,13 +12,14 @@ file which contained only future design sketches.
 
 ## Changelog
 
-- **2026-03-01:** Added ROAD-C12 (security_module cleanup - in progress). Updated TASK-20, TASK-21, TASK-22 in action prompt.
+- **2026-03-01:** Version bumped to 1.4.0. ROAD-C12 (security_module cleanup) COMPLETE. ROAD-C13 (runtime_metrics cleanup) added as candidate. All TASK-20-22 completed.
+- **2026-03-01 (prior):** Added ROAD-C12 (security_module cleanup - in progress). Updated TASK-20, TASK-21, TASK-22 in action prompt.
 
 ---
 
 ## 1. Current Release State
 
-Portal 1.3.9 is fully operational for its stated purpose:
+Portal 1.4.0 is fully operational for its stated purpose:
 
 - **OpenAI-compatible REST API** at `:8081/v1/*` — works with Open WebUI and LibreChat
 - **Ollama proxy router** at `:8000` — workspace routing, regex rules, virtual models
@@ -35,7 +36,7 @@ Portal 1.3.9 is fully operational for its stated purpose:
 - **Structured logging** — JSON with trace IDs, secret redaction
 
 **CI status:** 874 tests passing, 0 lint errors, Python 3.11–3.14 matrix.
-**Type safety:** 124 mypy errors (unchanged from prior).
+**Type safety:** 123 mypy errors (unchanged from prior).
 
 ---
 
@@ -195,31 +196,22 @@ Result:       mypy errors reduced from 170 to 124
 ### [ROAD-C12] security_module.py Cleanup
 
 ```
-Status:       IN-PROGRESS
+Status:       COMPLETE
 Priority:     P2-HIGH
 Effort:       S
 Description:  Remove security_module.py re-export shim:
-              - middleware.py updated to import directly (COMPLETE)
-              - 13 test files need import updates (TASK-20)
-              - security_module.py file can be deleted after (TASK-21)
-Evidence:     e407996 (middleware.py update); tests still import from shim
+              - middleware.py updated to import directly (prior run)
+              - 13 test files updated to import directly (this run)
+              - security_module.py file deleted (this run)
+Evidence:     e407996 (middleware.py update); 4b8a98a (version bump)
+Result:       Tests pass, no production callers remain
 ```
 
 ---
 
 ## 3. In Progress
 
-### [ROAD-C12] security_module.py Cleanup
-
-```
-Status:       IN-PROGRESS
-Priority:     P2-HIGH
-Effort:       S
-Description:  Remove security_module.py re-export shim. Middleware updated to import
-              directly. Tests still use shim - need update. File can be deleted after.
-Evidence:     e407996 (middleware.py update)
-Remaining:    Update 13 test files to import directly
-```
+No items currently in progress. All immediate cleanup tasks from prior run are complete.
 
 ---
 
@@ -365,6 +357,19 @@ Description:  HITL approval requires Redis. Add an in-memory fallback for
 Evidence:     middleware/hitl_approval.py
 ```
 
+### [ROAD-F07] runtime_metrics.py Cleanup
+
+```
+Status:       DISCUSSED
+Priority:     P4-LOW
+Effort:       S
+Dependencies: None
+Description:  observability/runtime_metrics.py is a backward compatibility shim
+              that re-exports from metrics.py but has no production callers.
+              Consider removal.
+Evidence:     2026-03-01 audit finding
+```
+
 ---
 
 ## 6. Explicitly Deferred / Out of Scope
@@ -425,4 +430,4 @@ Why deferred: Not needed; existing CLI + third-party UIs cover the use case.
 *This roadmap is maintained as part of the Portal source tree. Update it whenever a
 significant item is completed, started, or added.*
 
-*Last updated: 2026-03-01 — security_module.py cleanup (ROAD-C12) in progress.*
+*Last updated: 2026-03-01 — Version 1.4.0 released, ROAD-C12 complete.*

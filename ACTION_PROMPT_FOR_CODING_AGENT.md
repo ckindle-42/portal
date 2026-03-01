@@ -2,14 +2,14 @@
 
 **Generated:** 2026-03-01
 **Source audit:** PORTAL_AUDIT_REPORT.md (same date)
-**Target version after completion:** 1.4.0 (next release)
+**Target version after completion:** 1.4.1 (next release)
 
 ---
 
 ## Project Context
 
 Portal is a local-first AI platform (Python 3.11 / FastAPI / async).
-Source: `src/portal/` (98 Python files, ~15,800 LOC).
+Source: `src/portal/` (97 Python files, ~15,800 LOC).
 Tests: `tests/` (67 Python files, ~14,000 LOC, 874 currently passing).
 
 **Non-negotiable constraints:**
@@ -33,14 +33,12 @@ python3 -m pytest tests/ -v --tb=short
 
 ## Prior Work Summary
 
-All 19 tasks from the previous action prompt (TASK-01 through TASK-19) have been completed:
-- Type safety fixes: TextTransformer, TraceContext, BaseInterface, Telegram guards, DockerSandbox, ToolRegistry, WordProcessor
-- Config hardening: ContextManager and MemoryManager env reads moved to constructors
-- Documentation fixes: ARCHITECTURE.md, .env.example, CONTRIBUTING.md
-- Testing: TextTransformer failure tests, Telegram None guard tests added
-- security_module.py shim: middleware.py updated to import directly (tests still use shim)
+All Tier 1 tasks from the previous action prompt (TASK-20 through TASK-22) have been completed:
+- TASK-20: Updated 13 test files to import directly from rate_limiter and input_sanitizer
+- TASK-21: Deleted security_module.py after confirming test imports were updated
+- TASK-22: Pruned 10 orphan remote branches
 
-**Current state:** 874 tests passing, 124 mypy errors remaining.
+**Current state:** 874 tests passing, 123 mypy errors remaining.
 
 ---
 
@@ -50,9 +48,9 @@ All 19 tasks from the previous action prompt (TASK-01 through TASK-19) have been
 
 | Category | Count | Notes |
 |----------|-------|-------|
-| Orphan remote branches | 11 | 5 AI agent branches + 6 dependabot branches |
-| Test import cleanup | 13 files | Still import from security_module.py |
-| mypy errors | 124 | In lifecycle.py, telegram interface, agent_core |
+| mypy errors | 123 | In lifecycle.py (~8), telegram interface (~10), slack interface (2) |
+| runtime_metrics.py | 1 file | Backward compat shim, no production callers |
+| Documentation | Minor | CLAUDE.md could reference PORTAL_ROADMAP.md |
 
 ---
 
@@ -60,55 +58,25 @@ All 19 tasks from the previous action prompt (TASK-01 through TASK-19) have been
 
 ### Tier 1 — Remediation (Critical)
 
-#### TASK-20
+#### TASK-23
 ```
 Tier:        1
-File(s):     tests/unit/test_security_middleware.py, tests/unit/test_security.py, tests/unit/test_stream_security.py, tests/unit/test_data_integrity.py, tests/integration/test_websocket.py
-Symbol(s):   RateLimiter, InputSanitizer imports
-Category:    LEGACY_IMPORT
-Finding:     13 test files still import RateLimiter/InputSanitizer from security_module.py shim
-Action:      Update all test imports to import directly from portal.security.rate_limiter and portal.security.input_sanitizer
-Risk:        LOW
-Blast Radius: Tests only - no production impact
-Parity:      Test behavior unchanged
-Acceptance:  grep -r "from portal.security.security_module" tests/ returns nothing
-```
-
-#### TASK-21
-```
-Tier:        1
-File(s):     src/portal/security/security_module.py
-Symbol(s):   security_module.py
+File(s):     src/portal/observability/runtime_metrics.py
+Symbol(s):   runtime_metrics.py
 Category:    DEAD_CODE_CANDIDATE
-Finding:     After TASK-20, security_module.py is unused and can be deleted
-Action:      Delete src/portal/security/security_module.py after test imports are updated
+Finding:     runtime_metrics.py is a backward compatibility shim that re-exports from metrics.py but has no production callers
+Action:      Delete src/portal/observability/runtime_metrics.py after verifying no imports exist
 Risk:        LOW
-Blast Radius: None after test cleanup
-Parity:      All imports updated to direct modules
-Acceptance:  File deleted, tests still pass
-```
-
-#### TASK-22
-```
-Tier:        1
-File(s):     remote branches
-Symbol(s):   origin/claude/*, origin/codex/*, origin/dependabot/*
-Category:    ORPHAN_BRANCH
-Finding:     11 orphan remote branches (5 AI agent + 6 dependabot) not merged to main
-Action:      Delete all orphan remote branches:
-             git push origin --delete fix-code-review-issues-YbiiZ fix-codex-review-issues-in-pr-#17 fix-high-priority-bugs-from-codex-review fix-path-traversal-security-issues perform-comprehensive-code-review-gr3qbw
-             git push origin --delete docker_compose/deploy/web-ui/librechat/mongo-8.2 docker_compose/deploy/web-ui/openwebui/caddy-2.11-alpine github_actions/actions/checkout-6 github_actions/actions/setup-python-6 pip/python-telegram-bot-gte-21.0-and-lt-23.0
-Risk:        LOW
-Blast Radius: Git history only - no production impact
-Parity:      No active branches affected
-Acceptance:  git branch -r shows only origin/main and origin/HEAD
+Blast Radius: None if verified no callers
+Parity:      All production code imports from metrics.py directly
+Acceptance:  grep -r "runtime_metrics" src/portal/ returns nothing (except this file itself)
 ```
 
 ---
 
 ### Tier 2 — Structural (Optional)
 
-#### TASK-23
+#### TASK-24
 ```
 Tier:        2
 File(s):     src/portal/lifecycle.py
@@ -122,7 +90,7 @@ Parity:      Runtime behavior unchanged
 Acceptance:  mypy src/portal/lifecycle.py shows reduced errors
 ```
 
-#### TASK-24
+#### TASK-25
 ```
 Tier:        2
 File(s):     src/portal/interfaces/telegram/interface.py
@@ -136,6 +104,26 @@ Parity:      Telegram bot behavior unchanged
 Acceptance:  mypy src/portal/interfaces/telegram/interface.py shows reduced errors
 ```
 
+#### TASK-26
+```
+Tier:        2
+File(s):     src/portal/interfaces/slack/interface.py, src/portal/interfaces/slack/__init__.py
+Symbol(s):   SlackInterface
+Category:    TYPE_SAFETY
+Finding:     2 errors: send_message signature incompatible with supertype, __init__ assignment
+Action:      Fix send_message return type to match BaseInterface, fix __init__.py assignment
+Risk:        LOW
+Blast Radius: Slack interface only
+Parity:      Slack bot behavior unchanged
+Acceptance:  mypy src/portal/interfaces/slack/interface.py shows 0 errors
+```
+
+---
+
+### Tier 3 — Hardening (Future)
+
+No Tier 3 tasks currently recommended. The codebase is in strong shape.
+
 ---
 
 ## CI Gate (run before any changes)
@@ -148,6 +136,7 @@ python3 -m pytest tests/ -v --tb=short
 
 Expected output:
 - ruff check: 0 violations
+- ruff format: 0 violations
 - pytest: 874+ PASS, 0 FAIL, 0 ERROR
 
 ---
@@ -158,15 +147,14 @@ Expected output:
 python3 -m ruff check src/ tests/
 python3 -m ruff format --check src/ tests/
 python3 -m pytest tests/ -v --tb=short
-git branch -r | grep -v "origin/main\|origin/HEAD" | wc -l  # should be 0
-grep -r "from portal.security.security_module" tests/ | wc -l  # should be 0
+grep -r "runtime_metrics" src/portal/ | grep -v "__pycache__" | wc -l  # should be 0
 ```
 
 Expected output:
 - ruff check: 0 violations
+- ruff format: 0 violations
 - pytest: 874+ PASS, 0 FAIL, 0 ERROR
-- 0 orphan remote branches
-- 0 imports from security_module in tests
+- 0 imports from runtime_metrics in production code
 
 ---
 
@@ -174,7 +162,7 @@ Expected output:
 
 After Tier 1 tasks are complete, bump version:
 
-1. Update `src/portal/__init__.py`: `__version__ = "1.4.0"`
-2. Update `pyproject.toml`: `version = "1.4.0"`
-3. Update `CHANGELOG.md`: Add `[1.4.0]` section with today's date
-4. Commit with: `bump: version to 1.4.0`
+1. Update `src/portal/__init__.py`: `__version__ = "1.4.1"`
+2. Update `pyproject.toml`: `version = "1.4.1"`
+3. Update `CHANGELOG.md`: Add `[1.4.1]` section with today's date
+4. Commit with: `bump: version to 1.4.1`
