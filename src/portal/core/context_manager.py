@@ -49,7 +49,6 @@ class ContextManager:
 
     # Pruning configuration
     _PRUNE_INTERVAL = 100  # prune check every N inserts
-    _MAX_AGE_DAYS = int(os.getenv("PORTAL_CONTEXT_RETENTION_DAYS", "30"))
 
     def __init__(self, db_path: Path | None = None, max_context_messages: int = 50) -> None:
         """
@@ -61,6 +60,7 @@ class ContextManager:
         """
         self.db_path = db_path or Path("data") / "context.db"
         self.max_context_messages = max_context_messages
+        self._max_age_days = int(os.getenv("PORTAL_CONTEXT_RETENTION_DAYS", "30"))
         self._insert_count = 0
 
         # Ensure data directory exists
@@ -163,7 +163,7 @@ class ContextManager:
 
     def _sync_prune_old_messages(self) -> int:
         """Delete messages older than the retention period. Returns count deleted."""
-        cutoff = (datetime.now(tz=UTC) - timedelta(days=self._MAX_AGE_DAYS)).isoformat()
+        cutoff = (datetime.now(tz=UTC) - timedelta(days=self._max_age_days)).isoformat()
         conn = self._pool.get()
         cursor = conn.execute("DELETE FROM conversations WHERE timestamp < ?", (cutoff,))
         conn.commit()
@@ -200,7 +200,7 @@ class ContextManager:
             deleted = await asyncio.to_thread(self._sync_prune_old_messages)
             if deleted:
                 logger.info(
-                    "Pruned %d old context messages (>%d days)", deleted, self._MAX_AGE_DAYS
+                    "Pruned %d old context messages (>%d days)", deleted, self._max_age_days
                 )
 
     async def get_history(

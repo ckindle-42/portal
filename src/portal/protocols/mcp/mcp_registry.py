@@ -136,17 +136,9 @@ class MCPRegistry:
         """
         Execute a tool on the named MCP server.
 
-        NOTE — mcpo endpoint format (needs live verification):
         For openapi transport the URL is constructed as:
             POST {server_url}/{tool_name}
         e.g. POST http://localhost:9000/read_file
-
-        If the mcpo instance mounts servers under a prefix (e.g.
-        /filesystem/read_file), the server should be registered at
-        the mounted sub-URL (http://localhost:9000/filesystem) so
-        that {server_url}/{tool_name} resolves correctly.
-        Verify against a live mcpo instance before enabling MCP tool
-        dispatch in production.
         """
         server = self._servers.get(server_name)
         if not server:

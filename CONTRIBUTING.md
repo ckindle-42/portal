@@ -21,7 +21,7 @@ pytest tests/unit/ -v
 pytest tests/integration/ -v
 
 # All tests with coverage
-pytest --cov=portal --cov-report=term-missing
+pytest --cov=src/portal --cov-report=term-missing
 ```
 
 ## Code Quality

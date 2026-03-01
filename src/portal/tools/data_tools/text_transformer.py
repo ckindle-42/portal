@@ -55,7 +55,7 @@ class TextTransformerTool(BaseTool):
 
             # Convert to output
             output = self._serialize(data, to_fmt)
-            if output is None:
+            if output is None or output == "":
                 return self._error_response(f"Failed to serialize to {to_fmt}")
 
             return self._success_response({"converted": output, "from": from_fmt, "to": to_fmt})
@@ -101,6 +101,6 @@ class TextTransformerTool(BaseTool):
                 import toml
 
                 return toml.dumps(data)
-            return None
+            return ""  # Unknown format
         except (ValueError, UnicodeDecodeError, KeyError):
-            return None
+            return ""  # Serialization failed

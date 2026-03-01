@@ -133,12 +133,8 @@ class ToolRegistry:
         """Discover and load external plugin tools via Python entry_points."""
         loaded = failed = 0
         try:
-            eps = importlib_metadata.entry_points()
-            plugin_eps = (
-                eps.select(group="portal.tools")
-                if hasattr(eps, "select")
-                else eps.get("portal.tools", [])
-            )
+            # Use modern API (Python 3.10+)
+            plugin_eps = importlib_metadata.entry_points(group="portal.tools")
             if not plugin_eps:
                 return 0, 0
             from portal.core.interfaces.tool import BaseTool

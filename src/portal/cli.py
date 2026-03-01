@@ -60,13 +60,6 @@ def up(minimal: bool, skip_port_check: bool, profile: str | None) -> None:
             (8080, "web-ui"),
             (11434, "ollama"),
         ]
-        if not minimal:
-            required_ports.extend(
-                [
-                    (6379, "redis"),
-                    (6333, "qdrant"),
-                ]
-            )
         errors = _check_ports_available(required_ports)
         if errors:
             click.echo("Port conflict detected:\n" + "\n".join(errors), err=True)

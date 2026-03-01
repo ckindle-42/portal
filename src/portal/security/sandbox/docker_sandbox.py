@@ -111,8 +111,16 @@ class DockerPythonSandbox:
         # Check/build sandbox image
         self._ensure_image()
 
+    def _require_client(self) -> None:
+        """Ensure Docker client is initialized, raise RuntimeError if not."""
+        if self.docker_client is None:
+            raise RuntimeError(
+                "Docker client not initialized. Call setup() before using the sandbox."
+            )
+
     def _ensure_image(self) -> None:
         """Ensure sandbox Docker image exists"""
+        self._require_client()
 
         try:
             # Check if image exists
@@ -218,6 +226,7 @@ CMD ["python3"]
         """Execute Python code in an isolated Docker sandbox."""
         import time
 
+        self._require_client()
         start_time = time.time()
         timeout = timeout or self.config.timeout_seconds
         container_id = str(uuid.uuid4())[:8]
@@ -262,8 +271,8 @@ CMD ["python3"]
 
     def cleanup(self) -> None:
         """Cleanup resources"""
-        if self.docker_client:
-            self.docker_client.close()
+        self._require_client()
+        self.docker_client.close()
 
 
 # ============================================================================

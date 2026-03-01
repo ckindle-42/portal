@@ -214,3 +214,42 @@ class TestTextTransformerTool:
 
         assert result["success"] is False
         assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_unsupported_output_format(self):
+        """Test that unsupported output format returns error, not None content"""
+        tool = TextTransformerTool()
+
+        result = await tool.execute(
+            {
+                "content": '{"key": "value"}',
+                "from_format": "json",
+                "to_format": "unsupported_format",
+            }
+        )
+
+        # Should return error response, not None
+        assert result["success"] is False
+        assert "error" in result
+        # The error message should not be None/empty
+        assert result.get("error") is not None
+
+    @pytest.mark.asyncio
+    async def test_malformed_input_json_to_yaml(self):
+        """Test malformed JSON input returns error with non-None content"""
+        tool = TextTransformerTool()
+
+        # Malformed JSON that can't be parsed
+        result = await tool.execute(
+            {
+                "content": "key: value\n  malformed: yaml",  # Valid YAML but malformed for json parsing
+                "from_format": "json",
+                "to_format": "yaml",
+            }
+        )
+
+        # Should return error response
+        assert result["success"] is False
+        assert "error" in result
+        # Error content should not be None
+        assert result.get("error") is not None

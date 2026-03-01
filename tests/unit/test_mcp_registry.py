@@ -313,3 +313,55 @@ class TestPickleGating:
         result = self._make_instance()._deserialize_embedding(json_blob)
         assert result is not None
         np.testing.assert_allclose(result, arr)
+
+
+class TestMCPRegistryCallToolURLFormat:
+    """Tests for call_tool() URL format verification."""
+
+    @pytest.mark.asyncio
+    async def test_call_tool_openapi_url_format(self):
+        """call_tool uses correct URL format for openapi transport: POST {url}/{tool_name}"""
+        registry = MCPRegistry()
+        await registry.register("test-svc", "http://localhost:9000", transport="openapi")
+
+        captured_urls = []
+
+        async def capture_request(method, url, **kwargs):
+            captured_urls.append(url)
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = {"result": "ok"}
+            return mock_resp
+
+        with patch.object(registry._client, "request", side_effect=capture_request):
+            await registry.call_tool("test-svc", "read_file", {"path": "/tmp/test"})
+
+        # Verify URL format: should be POST http://localhost:9000/read_file
+        assert len(captured_urls) == 1
+        assert captured_urls[0] == "http://localhost:9000/read_file"
+        await registry.close()
+
+    @pytest.mark.asyncio
+    async def test_call_tool_streamable_http_url_format(self):
+        """call_tool uses /call endpoint for streamable-http transport."""
+        registry = MCPRegistry()
+        await registry.register("stream-svc", "http://localhost:9001", transport="streamable-http")
+
+        captured_urls = []
+
+        async def capture_request(method, url, **kwargs):
+            captured_urls.append(url)
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = {"result": "ok"}
+            return mock_resp
+
+        with patch.object(registry._client, "request", side_effect=capture_request):
+            await registry.call_tool("stream-svc", "ping", {})
+
+        # Verify URL format: should be POST http://localhost:9001/call
+        assert len(captured_urls) == 1
+        assert captured_urls[0] == "http://localhost:9001/call"
+        await registry.close()

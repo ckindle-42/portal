@@ -1,7 +1,7 @@
 # Portal Architecture
 
-**Version:** 1.3.8
-**Last updated:** February 2026
+**Version:** 1.3.9
+**Last updated:** March 2026
 
 ---
 
@@ -36,7 +36,7 @@ AgentCore and model backend.
        ▼
 ┌──────────────────────┐   ┌──────────────────────────┐
 │   IntelligentRouter  │   │     ExecutionEngine       │
-│   ModelRegistry      │   │  Ollama / LMStudio / MLX  │
+│   ModelRegistry      │   │  Ollama (MLX: planned)  │
 │   RoutingStrategy    │   │  circuit-breaker pattern   │
 └──────────────────────┘   └──────────────────────────┘
        │
@@ -121,8 +121,8 @@ http://localhost:8081/v1
 | `ModelRegistry` | Catalogue of local models with capability tags and speed classes; `discover_from_ollama()` for dynamic discovery |
 | `IntelligentRouter` | Classifies query complexity and selects optimal model |
 | `RoutingStrategy` | `AUTO` / `QUALITY` / `SPEED` / `BALANCED` |
-| `ExecutionEngine` | Calls Ollama / MLX; circuit-breaker per backend (LMStudio planned - see ROADMAP.md) |
-| `BaseHTTPBackend` | Shared aiohttp session management; base class for `OllamaBackend` (MLX and LMStudio planned) |
+| `ExecutionEngine` | Calls Ollama backend; circuit-breaker pattern (MLX: planned - see ROADMAP.md) |
+| `BaseHTTPBackend` | Shared httpx session management; base class for `OllamaBackend` |
 
 Routing strategies:
 - **AUTO** — automatic complexity-based selection (default)
@@ -154,11 +154,11 @@ pulling a new model into Ollama makes it immediately available to the router.
 
 #### BaseHTTPBackend
 
-`OllamaBackend` and `LMStudioBackend` both inherit from `BaseHTTPBackend`
-(`src/portal/routing/model_backends.py`), which manages a shared `aiohttp`
-`ClientSession` with connection pooling, configurable timeouts, and
+`OllamaBackend` inherits from `BaseHTTPBackend`
+(`src/portal/routing/model_backends.py`), which manages a shared `httpx`
+`AsyncClient` with connection pooling, configurable timeouts, and
 circuit-breaker state.  `MLXBackend` is a separate in-process backend for
-Apple Silicon.
+Apple Silicon (planned).
 
 ---
 
@@ -440,7 +440,7 @@ with per-callback timeouts and active-task draining.
 ```
 portal/
 ├── src/portal/
-│   ├── __init__.py             version = "1.3.8"
+│   ├── __init__.py             version = "1.3.9"
 │   ├── cli.py
 │   ├── lifecycle.py
 │   ├── agent/
@@ -468,7 +468,7 @@ portal/
 │   ├── routing/
 │   │   ├── model_registry.py   ModelRegistry + discover_from_ollama()
 │   │   ├── intelligent_router.py
-│   │   ├── model_backends.py   BaseHTTPBackend, OllamaBackend (MLX/LMStudio planned)
+│   │   ├── model_backends.py   BaseHTTPBackend, OllamaBackend (MLX: planned)
 │   │   └── execution_engine.py
 │   ├── protocols/mcp/
 │   │   └── mcp_registry.py     MCPRegistry with retry transport
