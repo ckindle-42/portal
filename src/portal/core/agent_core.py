@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from portal.memory import MemoryManager
 from portal.middleware.hitl_approval import HITLApprovalMiddleware
-from portal.observability.runtime_metrics import MCP_TOOL_USAGE
+from portal.observability.metrics import MCP_TOOL_USAGE
 
 # Import existing routing system
 from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry
