@@ -146,9 +146,7 @@ class Runtime:
         )
         return agent_core, secure_agent
 
-    async def _discover_ollama_models(
-        self, agent_core: AgentCore, settings: Settings
-    ) -> None:
+    async def _discover_ollama_models(self, agent_core: AgentCore, settings: Settings) -> None:
         """Auto-discover live Ollama models and register them."""
         try:
             ollama_url = getattr(

@@ -83,13 +83,49 @@ class EnhancedKnowledgeTool(BaseTool):
         "version": "2.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Action: add, search, list, delete, stats, migrate", "required": True},
-            {"name": "query", "param_type": "string", "description": "Search query (for search action)", "required": False},
-            {"name": "path", "param_type": "string", "description": "File path (for add action)", "required": False},
-            {"name": "content", "param_type": "string", "description": "Text content (for add action)", "required": False},
-            {"name": "doc_id", "param_type": "int", "description": "Document ID (for delete action)", "required": False},
-            {"name": "limit", "param_type": "int", "description": "Number of results (for search/list)", "required": False, "default": 5},
-            {"name": "metadata", "param_type": "object", "description": "Document metadata (tags, author, etc.)", "required": False},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Action: add, search, list, delete, stats, migrate",
+                "required": True,
+            },
+            {
+                "name": "query",
+                "param_type": "string",
+                "description": "Search query (for search action)",
+                "required": False,
+            },
+            {
+                "name": "path",
+                "param_type": "string",
+                "description": "File path (for add action)",
+                "required": False,
+            },
+            {
+                "name": "content",
+                "param_type": "string",
+                "description": "Text content (for add action)",
+                "required": False,
+            },
+            {
+                "name": "doc_id",
+                "param_type": "int",
+                "description": "Document ID (for delete action)",
+                "required": False,
+            },
+            {
+                "name": "limit",
+                "param_type": "int",
+                "description": "Number of results (for search/list)",
+                "required": False,
+                "default": 5,
+            },
+            {
+                "name": "metadata",
+                "param_type": "object",
+                "description": "Document metadata (tags, author, etc.)",
+                "required": False,
+            },
         ],
     }
 

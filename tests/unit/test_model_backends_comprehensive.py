@@ -203,11 +203,12 @@ class TestOllamaStream:
         assert tokens == ["ok"]
 
     @pytest.mark.asyncio
-    async def test_exception_yields_nothing(self):
+    async def test_exception_propagates(self):
+        """Unhandled exceptions from _get_session now propagate out of generate_stream."""
         backend = OllamaBackend()
-        with patch.object(backend, "_get_session", side_effect=ConnectionError):
-            tokens = [t async for t in backend.generate_stream("hi", "test-model")]
-        assert tokens == []
+        with pytest.raises(ConnectionError):
+            with patch.object(backend, "_get_session", side_effect=ConnectionError):
+                _ = [t async for t in backend.generate_stream("hi", "test-model")]
 
 
 class TestOllamaAvailability:

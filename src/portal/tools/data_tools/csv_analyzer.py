@@ -16,8 +16,19 @@ class CSVAnalyzerTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "file_path", "param_type": "string", "description": "Path to CSV file", "required": True},
-            {"name": "analysis_type", "param_type": "string", "description": "Type: summary, statistics, head, describe", "required": False, "default": "summary"},
+            {
+                "name": "file_path",
+                "param_type": "string",
+                "description": "Path to CSV file",
+                "required": True,
+            },
+            {
+                "name": "analysis_type",
+                "param_type": "string",
+                "description": "Type: summary, statistics, head, describe",
+                "required": False,
+                "default": "summary",
+            },
         ],
         "examples": ["Analyze data.csv and show statistics"],
     }

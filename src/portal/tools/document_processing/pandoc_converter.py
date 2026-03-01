@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 try:
     result = subprocess.run(["pandoc", "--version"], capture_output=True, text=True, timeout=2)
     PANDOC_AVAILABLE = result.returncode == 0
-except Exception:
+except (FileNotFoundError, subprocess.SubprocessError, OSError):
     PANDOC_AVAILABLE = False
 
 
@@ -80,15 +80,63 @@ class PandocConverterTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "input_file", "param_type": "string", "description": "Path to input document", "required": True},
-            {"name": "output_file", "param_type": "string", "description": "Path to output document (extension determines format)", "required": True},
-            {"name": "from_format", "param_type": "string", "description": "Input format (auto-detected if not specified)", "required": False},
-            {"name": "to_format", "param_type": "string", "description": "Output format (auto-detected from extension if not specified)", "required": False},
-            {"name": "template", "param_type": "string", "description": "Template name for branded output (optional)", "required": False},
-            {"name": "metadata", "param_type": "object", "description": "Document metadata (title, author, date, etc.)", "required": False},
-            {"name": "toc", "param_type": "bool", "description": "Include table of contents (default: False)", "required": False, "default": False},
-            {"name": "standalone", "param_type": "bool", "description": "Produce standalone document with headers (default: True)", "required": False, "default": True},
-            {"name": "pdf_engine", "param_type": "string", "description": "PDF engine: pdflatex, xelatex, lualatex, wkhtmltopdf (default: pdflatex)", "required": False, "default": "pdflatex"},
+            {
+                "name": "input_file",
+                "param_type": "string",
+                "description": "Path to input document",
+                "required": True,
+            },
+            {
+                "name": "output_file",
+                "param_type": "string",
+                "description": "Path to output document (extension determines format)",
+                "required": True,
+            },
+            {
+                "name": "from_format",
+                "param_type": "string",
+                "description": "Input format (auto-detected if not specified)",
+                "required": False,
+            },
+            {
+                "name": "to_format",
+                "param_type": "string",
+                "description": "Output format (auto-detected from extension if not specified)",
+                "required": False,
+            },
+            {
+                "name": "template",
+                "param_type": "string",
+                "description": "Template name for branded output (optional)",
+                "required": False,
+            },
+            {
+                "name": "metadata",
+                "param_type": "object",
+                "description": "Document metadata (title, author, date, etc.)",
+                "required": False,
+            },
+            {
+                "name": "toc",
+                "param_type": "bool",
+                "description": "Include table of contents (default: False)",
+                "required": False,
+                "default": False,
+            },
+            {
+                "name": "standalone",
+                "param_type": "bool",
+                "description": "Produce standalone document with headers (default: True)",
+                "required": False,
+                "default": True,
+            },
+            {
+                "name": "pdf_engine",
+                "param_type": "string",
+                "description": "PDF engine: pdflatex, xelatex, lualatex, wkhtmltopdf (default: pdflatex)",
+                "required": False,
+                "default": "pdflatex",
+            },
         ],
     }
 

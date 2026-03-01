@@ -112,9 +112,7 @@ class TestDockerStopTool:
             mock_docker_mod.from_env.return_value = mock_client
             mock_docker_mod.errors.NotFound = type("NotFound", (Exception,), {})
             tool.client = mock_client
-            result = await tool.execute(
-                {"action": "stop", "containers": ["test-container"]}
-            )
+            result = await tool.execute({"action": "stop", "containers": ["test-container"]})
 
         assert result["success"] is True
 

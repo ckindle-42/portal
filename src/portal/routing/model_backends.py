@@ -108,9 +108,7 @@ class BaseHTTPBackend(ModelBackend):
                 return response.status, await response.json()
             return response.status, await response.text()
 
-    async def _stream_content(
-        self, endpoint: str, payload: dict
-    ) -> AsyncGenerator[bytes, None]:
+    async def _stream_content(self, endpoint: str, payload: dict) -> AsyncGenerator[bytes, None]:
         """POST JSON payload and yield raw content bytes line-by-line."""
         session = await self._get_session()
         async with session.post(f"{self.base_url}{endpoint}", json=payload) as response:
@@ -231,9 +229,9 @@ class OllamaBackend(BaseHTTPBackend):
                         yield content
                 except json.JSONDecodeError:
                     continue
-        except Exception as e:
-            logger.error("Ollama stream error: %s", e)
-            return
+        except (aiohttp.ClientError, json.JSONDecodeError, TimeoutError) as e:
+            logger.error("Stream error from Ollama: %s", e, exc_info=True)
+            raise
 
     async def is_available(self) -> bool:
         """Check if Ollama is available"""

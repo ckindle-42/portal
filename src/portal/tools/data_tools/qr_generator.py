@@ -17,8 +17,19 @@ class QRGeneratorTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "content", "param_type": "string", "description": "Text or URL to encode", "required": True},
-            {"name": "size", "param_type": "int", "description": "QR code size (1-10)", "required": False, "default": 5},
+            {
+                "name": "content",
+                "param_type": "string",
+                "description": "Text or URL to encode",
+                "required": True,
+            },
+            {
+                "name": "size",
+                "param_type": "int",
+                "description": "QR code size (1-10)",
+                "required": False,
+                "default": 5,
+            },
         ],
         "examples": ["Generate QR for https://example.com"],
     }

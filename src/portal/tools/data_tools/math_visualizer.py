@@ -67,9 +67,26 @@ class MathVisualizerTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "expression", "param_type": "string", "description": "Math expression (use x as variable, e.g., 'x**2 + 2*x')", "required": True},
-            {"name": "x_range", "param_type": "list", "description": "X-axis range [min, max]", "required": False, "default": [-10, 10]},
-            {"name": "title", "param_type": "string", "description": "Plot title", "required": False, "default": "Function Plot"},
+            {
+                "name": "expression",
+                "param_type": "string",
+                "description": "Math expression (use x as variable, e.g., 'x**2 + 2*x')",
+                "required": True,
+            },
+            {
+                "name": "x_range",
+                "param_type": "list",
+                "description": "X-axis range [min, max]",
+                "required": False,
+                "default": [-10, 10],
+            },
+            {
+                "name": "title",
+                "param_type": "string",
+                "description": "Plot title",
+                "required": False,
+                "default": "Function Plot",
+            },
         ],
         "examples": ["Plot x**2 from -5 to 5"],
     }

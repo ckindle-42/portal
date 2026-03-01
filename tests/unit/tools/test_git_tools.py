@@ -195,7 +195,12 @@ class TestGitPushTool:
 
         with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute(
-                {"action": "push", "remote": "origin", "branch": "main", "repo_path": str(mock_git_repo)}
+                {
+                    "action": "push",
+                    "remote": "origin",
+                    "branch": "main",
+                    "repo_path": str(mock_git_repo),
+                }
             )
 
         assert result["success"] is True
@@ -212,7 +217,12 @@ class TestGitPullTool:
 
         with patch("portal.tools.git_tools._base.Repo", return_value=mock_repo):
             result = await tool.execute(
-                {"action": "pull", "remote": "origin", "branch": "main", "repo_path": str(mock_git_repo)}
+                {
+                    "action": "pull",
+                    "remote": "origin",
+                    "branch": "main",
+                    "repo_path": str(mock_git_repo),
+                }
             )
 
         assert result["success"] is True

@@ -17,9 +17,24 @@ class PythonEnvManagerTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": True,
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Action: create, list, install, info, freeze", "required": True},
-            {"name": "env_path", "param_type": "string", "description": "Path to virtual environment", "required": False},
-            {"name": "packages", "param_type": "list", "description": "List of packages to install", "required": False},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Action: create, list, install, info, freeze",
+                "required": True,
+            },
+            {
+                "name": "env_path",
+                "param_type": "string",
+                "description": "Path to virtual environment",
+                "required": False,
+            },
+            {
+                "name": "packages",
+                "param_type": "list",
+                "description": "List of packages to install",
+                "required": False,
+            },
         ],
         "examples": ["Create venv at ./myenv"],
     }

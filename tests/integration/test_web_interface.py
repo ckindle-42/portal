@@ -488,3 +488,68 @@ async def test_audio_transcription_whisper_error():
 
     # Should return 500 or handle error gracefully
     assert resp.status_code in (500, 502, 503)
+
+
+# ---------------------------------------------------------------------------
+# TASK-9: /v1/models fallback when Ollama is unreachable
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_models_fallback_when_ollama_unreachable(monkeypatch):
+    """/v1/models returns 200 with non-empty data list when Ollama is unreachable."""
+    import httpx
+    from fastapi.testclient import TestClient
+
+    iface = _make_interface()
+
+    # Patch the shared client's get() to simulate Ollama being unreachable
+    async def mock_get(*args, **kwargs):
+        raise httpx.ConnectError("Connection refused")
+
+    iface._ollama_client = MagicMock()
+    iface._ollama_client.get = mock_get
+
+    with TestClient(iface.app) as client:
+        resp = client.get("/v1/models")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["object"] == "list"
+    assert isinstance(body["data"], list)
+    assert len(body["data"]) > 0
+
+
+# ---------------------------------------------------------------------------
+# TASK-10: /v1/chat/completions non-streaming usage field
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_chat_completions_non_streaming_usage_field():
+    """/v1/chat/completions stream=False response includes valid usage field."""
+    import os
+
+    from fastapi.testclient import TestClient
+
+    os.environ.pop("WEB_API_KEY", None)
+
+    iface = _make_interface()
+    with TestClient(iface.app) as client:
+        payload = {
+            "model": "auto",
+            "messages": [{"role": "user", "content": "hello"}],
+            "stream": False,
+        }
+        resp = client.post("/v1/chat/completions", json=payload)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "usage" in body
+    usage = body["usage"]
+    assert "prompt_tokens" in usage
+    assert "completion_tokens" in usage
+    assert "total_tokens" in usage
+    assert isinstance(usage["prompt_tokens"], int) and usage["prompt_tokens"] >= 0
+    assert isinstance(usage["completion_tokens"], int) and usage["completion_tokens"] >= 0
+    assert isinstance(usage["total_tokens"], int) and usage["total_tokens"] >= 0

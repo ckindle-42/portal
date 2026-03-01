@@ -46,11 +46,37 @@ class LocalKnowledgeTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Action: search, add, list, clear", "required": True},
-            {"name": "query", "param_type": "string", "description": "Search query (for search action)", "required": False},
-            {"name": "document_path", "param_type": "string", "description": "Path to document to add", "required": False},
-            {"name": "content", "param_type": "string", "description": "Text content to add directly", "required": False},
-            {"name": "top_k", "param_type": "int", "description": "Number of results to return", "required": False, "default": 5},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Action: search, add, list, clear",
+                "required": True,
+            },
+            {
+                "name": "query",
+                "param_type": "string",
+                "description": "Search query (for search action)",
+                "required": False,
+            },
+            {
+                "name": "document_path",
+                "param_type": "string",
+                "description": "Path to document to add",
+                "required": False,
+            },
+            {
+                "name": "content",
+                "param_type": "string",
+                "description": "Text content to add directly",
+                "required": False,
+            },
+            {
+                "name": "top_k",
+                "param_type": "int",
+                "description": "Number of results to return",
+                "required": False,
+                "default": 5,
+            },
         ],
         "examples": ["Search for deployment instructions"],
     }

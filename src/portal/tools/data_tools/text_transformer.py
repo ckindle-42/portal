@@ -16,9 +16,24 @@ class TextTransformerTool(BaseTool):
         "version": "1.0.0",
         "requires_confirmation": False,
         "parameters": [
-            {"name": "content", "param_type": "string", "description": "Input text to transform", "required": True},
-            {"name": "from_format", "param_type": "string", "description": "Source format (json, yaml, xml, toml)", "required": True},
-            {"name": "to_format", "param_type": "string", "description": "Target format (json, yaml, xml, toml)", "required": True},
+            {
+                "name": "content",
+                "param_type": "string",
+                "description": "Input text to transform",
+                "required": True,
+            },
+            {
+                "name": "from_format",
+                "param_type": "string",
+                "description": "Source format (json, yaml, xml, toml)",
+                "required": True,
+            },
+            {
+                "name": "to_format",
+                "param_type": "string",
+                "description": "Target format (json, yaml, xml, toml)",
+                "required": True,
+            },
         ],
         "examples": ["Convert JSON to YAML: {...}"],
     }

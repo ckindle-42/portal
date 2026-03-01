@@ -145,14 +145,10 @@ class TelegramInterface:
             return
 
         logger.info("Initializing Tool Confirmation Middleware...")
-        self.admin_chat_id = (
-            list(self.authorized_user_ids)[0] if self.authorized_user_ids else None
-        )
+        self.admin_chat_id = list(self.authorized_user_ids)[0] if self.authorized_user_ids else None
 
         if not self.admin_chat_id:
-            logger.warning(
-                "Cannot enable confirmation middleware: no authorized users configured"
-            )
+            logger.warning("Cannot enable confirmation middleware: no authorized users configured")
             return
 
         self.confirmation_middleware = ToolConfirmationMiddleware(

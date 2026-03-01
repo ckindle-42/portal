@@ -97,9 +97,7 @@ class MemoryManager:
 
     def _store_sqlite(self, user_id: str, content: str) -> None:
         conn = self._pool.get()
-        conn.execute(
-            "INSERT INTO memories (user_id, content) VALUES (?, ?)", (user_id, content)
-        )
+        conn.execute("INSERT INTO memories (user_id, content) VALUES (?, ?)", (user_id, content))
         conn.commit()
 
     def _prune_old_memories(self) -> int:

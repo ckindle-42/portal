@@ -162,9 +162,7 @@ class WebInterface(BaseInterface):
             raise HTTPException(status_code=401, detail=str(exc)) from exc
         return {"user_id": ctx.user_id, "role": ctx.role}
 
-    async def _validate_request(
-        self, user_id: str, message: str
-    ) -> tuple[str, list[str]]:
+    async def _validate_request(self, user_id: str, message: str) -> tuple[str, list[str]]:
         """
         Shared security validation for all request paths (HTTP streaming, WebSocket).
 
@@ -209,7 +207,7 @@ class WebInterface(BaseInterface):
                     if hasattr(self.agent_core, "health_check"):
                         await self.agent_core.health_check()
                 except Exception:
-                    pass
+                    logger.warning("Agent warmup health check failed", exc_info=True)
                 finally:
                     _agent_ready.set()
 
@@ -546,7 +544,10 @@ class WebInterface(BaseInterface):
                 )
                 if len(sanitized_text) > max_len:
                     await websocket.send_json(
-                        {"error": f"Message exceeds maximum length of {max_len} characters", "done": True}
+                        {
+                            "error": f"Message exceeds maximum length of {max_len} characters",
+                            "done": True,
+                        }
                     )
                     continue
 

@@ -26,8 +26,18 @@ class ClipboardManagerTool(BaseTool):
         "category": ToolCategory.UTILITY,
         "requires_confirmation": True,
         "parameters": [
-            {"name": "action", "param_type": "string", "description": "Clipboard action: read, write, clear", "required": True},
-            {"name": "content", "param_type": "string", "description": "Content to write (for write action)", "required": False},
+            {
+                "name": "action",
+                "param_type": "string",
+                "description": "Clipboard action: read, write, clear",
+                "required": True,
+            },
+            {
+                "name": "content",
+                "param_type": "string",
+                "description": "Content to write (for write action)",
+                "required": False,
+            },
         ],
     }
 
