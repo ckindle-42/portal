@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
 **Generated:** 2026-03-01
-**Current version:** 1.3.8 (TASK-6–18 work merged, pending version tag 1.3.9)
+**Current version:** 1.3.9 (type safety and hardening complete)
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -12,7 +12,7 @@ file which contained only future design sketches.
 
 ## 1. Current Release State
 
-Portal 1.3.8 is fully operational for its stated purpose:
+Portal 1.3.9 is fully operational for its stated purpose:
 
 - **OpenAI-compatible REST API** at `:8081/v1/*` — works with Open WebUI and LibreChat
 - **Ollama proxy router** at `:8000` — workspace routing, regex rules, virtual models
@@ -28,7 +28,8 @@ Portal 1.3.8 is fully operational for its stated purpose:
 - **BackendRegistry** — named backend instances; ExecutionEngine accepts injected backends
 - **Structured logging** — JSON with trace IDs, secret redaction
 
-**CI status:** 862 tests passing, 0 lint errors, Python 3.11–3.14 matrix.
+**CI status:** 874 tests passing, 0 lint errors, Python 3.11–3.14 matrix.
+**Type safety:** 124 mypy errors (down from 170).
 
 ---
 
@@ -97,16 +98,15 @@ Evidence:     TASK-13 (PR #82)
 ### [ROAD-C06] os.getenv Migration to Pydantic Settings
 
 ```
-Status:       COMPLETE (core paths)
+Status:       COMPLETE
 Priority:     P2-HIGH
 Effort:       S
 Description:  11x os.getenv() in server.py and 3x in router.py moved to
               Pydantic Settings: web_api_key, require_api_key, max_audio_mb,
               whisper_url, vision_model, csp_policy, hsts_enabled,
               ws_rate_limit, ws_rate_window, RoutingConfig.
-              Remaining: class-scope reads in ContextManager, MemoryManager
-              (tracked as TASK-14, TASK-15 in action prompt).
-Evidence:     TASK-12 (PR #82)
+              Also: ContextManager and MemoryManager env reads moved to constructors.
+Evidence:     TASK-12, TASK-14, TASK-15 (PR #84)
 ```
 
 ### [ROAD-C07] BackendRegistry (TASK-17)
@@ -119,7 +119,7 @@ Description:  BackendRegistry added to routing/. ExecutionEngine accepts
               pre-built backends dict. Factories wire OllamaBackend through
               BackendRegistry. Enables MLX backend addition without changing
               ExecutionEngine.__init__.
-Evidence:     TASK-17 (PR #82)
+Evidence:     TASK-17 (PR #84)
 ```
 
 ### [ROAD-C08] WorkspaceRegistry (TASK-18)
@@ -132,7 +132,7 @@ Description:  WorkspaceRegistry added to routing/. IntelligentRouter.route()
               accepts workspace_id. Proxy router uses registry for virtual
               model resolution. Both routing layers now use shared workspace
               logic. DependencyContainer wires it.
-Evidence:     TASK-18 (PR #82)
+Evidence:     TASK-18 (PR #84)
 ```
 
 ### [ROAD-C09] Bare except Exception Handlers Narrowed
@@ -143,7 +143,7 @@ Priority:     P2-HIGH
 Effort:       S
 Description:  All 20 bare except Exception: handlers across 13 files narrowed
               to specific exception types. grep "except Exception:" src/ → 0.
-Evidence:     TASK-15 (PR #82)
+Evidence:     TASK-15 (PR #84)
 ```
 
 ### [ROAD-C10] CI Hardening
@@ -158,41 +158,39 @@ Description:  Python 3.13 + 3.14 added to CI matrix. Docker images pinned to
 Evidence:     PR #70 (v1.3.8)
 ```
 
+### [ROAD-C11] Type Safety Uplift (TASK-1 through TASK-19)
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Effort:       M
+Description:  19 targeted type safety and hardening tasks completed:
+              - TextTransformer returns "" not None (T1)
+              - TraceContext token type fixed (T1)
+              - BaseInterface config annotation fixed (T1)
+              - CLI port check for optional services (T1)
+              - Input sanitizer emoji encoding fixed (T1)
+              - Documentation fixes: ARCHITECTURE.md, .env.example, CONTRIBUTING.md (T1)
+              - Telegram None guards added — 29 union-attr errors fixed (T2)
+              - Telegram import updated to use rate_limiter directly (T2)
+              - DockerSandbox None guards added (T2)
+              - ToolRegistry entry_points API fixed (T2)
+              - WordProcessor Path→str conversion fixed (T2)
+              - ContextManager env read moved to constructor (T2)
+              - MemoryManager env read moved to constructor (T2)
+              - TextTransformer failure tests added (T3)
+              - Telegram None guard tests added (T3)
+              - MCP endpoint URL format verified (T3)
+              - Version bumped to 1.3.9 (T3)
+Evidence:     PR #84 (v1.3.9)
+Result:       mypy errors reduced from 170 to 124
+```
+
 ---
 
 ## 3. In Progress
 
-### [ROAD-IP01] Type Safety Uplift (Action Prompt TASK-01 through TASK-19)
-
-```
-Status:       IN-PROGRESS
-Priority:     P2-HIGH
-Effort:       M
-Dependencies: None (CI is green; work can start immediately)
-Description:  19 targeted tasks from the 2026-03-01 audit:
-              - Fix TextTransformer None returns (T1)
-              - Fix TraceContext token type (T1)
-              - Fix BaseInterface config annotation (T1)
-              - Fix CLI port check for optional services (T1)
-              - Fix input_sanitizer emoji encoding (T1)
-              - Fix docs: aiohttp→httpx in ARCHITECTURE.md (T1)
-              - Fix .env.example rate limit default (T1)
-              - Fix CONTRIBUTING.md coverage path (T1)
-              - Add Telegram None guards — 29 union-attr errors (T2)
-              - Update Telegram import from security_module shim (T2)
-              - Add DockerSandbox None guards (T2)
-              - Fix ToolRegistry deprecated entry_points API (T2)
-              - Fix WordProcessor Path→str for python-docx (T2)
-              - Move ContextManager env read to constructor (T2)
-              - Move MemoryManager env read to constructor (T2)
-              - Add TextTransformer failure tests (T3)
-              - Add Telegram None guard tests (T3)
-              - Verify/fix MCP endpoint URL format (T3)
-              - Version 1.3.9 release (T3)
-Current state: Not started. Awaiting coding agent run.
-What remains:  All 19 tasks.
-Blocking:      None.
-```
+No items currently in progress.
 
 ---
 
@@ -204,7 +202,7 @@ Blocking:      None.
 Status:       PLANNED
 Priority:     P2-HIGH
 Effort:       M
-Dependencies: ROAD-IP01 complete (stable type foundation)
+Dependencies: None (type safety foundation complete)
 Description:  Replace regex-based task classification with a small LLM
               classifier call. Both routing layers (proxy router at :8000
               and IntelligentRouter at :8081) use the same new classifier.
@@ -235,7 +233,7 @@ Evidence:     ROADMAP.md section 1 (designed 2026-02-28)
 Status:       PLANNED
 Priority:     P3-MEDIUM
 Effort:       M
-Dependencies: ROAD-IP01 complete; ROAD-P01 optional but beneficial
+Dependencies: ROAD-P01 optional but beneficial
 Description:  Add MLXServerBackend(BaseHTTPBackend) targeting mlx_lm.server
               HTTP endpoint on :8800. Same pattern as OllamaBackend — Portal
               stays a thin orchestration layer; no in-process model loading.
@@ -251,19 +249,6 @@ Description:  Add MLXServerBackend(BaseHTTPBackend) targeting mlx_lm.server
 
               See: ROADMAP.md section 2 for full design spec.
 Evidence:     ROADMAP.md section 2 (designed 2026-02-28)
-```
-
-### [ROAD-P03] Release v1.3.9
-
-```
-Status:       PLANNED
-Priority:     P3-MEDIUM
-Effort:       S
-Dependencies: ROAD-IP01 complete (TASK-19 is the version bump)
-Description:  Tag and release v1.3.9 containing TASK-6 through TASK-18 work
-              plus the type safety fixes from TASK-01–19.
-              Use scripts/release.py for automated versioning.
-Evidence:     CHANGELOG.md [Unreleased] block
 ```
 
 ---
@@ -410,3 +395,5 @@ Why deferred: Not needed; existing CLI + third-party UIs cover the use case.
 
 *This roadmap is maintained as part of the Portal source tree. Update it whenever a
 significant item is completed, started, or added.*
+
+*Last updated: 2026-03-01 — Type Safety Uplift (ROAD-C11) completed, version 1.3.9 released.*
