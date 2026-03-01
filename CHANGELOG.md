@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.1] - 2026-03-01 — Type Safety Fixes (TASK-24 through TASK-26)
+
+### Fixed
+- **TASK-24**: Fixed lifecycle.py mypy errors - StructuredLogger now accepts `*args` for %-style formatting, added RuntimeContext None guards
+- **TASK-25**: Fixed telegram interface mypy errors - added None guards for User, Message, confirmation_middleware, added type annotation for by_category
+- **TASK-26**: Fixed slack interface mypy errors - send_message return type matches supertype, fixed __init__.py exports
+
+### Changed
+- StructuredLogger._log() and methods now accept `*args` for backward compatibility with %-style formatting
+
+---
+
 ## [1.4.0] - 2026-03-01 — security_module Cleanup & Branch Hygiene
 
 ### Fixed
