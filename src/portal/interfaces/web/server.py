@@ -773,15 +773,15 @@ class WebInterface(BaseInterface):
 
 def create_app(agent_core=None, config: dict | None = None, secure_agent=None) -> FastAPI:
     if agent_core is None:
+        from portal.config.settings import Settings
         from portal.core.agent_core import create_agent_core as _create
 
-        cfg = config or {
-            "routing_strategy": "AUTO",
-            "ollama_base_url": "http://localhost:11434",
-            "max_context_messages": 100,
-        }
+        # Use Settings to properly load env vars (e.g., PORTAL_BACKENDS__OLLAMA_URL)
+        settings = Settings()
+        cfg = config or settings.to_agent_config()
         agent_core = _create(cfg)
-        config = cfg
+        # Pass Settings object to WebInterface so it reads backends.ollama_url correctly
+        config = settings
 
     if secure_agent is None:
         secure_agent = SecurityMiddleware(
@@ -790,4 +790,4 @@ def create_app(agent_core=None, config: dict | None = None, secure_agent=None) -
             enable_input_sanitization=True,
         )
 
-    return WebInterface(agent_core, config or {}, secure_agent=secure_agent).app
+    return WebInterface(agent_core, config, secure_agent=secure_agent).app

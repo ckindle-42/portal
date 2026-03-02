@@ -78,7 +78,7 @@ services:
       - ${HOME}/Projects:/mnt/projects:ro
     environment:
       - COMPUTE_BACKEND=${COMPUTE_BACKEND:-mps}
-      - OLLAMA_HOST=http://host.docker.internal:11434
+      - PORTAL_BACKENDS__OLLAMA_URL=http://host.docker.internal:11434
       - ROUTER_PORT=8000
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
