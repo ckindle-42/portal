@@ -162,6 +162,7 @@ Query: {query}"""
             reasoning=response_text,
         )
 
+
 def create_classifier(
     ollama_host: str | None = None,
     model: str | None = None,
