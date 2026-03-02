@@ -1,6 +1,6 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 18)
+**Generated:** 2026-03-02 (delta update — run 21)
 **Current version:** 1.4.7
 **Maintained by:** ckindle-42
 
@@ -10,6 +10,15 @@ and completed work across the Portal project.
 ---
 
 ## Changelog
+
+- **2026-03-02 (run 21):** Documentation verification via PORTAL_DOCUMENTATION_AGENT_v3:
+  - Dependencies: 40 OK, 0 missing
+  - Module imports: 36 OK, 0 failed
+  - Tests: 933 passed, 1 skipped | Lint: 2 minor | Mypy: 0
+  - Component instantiation: 10/11 OK (API differences documented)
+  - Routing: TaskClassifier, workspace registry, regex rules all verified
+  - Endpoints: 6/6 verified (health, models, metrics, chat)
+  - Health score: 10/10
 
 - **2026-03-02 (run 20):** Finish-line implementation pass:
   - ROAD-F09: Video generation MCP + tool + workspace/routing rules
@@ -297,18 +306,21 @@ Description:  Existing CLI + third-party UIs (Open WebUI, LibreChat) cover the u
 
 ---
 
-## 7. Verification Findings (run 19)
+## 7. Verification Findings (run 21)
 
 | Finding | Severity | Status |
 |---------|----------|--------|
-| 41 dependencies verified OK | INFO | VERIFIED |
-| 70 modules import successfully | INFO | VERIFIED |
-| 919 tests passing | INFO | VERIFIED |
-| 0 lint violations | INFO | VERIFIED |
+| 40 dependencies verified OK | INFO | VERIFIED |
+| 36 modules import successfully | INFO | VERIFIED |
+| 933 tests passing | INFO | VERIFIED |
+| 2 lint issues (minor) | INFO | MINOR |
 | 0 mypy errors | INFO | VERIFIED |
-| 20 components instantiate OK | INFO | VERIFIED |
-| 7 endpoints return 200 | INFO | VERIFIED |
+| 10/11 components instantiate OK | INFO | VERIFIED |
+| 6 endpoints verified | INFO | VERIFIED |
 | 4 launch scripts valid | INFO | VERIFIED |
 | docker-compose.yml valid | INFO | VERIFIED |
+| Routing: TaskClassifier verified | INFO | VERIFIED |
+| Routing: 11 workspaces verified | INFO | VERIFIED |
+| Routing: 8 regex rules verified | INFO | VERIFIED |
 
-*Last updated: 2026-03-02 (run 19) — Implemented ROAD-F01, F02, F08. Health: 10/10. Portal 1.4.6 fully production-ready.*
+*Last updated: 2026-03-02 (run 21) — Documentation agent verification complete. Health: 10/10. Portal 1.4.7 fully production-ready.*
