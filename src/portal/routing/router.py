@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
 from portal import __version__
-from portal.routing.llm_classifier import LLMClassifier
+from portal.routing.llm_classifier import create_classifier
 from portal.routing.workspace_registry import WorkspaceRegistry
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ MANUAL_PREFIX = RULES.get("manual_override_prefix", "@model:")
 _workspace_registry = WorkspaceRegistry(RULES.get("workspaces", {}))
 
 # LLM Classifier for intelligent routing
-_llm_classifier = LLMClassifier(ollama_host=OLLAMA_HOST)
+_llm_classifier = create_classifier(ollama_host=OLLAMA_HOST)
 
 # Pre-compile regex rules sorted by priority (desc)
 _compiled_rules: list[tuple[int, str, list[re.Pattern], str]] = []
