@@ -7,6 +7,9 @@ PORTAL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$HOME/.portal/logs"
 mkdir -p "$LOG_DIR"
 
+# Ensure uvx is in PATH (installed via curl -LsSf https://astral.sh/uv/install.sh)
+export PATH="$HOME/.local/bin:$PATH"
+
 # ─── Secret generation ────────────────────────────────────────────────────────
 generate_secret() {
     # Works on macOS (LibreSSL) and Linux (OpenSSL)
@@ -590,7 +593,7 @@ run_doctor() {
     check_service "web-ui" "http://localhost:8080" "true"
 
     if [ "${MCP_ENABLED:-true}" = "true" ]; then
-        check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}" "false" "mcpo"
+        check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}/openapi.json" "false" "mcpo"
         check_process "scrapling" "scrapling" "false" "scrapling"
     fi
 

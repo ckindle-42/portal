@@ -27,6 +27,6 @@ if ! "$PYTHON" -c "import scrapling" 2>/dev/null; then
 fi
 
 # Scrapling runs as a standalone HTTP MCP server
-nohup "$PYTHON" -m scrapling.mcp --port "$PORT" >> "$LOG_FILE" 2>&1 &
+nohup "$PORTAL_ROOT/.venv/bin/scrapling" mcp --http --port "$PORT" >> "$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
 echo "[scrapling] started on :$PORT (PID $(cat "$PID_FILE"))"
