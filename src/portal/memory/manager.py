@@ -34,7 +34,7 @@ class MemoryManager:
     _PRUNE_INTERVAL = 100  # prune check every N inserts
 
     def __init__(self, db_path: str | Path | None = None) -> None:
-        self.db_path = Path(db_path or os.getenv("PORTAL_MEMORY_DB", "data/memory.db"))
+        self.db_path = Path(db_path or os.getenv("PORTAL_MEMORY_DB") or "data/memory.db")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.provider = os.getenv("PORTAL_MEMORY_PROVIDER", "auto").lower()
         self._max_age_days = int(os.getenv("PORTAL_MEMORY_RETENTION_DAYS", "90"))

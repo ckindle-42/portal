@@ -10,7 +10,10 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import uvicorn
 
 import httpx
 from fastapi import (
@@ -147,7 +150,7 @@ class WebInterface(BaseInterface):
         self.secure_agent = secure_agent  # SecurityMiddleware wrapping agent_core
         self.config = config
         self.user_store = UserStore()
-        self._server = None
+        self._server: uvicorn.Server | None = None
         # Shared HTTP client for Ollama/Whisper calls (avoids per-request connection overhead)
         self._ollama_client: httpx.AsyncClient | None = None
         # Reuse sanitizer from SecurityMiddleware to share state; fall back to new instance
