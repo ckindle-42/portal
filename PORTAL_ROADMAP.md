@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 3)
-**Current version:** 1.4.2 (1.4.3 pending TASK-32)
+**Generated:** 2026-03-02 (delta update — run 4)
+**Current version:** 1.4.3 (1.4.4 pending TASK-34)
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -12,6 +12,7 @@ file which contained only future design sketches.
 
 ## Changelog
 
+- **2026-03-02 (run 4):** TASK-32 and TASK-33 confirmed complete (PR #88). mypy errors reduced 17 → 0 — first fully mypy-clean state. ROAD-P03 COMPLETE. New TASK-34 (version bump + CHANGELOG TASK-33 entry) and TASK-35 (ARCHITECTURE.md version drift) added. Health score 9.0 → 9.5/10. ROAD-C16 (TASK-33 final mypy clean) added as COMPLETE.
 - **2026-03-02 (run 3):** All TASK-23R through TASK-31 confirmed complete (PR #86). mypy errors reduced 103 → 17. ROAD-C13 (runtime_metrics migration) COMPLETE. ROAD-C15 (TASK-28–31 type safety batch) added as COMPLETE. ROAD-P03 updated to NEARLY-COMPLETE (17 errors remain). Health score 8.5 → 9.0/10. New TASK-32 (version bump + CHANGELOG) and TASK-33 (final 17 mypy errors) added.
 - **2026-03-01 (run 2):** aiohttp dep gap found and fixed (pyproject.toml). ROAD-C13 status updated: runtime_metrics.py has 2 production callers — caller migration required before deletion (TASK-23R). TASK-24/25/26 confirmed complete. ROAD-C14 (aiohttp dep fix) added. ROAD-C15 (core mypy fixes) added. Health score stable at 8.5/10.
 - **2026-03-01:** Version bumped to 1.4.0 then 1.4.1. ROAD-C12 (security_module cleanup) COMPLETE. All TASK-20-26 completed (20-22 prior run; 24-26 this delta).
@@ -21,7 +22,7 @@ file which contained only future design sketches.
 
 ## 1. Current Release State
 
-Portal 1.4.2 is fully operational for its stated purpose:
+Portal 1.4.3 is fully operational for its stated purpose:
 
 - **OpenAI-compatible REST API** at `:8081/v1/*` — works with Open WebUI and LibreChat
 - **Ollama proxy router** at `:8000` — workspace routing, regex rules, virtual models
@@ -37,9 +38,10 @@ Portal 1.4.2 is fully operational for its stated purpose:
 - **BackendRegistry** — named backend instances; ExecutionEngine accepts injected backends
 - **Structured logging** — JSON with trace IDs, secret redaction
 - **No backward-compat shims** — both `security_module.py` and `runtime_metrics.py` fully removed
+- **Fully mypy-clean** — 0 type errors across 96 source files (milestone achieved in run 4)
 
-**CI status:** 874 tests passing, 0 lint errors, Python 3.11–3.14 matrix.
-**Type safety:** 17 mypy errors (down from 103 in prior audit — 83% reduction in one PR).
+**CI status:** 874 tests passing, 0 lint errors, 0 mypy errors, Python 3.11–3.14 matrix.
+**Type safety:** 0 mypy errors (down from 170 at project start — 100% reduction).
 **Dependency note:** `[slack]` extra includes `aiohttp>=3.9.0` (required by slack_sdk async client).
 
 ---
@@ -258,11 +260,34 @@ Evidence:     commits cd4d12c, ba3d1b2, b434d3c, 17019f1, 16a08ae (PR #86)
               mypy errors: 103 → 17 (83% reduction)
 ```
 
+### [ROAD-C16] Final mypy Clean (TASK-32 and TASK-33)
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Effort:       XS
+Description:  Final two tasks to reach fully mypy-clean state:
+              - TASK-32: Version bump to 1.4.3; CHANGELOG updated with retroactive
+                TASK-28–31 entries that were missing from the 1.4.2 entry.
+              - TASK-33: Resolved the final 17 mypy errors across 5 files:
+                * memory/manager.py: Path() None coalescing
+                * config/settings.py: yaml type-ignore, Field lambda factories,
+                  SettingsConfigDict, pydantic.mypy plugin
+                * routing/model_backends.py: abstract generate_stream signature
+                  (def → AsyncIterator[str] instead of async def → AsyncGenerator)
+                * routing/execution_engine.py: cascade error resolved by above
+                * interfaces/web/server.py: uvicorn TYPE_CHECKING guard +
+                  self._server type annotation
+              Result: mypy src/portal → 0 errors in 96 files (milestone)
+              Cumulative: 170 → 0 across all audit cycles
+Evidence:     commits 4a07a7b, 8e1ebaf (PR #88, 2026-03-02)
+```
+
 ---
 
 ## 3. In Progress
 
-No tasks currently in progress. All prior open tasks were completed in PR #86.
+No tasks currently in progress. All prior open tasks were completed in PR #88.
 
 ---
 
@@ -326,21 +351,34 @@ Evidence:     ROADMAP.md section 2 (designed 2026-02-28)
 ### [ROAD-P03] mypy Error Reduction to Zero
 
 ```
-Status:       NEARLY-COMPLETE (was PLANNED)
-Priority:     P3-MEDIUM
+Status:       COMPLETE (was NEARLY-COMPLETE)
+Priority:     P3-MEDIUM → COMPLETE
 Effort:       XS (was M)
-Dependencies: ROAD-C15 COMPLETE (provides foundation)
-Description:  17 mypy errors remain across 5 files after TASK-28–31:
-              - memory/manager.py:37 (1 error): Path() with str|None
-              - config/settings.py (9 errors): yaml stubs, Field default_factory
-                pattern, ConfigDict vs SettingsConfigDict, cascade errors
-              - routing/model_backends.py:205 (1 error): abstract async generator
-                return type mismatch
-              - routing/execution_engine.py:226 (1 error): cascade from above
-              - interfaces/web/server.py:727-728 (2 errors): _server None typing
+Dependencies: ROAD-C15 COMPLETE; ROAD-C16 COMPLETE
+Description:  All mypy errors resolved in TASK-33 (PR #88, 2026-03-02).
+              mypy src/portal --ignore-missing-imports → 0 errors in 96 files.
+              Cumulative reduction: 170 → 0 across audit cycle.
+Evidence:     commit 8e1ebaf; mypy verified 0 errors this audit run
+```
 
-              Full details and fix instructions in TASK-33 (ACTION_PROMPT).
-Evidence:     2026-03-02 audit — mypy: 17 errors in 5 files
+### [ROAD-P04] Documentation Consistency Cleanup
+
+```
+Status:       PLANNED
+Priority:     P3-LOW
+Effort:       XS
+Dependencies: None
+Description:  Two minor documentation gaps remain:
+              1. CHANGELOG 1.4.3 entry: missing TASK-33 section; metric says
+                 "103→17" but current state is "103→0". Addressed by TASK-34
+                 (version bump to 1.4.4 + TASK-33 CHANGELOG entry).
+              2. docs/ARCHITECTURE.md: version string shows 1.3.9 at lines 3
+                 and 443. Addressed by TASK-35.
+              Also notable: CHANGELOG contains 4 old [Unreleased] sections from
+              2026-02-26/27 (pre-versioning era). These describe code that no
+              longer exists and can be archived into a "Historical Notes" section
+              at the bottom if desired. Low priority — they're clearly dated.
+Evidence:     PORTAL_AUDIT_REPORT.md findings F-D1, F-D2 (run 4)
 ```
 
 ---
@@ -488,7 +526,7 @@ Why deferred: Not needed; existing CLI + third-party UIs cover the use case.
 *This roadmap is maintained as part of the Portal source tree. Update it whenever a
 significant item is completed, started, or added.*
 
-*Last updated: 2026-03-02 (run 3) — PR #86 complete: all TASK-23R through TASK-31 done.
-mypy: 103 → 17 errors. ROAD-C13 (runtime_metrics) COMPLETE. ROAD-C15 (TASK-28–31 type
-safety batch) COMPLETE. ROAD-P03 NEARLY-COMPLETE (17 errors remain — TASK-33 pending).
-Health score 8.5 → 9.0/10.*
+*Last updated: 2026-03-02 (run 4) — PR #88 complete: TASK-32 (version 1.4.3, CHANGELOG)
+and TASK-33 (17→0 mypy errors) done. ROAD-C16 COMPLETE. ROAD-P03 COMPLETE.
+mypy: 170 → 0 across entire audit cycle. Health score 9.0 → 9.5/10.
+New: TASK-34 (CHANGELOG TASK-33 entry + version 1.4.4), TASK-35 (ARCHITECTURE.md version).*
