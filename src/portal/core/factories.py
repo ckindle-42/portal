@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry, RoutingStrategy
 from portal.routing.backend_registry import BackendRegistry
-from portal.routing.model_backends import OllamaBackend
+from portal.routing.model_backends import MLXServerBackend, OllamaBackend
 from portal.routing.workspace_registry import WorkspaceRegistry
 
 from .context_manager import ContextManager
@@ -70,6 +70,11 @@ def create_execution_engine(
 
     registry = BackendRegistry()
     registry.register("ollama", OllamaBackend(base_url=ollama_url))
+
+    # Register MLX backend if enabled
+    mlx_url = config.get("mlx_url", "http://localhost:8800")
+    if config.get("enable_mlx", False):
+        registry.register("mlx", MLXServerBackend(base_url=mlx_url))
 
     logger.info(
         "Creating ExecutionEngine",
