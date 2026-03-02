@@ -87,6 +87,9 @@ class IntelligentRouter:
             LLMCategory.CREATIVE: TaskCategory.CREATIVE,
             LLMCategory.TOOL_USE: TaskCategory.TOOL_USE,
             LLMCategory.GENERAL: TaskCategory.GENERAL,
+            LLMCategory.SECURITY: TaskCategory.SECURITY,
+            LLMCategory.IMAGE_GEN: TaskCategory.IMAGE_GEN,
+            LLMCategory.AUDIO_GEN: TaskCategory.AUDIO_GEN,
         }
         overridden_category = category_override.get(llm_class.category, task_class.category)
         classification = TaskClassification(
@@ -121,7 +124,9 @@ class IntelligentRouter:
 
     def _route_auto(self, classification: TaskClassification, max_cost: float) -> ModelMetadata:
         """Automatic balanced routing using configurable model preferences."""
-        if classification.category == TaskCategory.CODE and classification.requires_code:
+        if classification.category == TaskCategory.SECURITY:
+            preferred = self.model_preferences.get("security", [])
+        elif classification.category == TaskCategory.CODE and classification.requires_code:
             preferred = self.model_preferences.get("code", [])
         else:
             complexity_key = classification.complexity.value.lower()
@@ -157,10 +162,14 @@ class IntelligentRouter:
         """Route for maximum quality."""
         if classification.requires_code:
             capability = ModelCapability.CODE
+        elif classification.category == TaskCategory.SECURITY:
+            capability = ModelCapability.SECURITY
         elif classification.requires_math:
             capability = ModelCapability.MATH
         elif classification.category == TaskCategory.ANALYSIS:
             capability = ModelCapability.REASONING
+        elif classification.category == TaskCategory.CREATIVE:
+            capability = ModelCapability.GENERAL
         else:
             capability = ModelCapability.GENERAL
         best = self.registry.get_best_quality_model(capability, max_cost)

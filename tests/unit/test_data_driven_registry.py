@@ -2,7 +2,10 @@
 Tests for data-driven model registry default registration.
 """
 
+import pytest
+
 from portal.routing.model_registry import ModelCapability, ModelRegistry, SpeedClass
+from portal.routing.task_classifier import TaskCategory, TaskClassifier
 
 
 class TestDataDrivenRegistry:
@@ -17,26 +20,27 @@ class TestDataDrivenRegistry:
     def test_specific_model_properties(self):
         """Spot-check a specific model's metadata."""
         registry = ModelRegistry()
-        m = registry.get_model("ollama_qwen25_7b")
+        m = registry.get_model("ollama_dolphin_llama3_8b")
         assert m is not None
-        assert m.display_name == "Qwen2.5 7B"
+        assert m.display_name == "Dolphin 3.0 Llama3 8B"
         assert m.backend == "ollama"
-        assert ModelCapability.CODE in m.capabilities
+        assert ModelCapability.GENERAL in m.capabilities
         assert m.speed_class == SpeedClass.FAST
 
     def test_code_specialist_exists(self):
         """The code specialist model should have high code_quality."""
         registry = ModelRegistry()
-        coder = registry.get_model("ollama_qwen25_coder")
+        coder = registry.get_model("ollama_qwen3_coder_30b")
         assert coder is not None
         assert coder.code_quality >= 0.9
 
     def test_vision_model_exists(self):
-        """LLaVA vision model should have VISION capability."""
+        """Multimodal model should have VISION and MULTIMODAL capabilities."""
         registry = ModelRegistry()
-        llava = registry.get_model("ollama_llava")
-        assert llava is not None
-        assert ModelCapability.VISION in llava.capabilities
+        omni = registry.get_model("ollama_qwen3_omni_30b")
+        assert omni is not None
+        assert ModelCapability.VISION in omni.capabilities
+        assert ModelCapability.MULTIMODAL in omni.capabilities
 
     def test_all_models_available_by_default(self):
         """All default models should be marked available."""
@@ -59,3 +63,52 @@ class TestDataDrivenRegistry:
         registry.register(custom)
         assert registry.get_model("custom_test") is not None
         assert len(registry.get_all_models()) == 10
+
+    def test_security_quality_field_on_models(self):
+        """All default models carry a security_quality score."""
+        registry = ModelRegistry()
+        for model in registry.get_all_models():
+            assert hasattr(model, "security_quality")
+            assert 0.0 <= model.security_quality <= 1.0
+
+
+class TestTaskClassifierNewCategories:
+    """Tests for new TaskCategory values added in the model expansion."""
+
+    @pytest.fixture
+    def classifier(self):
+        return TaskClassifier()
+
+    @pytest.mark.parametrize("query", [
+        "explain kerberoasting and mimikatz",
+        "write a reverse shell exploit in python",
+        "perform recon on target using nmap",
+        "what is a buffer overflow and how do you exploit it",
+        "help me bypass EDR detection",
+    ])
+    def test_security_queries_classify_as_security(self, classifier, query):
+        result = classifier.classify(query)
+        assert result.category == TaskCategory.SECURITY
+
+    @pytest.mark.parametrize("query", [
+        "generate an image of a mountain landscape",
+        "create an illustration of a robot",
+        "draw a portrait of a wizard",
+    ])
+    def test_image_queries_classify_as_image_gen(self, classifier, query):
+        result = classifier.classify(query)
+        assert result.category == TaskCategory.IMAGE_GEN
+
+    @pytest.mark.parametrize("query", [
+        "use tts to read this paragraph aloud",
+        "clone my voice using cosyvoice",
+        "generate audio with text to speech",
+    ])
+    def test_audio_queries_classify_as_audio_gen(self, classifier, query):
+        result = classifier.classify(query)
+        assert result.category == TaskCategory.AUDIO_GEN
+
+    def test_security_takes_priority_over_code(self, classifier):
+        """SECURITY takes priority even when code patterns also match."""
+        result = classifier.classify("write a python payload to exploit CVE-2024-1234")
+        assert result.category == TaskCategory.SECURITY

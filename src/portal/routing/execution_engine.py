@@ -89,10 +89,11 @@ class ExecutionEngine:
         temperature: float = 0.7,
         max_cost: float = 1.0,
         messages: list[dict[str, Any]] | None = None,
+        workspace_id: str | None = None,
     ) -> ExecutionResult:
         """Execute query with routing and fallback. Returns ExecutionResult."""
         start_time = time.time()
-        decision = await self.router.route(query, max_cost)
+        decision = await self.router.route(query, max_cost, workspace_id=workspace_id)
         model_chain = [decision.model_id] + decision.fallback_models
         fallbacks_used = 0
         last_error = None
@@ -197,6 +198,7 @@ class ExecutionEngine:
         max_tokens: int = 2048,
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
+        workspace_id: str | None = None,
     ) -> AsyncIterator[str]:
         """
         Stream generation token-by-token from the best available backend.
@@ -205,7 +207,7 @@ class ExecutionEngine:
         calls each backend's generate_stream() so tokens flow to the caller as
         they are produced by Ollama rather than being buffered.
         """
-        decision = await self.router.route(query)
+        decision = await self.router.route(query, workspace_id=workspace_id)
         model_chain = [decision.model_id] + decision.fallback_models
 
         for model_id in model_chain:

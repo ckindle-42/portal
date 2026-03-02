@@ -87,6 +87,7 @@ class SecurityMiddleware:
         interface: str = "unknown",
         user_context: dict | None = None,
         files: list[Any] | None = None,
+        workspace_id: str | None = None,
     ):
         """
         Process a message through security layer then core
@@ -148,6 +149,7 @@ class SecurityMiddleware:
             interface=interface,
             user_context=user_context,
             files=files,
+            workspace_id=workspace_id,
         )
 
         # Append security warnings to result

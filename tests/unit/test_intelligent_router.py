@@ -677,3 +677,87 @@ class TestRouteEndToEnd:
         with caplog.at_level(logging.WARNING):
             IntelligentRouter(reg, model_preferences=prefs)
         assert "..." in caplog.text
+
+
+class TestSecurityRouting:
+    """Tests for SECURITY category routing in IntelligentRouter."""
+
+    def _make_security_model(self, model_id: str = "security_model") -> ModelMetadata:
+        return ModelMetadata(
+            model_id=model_id,
+            backend="ollama",
+            display_name="Security Model",
+            parameters="9B",
+            quantization="Q4_K_M",
+            capabilities=[ModelCapability.SECURITY, ModelCapability.CODE],
+            speed_class=SpeedClass.FAST,
+            general_quality=0.6,
+            code_quality=0.8,
+            reasoning_quality=0.8,
+            security_quality=0.95,
+            cost=0.4,
+            available=True,
+            api_model_name=model_id,
+        )
+
+    @pytest.mark.asyncio
+    async def test_route_quality_prefers_security_model_for_security_category(self):
+        """_route_quality selects SECURITY capability model for SECURITY category."""
+        reg = _empty_registry()
+        sec_model = self._make_security_model("xploiter")
+        gen_model = _make_model("dolphin", general_quality=0.9)
+        reg.register(sec_model)
+        reg.register(gen_model)
+
+        router = IntelligentRouter(reg, strategy=RoutingStrategy.QUALITY)
+        llm_cls = LLMClassification(category=LLMCategory.SECURITY, confidence=0.9)
+        with patch.object(
+            router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+        ):
+            decision = await router.route("explain kerberoasting")
+        assert decision.model_id == "xploiter"
+
+    @pytest.mark.asyncio
+    async def test_route_auto_uses_security_preferences(self):
+        """_route_auto checks 'security' preference key for SECURITY category."""
+        reg = _empty_registry()
+        sec_model = self._make_security_model("preferred_sec")
+        reg.register(sec_model)
+        prefs = {"security": ["preferred_sec"]}
+        router = IntelligentRouter(reg, strategy=RoutingStrategy.AUTO, model_preferences=prefs)
+
+        llm_cls = LLMClassification(category=LLMCategory.SECURITY, confidence=0.9)
+        with patch.object(
+            router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+        ):
+            decision = await router.route("perform pentest on target")
+        assert decision.model_id == "preferred_sec"
+
+    def test_security_best_quality_model(self):
+        """ModelRegistry.get_best_quality_model returns highest security_quality model."""
+        reg = _empty_registry()
+        low_sec = self._make_security_model("low_sec")
+        low_sec.security_quality = 0.5
+        high_sec = self._make_security_model("high_sec")
+        high_sec.security_quality = 0.95
+        reg.register(low_sec)
+        reg.register(high_sec)
+        best = reg.get_best_quality_model(ModelCapability.SECURITY)
+        assert best is not None
+        assert best.model_id == "high_sec"
+
+    def test_default_registry_has_security_models(self):
+        """Default model catalog includes SECURITY-capable models."""
+        reg = ModelRegistry()
+        security_models = [
+            m for m in reg.get_all_models() if ModelCapability.SECURITY in m.capabilities
+        ]
+        assert len(security_models) >= 3
+
+    def test_default_registry_xploiter_top_security_quality(self):
+        """The-Xploiter should have the highest security_quality in the default catalog."""
+        reg = ModelRegistry()
+        best = reg.get_best_quality_model(ModelCapability.SECURITY)
+        assert best is not None
+        assert best.model_id == "ollama_the_xploiter"
+        assert best.security_quality == 0.95

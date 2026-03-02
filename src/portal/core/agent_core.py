@@ -116,6 +116,7 @@ class AgentCore:
         interface: InterfaceType = InterfaceType.UNKNOWN,
         user_context: dict | None = None,
         files: list[Any] | None = None,
+        workspace_id: str | None = None,
     ) -> ProcessingResult:
         """Process a message from any interface (Telegram, Web, Slack). Raises PortalError on failure."""
         start_time = time.perf_counter()
@@ -140,6 +141,7 @@ class AgentCore:
                     chat_id=chat_id,
                     trace_id=trace_id,
                     messages=context_history or None,
+                    workspace_id=workspace_id,
                 )
                 await self._save_message(chat_id, "assistant", result.response, interface.value)
                 return await self._finalize_result(
@@ -317,9 +319,10 @@ class AgentCore:
         chat_id: str,
         trace_id: str,
         messages: list[dict[str, Any]] | None = None,
+        workspace_id: str | None = None,
     ):
         """Route the query and execute it, emitting routing/generating events."""
-        decision = await self.router.route(query)
+        decision = await self.router.route(query, workspace_id=workspace_id)
         await self.event_bus.publish(
             EventType.ROUTING_DECISION,
             chat_id,
@@ -339,7 +342,7 @@ class AgentCore:
             EventType.MODEL_GENERATING, chat_id, {"model": decision.model_id}, trace_id
         )
         result = await self.execution_engine.execute(
-            query=query, system_prompt=system_prompt, messages=messages
+            query=query, system_prompt=system_prompt, messages=messages, workspace_id=workspace_id
         )
         if not result.success:
             raise ModelNotAvailableError(
@@ -420,11 +423,13 @@ class AgentCore:
 
         collected_response = []
         final_messages = (messages or []) + tool_messages if tool_messages else messages
+        workspace_id = incoming.model if incoming.model else None
 
         async for token in self.execution_engine.generate_stream(
             query=query,
             system_prompt=system_prompt,
             messages=final_messages,
+            workspace_id=workspace_id,
         ):
             collected_response.append(token)
             yield token
@@ -447,6 +452,7 @@ class AgentCore:
         chat_id: str,
         trace_id: str,
         messages: list[dict[str, Any]] | None = None,
+        workspace_id: str | None = None,
     ) -> tuple[Any, list[dict[str, Any]]]:
         """Execute model calls and iterate tool calls until a final answer is produced."""
         collected_tool_results: list[dict[str, Any]] = []
@@ -463,6 +469,7 @@ class AgentCore:
                 chat_id=chat_id,
                 trace_id=trace_id,
                 messages=current_messages,
+                workspace_id=workspace_id,
             )
 
             tool_calls = result.tool_calls or []
