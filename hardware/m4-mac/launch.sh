@@ -24,13 +24,32 @@ case "$COMMAND" in
   up)
     echo "=== Portal Starting (M4 Mac) ==="
 
-    # 1. Ensure Ollama is running
-    if ! pgrep -x "ollama" >/dev/null; then
-        echo "[ollama] starting..."
-        brew services start ollama 2>/dev/null || nohup ollama serve >> "$LOG_DIR/ollama.log" 2>&1 &
-        sleep 2
+    # 1. Ensure Ollama is running (unless MLX-only mode)
+    if [ "${MLX_ONLY:-false}" != "true" ]; then
+        if ! pgrep -x "ollama" >/dev/null; then
+            echo "[ollama] starting..."
+            brew services start ollama 2>/dev/null || nohup ollama serve >> "$LOG_DIR/ollama.log" 2>&1 &
+            sleep 2
+        fi
+        echo "[ollama] OK"
+    else
+        echo "[ollama] skipped (MLX-only mode)"
     fi
-    echo "[ollama] OK"
+
+    # 1b. Start MLX-LM server if enabled
+    if [ "${ENABLE_MLX:-false}" = "true" ]; then
+        if ! pgrep -f "mlx_lm.server" >/dev/null; then
+            echo "[mlx_lm] starting..."
+            nohup mlx_lm.server \
+                --host "${MLX_HOST:-0.0.0.0}" \
+                --port "${MLX_PORT:-8800}" \
+                >> "$LOG_DIR/mlx_lm.log" 2>&1 &
+            sleep 2
+            echo "[mlx_lm] OK"
+        else
+            echo "[mlx_lm] OK"
+        fi
+    fi
 
     # 2. Start model router + Portal web interface (:8081)
     bash "$PORTAL_ROOT/hardware/m4-mac/launch_router.sh"
@@ -90,13 +109,17 @@ case "$COMMAND" in
     pkill -f "comfyui_mcp" 2>/dev/null || true
     pkill -f "whisper_mcp" 2>/dev/null || true
     pkill -f "scrapling" 2>/dev/null || true
+    pkill -f "mlx_lm.server" 2>/dev/null || true
     rm -f /tmp/portal-web.pid /tmp/portal-router.pid
     echo "=== Portal Stopped ==="
     ;;
 
   doctor)
     echo "=== Portal Doctor ==="
-    curl -s http://localhost:11434/api/tags >/dev/null && echo "[ollama] OK" || echo "[ollama] FAIL"
+    if [ "${MLX_ONLY:-false}" != "true" ]; then
+        curl -s http://localhost:11434/api/tags >/dev/null && echo "[ollama] OK" || echo "[ollama] FAIL"
+    fi
+    curl -s "http://localhost:${MLX_PORT:-8800}/v1/models" >/dev/null && echo "[mlx_lm] OK" || echo "[mlx_lm] SKIP (optional)"
     curl -s http://localhost:8000/health >/dev/null && echo "[router] OK" || echo "[router] FAIL"
     curl -s http://localhost:8081/health >/dev/null && echo "[portal-api] OK" || echo "[portal-api] FAIL"
     curl -s http://localhost:8080 >/dev/null && echo "[web-ui] OK" || echo "[web-ui] FAIL"
