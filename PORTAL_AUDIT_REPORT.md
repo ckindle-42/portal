@@ -1,7 +1,7 @@
 # Portal — Full Codebase Audit Report
 
-**Date:** 2026-03-02 (run 19)
-**Version audited:** 1.4.7
+**Date:** 2026-03-02 (run 22)
+**Version audited:** 1.5.0
 **Auditor:** Claude Code (claude-sonnet-4-6)
 **Repository:** https://github.com/ckindle-42/portal
 **Branch:** main
@@ -12,13 +12,13 @@
 
 **Health Score: 10/10 — FULLY PRODUCTION-READY**
 
-Portal 1.4.7 is fully production-ready. This run (run 19) implements ROAD-F01, ROAD-F02, ROAD-F08 and removes ROAD-D01, ROAD-D05.
+Portal 1.5.0 is fully production-ready. This run implements Targeted Finish Line Tasks 1-4.
 
-| # | Area | Prior (run 18) | Current (run 19) | Status |
+| # | Area | Prior (run 21) | Current (run 22) | Status |
 |---|------|----------------|------------------|--------|
 | 1 | **Health score** | 10/10 | 10/10 | UNCHANGED |
-| 2 | **Tests passing** | 919 | 919 | UNCHANGED |
-| 3 | **Lint violations** | 0 | 0 | CLEAN |
+| 2 | **Tests passing** | 933 | 957 | UP |
+| 3 | **Lint violations** | 2 | 0 | CLEAN |
 | 4 | **mypy errors** | 0 | 0 | CLEAN |
 | 5 | **Deferred items** | 0 | 0 | RESOLVED |
 
@@ -26,27 +26,25 @@ Portal 1.4.7 is fully production-ready. This run (run 19) implements ROAD-F01, R
 
 ## 2. Delta Summary
 
-### Changes Since Prior Audit (run 18, commit 5379e1e)
+### Changes Since Prior Audit (run 21)
 
-This run (run 19) implements:
-- **ROAD-F01**: Per-Workspace ACLs - added WorkspaceACL class
-- **ROAD-F02**: Streaming Memory Context - build_system_message() method
-- **ROAD-F08**: HuggingFace Model Auto-Import - auto-import to Ollama
-- **ROAD-D01**: LMStudio Backend - marked as REMOVED
-- **ROAD-D05**: Web Admin UI - marked as REMOVED
+This run implements:
+- **Task 1**: Orchestrator integration, file delivery endpoints, KnowledgeConfig wiring, launch scripts
+- **Task 2**: New tests for video/music generators, router rules, task classifier
+- **Task 3**: Documentation updates (file download, multi-step orchestration)
+- **Task 4**: Full verification and audit
 
 | Metric | Prior | Current | Delta |
 |--------|-------|---------|-------|
 | Health Score | 10/10 | 10/10 | 0 |
 | mypy errors | 0 | 0 | 0 |
-| Lint violations | 0 | 0 | 0 |
-| Test count | 919 | 919 | 0 |
-| Tests passing | 919 | 919 | 0 |
-| Source files | 70 | 70 | 0 |
-| Version | 1.4.6 | 1.4.6 | 0 |
-| Deferred findings | 2 | 0 | -2 |
+| Lint violations | 2 | 0 | -2 |
+| Test count | 933 | 957 | +24 |
+| Tests passing | 933 | 957 | +24 |
+| Source files | ~103 | ~103 | 0 |
+| Version | 1.4.7 | 1.5.0 | UP |
 
-**Unfinished Work Register:** None — all deferred items resolved.
+**Unfinished Work Register:** None — all tasks complete.
 
 ---
 

@@ -128,9 +128,21 @@ class AgentCore:
 
         # Explicit multi-step markers
         multi_step_markers = [
-            "then", "after that", "afterwards", "next step", "and also",
-            "first", "second", "finally", "lastly", "step 1", "step 2",
-            "do both", "combine", "chain", "sequence",
+            "then",
+            "after that",
+            "afterwards",
+            "next step",
+            "and also",
+            "first",
+            "second",
+            "finally",
+            "lastly",
+            "step 1",
+            "step 2",
+            "do both",
+            "combine",
+            "chain",
+            "sequence",
         ]
         for marker in multi_step_markers:
             if marker in message_lower:
@@ -138,9 +150,23 @@ class AgentCore:
 
         # Count distinct action verbs
         action_verbs = [
-            "write", "create", "generate", "make", "build", "analyze",
-            "research", "find", "search", "explain", "summarize", "convert",
-            "calculate", "draw", "compose", "produce", "develop",
+            "write",
+            "create",
+            "generate",
+            "make",
+            "build",
+            "analyze",
+            "research",
+            "find",
+            "search",
+            "explain",
+            "summarize",
+            "convert",
+            "calculate",
+            "draw",
+            "compose",
+            "produce",
+            "develop",
         ]
         verb_count = sum(1 for verb in action_verbs if verb in message_lower)
 
@@ -345,7 +371,9 @@ class AgentCore:
     ) -> ProcessingResult:
         """Handle a multi-step request using the TaskOrchestrator."""
 
-        logger.info("Using orchestrator for multi-step request", chat_id=chat_id, prompt=message[:50])
+        logger.info(
+            "Using orchestrator for multi-step request", chat_id=chat_id, prompt=message[:50]
+        )
 
         # Build and execute the plan
         plan = self._orchestrator.build_plan(message)

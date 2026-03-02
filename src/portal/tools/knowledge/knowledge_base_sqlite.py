@@ -93,7 +93,9 @@ class EnhancedKnowledgeTool(BaseTool):
                 if auto_download:
                     logger.warning(f"Failed to load {embedding_model}, will try auto-download: {e}")
                     try:
-                        EnhancedKnowledgeTool._embeddings_model = SentenceTransformer(embedding_model)
+                        EnhancedKnowledgeTool._embeddings_model = SentenceTransformer(
+                            embedding_model
+                        )
                         logger.info("Embeddings model auto-downloaded and loaded")
                     except Exception as download_error:
                         logger.error(f"Failed to auto-download embedding model: {download_error}")

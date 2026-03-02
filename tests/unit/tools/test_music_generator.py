@@ -1,4 +1,5 @@
 """Unit tests for music_generator tool"""
+
 import inspect
 
 from portal.tools.media_tools.music_generator import (

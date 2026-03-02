@@ -90,7 +90,12 @@ def test_build_plan_with_explicit_steps() -> None:
         "multi-step goal",
         steps=[
             {"type": "llm", "description": "step A", "llm_prompt_template": "do A"},
-            {"type": "tool", "description": "step B", "tool_name": "tool_x", "tool_args": {"k": "v"}},
+            {
+                "type": "tool",
+                "description": "step B",
+                "tool_name": "tool_x",
+                "tool_args": {"k": "v"},
+            },
         ],
     )
     assert len(plan.steps) == 2
@@ -137,7 +142,11 @@ async def test_execute_multi_step_plan() -> None:
         "two-step task",
         steps=[
             {"type": "llm", "description": "step 1", "llm_prompt_template": "do step 1"},
-            {"type": "llm", "description": "step 2", "llm_prompt_template": "do step 2 given {context}"},
+            {
+                "type": "llm",
+                "description": "step 2",
+                "llm_prompt_template": "do step 2 given {context}",
+            },
         ],
     )
     result = await orch.execute(plan)
@@ -221,7 +230,11 @@ async def test_execute_context_accumulated_across_steps() -> None:
         steps=[
             {"type": "llm", "description": "step A", "llm_prompt_template": "Task A"},
             {"type": "llm", "description": "step B", "llm_prompt_template": "Task B"},
-            {"type": "llm", "description": "step C", "llm_prompt_template": "Task C with {context}"},
+            {
+                "type": "llm",
+                "description": "step C",
+                "llm_prompt_template": "Task C with {context}",
+            },
         ],
     )
     await orch.execute(plan)

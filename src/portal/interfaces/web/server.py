@@ -593,13 +593,17 @@ class WebInterface(BaseInterface):
 
             files = []
             try:
-                for f in sorted(generated_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+                for f in sorted(
+                    generated_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True
+                ):
                     if f.is_file():
-                        files.append({
-                            "name": f.name,
-                            "size": f.stat().st_size,
-                            "modified": f.stat().st_mtime,
-                        })
+                        files.append(
+                            {
+                                "name": f.name,
+                                "size": f.stat().st_size,
+                                "modified": f.stat().st_mtime,
+                            }
+                        )
             except OSError:
                 pass
 
@@ -622,6 +626,7 @@ class WebInterface(BaseInterface):
 
             # Determine MIME type
             import mimetypes
+
             content_type, _ = mimetypes.guess_type(str(file_path))
             content_type = content_type or "application/octet-stream"
 

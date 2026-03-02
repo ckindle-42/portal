@@ -1,4 +1,5 @@
 """Unit tests for new routing categories in TaskClassifier"""
+
 from portal.routing.task_classifier import TaskClassifier
 
 

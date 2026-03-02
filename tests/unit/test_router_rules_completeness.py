@@ -1,4 +1,5 @@
 """Unit tests for router_rules.json completeness validation"""
+
 import json
 from pathlib import Path
 

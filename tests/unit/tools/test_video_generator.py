@@ -1,4 +1,5 @@
 """Unit tests for video_generator tool"""
+
 import inspect
 
 from portal.tools.media_tools.video_generator import (
