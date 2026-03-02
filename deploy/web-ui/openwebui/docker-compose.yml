@@ -11,7 +11,7 @@ services:
   # Caddy — reverse proxy and static file server
   # -----------------------------------------------------------------------
   caddy:
-    image: caddy:2.9-alpine
+    image: caddy:3.0-alpine
     container_name: portal-caddy
     restart: unless-stopped
     ports:
@@ -36,10 +36,13 @@ services:
   # -----------------------------------------------------------------------
   # Open WebUI — browser chat UI
   # -----------------------------------------------------------------------
+  # To use latest version, run: docker compose pull open-webui
+  # Check for updates: https://github.com/open-webui/open-webui/releases
   open-webui:
-    image: ghcr.io/open-webui/open-webui:v0.8.5
+    image: ghcr.io/open-webui/open-webui:latest
     container_name: portal-open-webui
     restart: unless-stopped
+    pull_policy: always
     volumes:
       - open-webui-data:/app/backend/data
     environment:

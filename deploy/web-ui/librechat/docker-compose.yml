@@ -7,10 +7,13 @@ services:
   # -----------------------------------------------------------------------
   # LibreChat — browser chat UI
   # -----------------------------------------------------------------------
+  # To use latest version, run: docker compose pull librechat
+  # Check for updates: https://github.com/LibreChat/LibreChat/releases
   librechat:
-    image: ghcr.io/danny-avila/librechat:v0.8.2
+    image: ghcr.io/danny-avila/librechat:latest
     container_name: portal-librechat
     restart: unless-stopped
+    pull_policy: always
     ports:
       - "8080:3080"
     volumes:
@@ -41,7 +44,7 @@ services:
   # MongoDB — LibreChat database
   # -----------------------------------------------------------------------
   mongodb:
-    image: mongo:7.0
+    image: mongo:8.0
     container_name: portal-mongodb
     restart: unless-stopped
     volumes:
