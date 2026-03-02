@@ -53,6 +53,7 @@ all = [
     "faster-whisper>=1.0.0",
     "pillow>=10.3.0",
     "redis>=5.0.0",
+    "scrapling>=0.2",
 ]
 dev = [
     "portal[all]",

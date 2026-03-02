@@ -15,15 +15,18 @@ if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     exit 0
 fi
 
-source "$PORTAL_ROOT/.venv/bin/activate"
+PYTHON="$PORTAL_ROOT/.venv/bin/python"
 
 # Install scrapling if not present
-if ! "$PORTAL_ROOT/.venv/bin/python" -c "import scrapling" 2>/dev/null; then
+if ! "$PYTHON" -c "import scrapling" 2>/dev/null; then
     echo "[scrapling] installing scrapling package..."
-    "$PORTAL_ROOT/.venv/bin/pip" install -q scrapling
+    if ! "$PORTAL_ROOT/.venv/bin/pip" install scrapling; then
+        echo "[scrapling] ERROR: failed to install scrapling — cannot start"
+        exit 1
+    fi
 fi
 
 # Scrapling runs as a standalone HTTP MCP server
-nohup python -m scrapling.mcp --port "$PORT" >> "$LOG_FILE" 2>&1 &
+nohup "$PYTHON" -m scrapling.mcp --port "$PORT" >> "$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
 echo "[scrapling] started on :$PORT (PID $(cat "$PID_FILE"))"
