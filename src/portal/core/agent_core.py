@@ -117,60 +117,28 @@ class AgentCore:
         }
 
     def _is_multi_step(self, message: str) -> bool:
-        """Detect if a message is a multi-step request that should use the orchestrator.
+        """Detect ONLY explicitly structured multi-step requests.
 
-        Heuristics:
-        - Contains "then", "after that", "and also", "next step"
-        - Contains 2+ distinct action verbs
-        - Explicit multi-step keywords
+        Conservative: only trigger when the user clearly wants sequential tasks.
+        False negatives are fine (normal processing handles it).
+        False positives break context, routing, streaming, and metrics.
         """
+        import re
+
         message_lower = message.lower()
 
-        # Explicit multi-step markers
-        multi_step_markers = [
-            "then",
-            "after that",
-            "afterwards",
-            "next step",
-            "and also",
-            "first",
-            "second",
-            "finally",
-            "lastly",
-            "step 1",
-            "step 2",
-            "do both",
-            "combine",
-            "chain",
-            "sequence",
+        # Only match very explicit multi-step structure
+        explicit_patterns = [
+            r"step\s*1\b.*step\s*2\b",  # "step 1... step 2..."
+            r"first\b.*\bthen\b.*\b(then|finally)\b",  # "first X, then Y, then/finally Z"
+            r"(?:do|perform)\s+both\b",  # "do both X and Y"
+            r"\b1\)\s.*\b2\)\s",  # "1) X 2) Y"
         ]
-        for marker in multi_step_markers:
-            if marker in message_lower:
+        for pattern in explicit_patterns:
+            if re.search(pattern, message_lower, re.DOTALL):
                 return True
 
-        # Count distinct action verbs
-        action_verbs = [
-            "write",
-            "create",
-            "generate",
-            "make",
-            "build",
-            "analyze",
-            "research",
-            "find",
-            "search",
-            "explain",
-            "summarize",
-            "convert",
-            "calculate",
-            "draw",
-            "compose",
-            "produce",
-            "develop",
-        ]
-        verb_count = sum(1 for verb in action_verbs if verb in message_lower)
-
-        return verb_count >= 2
+        return False
 
     async def _call_llm(self, prompt: str) -> str:
         """Execute an LLM call for the orchestrator."""

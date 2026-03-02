@@ -613,6 +613,10 @@ run_doctor() {
         # mcpo can take 30-50s to start, so retry up to 5 times with 10s delay
         check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}/openapi.json" "false" "mcpo" "5" "10"
         check_process "scrapling" "scrapling" "false" "scrapling"
+        check_service "mcp-video" "http://localhost:${VIDEO_MCP_PORT:-8911}/health" "true"
+        check_service "mcp-music" "http://localhost:${MUSIC_MCP_PORT:-8912}/health" "true"
+        check_service "mcp-documents" "http://localhost:${DOCUMENTS_MCP_PORT:-8913}/health" "true"
+        check_service "mcp-sandbox" "http://localhost:${SANDBOX_MCP_PORT:-8914}/health" "true"
     fi
 
     echo ""
@@ -662,6 +666,10 @@ stop_all() {
     pkill -f "scrapling" 2>/dev/null && echo "[scrapling] stopped" || true
     pkill -f "comfyui_mcp" 2>/dev/null && echo "[comfyui_mcp] stopped" || true
     pkill -f "whisper_mcp" 2>/dev/null && echo "[whisper_mcp] stopped" || true
+    pkill -f "video_mcp" 2>/dev/null && echo "[video_mcp] stopped" || true
+    pkill -f "music_mcp" 2>/dev/null && echo "[music_mcp] stopped" || true
+    pkill -f "document_mcp" 2>/dev/null && echo "[document_mcp] stopped" || true
+    pkill -f "code_sandbox_mcp" 2>/dev/null && echo "[code_sandbox_mcp] stopped" || true
 
     # Broad fallback for uvicorn processes
     pkill -f "uvicorn.*portal\." 2>/dev/null || true
