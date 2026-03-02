@@ -1,19 +1,12 @@
 {
-  "servers": {
+  "mcpServers": {
     "filesystem": {
-      "transport": "http",
-      "url": "http://mcp-filesystem:3000",
-      "description": "Safe local filesystem access under /portal/data/user_{user_id}/"
+      "command": "uvx",
+      "args": ["mcp-server-filesystem", "/tmp"]
     },
-    "bash": {
-      "transport": "http",
-      "url": "http://mcp-shell:8000",
-      "description": "Sandboxed CLI execution with HITL approval"
-    },
-    "web": {
-      "transport": "http",
-      "url": "http://mcp-web:8000",
-      "description": "Web search and scraping service"
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
     }
   }
 }

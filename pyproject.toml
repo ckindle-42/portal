@@ -43,6 +43,9 @@ generation = [
 redis = [
     "redis>=5.0.0",
 ]
+mcp = [
+    "scrapling>=0.2",
+]
 all = [
     "python-telegram-bot>=21.0,<22.0",
     "slack-sdk>=3.29.0",

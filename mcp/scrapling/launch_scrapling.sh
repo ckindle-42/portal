@@ -17,6 +17,12 @@ fi
 
 source "$PORTAL_ROOT/.venv/bin/activate"
 
+# Install scrapling if not present
+if ! "$PORTAL_ROOT/.venv/bin/python" -c "import scrapling" 2>/dev/null; then
+    echo "[scrapling] installing scrapling package..."
+    "$PORTAL_ROOT/.venv/bin/pip" install -q scrapling
+fi
+
 # Scrapling runs as a standalone HTTP MCP server
 nohup python -m scrapling.mcp --port "$PORT" >> "$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
