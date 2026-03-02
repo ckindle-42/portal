@@ -44,8 +44,8 @@ Portal 1.4.6 is fully production-ready. All CI gates are green. This run (run 17
 | ID | Description | File | Fix |
 |----|-------------|------|-----|
 | FIX-01 | Removed redundant duplicate import | `metrics.py:193` | Removed re-import of Counter, Gauge, Histogram |
-| FIX-02 | Removed TODO comment | `audio_generator.py:22` | Clarified as unimplemented stub |
-| FIX-03 | Removed TODO comment | `image_generator.py:30` | Clarified as unimplemented stub |
+| FIX-02 | Implemented audio generation | `audio_generator.py` | Full CosyVoice TTS and voice cloning implementation |
+| FIX-03 | Implemented image generation | `image_generator.py` | Full mflux CLI integration for MLX image generation |
 
 **Unfinished Work Register:**
 
@@ -61,13 +61,14 @@ BASELINE STATUS
 Environment:  Python 3.14.3 | .venv active | portal 1.4.6 importable
 Dependencies: 35 OK, 0 missing, 0 error
 Module imports: 100 OK, 0 failed
-Tests:        PASS=914  FAIL=0  SKIP=1  (915 selected from 942 collected)
+Tests:        PASS=919  FAIL=0  SKIP=1  (920 selected from 942 collected)
 Lint:         VIOLATIONS=0
 Mypy:         ERRORS=0 (notes only)
 Branches:     LOCAL=1 (main) | REMOTE=1 (origin/main)
 CLAUDE.md:    git policy PRESENT
 API routes:   confirmed working
 Code Findings: 0 deferred (all resolved)
+New features: image generation (mflux), audio generation (CosyVoice)
 Proceed:      YES — fully production-ready
 ```
 

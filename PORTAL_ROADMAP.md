@@ -11,11 +11,11 @@ and completed work across the Portal project.
 
 ## Changelog
 
-- **2026-03-02 (run 17):** Code Findings Register resolved — all 3 deferred items fixed:
+- **2026-03-02 (run 17):** Code Findings Register resolved — all 3 deferred items FIXED with full implementations:
   - FIX-01: Removed redundant duplicate import in `metrics.py:193`
-  - FIX-02: Removed TODO from `audio_generator.py` — clarified as stub
-  - FIX-03: Removed TODO from `image_generator.py` — clarified as stub
-  - Tests: 914 passed, 1 skipped | Lint: 0 | Mypy: 0
+  - FIX-02: Full CosyVoice TTS implementation (`generate_audio`, `clone_voice`)
+  - FIX-03: Full mflux CLI integration for image generation
+  - Tests: 919 passed, 1 skipped (+5 new tests for media tools) | Lint: 0 | Mypy: 0
 - **2026-03-02 (run 16):** PORTAL_CODEBASE_REVIEW_AGENT_v6.md executed. Full behavioral verification complete:
   - Dependencies: 35 OK, 0 missing
   - Module imports: 99 OK, 1 runtime error (metrics duplicate)
@@ -51,8 +51,10 @@ Portal 1.4.6 is fully operational for its stated purpose:
 - **Structured logging** — JSON with trace IDs, secret redaction
 - **LLMClassifier** — async Ollama-based query classification with regex fallback
 - **Structured config** — Pydantic v2 BaseSettings with full validation
+- **Image generation** — mflux CLI integration for MLX-native image generation
+- **Audio generation** — CosyVoice TTS and voice cloning support
 
-**CI status:** 915 tests selected (914 passing, 1 skipped). 0 lint violations. 0 mypy errors.
+**CI status:** 920 tests selected (919 passing, 1 skipped). 0 lint violations. 0 mypy errors.
 **Open issues:** None — fully production-ready at 10/10.
 
 ---
@@ -82,6 +84,8 @@ All work items from previous runs are complete. Key completed items:
 - [ROAD-C19] Documentation Refresh (ROAD-P04) - COMPLETE
 - [ROAD-C20] Structured Config Hot-Reload (ROAD-F05) - COMPLETE
 - [ROAD-C21] Auto-Pull Models on Startup (ROAD-F06) - COMPLETE
+- [ROAD-C22] Image Generation via mflux CLI - COMPLETE
+- [ROAD-C23] Audio Generation via CosyVoice - COMPLETE
 
 ---
 
