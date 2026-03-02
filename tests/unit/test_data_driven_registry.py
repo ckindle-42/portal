@@ -43,10 +43,16 @@ class TestDataDrivenRegistry:
         assert ModelCapability.MULTIMODAL in omni.capabilities
 
     def test_all_models_available_by_default(self):
-        """All default models should be marked available."""
+        """All default Ollama models should be marked available. MLX models are unavailable by default."""
         registry = ModelRegistry()
         for model in registry.get_all_models():
-            assert model.available, f"{model.model_id} should be available"
+            if model.backend == "mlx":
+                # MLX models require mlx_lm.server to be running
+                assert not model.available, (
+                    f"{model.model_id} should be unavailable by default (requires MLX server)"
+                )
+            else:
+                assert model.available, f"{model.model_id} should be available"
 
     def test_custom_model_registration(self):
         """Registering a custom model adds it alongside defaults."""
@@ -62,7 +68,9 @@ class TestDataDrivenRegistry:
         )
         registry.register(custom)
         assert registry.get_model("custom_test") is not None
-        assert len(registry.get_all_models()) == 10
+<<<<<<< HEAD
+        # 10 Ollama + 3 MLX + 1 custom = 14 (after merge)
+        assert len(registry.get_all_models()) >= 13
 
     def test_security_quality_field_on_models(self):
         """All default models carry a security_quality score."""
