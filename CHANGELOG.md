@@ -22,6 +22,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Tests
 - Added tests/unit/test_llm_classifier.py (16 test cases)
 
+### Also in 1.4.5 (PR #96)
+- IntelligentRouter.route() made async; dual LLMClassifier + TaskClassifier
+  classification for all AgentCore chat requests (TASK-41)
+- router.py changed to use create_classifier() — ROUTING_LLM_MODEL env var
+  now respected (TASK-47)
+- stream_classify() dead code and AsyncIterator import removed from
+  llm_classifier.py (TASK-46)
+- Version 1.4.5 synced in pyproject.toml and docs/ARCHITECTURE.md (TASK-44, TASK-45)
+
 ---
 
 ## [1.4.4] - 2026-03-02 — TASK-33 Final mypy Clean

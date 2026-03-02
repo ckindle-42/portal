@@ -139,11 +139,11 @@ Portal uses two separate routers for different client paths:
 | **Proxy Router** | `:8000` | Ollama proxy with workspace and regex routing | Open WebUI, LibreChat |
 | **IntelligentRouter** | `:8081` | Task complexity classification, serves Portal API | Portal interfaces (Web, Telegram, Slack) |
 
-The Proxy Router at `:8000` acts as a transparent pass-through to Ollama with regex-based model selection via `router_rules.json`. It serves external web UIs that expect an Ollama-compatible endpoint.
+The Proxy Router at `:8000` acts as a transparent pass-through to Ollama with LLM classifier (qwen2.5:0.5b via `router_rules.json`) with regex fallback. It serves external web UIs that expect an Ollama-compatible endpoint.
 
-The IntelligentRouter at `:8081` is Portal's own routing that uses `TaskClassifier` (100+ regex patterns) to classify task complexity and category, then selects the optimal model. It serves the Portal API and chat interfaces.
+The IntelligentRouter at `:8081` is Portal's own routing that uses dual classification: `LLMClassifier` (async Ollama call) for category plus `TaskClassifier` (regex) for complexity metadata, then selects the optimal model. It serves the Portal API and chat interfaces.
 
-This separation allows external web UIs to use Ollama directly while Portal's own interfaces get intelligent routing. Future unification is a Track B opportunity (see ROADMAP.md for LLM-based Intelligent Routing).
+This separation allows external web UIs to use Ollama directly while Portal's own interfaces get intelligent routing. LLM-based routing is now complete in both paths (see ROAD-P01 in PORTAL_ROADMAP.md).
 
 #### Dynamic Ollama Discovery
 

@@ -7,7 +7,7 @@ Each is estimated at 2-3 days of implementation.
 
 ## 1. LLM-Based Intelligent Routing
 
-**Status:** Planned
+**Status:** Complete (both proxy router and IntelligentRouter — as of 2026-03-02)
 **Priority:** High — improves model selection accuracy for all interfaces
 **Estimated effort:** 2-3 days
 
