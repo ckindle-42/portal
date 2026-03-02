@@ -1,6 +1,6 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 12)
+**Generated:** 2026-03-02 (delta update — run 13)
 **Current version:** 1.4.5
 **Maintained by:** ckindle-42
 
@@ -11,6 +11,7 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 13):** Auto-pull models (ROAD-F06) added — ModelPuller class automatically downloads missing Ollama models on startup. Docker image updates — OpenWebUI/LibreChat now use latest with pull_policy:always. Portal remains fully production-ready at 10/10.
 - **2026-03-02 (run 12):** Config hot-reload (ROAD-F05) completed — ConfigWatcher now propagates rate limit changes at runtime. Fixed mypy type error in lifecycle.py. Branch hygiene performed — cleaned 10 stale remote branches. Portal remains fully production-ready at 10/10.
 - **2026-03-02 (run 11 - documentation review):** PORTAL_DOCUMENTATION_AGENT.md executed. Verified all prior discrepancies resolved: D-02 (K8s health probes wired), D-03 (metrics port corrected), D-04 (env vars documented), D-05 (warmup state handled). Updated PORTAL_HOW_IT_WORKS.md discrepancy log to show all issues resolved. Test counts updated to 915 collected, 914 passing.
 - **2026-03-02 (run 11):** ALL TASKS COMPLETE — TASK-53 through TASK-56 all resolved. Health score maintained at 10/10. Portal is fully production-ready with zero open findings.
@@ -36,6 +37,7 @@ Portal 1.4.5 is fully operational for its stated purpose:
 - **Watchdog** — optional component auto-restart
 - **Log rotation** — optional log file management
 - **Config hot-reload** — rate limits can be updated without restart
+- **Auto-pull models** — ModelPuller automatically downloads missing Ollama models
 - **WorkspaceRegistry** — virtual model names mapped to concrete Ollama models
 - **BackendRegistry** — named backend instances (Ollama, MLX)
 - **Structured logging** — JSON with trace IDs, secret redaction
@@ -43,7 +45,7 @@ Portal 1.4.5 is fully operational for its stated purpose:
 - **Fully mypy-clean** — 0 type errors across 99 source files
 - **Fully documented** — all env vars in .env.example
 
-**CI status:** 914 tests passing (915 collected, 1 skipped), 0 lint violations.
+**CI status:** 915 tests collected, 0 lint violations.
 **Type safety:** 0 mypy errors (down from 170 at project start — 100% reduction).
 
 ---
@@ -229,6 +231,19 @@ Description:  ConfigWatcher now propagates rate limit config changes at runtime:
 Evidence:     Commit 31d1e61
 ```
 
+### [ROAD-C21] Auto-Pull Models on Startup (ROAD-F06)
+
+```
+Status:       COMPLETE
+Priority:     P4-LOW
+Description:  ModelPuller class auto-downloads missing Ollama models on startup:
+             - Checks defined models in default_models.json
+             - Queries Ollama /api/tags for installed models
+             - Pulls missing models via /api/pull endpoint
+             - Config option auto_pull_models (default: true)
+Evidence:     Commit 6d4c0a1
+```
+
 ---
 
 ## 3. In Progress
@@ -319,7 +334,16 @@ Description:  ConfigWatcher propagates changes without restart
 Evidence:     Commit 31d1e61
 ```
 
-### [ROAD-F06] HITL Non-Redis Fallback
+### [ROAD-F06] Auto-Pull Models on Startup
+
+```
+Status:       COMPLETE
+Priority:     P4-LOW
+Description:  ModelPuller class auto-downloads missing Ollama models
+Evidence:     Commit 6d4c0a1
+```
+
+### [ROAD-F07] HITL Non-Redis Fallback
 
 ```
 Status:       DISCUSSED
@@ -368,4 +392,4 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 ---
 
-*Last updated: 2026-03-02 (run 12) — ALL TASKS COMPLETE. Portal 1.4.5 is FULLY PRODUCTION-READY. Health: 10/10.*
+*Last updated: 2026-03-02 (run 13) — ALL TASKS COMPLETE. Portal 1.4.5 is FULLY PRODUCTION-READY. Health: 10/10.*
