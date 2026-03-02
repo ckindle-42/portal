@@ -11,7 +11,7 @@ services:
   # Caddy — reverse proxy and static file server
   # -----------------------------------------------------------------------
   caddy:
-    image: caddy:3.0-alpine
+    image: caddy:2
     container_name: portal-caddy
     restart: unless-stopped
     ports:
