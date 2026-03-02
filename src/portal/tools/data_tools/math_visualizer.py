@@ -45,16 +45,16 @@ def _safe_eval(expr: str, x: "np.ndarray") -> "np.ndarray":  # type: ignore[name
                 return _SAFE_CONSTS[node.id]
             raise ValueError(f"Unknown variable: {node.id}")
         if isinstance(node, ast.BinOp) and type(node.op) in _SAFE_OPS:
-            return _SAFE_OPS[type(node.op)](_eval_node(node.left), _eval_node(node.right))
+            return _SAFE_OPS[type(node.op)](_eval_node(node.left), _eval_node(node.right))  # type: ignore[operator]
         if isinstance(node, ast.UnaryOp) and type(node.op) in _SAFE_OPS:
-            return _SAFE_OPS[type(node.op)](_eval_node(node.operand))
+            return _SAFE_OPS[type(node.op)](_eval_node(node.operand))  # type: ignore[operator]
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             if node.func.id in _SAFE_FUNCS and len(node.args) == 1:
                 return _SAFE_FUNCS[node.func.id](_eval_node(node.args[0]))
             raise ValueError(f"Unknown function: {node.func.id}")
         raise ValueError(f"Unsupported expression: {ast.dump(node)}")
 
-    return _eval_node(tree)
+    return _eval_node(tree)  # type: ignore[arg-type]
 
 
 class MathVisualizerTool(BaseTool):

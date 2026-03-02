@@ -17,7 +17,7 @@ except ImportError:
     class InvalidGitRepositoryError(Exception):  # type: ignore[no-redef]
         pass
 
-    Repo = None  # type: ignore[assignment]
+    Repo = None  # type: ignore[misc,assignment]
 
 
 def open_repo(repo_path: str) -> tuple[Any, dict[str, Any] | None]:

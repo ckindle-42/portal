@@ -179,7 +179,7 @@ class PowerPointProcessorTool(BaseTool):
 
             # Save
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            prs.save(file_path)
+            prs.save(str(file_path))
 
             return self._success_response(
                 result={"file_path": str(file_path), "slides": 1}, metadata={"title": title}
@@ -218,7 +218,7 @@ class PowerPointProcessorTool(BaseTool):
 
         try:
             # Load presentation
-            prs = Presentation(file_path)
+            prs = Presentation(str(file_path))
 
             # Get layout
             layout_idx = self.LAYOUTS.get(layout_name, 1)
@@ -236,7 +236,7 @@ class PowerPointProcessorTool(BaseTool):
                 self._fill_body_placeholder(slide, content, bullet_points)
 
             # Save
-            prs.save(file_path)
+            prs.save(str(file_path))
 
             return self._success_response(
                 result={"slides_total": len(prs.slides)},
@@ -263,7 +263,7 @@ class PowerPointProcessorTool(BaseTool):
 
         try:
             # Load presentation
-            prs = Presentation(file_path)
+            prs = Presentation(str(file_path))
 
             # Get slide
             if slide_idx == -1:
@@ -282,7 +282,7 @@ class PowerPointProcessorTool(BaseTool):
             slide.shapes.add_picture(str(image_path), left, top, width, height)
 
             # Save
-            prs.save(file_path)
+            prs.save(str(file_path))
 
             return self._success_response(
                 result={"image_added": str(image_path)},
@@ -309,7 +309,7 @@ class PowerPointProcessorTool(BaseTool):
 
         try:
             # Load presentation
-            prs = Presentation(file_path)
+            prs = Presentation(str(file_path))
 
             # Get slide
             if slide_idx == -1:
@@ -339,7 +339,7 @@ class PowerPointProcessorTool(BaseTool):
             slide.shapes.add_chart(chart_type_enum, x, y, cx, cy, chart_data_obj)
 
             # Save
-            prs.save(file_path)
+            prs.save(str(file_path))
 
             return self._success_response(
                 result={"chart_added": chart_type},
@@ -360,7 +360,7 @@ class PowerPointProcessorTool(BaseTool):
 
         try:
             # Load presentation
-            prs = Presentation(file_path)
+            prs = Presentation(str(file_path))
 
             # Extract content
             slides_content = []

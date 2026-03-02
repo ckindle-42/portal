@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 try:
-    import aiofiles
+    import aiofiles  # type: ignore[import-untyped]
 
     HAS_AIOFILES = True
 except ImportError:

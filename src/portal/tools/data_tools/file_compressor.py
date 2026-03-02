@@ -83,7 +83,7 @@ class FileCompressorTool(BaseTool):
                         zf.write(file_path, os.path.basename(file_path))
         if fmt in ("tar", "tar.gz"):
             mode = "w:gz" if fmt == "tar.gz" else "w"
-            with tarfile.open(archive_path, mode) as tf:
+            with tarfile.open(archive_path, mode) as tf:  # type: ignore[call-overload]
                 for file_path in files:
                     if os.path.exists(file_path):
                         tf.add(file_path, arcname=os.path.basename(file_path))

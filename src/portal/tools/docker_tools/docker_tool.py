@@ -131,7 +131,7 @@ class DockerTool(BaseTool):
 
     def __init__(self) -> None:
         super().__init__()
-        self.client = None
+        self.client: Any = None
 
     def _ensure_client(self) -> bool:
         """Lazy-init Docker client. Returns False if unavailable."""

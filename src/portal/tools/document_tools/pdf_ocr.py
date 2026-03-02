@@ -57,7 +57,7 @@ class PDFOCRTool(BaseTool):
                 "OCR dependencies not installed. Run: pip install pytesseract pdf2image"
             )
 
-        pdf_path = Path(parameters.get("pdf_path"))
+        pdf_path = Path(parameters.get("pdf_path") or "")
         language = parameters.get("language", "eng")
         dpi = parameters.get("dpi", 300)
 
