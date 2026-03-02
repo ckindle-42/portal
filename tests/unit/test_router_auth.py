@@ -37,26 +37,31 @@ def _with_router_token():
 class TestResolveModel:
     """Tests for the resolve_model function."""
 
-    def test_manual_override(self, _no_router_token):
+    @pytest.mark.asyncio
+    async def test_manual_override(self, _no_router_token):
         """Manual @model: override selects the correct model."""
         mod = _no_router_token
-        model, reason = mod.resolve_model(
+        model, reason = await mod.resolve_model(
             "auto", [{"role": "user", "content": "@model:llama3 hello"}]
         )
         assert model == "llama3"
         assert "manual" in reason
 
-    def test_explicit_model_passthrough(self, _no_router_token):
+    @pytest.mark.asyncio
+    async def test_explicit_model_passthrough(self, _no_router_token):
         """Explicit non-auto model name passes through unchanged."""
         mod = _no_router_token
-        model, reason = mod.resolve_model("my-custom-model", [{"role": "user", "content": "hi"}])
+        model, reason = await mod.resolve_model(
+            "my-custom-model", [{"role": "user", "content": "hi"}]
+        )
         assert model == "my-custom-model"
         assert reason == "explicit model"
 
-    def test_auto_resolves_to_a_model(self, _no_router_token):
+    @pytest.mark.asyncio
+    async def test_auto_resolves_to_a_model(self, _no_router_token):
         """When model is 'auto', resolve_model returns some valid model."""
         mod = _no_router_token
-        model, reason = mod.resolve_model("auto", [{"role": "user", "content": "hi"}])
+        model, reason = await mod.resolve_model("auto", [{"role": "user", "content": "hi"}])
         assert isinstance(model, str) and model
         assert isinstance(reason, str) and reason
 

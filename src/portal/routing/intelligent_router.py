@@ -76,7 +76,9 @@ class IntelligentRouter:
                     reasoning=f"workspace: {workspace_id}",
                 )
 
+        # Use TaskClassifier for classification
         classification = self.classifier.classify(query)
+
         strategy_dispatch = {
             RoutingStrategy.SPEED: lambda c: self._route_speed(c),
             RoutingStrategy.COST_OPTIMIZED: lambda c: self._route_cost_optimized(c),

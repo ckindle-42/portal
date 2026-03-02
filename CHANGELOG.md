@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.5] - 2026-03-02 — ROAD-P01 LLM-Based Intelligent Routing
+
+### Added
+- LLMClassifier (src/portal/routing/llm_classifier.py): async Ollama-based query
+  classification replacing regex heuristics. Falls back to TaskClassifier when
+  Ollama unavailable. LRU cache avoids reclassifying identical prompts.
+- LLM classifier integrated into proxy router (router.py::resolve_model())
+- "classifier" config block added to router_rules.json
+- ROUTING_LLM_MODEL env var documented in .env.example
+
+### Fixed
+- llm_classifier.py: UP035 (AsyncIterator import), W292 (trailing newline)
+- llm_classifier.py: mypy arg-type errors in create_classifier()
+
+### Tests
+- Added tests/unit/test_llm_classifier.py (16 test cases)
+
+---
+
 ## [1.4.4] - 2026-03-02 — TASK-33 Final mypy Clean
 
 ### Fixed

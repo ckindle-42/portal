@@ -6,10 +6,10 @@ keeping TaskClassifier as a zero-latency fallback.
 """
 
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
-from typing import AsyncIterator
 
 import httpx
 
@@ -179,7 +179,18 @@ def create_classifier(
     """Factory function to create an LLMClassifier with config from settings."""
     import os
 
-    host = ollama_host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
-    model = model or os.getenv("ROUTING_LLM_MODEL", "qwen2.5:0.5b")
+    _default_host = "http://localhost:11434"
+    _default_model = "qwen2.5:0.5b"
 
-    return LLMClassifier(ollama_host=host, model=model)
+    host: str = (
+        ollama_host
+        if ollama_host is not None
+        else os.getenv("OLLAMA_HOST", _default_host) or _default_host
+    )
+    classifier_model: str = (
+        model
+        if model is not None
+        else os.getenv("ROUTING_LLM_MODEL", _default_model) or _default_model
+    )
+
+    return LLMClassifier(ollama_host=host, model=classifier_model)
