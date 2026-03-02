@@ -1,6 +1,6 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 13)
+**Generated:** 2026-03-02 (delta update — run 14)
 **Current version:** 1.4.5
 **Maintained by:** ckindle-42
 
@@ -11,12 +11,13 @@ and completed work across the Portal project.
 
 ## Changelog
 
-- **2026-03-02 (run 13):** Auto-pull models (ROAD-F06) added — ModelPuller class automatically downloads missing Ollama models on startup. Docker image updates — OpenWebUI/LibreChat now use latest with pull_policy:always. Portal remains fully production-ready at 10/10.
-- **2026-03-02 (run 12):** Config hot-reload (ROAD-F05) completed — ConfigWatcher now propagates rate limit changes at runtime. Fixed mypy type error in lifecycle.py. Branch hygiene performed — cleaned 10 stale remote branches. Portal remains fully production-ready at 10/10.
-- **2026-03-02 (run 11 - documentation review):** PORTAL_DOCUMENTATION_AGENT.md executed. Verified all prior discrepancies resolved: D-02 (K8s health probes wired), D-03 (metrics port corrected), D-04 (env vars documented), D-05 (warmup state handled). Updated PORTAL_HOW_IT_WORKS.md discrepancy log to show all issues resolved. Test counts updated to 915 collected, 914 passing.
-- **2026-03-02 (run 11):** ALL TASKS COMPLETE — TASK-53 through TASK-56 all resolved. Health score maintained at 10/10. Portal is fully production-ready with zero open findings.
-- **2026-03-02 (run 10):** MLX backend COMPLETE (PR #99 merged). TASK-48 through TASK-52 complete. TASK-53 (K8s probes), TASK-54 (metrics port), TASK-55 (MLX env vars), TASK-56 (knowledge env vars) added. Health score 9.4/10.
-- **2026-03-02 (run 9):** ROAD-F07 COMPLETE — PORTAL_HOW_IT_WORKS.md produced. Health score 9.4/10.
+- **2026-03-02 (run 14):** Two regressions detected from run 13. BUG-01: `test_all_models_available_by_default` fails due to HuggingFace model with `available: false` not being excluded like MLX models (introduced by commit `6d4c0a1`). BUG-02: mypy error in `server.py:784` — `Settings` assigned to `dict[Any, Any] | None` parameter (introduced by commit `0713218`). Health score reduced to 9.0/10. Both are shallow fixes. Run 13 incorrectly claimed 0 test failures and 0 mypy errors due to using "sample verified" rather than running full suite.
+- **2026-03-02 (run 13):** Auto-pull models (ROAD-F06) added — ModelPuller class automatically downloads missing Ollama models on startup. Docker image updates — OpenWebUI/LibreChat now use latest with pull_policy:always. Portal claimed fully production-ready at 10/10 (NOTE: run 14 found this was inaccurate due to incomplete verification).
+- **2026-03-02 (run 12):** Config hot-reload (ROAD-F05) completed — ConfigWatcher now propagates rate limit changes at runtime. Fixed mypy type error in lifecycle.py. Branch hygiene performed — cleaned 10 stale remote branches.
+- **2026-03-02 (run 11 - documentation review):** PORTAL_DOCUMENTATION_AGENT.md executed. Verified all prior discrepancies resolved: D-02 (K8s health probes wired), D-03 (metrics port corrected), D-04 (env vars documented), D-05 (warmup state handled). Updated PORTAL_HOW_IT_WORKS.md discrepancy log to show all issues resolved.
+- **2026-03-02 (run 11):** ALL TASKS COMPLETE — TASK-53 through TASK-56 all resolved. Health score maintained at 10/10.
+- **2026-03-02 (run 10):** MLX backend COMPLETE (PR #99 merged). TASK-48 through TASK-52 complete. TASK-53 (K8s probes), TASK-54 (metrics port), TASK-55 (MLX env vars), TASK-56 (knowledge env vars) added.
+- **2026-03-02 (run 9):** ROAD-F07 COMPLETE — PORTAL_HOW_IT_WORKS.md produced.
 
 ---
 
@@ -42,11 +43,11 @@ Portal 1.4.5 is fully operational for its stated purpose:
 - **BackendRegistry** — named backend instances (Ollama, MLX)
 - **Structured logging** — JSON with trace IDs, secret redaction
 - **LLMClassifier** — async Ollama-based query classification with regex fallback
-- **Fully mypy-clean** — 0 type errors across 99 source files
-- **Fully documented** — all env vars in .env.example
+- **Structured config** — Pydantic v2 BaseSettings with full validation
 
-**CI status:** 915 tests collected, 0 lint violations.
-**Type safety:** 0 mypy errors (down from 170 at project start — 100% reduction).
+**CI status:** 915 tests selected (913 passing, 1 failing, 1 skipped). 0 lint violations.
+**Type safety:** 1 mypy error (server.py:784 — regression from run 13).
+**Open issues:** BUG-01 (test failure), BUG-02 (mypy error). Both shallow.
 
 ---
 
@@ -177,7 +178,7 @@ Description:  mypy 103 → 17
 ```
 Status:       COMPLETE
 Priority:     P2-HIGH
-Description:  mypy 17 → 0 (FULLY CLEAN)
+Description:  mypy 17 → 0 (FULLY CLEAN — NOTE: regression introduced in run 13, see open items)
 ```
 
 ### [ROAD-C17] LLM-Based Intelligent Routing (ROAD-P01)
@@ -234,13 +235,16 @@ Evidence:     Commit 31d1e61
 ### [ROAD-C21] Auto-Pull Models on Startup (ROAD-F06)
 
 ```
-Status:       COMPLETE
+Status:       COMPLETE (with minor regression — see open items)
 Priority:     P4-LOW
 Description:  ModelPuller class auto-downloads missing Ollama models on startup:
              - Checks defined models in default_models.json
              - Queries Ollama /api/tags for installed models
              - Pulls missing models via /api/pull endpoint
              - Config option auto_pull_models (default: true)
+             - Also added HuggingFace example model (hf_llama32_3b) to default_models.json
+Note:        Test not updated for HuggingFace backend (BUG-01); mypy type
+             regression in server.py:784 (BUG-02). Both require shallow fixes.
 Evidence:     Commit 6d4c0a1
 ```
 
@@ -248,7 +252,18 @@ Evidence:     Commit 6d4c0a1
 
 ## 3. In Progress
 
-**NONE** — All work is complete. Portal is production-ready.
+### [ROAD-O01] Regression Fixes from Run 13
+
+```
+Status:       OPEN — requires 2 shallow fixes
+Priority:     P1-CRITICAL (blocks CI green)
+Description:  Two regressions introduced by commit 6d4c0a1 and 0713218:
+             BUG-01: test_all_models_available_by_default fails for hf_llama32_3b
+                     Fix: add "huggingface" to backend exclusion in test (5 lines)
+             BUG-02: mypy error in server.py:784 — Settings assigned to dict|None
+                     Fix: add # type: ignore[assignment] to line 784 (1 line)
+Tasks:        TASK-57, TASK-58
+```
 
 ---
 
@@ -275,9 +290,9 @@ Evidence:     PR #99
 ### [ROAD-P03] mypy Error Reduction to Zero
 
 ```
-Status:       COMPLETE
+Status:       COMPLETE (regression in run 13 — fix via TASK-58)
 Priority:     P2-HIGH
-Description:  mypy 170 → 0 across all audit cycles
+Description:  mypy 170 → 0 across all audit cycles; 1 regression from run 13
 ```
 
 ### [ROAD-P04] Documentation Refresh
@@ -337,18 +352,29 @@ Evidence:     Commit 31d1e61
 ### [ROAD-F06] Auto-Pull Models on Startup
 
 ```
-Status:       COMPLETE
+Status:       COMPLETE (regression fix pending)
 Priority:     P4-LOW
 Description:  ModelPuller class auto-downloads missing Ollama models
 Evidence:     Commit 6d4c0a1
 ```
 
-### [ROAD-F07] HITL Non-Redis Fallback
+### [ROAD-F07] How-It-Works Documentation
+
+```
+Status:       COMPLETE
+Priority:     P4-LOW
+Description:  PORTAL_HOW_IT_WORKS.md produced
+Evidence:     Commit eeead80
+```
+
+### [ROAD-F08] HuggingFace Model Auto-Import
 
 ```
 Status:       DISCUSSED
 Priority:     P4-LOW
-Description:  In-memory fallback for single-instance deployments
+Description:  ModelPuller currently logs a message for HuggingFace models requiring
+             manual GGUF conversion. A future enhancement could automate the
+             huggingface-cli → ollama import pipeline.
 ```
 
 ---
@@ -392,4 +418,4 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 ---
 
-*Last updated: 2026-03-02 (run 13) — ALL TASKS COMPLETE. Portal 1.4.5 is FULLY PRODUCTION-READY. Health: 10/10.*
+*Last updated: 2026-03-02 (run 14) — 2 open regressions (BUG-01, BUG-02). Health: 9.0/10. Fix TASK-57 and TASK-58 to restore 10/10.*
