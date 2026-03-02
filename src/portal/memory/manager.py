@@ -191,8 +191,7 @@ class MemoryManager:
 
         content = (
             "You have access to the user's long-term memory from previous conversations. "
-            "Use this information to provide more personalized responses.\n\n"
-            + "\n".join(lines)
+            "Use this information to provide more personalized responses.\n\n" + "\n".join(lines)
         )
 
         return {"role": "system", "content": content, "name": "memory_context"}
@@ -226,8 +225,7 @@ class MemoryManager:
 
         content = (
             "You have access to the user's long-term memory from previous conversations. "
-            "Use this information to provide more personalized responses.\n\n"
-            + "\n".join(lines)
+            "Use this information to provide more personalized responses.\n\n" + "\n".join(lines)
         )
 
         return {"role": "system", "content": content, "name": "memory_context"}

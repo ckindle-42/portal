@@ -37,6 +37,26 @@
       "model": "dolphin-llama3:8b",
       "lock": false,
       "fallback": ["dolphin-llama3:8b"]
+    },
+    "auto-documents": {
+      "model": "qwen3-coder-next:30b-q5",
+      "lock": true,
+      "fallback": ["dolphin-llama3:70b", "dolphin-llama3:8b"]
+    },
+    "auto-video": {
+      "model": "dolphin-llama3:8b",
+      "lock": false,
+      "fallback": ["dolphin-llama3:8b"]
+    },
+    "auto-music": {
+      "model": "dolphin-llama3:8b",
+      "lock": false,
+      "fallback": ["dolphin-llama3:8b"]
+    },
+    "auto-research": {
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
+      "lock": true,
+      "fallback": ["dolphin-llama3:70b", "dolphin-llama3:8b"]
     }
   },
   "classifier": {
@@ -49,7 +69,11 @@
       "tool_use": "dolphin-llama3:8b",
       "security": "xploiter/the-xploiter",
       "image_gen": "dolphin-llama3:8b",
-      "audio_gen": "dolphin-llama3:8b"
+      "audio_gen": "dolphin-llama3:8b",
+      "video_gen": "dolphin-llama3:8b",
+      "music_gen": "dolphin-llama3:8b",
+      "document_gen": "qwen3-coder-next:30b-q5",
+      "research": "huihui_ai/tongyi-deepresearch-abliterated:30b"
     }
   },
   "regex_rules": [
@@ -74,6 +98,30 @@
     {
       "name": "reasoning",
       "keywords": ["(?i)\\b(analyze|reason|think through|explain why|step by step)\\b"],
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
+      "priority": 7
+    },
+    {
+      "name": "document_gen",
+      "keywords": ["(?i)\\b(write.?doc|create.?presentation|make.?spreadsheet|generate.?report|create.?word|make.?powerpoint|create.?excel)\\b"],
+      "model": "qwen3-coder-next:30b-q5",
+      "priority": 8
+    },
+    {
+      "name": "video_gen",
+      "keywords": ["(?i)\\b(create.?video|generate.?video|make.?video|animate|video.?clip|video.?generation|render.?video)\\b"],
+      "model": "dolphin-llama3:8b",
+      "priority": 9
+    },
+    {
+      "name": "music_gen",
+      "keywords": ["(?i)\\b(compose.?music|create.?music|generate.?song|generate.?music|make.?soundtrack|create.?beat|music.?generation)\\b"],
+      "model": "dolphin-llama3:8b",
+      "priority": 9
+    },
+    {
+      "name": "research",
+      "keywords": ["(?i)\\b(deep.?research|deep.?dive|investigate|find.?information.?about|comprehensive.?analysis)\\b"],
       "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
       "priority": 7
     }

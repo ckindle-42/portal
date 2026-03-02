@@ -34,6 +34,10 @@ class TaskCategory(Enum):
     SECURITY = "security"
     IMAGE_GEN = "image_gen"
     AUDIO_GEN = "audio_gen"
+    VIDEO_GEN = "video_gen"
+    MUSIC_GEN = "music_gen"
+    DOCUMENT_GEN = "document_gen"
+    RESEARCH = "research"
 
 
 @dataclass
@@ -140,11 +144,41 @@ class TaskClassifier:
         r"\b(portrait|landscape|concept\s*art|illustration)\b",
     ]
 
-    # Audio generation patterns
+    # Audio generation patterns (TTS / voice)
     AUDIO_PATTERNS = [
         r"\b(tts|text\s*to\s*speech|voice\s*clone|voice\s*synthesis)\b",
-        r"\b(sing|singing|music\s*gen|sound\s*effect|audio\s*gen)\b",
         r"\b(cosyvoice|fish\s*speech|bark|tortoise)\b",
+        r"\b(speak\s+this|read\s+aloud|narrate)\b",
+    ]
+
+    # Video generation patterns
+    VIDEO_PATTERNS = [
+        r"\b(create\s+video|generate\s+video|make\s+video|video\s+generation)\b",
+        r"\b(animate|video\s+clip|render\s+video)\b",
+        r"\b(cogvideox|mochi|wan2\.1|video\s+model)\b",
+    ]
+
+    # Music generation patterns (distinct from TTS)
+    MUSIC_PATTERNS = [
+        r"\b(compose\s+music|create\s+music|generate\s+music|generate\s+song)\b",
+        r"\b(make\s+soundtrack|create\s+beat|music\s+gen)\b",
+        r"\b(audiocraft|musicgen|stable\s*audio|music\s+generation)\b",
+        r"\b(sound\s+effect|ambient\s+music|background\s+music)\b",
+    ]
+
+    # Document generation patterns
+    DOCUMENT_PATTERNS = [
+        r"\b(write\s+doc|create\s+document|create\s+word|make\s+word)\b",
+        r"\b(create\s+presentation|make\s+presentation|create\s+powerpoint|make\s+slides)\b",
+        r"\b(create\s+spreadsheet|make\s+spreadsheet|create\s+excel)\b",
+        r"\b(generate\s+report|write\s+report)\b",
+    ]
+
+    # Research patterns
+    RESEARCH_PATTERNS = [
+        r"\b(deep\s+research|deep\s+dive|comprehensive\s+analysis)\b",
+        r"\b(find\s+information\s+about|investigate\s+thoroughly)\b",
+        r"\b(research\s+topic|in-depth\s+study)\b",
     ]
 
     # Question patterns
@@ -166,6 +200,10 @@ class TaskClassifier:
         self._security_re = [re.compile(p, re.IGNORECASE) for p in self.SECURITY_PATTERNS]
         self._image_re = [re.compile(p, re.IGNORECASE) for p in self.IMAGE_PATTERNS]
         self._audio_re = [re.compile(p, re.IGNORECASE) for p in self.AUDIO_PATTERNS]
+        self._video_re = [re.compile(p, re.IGNORECASE) for p in self.VIDEO_PATTERNS]
+        self._music_re = [re.compile(p, re.IGNORECASE) for p in self.MUSIC_PATTERNS]
+        self._document_re = [re.compile(p, re.IGNORECASE) for p in self.DOCUMENT_PATTERNS]
+        self._research_re = [re.compile(p, re.IGNORECASE) for p in self.RESEARCH_PATTERNS]
 
     def _match_all_patterns(self, query: str) -> dict[str, int]:
         """Return match counts for each pattern group against query."""
@@ -178,6 +216,10 @@ class TaskClassifier:
             "security": sum(1 for p in self._security_re if p.search(query)),
             "image": sum(1 for p in self._image_re if p.search(query)),
             "audio": sum(1 for p in self._audio_re if p.search(query)),
+            "video": sum(1 for p in self._video_re if p.search(query)),
+            "music": sum(1 for p in self._music_re if p.search(query)),
+            "document": sum(1 for p in self._document_re if p.search(query)),
+            "research": sum(1 for p in self._research_re if p.search(query)),
         }
 
     def classify(self, query: str) -> TaskClassification:
@@ -232,10 +274,18 @@ class TaskClassifier:
         """Map pattern match counts to a task category."""
         if counts.get("security", 0) >= 1:
             return TaskCategory.SECURITY
+        if counts.get("video", 0) >= 1:
+            return TaskCategory.VIDEO_GEN
+        if counts.get("music", 0) >= 1:
+            return TaskCategory.MUSIC_GEN
+        if counts.get("document", 0) >= 1:
+            return TaskCategory.DOCUMENT_GEN
         if counts.get("image", 0) >= 1:
             return TaskCategory.IMAGE_GEN
         if counts.get("audio", 0) >= 1:
             return TaskCategory.AUDIO_GEN
+        if counts.get("research", 0) >= 1:
+            return TaskCategory.RESEARCH
         if counts["code"] >= 2:
             return TaskCategory.CODE
         if counts["math"] >= 2:
@@ -312,6 +362,10 @@ class TaskClassifier:
             TaskCategory.SECURITY: 1.4,
             TaskCategory.IMAGE_GEN: 0.6,
             TaskCategory.AUDIO_GEN: 0.6,
+            TaskCategory.VIDEO_GEN: 0.6,
+            TaskCategory.MUSIC_GEN: 0.6,
+            TaskCategory.DOCUMENT_GEN: 1.3,
+            TaskCategory.RESEARCH: 1.5,
         }
 
         base = base_tokens.get(complexity, 200)

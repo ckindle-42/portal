@@ -2,6 +2,7 @@
 Whisper MCP Server
 Wraps faster-whisper for audio transcription as an MCP tool.
 """
+
 import asyncio
 import os
 from pathlib import Path
@@ -18,6 +19,7 @@ def get_model():
     global _model
     if _model is None:
         from faster_whisper import WhisperModel
+
         _model = WhisperModel(WHISPER_MODEL_SIZE, device="auto", compute_type="auto")
     return _model
 
@@ -49,11 +51,13 @@ async def transcribe_audio(file_path: str, language: str | None = None) -> dict:
     segment_list = []
     full_text = []
     for seg in segments:
-        segment_list.append({
-            "start": round(seg.start, 2),
-            "end": round(seg.end, 2),
-            "text": seg.text.strip(),
-        })
+        segment_list.append(
+            {
+                "start": round(seg.start, 2),
+                "end": round(seg.end, 2),
+                "text": seg.text.strip(),
+            }
+        )
         full_text.append(seg.text.strip())
 
     return {

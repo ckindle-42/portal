@@ -44,6 +44,7 @@ async def _check_cosyvoice_available() -> tuple[bool, str]:
         # Check if cosyvoice module is available
         import cosyvoice  # noqa: F401
         import torchaudio  # noqa: F401
+
         return True, ""
     except ImportError as e:
         missing = str(e).split("'")[-2] if "'" in str(e) else str(e)
@@ -203,6 +204,7 @@ def _clone_voice_sync(
             reference, sr = torchaudio.load(reference_audio)
             if sr != sample_rate:
                 import torchaudio.functional as F
+
                 reference = F.resample(reference, sr, sample_rate)
         else:
             # Already a file-like object

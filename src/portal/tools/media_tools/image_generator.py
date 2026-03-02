@@ -79,13 +79,20 @@ async def generate_image(
         # Build mflux command
         cmd = [
             mflux_cmd,
-            "--prompt", prompt,
-            "--width", str(width),
-            "--height", str(height),
-            "--seed", str(seed),
-            "--steps", str(steps),
-            "-q", "8",  # Quantization level
-            "--output", str(output_file),
+            "--prompt",
+            prompt,
+            "--width",
+            str(width),
+            "--height",
+            str(height),
+            "--seed",
+            str(seed),
+            "--steps",
+            str(steps),
+            "-q",
+            "8",  # Quantization level
+            "--output",
+            str(output_file),
         ]
 
         logger.info("Generating image: %s", prompt[:80])
