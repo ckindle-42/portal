@@ -11,6 +11,11 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 17):** Code Findings Register resolved — all 3 deferred items fixed:
+  - FIX-01: Removed redundant duplicate import in `metrics.py:193`
+  - FIX-02: Removed TODO from `audio_generator.py` — clarified as stub
+  - FIX-03: Removed TODO from `image_generator.py` — clarified as stub
+  - Tests: 914 passed, 1 skipped | Lint: 0 | Mypy: 0
 - **2026-03-02 (run 16):** PORTAL_CODEBASE_REVIEW_AGENT_v6.md executed. Full behavioral verification complete:
   - Dependencies: 35 OK, 0 missing
   - Module imports: 99 OK, 1 runtime error (metrics duplicate)

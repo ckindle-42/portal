@@ -190,8 +190,6 @@ def register_metrics_endpoint(app, metrics: MetricsCollector) -> None:
 # ---------------------------------------------------------------------------
 
 if PROMETHEUS_AVAILABLE:
-    from prometheus_client import Counter, Gauge, Histogram  # noqa: F811
-
     REQUESTS_PER_MINUTE = Gauge("portal_requests_per_minute", "Rolling requests per minute")
     ACTIVE_USERS = Gauge("portal_active_users", "Unique users seen in process lifetime")
     TOKENS_PER_SECOND = Histogram(

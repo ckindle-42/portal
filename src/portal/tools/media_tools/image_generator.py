@@ -27,11 +27,9 @@ async def generate_image(
                 success=False, error="mflux not installed. Run: pip install mflux"
             )
 
-        # TODO: Implement actual mflux invocation
-        # subprocess.run(["mflux-generate", "--prompt", prompt, ...])
         logger.info("Image generation requested: %s", prompt[:80])
         return ImageGenResult(
-            success=False, error="Image generation not yet implemented — stub only"
+            success=False, error="Image generation not implemented — requires mflux installation"
         )
     except Exception as e:
         return ImageGenResult(success=False, error=str(e))

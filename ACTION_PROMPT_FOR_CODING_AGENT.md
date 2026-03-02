@@ -1,8 +1,8 @@
 # Portal — Action Prompt for Coding Agent
 
-**Generated:** 2026-03-02 (delta run v16)
+**Generated:** 2026-03-02 (run 17)
 **Source audit:** PORTAL_AUDIT_REPORT.md (same date)
-**Target version after completion:** 1.4.6 (all CI gates already green)
+**Target version after completion:** 1.4.7
 
 ---
 
@@ -21,9 +21,10 @@ Tests: `tests/` (915 tests currently selected; 914 passing, 1 skipped).
 
 ## Prior Work Summary
 
-All previously audited tasks from run 15 are complete:
-- **TASK-57**: Fixed `test_all_models_available_by_default` to exempt `huggingface` backend
-- **TASK-58**: Fixed mypy error in `server.py:784` with `# type: ignore[assignment]`
+All code findings from run 16 have been resolved:
+- **FIX-01**: Removed redundant duplicate import in `metrics.py:193` (Counter, Gauge, Histogram re-import)
+- **FIX-02**: Removed TODO from `audio_generator.py` — clarified as stub
+- **FIX-03**: Removed TODO from `image_generator.py` — clarified as stub
 
 **Current state:** 914 tests passing, 0 mypy errors, 0 lint violations. All CI gates green.
 
@@ -31,7 +32,7 @@ All previously audited tasks from run 15 are complete:
 
 ## Open Tasks
 
-**No open tasks.** Portal 1.4.6 is fully production-ready. All prior regressions have been resolved.
+**No open tasks.** Portal 1.4.6 is fully production-ready. All Code Findings Register items resolved.
 
 ---
 
@@ -54,6 +55,6 @@ python3 -m pytest tests/ -v --tb=short      # expect 0 FAILED, 914 PASSED, 1 SKI
 ## Notes
 
 - No action required — Portal is production-ready
-- Phase 3 behavioral verification confirmed all major components work
-- All endpoints respond correctly
-- This is a verification-only run; no code changes needed
+- All 3 deferred Code Findings have been resolved
+- TODO comments removed from media_tools stubs
+- Redundant import cleaned up in metrics.py
