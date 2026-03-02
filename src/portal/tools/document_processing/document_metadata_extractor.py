@@ -129,18 +129,18 @@ class DocumentMetadataExtractorTool(BaseTool):
             metadata = {
                 "type": "PDF Document",
                 "pages": len(reader.pages),
-                "title": info.get("/Title", ""),
-                "author": info.get("/Author", ""),
-                "subject": info.get("/Subject", ""),
-                "creator": info.get("/Creator", ""),
-                "producer": info.get("/Producer", ""),
-                "keywords": info.get("/Keywords", ""),
+                "title": info.get("/Title", "") if info is not None else "",
+                "author": info.get("/Author", "") if info is not None else "",
+                "subject": info.get("/Subject", "") if info is not None else "",
+                "creator": info.get("/Creator", "") if info is not None else "",
+                "producer": info.get("/Producer", "") if info is not None else "",
+                "keywords": info.get("/Keywords", "") if info is not None else "",
             }
 
             # Creation/modification dates
-            if "/CreationDate" in info:
+            if info is not None and "/CreationDate" in info:
                 metadata["created"] = info.get("/CreationDate")
-            if "/ModDate" in info:
+            if info is not None and "/ModDate" in info:
                 metadata["modified"] = info.get("/ModDate")
 
             # Detailed info
@@ -290,7 +290,8 @@ class DocumentMetadataExtractorTool(BaseTool):
             }
 
             # EXIF data
-            exif_data = img._getexif()
+            _getexif = getattr(img, "_getexif", None)
+            exif_data = _getexif() if _getexif is not None else None
             if exif_data and detailed:
                 exif = {}
                 for tag_id, value in exif_data.items():
@@ -299,7 +300,7 @@ class DocumentMetadataExtractorTool(BaseTool):
                         continue  # Skip binary data
                     exif[tag] = str(value)
 
-                metadata["exif"] = exif
+                metadata["exif"] = exif  # type: ignore[assignment]
 
             img.close()
             return metadata

@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from portal.memory import MemoryManager
 from portal.middleware.hitl_approval import HITLApprovalMiddleware
-from portal.observability.runtime_metrics import MCP_TOOL_USAGE
+from portal.observability.metrics import MCP_TOOL_USAGE
 
 # Import existing routing system
 from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry
@@ -492,7 +492,7 @@ class AgentCore:
             )
         return messages
 
-    async def health_check(self) -> bool:
+    async def health_check(self) -> bool | dict[str, Any]:
         """
         Return True if AgentCore is operational.
 
@@ -543,6 +543,8 @@ class AgentCore:
         if hitl_result is not None:
             return hitl_result
 
+        if self.mcp_registry is None:
+            return {"tool": tool_name, "result": None, "error": "MCP registry not initialized"}
         result = await self.mcp_registry.call_tool(server_name, tool_name, arguments)
         MCP_TOOL_USAGE.labels(tool_name=tool_name).inc()
         return {"tool": tool_name, "result": result}

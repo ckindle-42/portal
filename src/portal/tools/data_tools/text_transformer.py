@@ -69,7 +69,7 @@ class TextTransformerTool(BaseTool):
             if fmt == "json":
                 return json.loads(content)
             if fmt == "yaml":
-                import yaml
+                import yaml  # type: ignore[import-untyped]
 
                 return yaml.safe_load(content)
             if fmt == "xml":
@@ -77,7 +77,7 @@ class TextTransformerTool(BaseTool):
 
                 return xmltodict.parse(content)
             if fmt == "toml":
-                import toml
+                import toml  # type: ignore[import-untyped]
 
                 return toml.loads(content)
             return None

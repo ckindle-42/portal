@@ -41,7 +41,7 @@ from portal.core.exceptions import (
 )
 from portal.core.interfaces.agent_interface import BaseInterface
 from portal.core.types import IncomingMessage, InterfaceType, ProcessingResult
-from portal.observability.runtime_metrics import (
+from portal.observability.metrics import (
     TOKENS_PER_SECOND,
     TTFT_MS,
     mark_request,

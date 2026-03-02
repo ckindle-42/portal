@@ -372,7 +372,7 @@ class WordProcessorTool(BaseTool):
             doc = Document(str(file_path))
 
             # Extract content
-            content = {
+            content: dict[str, Any] = {
                 "metadata": {
                     "title": doc.core_properties.title or "",
                     "author": doc.core_properties.author or "",
@@ -386,7 +386,9 @@ class WordProcessorTool(BaseTool):
             # Extract paragraphs
             for para in doc.paragraphs:
                 if para.text.strip():
-                    content["paragraphs"].append({"text": para.text, "style": para.style.name})
+                    content["paragraphs"].append(
+                        {"text": para.text, "style": para.style.name if para.style else ""}
+                    )
 
             # Extract tables
             for table in doc.tables:

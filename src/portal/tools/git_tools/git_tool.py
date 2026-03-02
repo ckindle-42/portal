@@ -395,7 +395,7 @@ class GitTool(BaseTool):
             kwargs["depth"] = depth
         try:
             logger.info("Cloning %s", url)
-            repo = Repo.clone_from(url, destination or None, **kwargs)
+            repo = Repo.clone_from(url, destination or ".", **kwargs)
             return self._success_response(
                 result=f"Successfully cloned to {repo.working_dir}",
                 metadata={

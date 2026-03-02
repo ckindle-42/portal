@@ -27,7 +27,7 @@ class SecurityContext:
     interface: str = "unknown"
     ip_address: str | None = None
     sanitized_input: str = ""
-    warnings: list[str] = None
+    warnings: list[str] | None = None
 
     def __post_init__(self) -> None:
         if self.warnings is None:
@@ -138,7 +138,7 @@ class SecurityMiddleware:
             "Security checks passed",
             chat_id=chat_id,
             interface=interface,
-            warnings=len(sec_ctx.warnings),
+            warnings=len(sec_ctx.warnings or []),
         )
 
         # Step 4: Forward to AgentCore
@@ -182,11 +182,12 @@ class SecurityMiddleware:
             )
 
             # Extract wait time from error message if possible
-            match = re.search(r"wait (\d+) seconds", error_msg)
+            error_msg_str = error_msg or ""
+            match = re.search(r"wait (\d+) seconds", error_msg_str)
             retry_after = int(match.group(1)) if match else 60
 
             raise RateLimitError(
-                error_msg,
+                error_msg_str,
                 retry_after=retry_after,
                 details={"user_id": user_id, "interface": sec_ctx.interface},
             )

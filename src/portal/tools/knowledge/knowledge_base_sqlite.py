@@ -131,7 +131,7 @@ class EnhancedKnowledgeTool(BaseTool):
 
     def _init_database(self) -> None:
         """Initialize SQLite database with FTS5 and vector storage"""
-
+        assert EnhancedKnowledgeTool._db_path is not None
         with sqlite3.connect(EnhancedKnowledgeTool._db_path) as conn:
             cursor = conn.cursor()
 
@@ -185,6 +185,7 @@ class EnhancedKnowledgeTool(BaseTool):
 
     def _get_connection(self) -> sqlite3.Connection:
         """Get database connection with row factory"""
+        assert EnhancedKnowledgeTool._db_path is not None
         conn = sqlite3.connect(EnhancedKnowledgeTool._db_path)
         conn.row_factory = sqlite3.Row
         return conn
@@ -266,7 +267,8 @@ class EnhancedKnowledgeTool(BaseTool):
         else:
             source = f"text_{datetime.now(tz=UTC).isoformat()}"
 
-        # Generate embedding
+        # Generate embedding (content is guaranteed non-None after the guards above)
+        assert content is not None
         embedding_blob = self._generate_embedding(content)
 
         # Insert into database
@@ -362,10 +364,12 @@ class EnhancedKnowledgeTool(BaseTool):
 
     def _rerank_with_embeddings(self, fts_results: list, query: str, limit: int, cursor) -> list:
         """Rerank FTS results by cosine similarity to the query embedding."""
-        query_embedding = self._generate_embedding(query)
+        query_embedding = self._generate_embedding(query)  # type: ignore[arg-type]
         if not query_embedding:
             return fts_results[:limit]
         query_vec = self._deserialize_embedding(query_embedding)
+        if query_vec is None:
+            return fts_results[:limit]
         results_with_scores = []
         for row in fts_results:
             cursor.execute("SELECT embedding FROM documents WHERE id = ?", (row["id"],))
@@ -460,7 +464,11 @@ class EnhancedKnowledgeTool(BaseTool):
                 total_size = cursor.fetchone()[0] or 0
 
                 # Database file size
-                db_size = EnhancedKnowledgeTool._db_path.stat().st_size
+                db_size = (
+                    EnhancedKnowledgeTool._db_path.stat().st_size
+                    if EnhancedKnowledgeTool._db_path is not None
+                    else 0
+                )
 
                 # Recent additions
                 cursor.execute("""

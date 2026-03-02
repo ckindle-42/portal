@@ -123,7 +123,7 @@ class DependencyContainer:
         self.event_bus = create_event_bus_instance(config)
         self.prompt_manager = create_prompt_manager(config)
         self.tool_registry = create_tool_registry(config)
-        self.mcp_registry = None  # populated via create_mcp_registry()
+        self.mcp_registry: MCPRegistry | None = None  # populated via create_mcp_registry()
         logger.info("DependencyContainer initialized with all components")
 
     async def create_mcp_registry(self, mcp_config=None) -> MCPRegistry:

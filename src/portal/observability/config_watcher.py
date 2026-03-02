@@ -215,7 +215,7 @@ class ConfigWatcher:
         suffix = file_path.suffix.lower()
 
         if suffix in [".yaml", ".yml"]:
-            import yaml
+            import yaml  # type: ignore[import-untyped]
 
             return yaml.safe_load(content)
 
@@ -225,7 +225,7 @@ class ConfigWatcher:
             return json.loads(content)
 
         elif suffix == ".toml":
-            import toml
+            import toml  # type: ignore[import-untyped]
 
             return toml.loads(content)
 
