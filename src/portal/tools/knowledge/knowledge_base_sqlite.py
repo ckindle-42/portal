@@ -39,7 +39,7 @@ try:
     EMBEDDINGS_AVAILABLE = True
 except ImportError:
     EMBEDDINGS_AVAILABLE = False
-    logger.warning("sentence-transformers not available")
+    logger.debug("sentence-transformers not available")
 
 
 class EnhancedKnowledgeTool(BaseTool):

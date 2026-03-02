@@ -11,6 +11,11 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 18):** Fixed D-01 and D-02:
+  - D-01: Added `[test]` extra to pyproject.toml (was missing)
+  - D-02: Changed sentence-transformers warning to DEBUG level (non-blocking)
+  - Tests: 919 passed | Lint: 0 | Mypy: 0
+
 - **2026-03-02 (run 17):** Documentation agent v3 verification complete:
   - Dependencies: 39 OK, 0 missing
   - Module imports: 100 OK, 0 failed
@@ -184,8 +189,8 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 | ID | Item | Notes |
 |----|------|-------|
-| D-01 | test extra not defined in pyproject.toml | Benign warning |
-| D-02 | sentence-transformers warning on import | Non-blocking |
+| D-01 | test extra not defined in pyproject.toml | **RESOLVED** - added `[test]` extra to pyproject.toml |
+| D-02 | sentence-transformers warning on import | **RESOLVED** - changed to DEBUG level (non-blocking) |
 
 ---
 
