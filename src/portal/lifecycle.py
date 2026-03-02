@@ -229,7 +229,9 @@ class Runtime:
             def on_config_change(new_config: dict) -> None:
                 """Handle config reload and update rate limiter."""
                 security = new_config.get("security", {})
-                max_requests = security.get("rate_limit_requests") or security.get("max_requests_per_minute", 30)
+                max_requests = security.get("rate_limit_requests") or security.get(
+                    "max_requests_per_minute", 30
+                )
                 window_seconds = 60  # Default window is 60 seconds
 
                 # Update rate limiter if changed
@@ -237,7 +239,11 @@ class Runtime:
                     rl = self.context.secure_agent.rate_limiter
                     if rl.max_requests != max_requests or rl.window != window_seconds:
                         rl.update_limits(max_requests, window_seconds)
-                        logger.info("Rate limits updated from config: max_requests=%d, window_seconds=%d", max_requests, window_seconds)
+                        logger.info(
+                            "Rate limits updated from config: max_requests=%d, window_seconds=%d",
+                            max_requests,
+                            window_seconds,
+                        )
 
                 logger.info("Config reloaded, settings updated")
 

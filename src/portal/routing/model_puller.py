@@ -89,7 +89,9 @@ class ModelPuller:
         # We just log a message about checking MLX availability
         mlx_models = model_registry.get_models_by_backend("mlx")
         if mlx_models and self.mlx_url:
-            logger.info("MLX backend enabled, %d MLX model(s) available in registry", len(mlx_models))
+            logger.info(
+                "MLX backend enabled, %d MLX model(s) available in registry", len(mlx_models)
+            )
         return []
 
     async def _ensure_huggingface_models(self, model_registry: ModelRegistry) -> list[str]:

@@ -474,12 +474,14 @@ class WebInterface(BaseInterface):
             if rules_path.exists():
                 rules = json.loads(rules_path.read_text())
                 for ws_name in rules.get("workspaces", {}):
-                    models.append({
-                        "id": ws_name,
-                        "object": "model",
-                        "created": created,
-                        "owned_by": "portal-workspace",
-                    })
+                    models.append(
+                        {
+                            "id": ws_name,
+                            "object": "model",
+                            "created": created,
+                            "owned_by": "portal-workspace",
+                        }
+                    )
         except Exception as e:
             logger.warning("Failed to load workspace models: %s", e)
 
@@ -489,18 +491,22 @@ class WebInterface(BaseInterface):
             resp = await client.get(f"{self._ollama_host}/api/tags")
             data = resp.json()
             for m in data.get("models", []):
-                models.append({
-                    "id": m["name"],
-                    "object": "model",
-                    "created": created,
-                    "owned_by": "portal",
-                })
+                models.append(
+                    {
+                        "id": m["name"],
+                        "object": "model",
+                        "created": created,
+                        "owned_by": "portal",
+                    }
+                )
         except (httpx.HTTPError, json.JSONDecodeError):
             pass
 
         # Fallback: always have at least "auto"
         if not models:
-            models.append({"id": "auto", "object": "model", "created": created, "owned_by": "portal"})
+            models.append(
+                {"id": "auto", "object": "model", "created": created, "owned_by": "portal"}
+            )
 
         return {"object": "list", "data": models}
 
@@ -781,7 +787,7 @@ def create_app(agent_core=None, config: dict | None = None, secure_agent=None) -
         cfg = config or settings.to_agent_config()
         agent_core = _create(cfg)
         # Pass Settings object to WebInterface so it reads backends.ollama_url correctly
-        config = settings
+        config = settings  # type: ignore[assignment]
 
     if secure_agent is None:
         secure_agent = SecurityMiddleware(

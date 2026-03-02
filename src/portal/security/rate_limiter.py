@@ -94,7 +94,9 @@ class RateLimiter:
         """Update rate limit parameters at runtime."""
         self.max_requests = max_requests
         self.window = window_seconds
-        logger.info("Rate limit updated: max_requests=%d, window_seconds=%d", max_requests, window_seconds)
+        logger.info(
+            "Rate limit updated: max_requests=%d, window_seconds=%d", max_requests, window_seconds
+        )
 
     def _flush_if_dirty(self) -> None:
         """Flush state to disk if there are pending changes."""

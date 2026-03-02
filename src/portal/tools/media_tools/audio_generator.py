@@ -21,6 +21,4 @@ async def generate_audio(
     """Generate audio via CosyVoice2 or MOSS-TTS. Requires separate installation."""
     # TODO: Implement actual CosyVoice/MOSS-TTS invocation
     logger.info("Audio generation requested: %s", text[:80])
-    return AudioGenResult(
-        success=False, error="Audio generation not yet implemented — stub only"
-    )
+    return AudioGenResult(success=False, error="Audio generation not yet implemented — stub only")
