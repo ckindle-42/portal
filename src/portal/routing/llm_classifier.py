@@ -6,7 +6,6 @@ keeping TaskClassifier as a zero-latency fallback.
 """
 
 import logging
-from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
@@ -162,15 +161,6 @@ Query: {query}"""
             confidence=0.9,  # LLM classification is assumed high confidence
             reasoning=response_text,
         )
-
-    async def stream_classify(self, query: str) -> AsyncIterator[str]:
-        """
-        Stream classification result (for future use with streaming responses).
-        Currently yields the category directly.
-        """
-        classification = await self.classify(query)
-        yield classification.category.value
-
 
 def create_classifier(
     ollama_host: str | None = None,
