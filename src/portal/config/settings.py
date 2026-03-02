@@ -11,9 +11,9 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _project_version() -> str:
@@ -328,13 +328,13 @@ class Settings(BaseSettings):
 
     # Core configuration
     models: dict[str, ModelConfig] = Field(default_factory=dict, description="Model configurations")
-    backends: BackendsConfig = Field(default_factory=BackendsConfig)
-    security: SecurityConfig = Field(default_factory=SecurityConfig)
-    interfaces: InterfacesConfig = Field(default_factory=InterfacesConfig)
-    tools: ToolsConfig = Field(default_factory=ToolsConfig)
-    context: ContextConfig = Field(default_factory=ContextConfig)
-    logging: LoggingConfig = Field(default_factory=LoggingConfig)
-    routing: RoutingConfig = Field(default_factory=RoutingConfig)
+    backends: BackendsConfig = Field(default_factory=lambda: BackendsConfig())
+    security: SecurityConfig = Field(default_factory=lambda: SecurityConfig())
+    interfaces: InterfacesConfig = Field(default_factory=lambda: InterfacesConfig())
+    tools: ToolsConfig = Field(default_factory=lambda: ToolsConfig())
+    context: ContextConfig = Field(default_factory=lambda: ContextConfig())
+    logging: LoggingConfig = Field(default_factory=lambda: LoggingConfig())
+    routing: RoutingConfig = Field(default_factory=lambda: RoutingConfig())
 
     # Project metadata
     project_name: str = Field("Portal", description="Project name")
@@ -342,7 +342,7 @@ class Settings(BaseSettings):
     data_dir: Path = Field(Path("data"), description="Data directory")
     logs_dir: Path = Field(Path("logs"), description="Logs directory")
 
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_prefix="PORTAL_",
         env_nested_delimiter="__",
         extra="allow",

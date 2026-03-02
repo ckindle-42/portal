@@ -2,8 +2,8 @@
 Portal — Local-first AI platform.
 Web-primary. Multi-interface. Hardware-agnostic.
 
-Version: 1.4.2
+Version: 1.4.3
 """
 
-__version__ = "1.4.2"
+__version__ = "1.4.3"
 __author__ = "Portal"

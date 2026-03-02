@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "portal"
-version = "1.4.2"
+version = "1.4.3"
 description = "Local-first AI platform. Web-primary. Multi-interface. Hardware-agnostic."
 readme = "README.md"
 license = { text = "MIT" }
@@ -100,3 +100,4 @@ ignore = ["E501"]  # line-length enforced by formatter, not linter
 python_version = "3.11"
 ignore_missing_imports = true
 strict = false
+plugins = ["pydantic.mypy"]

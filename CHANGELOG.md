@@ -5,6 +5,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.3] - 2026-03-02 — Type Safety Batch (TASK-28 through TASK-31)
+
+### Fixed
+- **TASK-28**: Resolved 5 mypy errors in core module:
+  - agent_interface.py metadata field annotation (dict|None)
+  - agent_core.py health_check() return type (bool|dict)
+  - agent_core.py mcp_registry None guard
+  - factories.py MCPRegistry type annotation
+- **TASK-29**: Resolved 13 mypy errors in security/middleware modules:
+  - security/middleware.py None list, re.search, RateLimitError patterns
+  - security/sandbox/docker_sandbox.py docker client None guards (7 errors)
+  - security/auth/user_store.py Path() with str|None
+  - middleware/tool_confirmation_middleware.py Event None annotation
+- **TASK-30**: Resolved 23 mypy errors in observability module:
+  - log_rotation.py: logger.info() structured kwargs → extra={} pattern
+  - config_watcher.py: yaml/toml import-untyped suppression
+  - watchdog.py: component type guards
+- **TASK-31**: Resolved 45+ mypy errors in tools layer:
+  - document_processing: metadata extractor, word processor fixes
+  - data_tools: math visualizer, text transformer, file compressor fixes
+  - git_tools: _base.py, git_tool.py fixes
+  - docker_tools: docker_tool.py None guards
+  - automation_tools/shell_safety.py fix
+
+### Metrics
+- mypy errors: 103 → 17 (83% reduction across TASK-28–31)
+- Source files: 97 → 96 (runtime_metrics.py deleted in 1.4.2)
+
+---
+
 ## [1.4.2] - 2026-03-01 — Dependency Fix & runtime_metrics Cleanup
 
 ### Fixed

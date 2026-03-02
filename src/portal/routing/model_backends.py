@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from abc import ABC, abstractmethod
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -57,7 +57,7 @@ class ModelBackend(ABC):
         pass
 
     @abstractmethod
-    async def generate_stream(
+    def generate_stream(
         self,
         prompt: str,
         model_name: str,
@@ -65,9 +65,9 @@ class ModelBackend(ABC):
         max_tokens: int = 2048,
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncIterator[str]:
         """Stream text generation"""
-        pass
+        ...
 
     @abstractmethod
     async def is_available(self) -> bool:
