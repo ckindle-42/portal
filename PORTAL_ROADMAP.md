@@ -1,6 +1,6 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 8)
+**Generated:** 2026-03-02 (delta update — run 9)
 **Current version:** 1.4.5
 **Maintained by:** ckindle-42
 
@@ -11,6 +11,7 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 9):** ROAD-F07 COMPLETE — PORTAL_DOCUMENTATION_AGENT.md executed; PORTAL_HOW_IT_WORKS.md produced (97 files, 16,108 LOC verified, full data-flow, module catalogue, config contract, network topology). Behavioral verification found 5 discrepancies: D-02 BROKEN (/health/live + /health/ready return 404 — register_health_endpoints() never called from WebInterface), D-03 DRIFT (metrics on :8081 not :9090; METRICS_PORT not read by any code), D-04 UNDOCUMENTED (KNOWLEDGE_BASE_DIR, ALLOW_LEGACY_PICKLE_EMBEDDINGS absent from .env.example), D-05 UNDOCUMENTED (warming_up health state undocumented). New tasks: TASK-53 (wire K8s health probes), TASK-54 (correct metrics port docs + .env.example). Health score 9.5 → 9.4/10 (D-02 BROKEN probe deduction).
 - **2026-03-02 (run 8):** ROAD-P01 FULLY COMPLETE — IntelligentRouter.route() now async with dual LLMClassifier + TaskClassifier (TASK-41). TASK-44–47 complete (version sync, dead code removal, create_classifier fix). All prior open tasks resolved. New findings: ARCHITECTURE.md routing description stale, CHANGELOG 1.4.5 entry incomplete, ROADMAP.md status stale, 12 undocumented env vars, stale `master` branch. Health score 9.3 → 9.5/10. New tasks: TASK-48–52 (documentation only). PORTAL_DOCUMENTATION_AGENT.md added to repo (documentation agent prompt).
 - **2026-03-02 (run 7):** ROAD-P01 proxy router integration COMPLETE (TASK-40). IntelligentRouter still pending (TASK-41 — open). 3 new findings: dead stream_classify() method, ROUTING_LLM_MODEL env var inoperative, pyproject.toml + ARCHITECTURE.md version drift. Health score 9.0 → 9.3/10. Version 1.4.5 shipped. New tasks: TASK-44–47.
 - **2026-03-02 (run 6):** ROAD-P01 status changed PLANNED → IN-PROGRESS. Commit `0a7f28f` added `llm_classifier.py` (185 LOC) — the LLMClassifier module. Integration into `router.py` and `intelligent_router.py` not yet complete. 10 open findings (TASK-36 through TASK-43). Health score 10/10 → 9.0/10 (new code, open issues). Version target 1.4.5 on completion.
@@ -31,7 +32,7 @@ Portal 1.4.5 is fully operational for its stated purpose:
 - **MCP tool dispatch** — via mcpo proxy (openapi transport) and streamable-http
 - **Circuit breaker** — per-backend failure isolation and automatic recovery
 - **Prometheus metrics** — at `/metrics`, all key request/token counters
-- **K8s-style health probes** — `/health`, `/health/live`, `/health/ready`
+- **K8s-style health probes** — `/health` ✓ (live/ready pending TASK-53)
 - **Watchdog** — optional component auto-restart
 - **Log rotation** — optional log file management
 - **WorkspaceRegistry** — virtual model names mapped to concrete Ollama models
@@ -40,7 +41,7 @@ Portal 1.4.5 is fully operational for its stated purpose:
 - **LLMClassifier** — async Ollama-based query classification with regex fallback (BOTH routers)
 - **Fully mypy-clean** — 0 type errors across 97 source files
 
-**CI status:** 890 tests passing, 0 lint violations, 0 mypy errors.
+**CI status:** 882 tests passing (885 collected, 3 skipped; 1 telegram test collection error in CI due to cryptography env conflict), 0 lint violations.
 **Type safety:** 0 mypy errors (down from 170 at project start — 100% reduction).
 
 ---
@@ -246,7 +247,7 @@ Description:  mypy 170 → 0 across all audit cycles
 ### [ROAD-P04] Documentation Refresh (TASK-48–52)
 
 ```
-Status:       PLANNED
+Status:       IN-PROGRESS
 Priority:     P3-MEDIUM
 Effort:       S
 Dependencies: None
@@ -254,9 +255,19 @@ Description:  Documentation cleanup following ROAD-P01 completion:
               - TASK-48: ARCHITECTURE.md routing descriptions updated
               - TASK-49: CHANGELOG.md 1.4.5 entry completed with PR #96 entries
               - TASK-50: ROADMAP.md LLM routing status marked Complete
-              - TASK-51: .env.example extended with 12 undocumented env vars
+              - TASK-51: .env.example extended with 12+ undocumented env vars (partial —
+                         PORTAL_HOW_IT_WORKS.md section 12b now documents all env vars,
+                         but .env.example file itself still needs updating: TASK-54)
               - TASK-52: Stale `master` local branch deleted
+              - TASK-53 (NEW): Wire /health/live and /health/ready K8s probes —
+                         call register_health_endpoints() from WebInterface._build_app().
+                         Both return 404. Severity: BROKEN.
+              - TASK-54 (NEW): Correct metrics port docs — /metrics is on :8081,
+                         not :9090. Remove METRICS_PORT from .env.example or implement
+                         separate metrics server. Add KNOWLEDGE_BASE_DIR and
+                         ALLOW_LEGACY_PICKLE_EMBEDDINGS to .env.example.
 Evidence:     PORTAL_AUDIT_REPORT.md run 8 (DOC-03 through DOC-06, ENV-01, BRANCH-01)
+              PORTAL_HOW_IT_WORKS.md run 9 (D-02 through D-05)
 ```
 
 ---
@@ -314,15 +325,17 @@ Description:  In-memory fallback for single-instance deployments
 ### [ROAD-F07] Portal Documentation Reference
 
 ```
-Status:       DISCUSSED
+Status:       COMPLETE
 Priority:     P3-MEDIUM
 Effort:       L
-Dependencies: ROAD-P04 complete (docs current)
-Description:  Execute PORTAL_DOCUMENTATION_AGENT.md to produce PORTAL_HOW_IT_WORKS.md —
-              a comprehensive, verified technical reference for new developers.
-              Deferred until documentation cleanup (ROAD-P04) is complete so the
-              resulting doc reflects the current state accurately.
-Evidence:     PORTAL_DOCUMENTATION_AGENT.md added 2026-03-02 (commit 214b16c)
+Dependencies: ROAD-P04 (partially complete)
+Description:  PORTAL_DOCUMENTATION_AGENT.md executed (run 9, 2026-03-02).
+              PORTAL_HOW_IT_WORKS.md produced — 97 files, 16,108 LOC, verified.
+              Covers: startup sequence, full request data-flow, module catalogue
+              (15 sections), config contract (all env vars), network topology,
+              discrepancy log (5 items D-01..D-05), test coverage summary.
+              Discrepancy log feeds directly into ROAD-P04 TASK-53 and TASK-54.
+Evidence:     PORTAL_HOW_IT_WORKS.md committed on claude/execute-portal-docs-agent-lP5Vb
 ```
 
 ---
@@ -366,4 +379,4 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 ---
 
-*Last updated: 2026-03-02 (run 8) — ROAD-P01 FULLY COMPLETE (both routing paths). Open: ROAD-P04 (documentation cleanup TASK-48–52). Health: 9.5/10. Version 1.4.5.*
+*Last updated: 2026-03-02 (run 9) — ROAD-F07 COMPLETE (PORTAL_HOW_IT_WORKS.md produced). Open: ROAD-P04 IN-PROGRESS (TASK-53: wire K8s probes, TASK-54: metrics port + .env.example). Health: 9.4/10. Version 1.4.5.*
