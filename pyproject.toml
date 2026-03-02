@@ -47,6 +47,10 @@ mcp = [
     "scrapling>=0.2",
     "playwright>=1.40.0",
     "curl-cffi>=0.6.0",
+    # scrapling transitive deps not declared in its extras
+    "browserforge",
+    "msgspec",
+    "patchright",
 ]
 all = [
     "python-telegram-bot>=21.0,<22.0",
@@ -58,6 +62,10 @@ all = [
     "scrapling>=0.2",
     "playwright>=1.40.0",
     "curl-cffi>=0.6.0",
+    # scrapling transitive deps not declared in its extras
+    "browserforge",
+    "msgspec",
+    "patchright",
 ]
 dev = [
     "portal[all]",
