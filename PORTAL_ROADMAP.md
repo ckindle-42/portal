@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 5)
-**Current version:** 1.4.4
+**Generated:** 2026-03-02 (delta update — run 6)
+**Current version:** 1.4.4 (targeting 1.4.5 on ROAD-P01 completion)
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -11,6 +11,7 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 6):** ROAD-P01 status changed PLANNED → IN-PROGRESS. Commit `0a7f28f` added `llm_classifier.py` (185 LOC) — the LLMClassifier module. Integration into `router.py` and `intelligent_router.py` not yet complete. 10 open findings (TASK-36 through TASK-43). Health score 10/10 → 9.0/10 (new code, open issues). Version target 1.4.5 on completion.
 - **2026-03-02 (run 5):** TASK-34 and TASK-35 confirmed complete (PR #90). Version bumped to 1.4.4. ARCHITECTURE.md version updated. CHANGELOG 1.4.4 entry added. Health score 9.5 → 10/10. **FULLY PRODUCTION-READY.**
 - **2026-03-02 (run 4):** TASK-32 and TASK-33 confirmed complete (PR #88). mypy errors reduced 17 → 0 — first fully mypy-clean state. ROAD-P03 COMPLETE. New TASK-34 and TASK-35 added. Health score 9.0 → 9.5/10.
 
@@ -34,10 +35,10 @@ Portal 1.4.4 is fully operational for its stated purpose:
 - **BackendRegistry** — named backend instances
 - **Structured logging** — JSON with trace IDs, secret redaction
 - **No backward-compat shims** — all legacy code removed
-- **Fully mypy-clean** — 0 type errors across 96 source files
+- **Fully mypy-clean** — 0 type errors across 96 source files (2 new errors in llm_classifier.py pending fix)
 
-**CI status:** 874 tests passing, 0 lint errors, 0 mypy errors.
-**Type safety:** 0 mypy errors (down from 170 at project start — 100% reduction).
+**CI status:** 874 tests passing, 2 lint violations (llm_classifier.py), 2 mypy errors (llm_classifier.py).
+**Type safety:** 2 mypy errors (new file; down from 170 at project start — 98.8% reduction).
 
 ---
 
@@ -175,20 +176,38 @@ Description:  mypy 17 → 0 (FULLY CLEAN)
 
 ## 3. In Progress
 
-No tasks currently in progress. All prior open tasks were completed in PR #90.
+### [ROAD-P01] LLM-Based Intelligent Routing
+
+```
+Status:       IN-PROGRESS
+Priority:     P2-HIGH
+Effort:       M
+Started:      2026-03-02 (commit 0a7f28f)
+Description:  Replace regex-based task classification with LLM classifier.
+              Uses qwen2.5:0.5b via Ollama for semantic query classification.
+              Falls back to TaskClassifier when Ollama unavailable.
+```
+
+**What's done:**
+- `src/portal/routing/llm_classifier.py` — `LLMClassifier`, `LLMClassification`, `LLMCategory`, `create_classifier()` (185 LOC)
+- Fallback to `TaskClassifier` when Ollama unavailable
+- LRU cache for identical prompts
+
+**What remains (TASK-36 through TASK-43):**
+- Fix 2 lint violations in `llm_classifier.py` (TASK-36)
+- Fix 2 mypy errors in `create_classifier()` (TASK-37)
+- Add unit tests for `LLMClassifier` (TASK-38)
+- Document `ROUTING_LLM_MODEL` in `.env.example` (TASK-39)
+- Integrate into `router.py::resolve_model()` — async, replace regex step (TASK-40)
+- Integrate into `intelligent_router.py::route()` — async, update agent_core.py caller (TASK-41)
+- Add `classifier` config block to `router_rules.json` (TASK-42)
+- Bump version to 1.4.5, update CHANGELOG (TASK-43)
+
+**Blocking issues:** None. Implementation path is clear.
 
 ---
 
 ## 4. Planned — Core (Production Path)
-
-### [ROAD-P01] LLM-Based Intelligent Routing
-
-```
-Status:       PLANNED
-Priority:     P2-HIGH
-Effort:       M
-Description:  Replace regex-based task classification with LLM classifier
-```
 
 ### [ROAD-P02] MLX Backend for Apple Silicon
 
@@ -196,7 +215,11 @@ Description:  Replace regex-based task classification with LLM classifier
 Status:       PLANNED
 Priority:     P3-MEDIUM
 Effort:       M
-Description:  Add MLXServerBackend targeting mlx_lm.server
+Dependencies: ROAD-P01 complete (BackendRegistry already in place)
+Description:  Add MLXServerBackend targeting mlx_lm.server on :8800.
+              Same HTTP adapter pattern as OllamaBackend.
+              Only active when COMPUTE_BACKEND=mps.
+Evidence:     ROADMAP.md §2, BackendRegistry (ROAD-C07)
 ```
 
 ### [ROAD-P03] mypy Error Reduction to Zero
@@ -300,5 +323,4 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 ---
 
-*Last updated: 2026-03-02 (run 5) — TASK-34 and TASK-35 complete. Health score 10/10.
-Portal is fully production-ready. All ROAD-Cxx items COMPLETE. mypy: 170 → 0.*
+*Last updated: 2026-03-02 (run 6) — ROAD-P01 IN-PROGRESS. llm_classifier.py added. Integration pending (TASK-36 through TASK-43). Version target 1.4.5.*
