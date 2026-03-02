@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.4] - 2026-03-02 — TASK-33 Final mypy Clean
+
+### Fixed
+- **TASK-33**: Resolved final 17 mypy errors across 5 files:
+  - memory/manager.py:37 — Path() coalescing: `os.getenv("PORTAL_MEMORY_DB") or "data/memory.db"`
+    (two-stage `or` prevents `None` from reaching `Path()`)
+  - config/settings.py — four fixes:
+    (a) `import yaml  # type: ignore[import-untyped]`
+    (b) All 7 sub-config Field default_factory changed to `lambda: ClassName()`
+        for mypy compatibility with Pydantic v2 Field inference
+    (c) `model_config` changed from `ConfigDict` to `SettingsConfigDict`
+        (correct type for pydantic-settings BaseSettings subclass)
+    (d) `plugins = ["pydantic.mypy"]` added to `[tool.mypy]` in pyproject.toml
+  - routing/model_backends.py — abstract `generate_stream` changed from
+    `async def → AsyncGenerator[str, None]` to `def → AsyncIterator[str]`:
+    abstract generators should not be async; `AsyncIterator[str]` is satisfied
+    by the concrete `OllamaBackend.generate_stream` async generator
+  - interfaces/web/server.py — two fixes:
+    (a) `uvicorn` import moved under `TYPE_CHECKING` guard (deferred import)
+    (b) `self._server: uvicorn.Server | None = None` explicit type annotation
+
+### Metrics
+- mypy errors: 17 → 0 (FULLY CLEAN — 96 source files, 0 errors)
+- Cumulative across audit cycle: 170 → 0
+
+---
+
 ## [1.4.3] - 2026-03-02 — Type Safety Batch (TASK-28 through TASK-31)
 
 ### Fixed
@@ -30,7 +57,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
   - automation_tools/shell_safety.py fix
 
 ### Metrics
-- mypy errors: 103 → 17 (83% reduction across TASK-28–31)
+- mypy errors: 103 → 17 (83% reduction across TASK-28–31; see 1.4.4 for final 17→0)
 - Source files: 97 → 96 (runtime_metrics.py deleted in 1.4.2)
 
 ---
