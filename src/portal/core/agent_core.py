@@ -319,7 +319,7 @@ class AgentCore:
         messages: list[dict[str, Any]] | None = None,
     ):
         """Route the query and execute it, emitting routing/generating events."""
-        decision = self.router.route(query)
+        decision = await self.router.route(query)
         await self.event_bus.publish(
             EventType.ROUTING_DECISION,
             chat_id,

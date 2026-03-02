@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
+from .llm_classifier import LLMCategory, LLMClassifier
 from .model_registry import ModelCapability, ModelMetadata, ModelRegistry
 from .task_classifier import TaskCategory, TaskClassification, TaskClassifier, TaskComplexity
 from .workspace_registry import WorkspaceRegistry
@@ -41,12 +42,13 @@ class IntelligentRouter:
     ) -> None:
         self.registry = registry
         self.strategy = strategy
-        self.classifier = TaskClassifier()
+        self.llm_classifier = LLMClassifier()
+        self.classifier = TaskClassifier()  # keep for metadata
         self.model_preferences = model_preferences if model_preferences is not None else {}
         self.workspace_registry = workspace_registry
         self._verify_model_preferences()
 
-    def route(
+    async def route(
         self, query: str, max_cost: float = 1.0, workspace_id: str | None = None
     ) -> RoutingDecision:
         """Route query to optimal model. Returns RoutingDecision with fallbacks.
@@ -76,8 +78,28 @@ class IntelligentRouter:
                     reasoning=f"workspace: {workspace_id}",
                 )
 
-        # Use TaskClassifier for classification
-        classification = self.classifier.classify(query)
+        # Dual classification: TaskClassifier for metadata, LLMClassifier for category
+        task_class = self.classifier.classify(query)
+        llm_class = await self.llm_classifier.classify(query)
+        category_override = {
+            LLMCategory.CODE: TaskCategory.CODE,
+            LLMCategory.REASONING: TaskCategory.ANALYSIS,
+            LLMCategory.CREATIVE: TaskCategory.CREATIVE,
+            LLMCategory.TOOL_USE: TaskCategory.TOOL_USE,
+            LLMCategory.GENERAL: TaskCategory.GENERAL,
+        }
+        overridden_category = category_override.get(llm_class.category, task_class.category)
+        classification = TaskClassification(
+            category=overridden_category,
+            complexity=task_class.complexity,
+            estimated_tokens=task_class.estimated_tokens,
+            requires_reasoning=task_class.requires_reasoning,
+            requires_code=task_class.requires_code,
+            requires_math=task_class.requires_math,
+            is_multi_turn=task_class.is_multi_turn,
+            confidence=llm_class.confidence,
+            patterns_matched=task_class.patterns_matched,
+        )
 
         strategy_dispatch = {
             RoutingStrategy.SPEED: lambda c: self._route_speed(c),
