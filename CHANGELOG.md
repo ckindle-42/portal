@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.6] - 2026-03-02 — MLX Backend, Model Expansion & Runtime Features
+
+### Added
+- **MLX Backend for Apple Silicon** (PR #99): `MLXServerBackend` in `routing/model_backends.py`
+  with `generate()` and `generate_stream()` support; MLX settings added to `BackendsConfig`
+  (`mlx_url`, `enable_mlx`); three Qwen2.5 MLX model entries in `default_models.json`
+  (3B, 7B, 14B); optional MLX server startup added to `hardware/m4-mac/launch.sh`
+- **Model Expansion** (PR #100): security, creative, and multimodal model stack added to
+  `default_models.json`; workspace wire-up for new model categories in proxy router
+- **Config Hot-Reload**: structured hot-reload for rate-limit settings via config watcher;
+  rate limit parameters now update without a portal restart
+- **Auto-pull Ollama models**: `DEFAULT_MODEL` is auto-pulled on first startup when not
+  present in the local Ollama registry — eliminates empty model list on fresh installs
+
+### Fixed
+- Load Ollama base URL from `Settings` correctly in model discovery path (was reading
+  env var directly in some code paths, ignoring the settings singleton)
+- Add `playwright>=1.40.0` and `curl-cffi>=0.6.0` to `[mcp]` optional dependencies
+  (were missing from extras despite being required by MCP browser tools)
+
+### Changed
+- Docker images updated to latest pinned stable versions
+
+---
+
 ## [1.4.5] - 2026-03-02 — ROAD-P01 LLM-Based Intelligent Routing
 
 ### Added
@@ -224,6 +249,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - .env.example now documents all environment variables used in code
 
 ---
+
+<!-- Historical pre-1.3.4 draft entries follow. These work streams were incorporated
+     into the versioned releases above (1.3.4 through 1.4.6) and are preserved here
+     for reference. Version numbers were not assigned at the time of writing. -->
 
 ## [Unreleased] — 2026-03-01 — MLX Backend for Apple Silicon
 
