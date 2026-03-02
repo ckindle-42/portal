@@ -18,6 +18,7 @@ from portal.core.structured_logger import get_logger
 from portal.security import SecurityMiddleware
 
 if TYPE_CHECKING:
+    from portal.observability.config_watcher import ConfigWatcher
     from portal.observability.log_rotation import LogRotator
     from portal.observability.watchdog import Watchdog
 
@@ -56,6 +57,7 @@ class RuntimeContext:
     # Optional components
     watchdog: Watchdog | None = None
     log_rotator: LogRotator | None = None
+    config_watcher: ConfigWatcher | None = None
 
     # Track in-flight operations
     active_tasks: set[asyncio.Task] = field(default_factory=set)
@@ -200,7 +202,26 @@ class Runtime:
             from portal.observability.config_watcher import ConfigWatcher
 
             config_watcher = ConfigWatcher(config_file=config_watch_path)
+
+            # Register callback to handle config changes
+            def on_config_change(new_config: dict) -> None:
+                """Handle config reload and update rate limiter."""
+                security = new_config.get("security", {})
+                max_requests = security.get("rate_limit_requests") or security.get("max_requests_per_minute", 30)
+                window_seconds = 60  # Default window is 60 seconds
+
+                # Update rate limiter if changed
+                if self.context and self.context.secure_agent.rate_limiter:
+                    rl = self.context.secure_agent.rate_limiter
+                    if rl.max_requests != max_requests or rl.window != window_seconds:
+                        rl.update_limits(max_requests, window_seconds)
+                        logger.info("Rate limits updated from config: max_requests=%d, window_seconds=%d", max_requests, window_seconds)
+
+                logger.info("Config reloaded, settings updated")
+
+            config_watcher.add_callback(on_config_change)
             asyncio.create_task(config_watcher.start(), name="config-watcher")
+            self.context.config_watcher = config_watcher
             logger.info("Config watcher started for %s", config_watch_path)
 
     def _setup_signal_handlers(self):
@@ -262,10 +283,11 @@ class Runtime:
             )
 
     async def _stop_optional_components(self):
-        """Stop watchdog and log rotator."""
+        """Stop watchdog, log rotator, and config watcher."""
         for name, component in [
             ("watchdog", self.context.watchdog),
             ("log_rotator", self.context.log_rotator),
+            ("config_watcher", self.context.config_watcher),
         ]:
             if component is None:
                 continue
