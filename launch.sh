@@ -470,8 +470,8 @@ start_extended_services() {
         echo "[docker] deploy dir not found: $DEPLOY_DIR (skipping)"
     fi
 
-    # Start mcpo (Open WebUI + MCP enabled only)
-    if [ "${WEB_UI:-openwebui}" = "openwebui" ] && [ "${MCP_ENABLED:-true}" = "true" ]; then
+    # Start mcpo (MCP enabled)
+    if [ "${MCP_ENABLED:-true}" = "true" ]; then
         # Start scrapling if script exists
         local scrapling_script="$PORTAL_ROOT/mcp/scrapling/launch_scrapling.sh"
         if [ -f "$scrapling_script" ]; then
@@ -504,7 +504,7 @@ start_extended_services() {
                     echo "  Install manually: pip install mcpo  OR  install uv: https://docs.astral.sh/uv/"
                 fi
             fi
-            echo "[mcpo] OK (PID $!)"
+            echo "[mcpo] started (PID $!) — logs: bash launch.sh logs mcpo"
         else
             echo "[mcpo] already running"
         fi
@@ -531,8 +531,9 @@ print_access_urls() {
     echo "  Portal API:   http://localhost:8081/v1"
     echo "  Router:       http://localhost:${ROUTER_PORT:-8000}"
     echo "  Ollama:       http://localhost:11434"
-    if [ "${MCP_ENABLED:-true}" = "true" ] && [ "${WEB_UI:-openwebui}" = "openwebui" ]; then
+    if [ "${MCP_ENABLED:-true}" = "true" ]; then
         echo "  MCP proxy:    http://localhost:${MCPO_PORT:-9000}"
+        echo "  Scrapling:    http://localhost:${SCRAPLING_PORT:-8900}"
     fi
     echo ""
 }
@@ -545,6 +546,7 @@ run_doctor() {
         local name="$1"
         local url="$2"
         local optional="${3:-false}"
+        local log_hint="${4:-}"
         if curl -sf "$url" >/dev/null 2>&1; then
             printf "  [%-12s] \033[32mOK\033[0m\n" "$name"
         else
@@ -552,6 +554,9 @@ run_doctor() {
                 printf "  [%-12s] \033[33mUNREACHABLE\033[0m (optional)\n" "$name"
             else
                 printf "  [%-12s] \033[31mFAIL\033[0m\n" "$name"
+                if [ -n "$log_hint" ]; then
+                    printf "               -> logs: bash launch.sh logs %s\n" "$log_hint"
+                fi
                 all_ok=false
             fi
         fi
@@ -561,6 +566,7 @@ run_doctor() {
         local name="$1"
         local pattern="$2"
         local optional="${3:-false}"
+        local log_hint="${4:-}"
         if pgrep -f "$pattern" >/dev/null 2>&1; then
             printf "  [%-12s] \033[32mrunning\033[0m\n" "$name"
         else
@@ -568,6 +574,9 @@ run_doctor() {
                 printf "  [%-12s] \033[33mNOT RUNNING\033[0m (optional)\n" "$name"
             else
                 printf "  [%-12s] \033[31mNOT RUNNING\033[0m\n" "$name"
+                if [ -n "$log_hint" ]; then
+                    printf "               -> logs: bash launch.sh logs %s\n" "$log_hint"
+                fi
                 all_ok=false
             fi
         fi
@@ -580,9 +589,9 @@ run_doctor() {
     check_service "portal-api" "http://localhost:8081/health"
     check_service "web-ui" "http://localhost:8080" "true"
 
-    if [ "${WEB_UI:-openwebui}" = "openwebui" ] && [ "${MCP_ENABLED:-true}" = "true" ]; then
-        check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}" "true"
-        check_process "scrapling" "scrapling" "true"
+    if [ "${MCP_ENABLED:-true}" = "true" ]; then
+        check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}" "false" "mcpo"
+        check_process "scrapling" "scrapling" "false" "scrapling"
     fi
 
     echo ""
