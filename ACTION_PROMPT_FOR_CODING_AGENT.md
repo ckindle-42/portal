@@ -1,6 +1,6 @@
 # Portal — Action Prompt for Coding Agent
 
-**Generated:** 2026-03-02 (delta run v15)
+**Generated:** 2026-03-02 (delta run v16)
 **Source audit:** PORTAL_AUDIT_REPORT.md (same date)
 **Target version after completion:** 1.4.6 (all CI gates already green)
 
@@ -21,7 +21,7 @@ Tests: `tests/` (915 tests currently selected; 914 passing, 1 skipped).
 
 ## Prior Work Summary
 
-All previously audited tasks from run 14 are now complete:
+All previously audited tasks from run 15 are complete:
 - **TASK-57**: Fixed `test_all_models_available_by_default` to exempt `huggingface` backend
 - **TASK-58**: Fixed mypy error in `server.py:784` with `# type: ignore[assignment]`
 
@@ -54,5 +54,6 @@ python3 -m pytest tests/ -v --tb=short      # expect 0 FAILED, 914 PASSED, 1 SKI
 ## Notes
 
 - No action required — Portal is production-ready
-- The two regressions from run 14 (BUG-01 test failure, BUG-02 mypy error) were fixed in commit `921c38d`
-- This is a cleanup/inventory run; no code changes needed
+- Phase 3 behavioral verification confirmed all major components work
+- All endpoints respond correctly
+- This is a verification-only run; no code changes needed
