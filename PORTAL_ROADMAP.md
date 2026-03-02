@@ -1,6 +1,6 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 11)
+**Generated:** 2026-03-02 (delta update — run 12)
 **Current version:** 1.4.5
 **Maintained by:** ckindle-42
 
@@ -11,8 +11,9 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 12):** Config hot-reload (ROAD-F05) completed — ConfigWatcher now propagates rate limit changes at runtime. Fixed mypy type error in lifecycle.py. Branch hygiene performed — cleaned 10 stale remote branches. Portal remains fully production-ready at 10/10.
 - **2026-03-02 (run 11 - documentation review):** PORTAL_DOCUMENTATION_AGENT.md executed. Verified all prior discrepancies resolved: D-02 (K8s health probes wired), D-03 (metrics port corrected), D-04 (env vars documented), D-05 (warmup state handled). Updated PORTAL_HOW_IT_WORKS.md discrepancy log to show all issues resolved. Test counts updated to 915 collected, 914 passing.
-- **2026-03-02 (run 11):** ALL TASKS COMPLETE — TASK-53 through TASK-56 all resolved. Health score improved to 10/10. Portal is fully production-ready with zero open findings.
+- **2026-03-02 (run 11):** ALL TASKS COMPLETE — TASK-53 through TASK-56 all resolved. Health score maintained at 10/10. Portal is fully production-ready with zero open findings.
 - **2026-03-02 (run 10):** MLX backend COMPLETE (PR #99 merged). TASK-48 through TASK-52 complete. TASK-53 (K8s probes), TASK-54 (metrics port), TASK-55 (MLX env vars), TASK-56 (knowledge env vars) added. Health score 9.4/10.
 - **2026-03-02 (run 9):** ROAD-F07 COMPLETE — PORTAL_HOW_IT_WORKS.md produced. Health score 9.4/10.
 
@@ -34,11 +35,12 @@ Portal 1.4.5 is fully operational for its stated purpose:
 - **K8s-style health probes** — `/health`, `/health/live`, `/health/ready` all wired
 - **Watchdog** — optional component auto-restart
 - **Log rotation** — optional log file management
+- **Config hot-reload** — rate limits can be updated without restart
 - **WorkspaceRegistry** — virtual model names mapped to concrete Ollama models
 - **BackendRegistry** — named backend instances (Ollama, MLX)
 - **Structured logging** — JSON with trace IDs, secret redaction
 - **LLMClassifier** — async Ollama-based query classification with regex fallback
-- **Fully mypy-clean** — 0 type errors across 97 source files
+- **Fully mypy-clean** — 0 type errors across 99 source files
 - **Fully documented** — all env vars in .env.example
 
 **CI status:** 914 tests passing (915 collected, 1 skipped), 0 lint violations.
@@ -215,6 +217,18 @@ Description:  All documentation tasks complete:
 Evidence:     Commit 94ae694
 ```
 
+### [ROAD-C20] Structured Config Hot-Reload (ROAD-F05)
+
+```
+Status:       COMPLETE
+Priority:     P4-LOW
+Description:  ConfigWatcher now propagates rate limit config changes at runtime:
+             - update_limits() method added to RateLimiter
+             - ConfigWatcher registered in RuntimeContext
+             - Callback propagates config changes to rate limiter
+Evidence:     Commit 31d1e61
+```
+
 ---
 
 ## 3. In Progress
@@ -299,9 +313,10 @@ Description:  Consider WS query param or subprotocol auth
 ### [ROAD-F05] Structured Config Hot-Reload
 
 ```
-Status:       DISCUSSED
+Status:       COMPLETE
 Priority:     P4-LOW
 Description:  ConfigWatcher propagates changes without restart
+Evidence:     Commit 31d1e61
 ```
 
 ### [ROAD-F06] HITL Non-Redis Fallback
@@ -353,4 +368,4 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 ---
 
-*Last updated: 2026-03-02 (run 11) — ALL TASKS COMPLETE. Portal 1.4.5 is FULLY PRODUCTION-READY. Health: 10/10.*
+*Last updated: 2026-03-02 (run 12) — ALL TASKS COMPLETE. Portal 1.4.5 is FULLY PRODUCTION-READY. Health: 10/10.*

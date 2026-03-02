@@ -1,6 +1,6 @@
 # Portal — Action Prompt for Coding Agent
 
-**Generated:** 2026-03-02 (delta run v11)
+**Generated:** 2026-03-02 (delta run v12)
 **Source audit:** PORTAL_AUDIT_REPORT.md (same date)
 **Target version after completion:** 1.4.5 (all tasks complete)
 
@@ -68,6 +68,7 @@ All tasks are COMPLETE:
 - TASK-54: Metrics port corrected to :8081 (commit 94ae694)
 - TASK-55: MLX env vars added to .env.example (commit 94ae694)
 - TASK-56: Knowledge base env vars added to .env.example (commit 94ae694)
+- ROAD-F05: Structured Config Hot-Reload implemented (commit 31d1e61)
 
 **Current state:** 914 tests passing, 0 mypy errors, 0 lint violations.
 

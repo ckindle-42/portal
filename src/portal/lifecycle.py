@@ -221,6 +221,8 @@ class Runtime:
 
             config_watcher.add_callback(on_config_change)
             asyncio.create_task(config_watcher.start(), name="config-watcher")
+            # Context is guaranteed to exist here - called from bootstrap() after context creation
+            assert self.context is not None
             self.context.config_watcher = config_watcher
             logger.info("Config watcher started for %s", config_watch_path)
 
