@@ -386,7 +386,9 @@ class WordProcessorTool(BaseTool):
             # Extract paragraphs
             for para in doc.paragraphs:
                 if para.text.strip():
-                    content["paragraphs"].append({"text": para.text, "style": para.style.name if para.style else ""})
+                    content["paragraphs"].append(
+                        {"text": para.text, "style": para.style.name if para.style else ""}
+                    )
 
             # Extract tables
             for table in doc.tables:

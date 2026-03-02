@@ -464,7 +464,11 @@ class EnhancedKnowledgeTool(BaseTool):
                 total_size = cursor.fetchone()[0] or 0
 
                 # Database file size
-                db_size = EnhancedKnowledgeTool._db_path.stat().st_size if EnhancedKnowledgeTool._db_path is not None else 0
+                db_size = (
+                    EnhancedKnowledgeTool._db_path.stat().st_size
+                    if EnhancedKnowledgeTool._db_path is not None
+                    else 0
+                )
 
                 # Recent additions
                 cursor.execute("""

@@ -119,7 +119,12 @@ class ShellSafetyTool(BaseTool):
 
     def _analyze_command(self, command: str) -> dict[str, Any]:
         """Analyze command for safety"""
-        result: dict[str, Any] = {"blocked": False, "dangerous": False, "warnings": [], "reason": None}
+        result: dict[str, Any] = {
+            "blocked": False,
+            "dangerous": False,
+            "warnings": [],
+            "reason": None,
+        }
 
         # Check blocked patterns
         for pattern in self.BLOCKED_COMMANDS:
