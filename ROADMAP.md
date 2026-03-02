@@ -1,5 +1,9 @@
 # Portal Roadmap
 
+> **Deprecation Notice:** This file is superseded by `PORTAL_ROADMAP.md`. That document is the authoritative source for all planned, in-progress, and completed work. This file is retained for historical context.
+
+---
+
 Planned feature projects for Portal. These are scoped designs, not aspirational wishlists.
 Each is estimated at 2-3 days of implementation.
 
