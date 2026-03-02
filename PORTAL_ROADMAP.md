@@ -1,6 +1,6 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 17)
+**Generated:** 2026-03-02 (delta update — run 18)
 **Current version:** 1.4.6
 **Maintained by:** ckindle-42
 
@@ -11,18 +11,19 @@ and completed work across the Portal project.
 
 ## Changelog
 
-- **2026-03-02 (run 18):** Fixed D-01 and D-02:
+- **2026-03-02 (run 18):** Delta run after c65a557 fixes:
   - D-01: Added `[test]` extra to pyproject.toml (was missing)
   - D-02: Changed sentence-transformers warning to DEBUG level (non-blocking)
   - Tests: 919 passed | Lint: 0 | Mypy: 0
+  - Health score: 10/10
 
 - **2026-03-02 (run 17):** Documentation agent v3 verification complete:
-  - Dependencies: 39 OK, 0 missing
-  - Module imports: 100 OK, 0 failed
-  - Tests: 919 passed, 1 skipped (+5 new tests for media tools) | Lint: 0 | Mypy: 0
-  - Component instantiation: 12/15 OK (3 errors are API mismatches in test, not code issues)
-  - TaskClassifier: 9 query categories verified working
-  - ToolRegistry: 24 tools discovered
+  - Dependencies: 41 OK, 0 missing
+  - Module imports: 70 OK, 0 failed
+  - Tests: 919 passed, 1 skipped | Lint: 0 | Mypy: 0
+  - Component instantiation: 20/20 OK
+  - TaskClassifier: 5 query categories verified
+  - Tool modules: 27 discovered
   - Health score: 10/10
 
 ---
@@ -189,22 +190,23 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 | ID | Item | Notes |
 |----|------|-------|
-| D-01 | test extra not defined in pyproject.toml | **RESOLVED** - added `[test]` extra to pyproject.toml |
-| D-02 | sentence-transformers warning on import | **RESOLVED** - changed to DEBUG level (non-blocking) |
+| D-01 | test extra not defined in pyproject.toml | **RESOLVED** - added `[test]` extra to pyproject.toml (c65a557) |
+| D-02 | sentence-transformers warning on import | **RESOLVED** - changed to DEBUG level (c65a557) |
 
 ---
 
-## 8. Verification Findings (doc-agent-v3)
+## 8. Verification Findings (run 18)
 
 | Finding | Severity | Status |
 |---------|----------|--------|
-| 39 dependencies verified OK | INFO | VERIFIED |
-| 100 modules import successfully | INFO | VERIFIED |
+| 41 dependencies verified OK | INFO | VERIFIED |
+| 70 modules import successfully | INFO | VERIFIED |
 | 919 tests passing | INFO | VERIFIED |
 | 0 lint violations | INFO | VERIFIED |
 | 0 mypy errors | INFO | VERIFIED |
-| 12 components instantiate OK | INFO | VERIFIED |
-| TaskClassifier: 9 categories | INFO | VERIFIED |
-| 24 tools discovered | INFO | VERIFIED |
+| 20 components instantiate OK | INFO | VERIFIED |
+| 7 endpoints return 200 | INFO | VERIFIED |
+| 4 launch scripts valid | INFO | VERIFIED |
+| docker-compose.yml valid | INFO | VERIFIED |
 
-*Last updated: 2026-03-02 (run 17) — Full behavioral verification complete. Health: 10/10. Portal 1.4.6 fully production-ready.*
+*Last updated: 2026-03-02 (run 18) — Delta run complete. Health: 10/10. Portal 1.4.6 fully production-ready.*

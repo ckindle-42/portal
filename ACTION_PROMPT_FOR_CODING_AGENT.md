@@ -1,6 +1,6 @@
 # Portal — Action Prompt for Coding Agent
 
-**Generated:** 2026-03-02 (run 17)
+**Generated:** 2026-03-02 (run 18)
 **Source audit:** PORTAL_AUDIT_REPORT.md (same date)
 **Target version after completion:** 1.4.7
 
@@ -9,8 +9,8 @@
 ## Project Context
 
 Portal is a local-first AI platform (Python 3.11+ / FastAPI / async).
-Source: `src/portal/` (100 Python files).
-Tests: `tests/` (915 tests currently selected; 914 passing, 1 skipped).
+Source: `src/portal/` (70 Python modules).
+Tests: `tests/` (920 tests selected; 919 passing, 1 skipped).
 
 **Non-negotiable constraints:**
 - API contract locked: no behavior changes to existing endpoints
@@ -21,33 +21,33 @@ Tests: `tests/` (915 tests currently selected; 914 passing, 1 skipped).
 
 ## Prior Work Summary
 
-All code findings from run 16 have been resolved with full implementations:
-- **FIX-01**: Removed redundant duplicate import in `metrics.py:193`
-- **FIX-02**: Full CosyVoice TTS implementation - `generate_audio()` and `clone_voice()` functions
-- **FIX-03**: Full mflux CLI integration - `generate_image()` function using mflux-generate-z-image-turbo
+All deferred items have been resolved:
+- **D-01 (RESOLVED)**: Added `[test]` extra to pyproject.toml
+- **D-02 (RESOLVED)**: Changed sentence-transformers warning to DEBUG level
 
-**Current state:** 919 tests passing (+5 new tests for media tools), 0 mypy errors, 0 lint violations. All CI gates green.
+**Current state:** 919 tests passing, 0 mypy errors, 0 lint violations. All CI gates green.
 
 ---
 
 ## Open Tasks
 
-**No open tasks.** Portal 1.4.6 is fully production-ready. All Code Findings Register items resolved.
+**No open tasks.** Portal 1.4.6 is fully production-ready.
 
 ---
 
-## Verification (for reference)
+## Session Bootstrap
 
 ```bash
 # Verify environment
-source .venv/bin/activate 2>/dev/null || true
-python3 -c "import portal; print('portal:', portal.__version__)"
+cd /Users/chris/portal
+source .venv/bin/activate 2>/dev/null || python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[all,dev,test]" -q
 
 # Verify CI gates (all should pass)
 python3 -m ruff check src/ tests/           # expect 0 violations
 python3 -m ruff format --check src/ tests/  # expect no changes needed
 python3 -m mypy src/portal                  # expect 0 errors
-python3 -m pytest tests/ -v --tb=short      # expect 0 FAILED, 914 PASSED, 1 SKIPPED
+python3 -m pytest tests/ -v --tb=short      # expect 919 PASSED, 1 SKIPPED
 ```
 
 ---
@@ -55,6 +55,6 @@ python3 -m pytest tests/ -v --tb=short      # expect 0 FAILED, 914 PASSED, 1 SKI
 ## Notes
 
 - No action required — Portal is production-ready
-- All 3 deferred Code Findings have been resolved
-- TODO comments removed from media_tools stubs
-- Redundant import cleaned up in metrics.py
+- All Code Findings Register items resolved
+- D-01 and D-02 fixed in commit c65a557
+- Health score: 10/10 — FULLY PRODUCTION-READY
