@@ -155,6 +155,83 @@ class MemoryManager:
             lines.append(f"{idx}. {snippet.text}")
         return "\n".join(lines)
 
+    def build_system_message(
+        self,
+        user_id: str,
+        query: str,
+        max_snippets: int = 5,
+    ) -> dict[str, str] | None:
+        """Build a dedicated system message for memory context.
+
+        This method provides memory as a dedicated system message segment that can
+        be injected into the conversation. Unlike build_context_block which returns
+        plain text, this returns a properly formatted message dict for the LLM.
+
+        Note: This is a synchronous wrapper. For async contexts, use build_system_message_async.
+
+        Args:
+            user_id: The user's identifier
+            query: The current query to find relevant memories
+            max_snippets: Maximum number of memory snippets to include
+
+        Returns:
+            A message dict with role="system" and content including memory context,
+            or None if no relevant memories found.
+        """
+        # Use sync retrieval method
+        rows = self._retrieve_sqlite(user_id, query, max_snippets)
+        rows = list(rows)
+
+        if not rows:
+            return None
+
+        lines = ["## Relevant Long-term Memory"]
+        for idx, text in enumerate(rows, start=1):
+            lines.append(f"{idx}. {text}")
+
+        content = (
+            "You have access to the user's long-term memory from previous conversations. "
+            "Use this information to provide more personalized responses.\n\n"
+            + "\n".join(lines)
+        )
+
+        return {"role": "system", "content": content, "name": "memory_context"}
+
+    async def build_system_message_async(
+        self,
+        user_id: str,
+        query: str,
+        max_snippets: int = 5,
+    ) -> dict[str, str] | None:
+        """Async version of build_system_message.
+
+        Args:
+            user_id: The user's identifier
+            query: The current query to find relevant memories
+            max_snippets: Maximum number of memory snippets to include
+
+        Returns:
+            A message dict with role="system" and content including memory context,
+            or None if no relevant memories found.
+        """
+        snippets = await self.retrieve(user_id=user_id, query=query, limit=max_snippets)
+
+        if not snippets:
+            return None
+
+        lines = ["## Relevant Long-term Memory"]
+        for idx, snippet in enumerate(snippets, start=1):
+            relevance = f"(relevance: {snippet.score:.2f})" if snippet.score else ""
+            lines.append(f"{idx}. {snippet.text} {relevance}")
+
+        content = (
+            "You have access to the user's long-term memory from previous conversations. "
+            "Use this information to provide more personalized responses.\n\n"
+            + "\n".join(lines)
+        )
+
+        return {"role": "system", "content": content, "name": "memory_context"}
+
     async def close(self) -> None:
         """Close the connection pool and release resources."""
         self._pool.close()

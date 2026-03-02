@@ -2,10 +2,12 @@
 Model Puller — Auto-pull missing models from Ollama and HuggingFace
 
 Handles automatic downloading of models defined in default_models.json that aren't
-already installed in Ollama.
+already installed in Ollama. Supports HuggingFace to Ollama conversion.
 """
 
 import logging
+import shutil
+import subprocess
 
 import httpx
 
@@ -95,23 +97,99 @@ class ModelPuller:
         return []
 
     async def _ensure_huggingface_models(self, model_registry: ModelRegistry) -> list[str]:
-        """HuggingFace models need to be converted to GGUF and pulled into Ollama."""
+        """HuggingFace models: auto-import to Ollama via huggingface-cli or manual conversion."""
         hf_models = model_registry.get_models_by_backend("huggingface")
         pulled: list[str] = []
+
+        # Check if we have the tools for auto-import
+        has_huggingface_cli = shutil.which("huggingface-cli") or shutil.which("huggingface")
+        has_llamafile = shutil.which("llamafile")
+
+        if not has_huggingface_cli and not has_llamafile:
+            logger.info(
+                "HuggingFace CLI or llamafile not available. "
+                "To auto-import HuggingFace models, install: pip install huggingface-hub"
+            )
 
         for model in hf_models:
             model_path = model.model_path
             if not model_path:
                 continue
 
-            logger.info(
-                "HuggingFace model '%s' requires manual import to Ollama. "
-                "Run: ollama pull %s or convert from HuggingFace",
-                model_path,
-                model_path,
-            )
+            # Check if already in Ollama
+            installed = await self._get_installed_ollama_models()
+            if installed and any(model_path.split("/")[-1] in m for m in installed):
+                logger.debug("Model %s already in Ollama, skipping", model_path)
+                continue
+
+            # Try to auto-import
+            success = await self._import_huggingface_model(model_path)
+            if success:
+                pulled.append(model_path)
+                model_registry.update_availability(model.model_id, True)
+                logger.info("Successfully imported HuggingFace model: %s", model_path)
+            else:
+                logger.info(
+                    "Could not auto-import %s. Manual import: "
+                    "huggingface-cli download %s && ollama import",
+                    model_path,
+                    model_path,
+                )
+
+        if pulled:
+            logger.info("Auto-imported %d HuggingFace model(s): %s", len(pulled), pulled)
 
         return pulled
+
+    async def _import_huggingface_model(self, model_path: str) -> bool:
+        """Import a HuggingFace model to Ollama.
+
+        Tries multiple methods:
+        1. huggingface-cli download + ollama import
+        2. Direct ollama pull (for models in Ollama library)
+        3. llamafile conversion
+
+        Returns True if import succeeded, False otherwise.
+        """
+        logger.info("Attempting to import HuggingFace model: %s", model_path)
+
+        # Method 1: Try direct Ollama pull (works for models in Ollama library)
+        # Many HuggingFace models are also in Ollama library
+        model_name = model_path.replace("/", "-").replace("_", "-").lower()
+        if await self._pull_ollama_model(model_name):
+            logger.info("Found model in Ollama library: %s", model_name)
+            return True
+
+        # Method 2: Try using huggingface-cli to download and convert
+        if shutil.which("huggingface-cli") or shutil.which("huggingface"):
+            try:
+                # Download model files
+                result = subprocess.run(
+                    ["huggingface-cli", "download", model_path, "--local-dir", f"/tmp/{model_path.split('/')[-1]}"],
+                    capture_output=True,
+                    text=True,
+                    timeout=600,
+                )
+                if result.returncode == 0:
+                    # Try to import to Ollama
+                    gguf_path = f"/tmp/{model_path.split('/')[-1]}/*.gguf"
+                    import_result = subprocess.run(
+                        ["ollama", "import", "--source", "gguf", "--model", model_name, "--files", gguf_path],
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                    )
+                    if import_result.returncode == 0:
+                        return True
+            except Exception as e:
+                logger.debug("huggingface-cli import failed: %s", e)
+
+        # Method 3: Try llamafile
+        if shutil.which("llamafile"):
+            logger.info("llamafile available but auto-conversion not yet implemented")
+
+        logger.debug("All import methods failed for %s", model_path)
+        return False
 
     async def _get_installed_ollama_models(self) -> set[str] | None:
         """Get list of installed model names from Ollama."""

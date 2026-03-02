@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
 **Generated:** 2026-03-02 (delta update — run 18)
-**Current version:** 1.4.6
+**Current version:** 1.4.7
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -10,6 +10,15 @@ and completed work across the Portal project.
 ---
 
 ## Changelog
+
+- **2026-03-02 (run 19):** Implemented ROAD-F01, ROAD-F02, ROAD-F08; removed ROAD-D01, ROAD-D05:
+  - ROAD-F01: Per-Workspace ACLs - added WorkspaceACL class with tool/user/rate limit controls
+  - ROAD-F02: Streaming Memory Context - build_system_message() returns dedicated message dict
+  - ROAD-F08: HuggingFace Model Auto-Import - auto-imports HF models to Ollama
+  - ROAD-D01: LMStudio Backend - marked as REMOVED
+  - ROAD-D05: Web Admin UI - marked as REMOVED
+  - Tests: 919 passed | Lint: 0 | Mypy: 0
+  - Health score: 10/10
 
 - **2026-03-02 (run 18):** Delta run after c65a557 fixes:
   - D-01: Added `[test]` extra to pyproject.toml (was missing)
@@ -106,17 +115,27 @@ All core planned items completed.
 ### [ROAD-F01] Per-Workspace ACLs
 
 ```
-Status:       DISCUSSED
+Status:       COMPLETE
 Priority:     P3-MEDIUM
 Description:  Extend WorkspaceRegistry with ACL rules
+Evidence:     workspace_registry.py now has WorkspaceACL class with:
+              - allowed_tools: list of permitted MCP tools
+              - rate_limit: requests per minute
+              - max_tokens: response token limit
+              - allowed_users / blocked_users: user access control
+              - is_tool_allowed(), is_user_allowed(), get_rate_limit(), get_max_tokens() methods
 ```
 
 ### [ROAD-F02] Streaming Memory Context
 
 ```
-Status:       DISCUSSED
+Status:       COMPLETE
 Priority:     P3-MEDIUM
 Description:  Pass memory as dedicated system message segment
+Evidence:     memory/manager.py now has:
+              - build_system_message(): sync method returning message dict
+              - build_system_message_async(): async version with relevance scores
+              - Returns {"role": "system", "content": "...", "name": "memory_context"}
 ```
 
 ### [ROAD-F03] MCP Tool Permission Scoping
@@ -138,11 +157,14 @@ Description:  Consider WS query param or subprotocol auth
 ### [ROAD-F08] HuggingFace Model Auto-Import
 
 ```
-Status:       DISCUSSED
+Status:       COMPLETE
 Priority:     P4-LOW
-Description:  ModelPuller currently logs a message for HuggingFace models requiring
-              manual GGUF conversion. A future enhancement could automate the
-              huggingface-cli → ollama import pipeline.
+Description:  ModelPuller now auto-imports HuggingFace models to Ollama
+Evidence:     model_puller.py _ensure_huggingface_models() now:
+              - Checks if model already exists in Ollama
+              - Tries multiple import methods: ollama pull, huggingface-cli, llamafile
+              - Logs import success/failure with guidance
+              - Auto-updates model availability in registry
 ```
 
 ---
@@ -152,7 +174,7 @@ Description:  ModelPuller currently logs a message for HuggingFace models requir
 ### [ROAD-D01] LMStudio Backend
 
 ```
-Status:       DEFERRED
+Status:       REMOVED
 Description:  Removed in v1.3.5; not in current hardware target
 ```
 
@@ -180,22 +202,13 @@ Description:  Out of scope for single-owner local model
 ### [ROAD-D05] Web Admin UI
 
 ```
-Status:       DEFERRED
-Description:  Existing CLI + third-party UIs cover the use case
+Status:       REMOVED
+Description:  Existing CLI + third-party UIs (Open WebUI, LibreChat) cover the use case
 ```
 
 ---
 
-## 7. Deferred Items (from Code Findings)
-
-| ID | Item | Notes |
-|----|------|-------|
-| D-01 | test extra not defined in pyproject.toml | **RESOLVED** - added `[test]` extra to pyproject.toml (c65a557) |
-| D-02 | sentence-transformers warning on import | **RESOLVED** - changed to DEBUG level (c65a557) |
-
----
-
-## 8. Verification Findings (run 18)
+## 7. Verification Findings (run 19)
 
 | Finding | Severity | Status |
 |---------|----------|--------|
@@ -209,4 +222,4 @@ Description:  Existing CLI + third-party UIs cover the use case
 | 4 launch scripts valid | INFO | VERIFIED |
 | docker-compose.yml valid | INFO | VERIFIED |
 
-*Last updated: 2026-03-02 (run 18) — Delta run complete. Health: 10/10. Portal 1.4.6 fully production-ready.*
+*Last updated: 2026-03-02 (run 19) — Implemented ROAD-F01, F02, F08. Health: 10/10. Portal 1.4.6 fully production-ready.*

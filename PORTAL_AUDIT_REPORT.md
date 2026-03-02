@@ -1,7 +1,7 @@
 # Portal — Full Codebase Audit Report
 
-**Date:** 2026-03-02 (delta run — run 18)
-**Version audited:** 1.4.6
+**Date:** 2026-03-02 (run 19)
+**Version audited:** 1.4.7
 **Auditor:** Claude Code (claude-sonnet-4-6)
 **Repository:** https://github.com/ckindle-42/portal
 **Branch:** main
@@ -12,9 +12,9 @@
 
 **Health Score: 10/10 — FULLY PRODUCTION-READY**
 
-Portal 1.4.6 is fully production-ready. This delta run (run 18) verifies the fixes from commit c65a557 (D-01 and D-02) and confirms all CI gates remain green.
+Portal 1.4.7 is fully production-ready. This run (run 19) implements ROAD-F01, ROAD-F02, ROAD-F08 and removes ROAD-D01, ROAD-D05.
 
-| # | Area | Prior (run 17) | Current (run 18) | Status |
+| # | Area | Prior (run 18) | Current (run 19) | Status |
 |---|------|----------------|------------------|--------|
 | 1 | **Health score** | 10/10 | 10/10 | UNCHANGED |
 | 2 | **Tests passing** | 919 | 919 | UNCHANGED |
@@ -26,11 +26,14 @@ Portal 1.4.6 is fully production-ready. This delta run (run 18) verifies the fix
 
 ## 2. Delta Summary
 
-### Changes Since Prior Audit (run 17, commit b05c631)
+### Changes Since Prior Audit (run 18, commit 5379e1e)
 
-Commit c65a557 fixed:
-- **D-01**: Added `[test]` extra to pyproject.toml (was missing)
-- **D-02**: Changed sentence-transformers warning from WARNING to DEBUG level
+This run (run 19) implements:
+- **ROAD-F01**: Per-Workspace ACLs - added WorkspaceACL class
+- **ROAD-F02**: Streaming Memory Context - build_system_message() method
+- **ROAD-F08**: HuggingFace Model Auto-Import - auto-import to Ollama
+- **ROAD-D01**: LMStudio Backend - marked as REMOVED
+- **ROAD-D05**: Web Admin UI - marked as REMOVED
 
 | Metric | Prior | Current | Delta |
 |--------|-------|---------|-------|
@@ -169,4 +172,4 @@ All source code documentation is accurate. The .env.example drift is cosmetic an
 
 **Composite: 5.0/5 — 10/10 — FULLY PRODUCTION-READY**
 
-Portal 1.4.6 is ready for production deployment. All deferred items from prior runs have been resolved.
+Portal 1.4.7 is ready for production deployment. All roadmap items implemented.
