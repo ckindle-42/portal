@@ -264,6 +264,26 @@ Two paths available:
 - Generated files saved to `data/generated/`
 - Trigger: "create a Word document about...", "make a presentation on...", or select `auto-documents`
 
+### "I want to download generated files"
+
+**Endpoint:** `GET /v1/files` and `GET /v1/files/{filename}`
+
+After generating documents, images, videos, or music, files are saved to `data/generated/`. Use these endpoints to download:
+
+```bash
+# List recently generated files
+curl http://localhost:8081/v1/files
+
+# Download a specific file
+curl -o document.docx http://localhost:8081/v1/files/document.docx
+```
+
+**Features:**
+- Path traversal protection (rejects `..`, `/`, `\`)
+- Automatic MIME type detection
+- `Content-Disposition: attachment` for documents
+- Lists 50 most recent files
+
 ### "I want security analysis / red team"
 
 **Workspace:** `auto-security`
@@ -302,6 +322,29 @@ exploit, shellcode, bypass, payload, reverse shell, pentest, red team, priv esc,
 - Local knowledge base at `data/knowledge/`
 - Web search via DuckDuckGo (requires internet) or local SearXNG (offline-capable)
 - Trigger: "research...", "deep dive into...", or select `auto-research`
+
+### "I want to do a multi-step task"
+
+**Automatic Detection:** Portal automatically detects multi-step requests and uses the TaskOrchestrator.
+
+**Triggers:**
+- Explicit keywords: "then", "after that", "and also", "next step"
+- Multiple action verbs: "write X and create Y", "research topic and write report"
+
+**How it works:**
+1. AgentCore detects multi-step pattern in user message
+2. TaskOrchestrator breaks down the request into steps
+3. Each step executes sequentially, passing context to the next
+4. Results are combined into a single response
+
+**Example:**
+> "Research quantum computing and write a report, then create a presentation"
+
+This triggers the orchestrator to:
+1. Research quantum computing
+2. Write a report document
+3. Create a PowerPoint presentation
+4. Return all results combined
 
 ### "I want creative writing"
 

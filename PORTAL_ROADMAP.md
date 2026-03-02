@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 21)
-**Current version:** 1.4.7
+**Generated:** 2026-03-02 (delta update — run 22)
+**Current version:** 1.5.0
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -10,6 +10,12 @@ and completed work across the Portal project.
 ---
 
 ## Changelog
+
+- **2026-03-02 (run 22):** Targeted Finish Line - Task 1-3:
+  - Task 1: Orchestrator integration, file delivery endpoints, KnowledgeConfig wiring
+  - Task 2: New tests for video/music generators, router rules, task classifier
+  - Task 3: Added file download docs, multi-step orchestration docs
+  - Tests: 922 passed (+24 new tests)
 
 - **2026-03-02 (run 21):** Documentation verification via PORTAL_DOCUMENTATION_AGENT_v3:
   - Dependencies: 40 OK, 0 missing
