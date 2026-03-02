@@ -237,6 +237,8 @@ class BackendsConfig(BaseModel):
     """LLM backend configuration"""
 
     ollama_url: str = Field("http://localhost:11434", description="Ollama API URL")
+    mlx_url: str = Field("http://localhost:8800", description="MLX-LM server API URL")
+    enable_mlx: bool = Field(False, description="Enable MLX backend for Apple Silicon")
     timeout_seconds: int = Field(300, ge=1, le=3600, description="Request timeout in seconds")
 
     model_config = ConfigDict(extra="allow")
@@ -428,6 +430,8 @@ class Settings(BaseSettings):
             "routing_strategy": "AUTO",
             "max_context_messages": self.context.max_context_messages,
             "ollama_base_url": self.backends.ollama_url,
+            "mlx_url": self.backends.mlx_url,
+            "enable_mlx": self.backends.enable_mlx,
             "circuit_breaker_enabled": True,
             "circuit_breaker_threshold": 3,
             "circuit_breaker_timeout": 60,
