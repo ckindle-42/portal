@@ -1,6 +1,6 @@
 # Portal — Full Codebase Audit Report
 
-**Date:** 2026-03-02 (delta run — run 7)
+**Date:** 2026-03-02 (delta run — run 8)
 **Version audited:** 1.4.5
 **Auditor:** Claude Code (claude-sonnet-4-6)
 **Repository:** https://github.com/ckindle-42/portal
@@ -9,69 +9,76 @@
 
 ## 1. Executive Summary
 
-**Health Score: 9.3/10 — PRODUCTION-READY (TASK-41 + 3 minor cleanup items remain)**
+**Health Score: 9.5/10 — PRODUCTION-READY (documentation updates remain)**
 
-Portal 1.4.5 represents a significant step forward from run 6. Commit `f6ed8dd` completed
-7 of the 8 ROAD-P01 tasks: lint and type errors resolved, 16 unit tests added, proxy router
-(`router.py`) wired with LLMClassifier, `router_rules.json` configured, `.env.example`
-updated, and version bumped. TASK-41 (IntelligentRouter wiring) was not implemented.
-Three new findings were discovered: dead `stream_classify()` method, `ROUTING_LLM_MODEL`
-env var documented but inoperative, and version drift in `pyproject.toml` and
-`docs/ARCHITECTURE.md`.
+Portal 1.4.5 has reached full ROAD-P01 completion. PR #96 (branch
+`claude/execute-coding-agent-prompt-FRItj`, commit `71ce797`) implemented all
+remaining TASK-41 through TASK-47: IntelligentRouter.route() is now async with
+dual LLMClassifier + TaskClassifier, stream_classify() dead code removed,
+router.py uses create_classifier() (ROUTING_LLM_MODEL now respected), and
+version strings synced. Zero lint violations, zero mypy errors, 890 tests
+passing. Remaining open work is entirely documentation: ARCHITECTURE.md stale
+routing descriptions, incomplete CHANGELOG 1.4.5 entry, stale ROADMAP.md
+status fields, and undocumented env vars.
 
 | # | Area | Prior | Current | Status |
 |---|------|-------|---------|--------|
-| 1 | **Health score** | 9.0/10 | 9.3/10 | IMPROVED |
-| 2 | **Tests** | 874 pass / 1 skip | 890 pass / 1 skip | IMPROVED (+16) |
-| 3 | **Lint violations** | 2 | 0 | FIXED |
-| 4 | **mypy errors** | 2 | 0 | FIXED |
-| 5 | **ROAD-P01 (proxy router)** | NOT integrated | COMPLETE (TASK-40) | FIXED |
-| 6 | **ROAD-P01 (IntelligentRouter)** | NOT integrated | NOT integrated | STILL OPEN |
-| 7 | **Version (pyproject.toml)** | 1.4.4 | 1.4.4 (stale) | REGRESSION |
-| 8 | **stream_classify() dead code** | — | Exists | NEW FINDING |
-| 9 | **ROUTING_LLM_MODEL env var** | — | Documented but inoperative | NEW FINDING |
+| 1 | **Health score** | 9.3/10 | 9.5/10 | IMPROVED |
+| 2 | **Tests** | 890 pass / 1 skip | 890 pass / 1 skip | UNCHANGED |
+| 3 | **Lint violations** | 0 | 0 | CLEAN |
+| 4 | **mypy errors** | 0 | 0 | CLEAN |
+| 5 | **TASK-41 (IntelligentRouter LLM)** | NOT implemented | COMPLETE | FIXED |
+| 6 | **TASK-44 (pyproject.toml version)** | 1.4.4 stale | 1.4.5 | FIXED |
+| 7 | **TASK-45 (ARCHITECTURE.md version)** | 1.4.4 stale | 1.4.5 | FIXED |
+| 8 | **TASK-46 (stream_classify dead code)** | Present | Removed | FIXED |
+| 9 | **TASK-47 (create_classifier wiring)** | Bypassed | Fixed | FIXED |
+| 10 | **ARCHITECTURE.md routing desc** | — | Stale (TaskClassifier-only) | NEW FINDING |
+| 11 | **CHANGELOG 1.4.5 entry** | — | Incomplete (pre-PR #96) | NEW FINDING |
+| 12 | **ROADMAP.md status** | — | Shows "Planned" for completed work | NEW FINDING |
+| 13 | **Undocumented env vars** | — | 12 vars used but absent from .env.example | NEW FINDING |
+| 14 | **Stale `master` branch** | — | Local-only, 0 unique commits | NEW FINDING |
 
 ---
 
 ## 2. Delta Summary
 
-### Changes Since Prior Audit (2026-03-02, v1.4.4, run 6)
+### Changes Since Prior Audit (2026-03-02, v1.4.5, run 7)
 
 | Metric | Prior | Current | Delta |
 |--------|-------|---------|-------|
-| Health Score | 9.0/10 | 9.3/10 | +0.3 |
-| mypy errors | 2 | 0 | −2 (fixed) |
-| Lint violations | 2 | 0 | −2 (fixed) |
-| Test count | 874 pass / 1 skip | 890 pass / 1 skip | +16 tests |
+| Health Score | 9.3/10 | 9.5/10 | +0.2 |
+| mypy errors | 0 | 0 | — |
+| Lint violations | 0 | 0 | — |
+| Test count | 890 pass / 1 skip | 890 pass / 1 skip | — |
 | Source files | 97 | 97 | — |
-| Version (`__init__.py`) | 1.4.4 | 1.4.5 | bumped |
-| Version (`pyproject.toml`) | 1.4.4 | 1.4.4 | NOT bumped (drift) |
-| Version (`ARCHITECTURE.md`) | 1.4.4 | 1.4.4 | NOT bumped (drift) |
+| Version (`__init__.py`) | 1.4.5 | 1.4.5 | — |
+| Evolution readiness | 4/5 | 5/5 | IMPROVED |
+| Documentation completeness | 4/5 | 3.5/5 | REGRESSED (new drift found) |
 
 ### Completed Since Prior Audit
 
 | Task | Description | Commit |
 |------|-------------|--------|
-| TASK-36 | Lint fixed (UP035, W292) in llm_classifier.py | f6ed8dd |
-| TASK-37 | mypy arg-type errors fixed in create_classifier() | f6ed8dd |
-| TASK-38 | 16 unit tests added (tests/unit/test_llm_classifier.py) | f6ed8dd |
-| TASK-39 | ROUTING_LLM_MODEL documented in .env.example | f6ed8dd |
-| TASK-40 | router.py::resolve_model() made async, LLMClassifier integrated | f6ed8dd |
-| TASK-42 | "classifier" config block added to router_rules.json | f6ed8dd |
-| TASK-43 | Version bumped to 1.4.5 in __init__.py, CHANGELOG updated | f6ed8dd |
+| TASK-41 | IntelligentRouter.route() made async; dual LLMClassifier + TaskClassifier | 620d0a4 |
+| TASK-44 | pyproject.toml version synced to 1.4.5 | b6f0671 |
+| TASK-45 | docs/ARCHITECTURE.md version synced to 1.4.5 | b6f0671 |
+| TASK-46 | stream_classify() and AsyncIterator import removed from llm_classifier.py | fa8e5ae |
+| TASK-47 | router.py changed to use create_classifier(); ROUTING_LLM_MODEL now works | 4ac58c8 |
+| chore | ruff formatting: trailing blank line in llm_classifier.py | 0038dc5 |
+| upload | PORTAL_DOCUMENTATION_AGENT.md added to repo root | 214b16c |
 
 ### Still Open from Prior Audit
 
-| Task | Description | Status |
-|------|-------------|--------|
-| TASK-41 | intelligent_router.py::IntelligentRouter.route() not wired to LLMClassifier | STILL OPEN |
+None — all prior open tasks are now complete.
 
 ### New Findings (this run)
 
-1. **DEAD-01** `llm_classifier.py:166–172` — `stream_classify()` is speculative dead code; no production caller, no test
-2. **CONFIG-01** `router.py:63` — `LLMClassifier(ollama_host=OLLAMA_HOST)` bypasses `create_classifier()`; `ROUTING_LLM_MODEL` env var documented in `.env.example` has no effect
-3. **DOC-01** `pyproject.toml:7` — version `1.4.4` stale; `__init__.py` says `1.4.5`
-4. **DOC-02** `docs/ARCHITECTURE.md:3,443` — version `1.4.4` stale; should be `1.4.5`
+1. **DOC-03** `docs/ARCHITECTURE.md:142` — Proxy Router described as "regex-based model selection"; LLMClassifier now primary since TASK-40
+2. **DOC-04** `docs/ARCHITECTURE.md:144,149` — IntelligentRouter described as `TaskClassifier (100+ regex patterns)` only; TASK-41 now adds dual classification. Also "Future unification is a Track B opportunity" is stale
+3. **DOC-05** `CHANGELOG.md` — [1.4.5] entry reflects only commit `f6ed8dd`; TASK-41 through TASK-47 (PR #96) not mentioned
+4. **DOC-06** `ROADMAP.md` — Item 1 "LLM-Based Intelligent Routing" shows `Status: Planned`; it is now fully COMPLETE
+5. **ENV-01** 12 env vars read in code absent from `.env.example`: REDIS_URL, MEM0_API_KEY, PORTAL_AUTH_DB, PORTAL_BOOTSTRAP_USER_ID, PORTAL_BOOTSTRAP_USER_ROLE, RATE_LIMIT_DATA_DIR, PORTAL_VRAM_USAGE_MB, PORTAL_UNIFIED_MEMORY_USAGE_MB, PORTAL_ENV, TELEGRAM_USER_ID (legacy singular), PORTAL_MEMORY_DB, PORTAL_MEMORY_PROVIDER
+6. **BRANCH-01** `master` — stale local-only branch with 0 unique commits vs origin/main
 
 ---
 
@@ -79,21 +86,20 @@ env var documented but inoperative, and version drift in `pyproject.toml` and
 
 | Commit | Theme | Status | Debt/TODOs Left |
 |--------|-------|--------|-----------------|
-| `f6ed8dd` | feat(routing): ROAD-P01 LLM-based intelligent routing integration | PARTIAL | TASK-41 skipped; 3 new minor findings |
-| `2f8428c` | fix(mcp): fix scrapling launch and mcpo server configuration | COMPLETE | None |
-| `b077b14` | docs(audit): delta run 6 — ROAD-P01 IN-PROGRESS, TASK-36–43 action plan | COMPLETE | None |
-| `0a7f28f` | feat(routing): add LLM-based task classifier | COMPLETE | All issues fixed in f6ed8dd |
+| `71ce797` | Merge PR #96: IntelligentRouter async + LLMClassifier full integration | COMPLETE | DOC-03/04/05/06 found |
+| `214b16c` | Add files via upload: PORTAL_DOCUMENTATION_AGENT.md | COMPLETE | None (doc artifact) |
+| `22f27c2` | Merge PR #95: delta run 7 audit artifacts | COMPLETE | None |
+| `f6ed8dd` | feat(routing): ROAD-P01 LLM-based intelligent routing integration | COMPLETE | All follow-ups done in PR #96 |
 
 **Unfinished Work Register:**
 
 | Source | Description | Evidence | Priority |
 |--------|------------|----------|----------|
-| `f6ed8dd` | IntelligentRouter.route() still uses TaskClassifier, not wired to LLMClassifier | intelligent_router.py:80 | MEDIUM |
-| `f6ed8dd` | agent_core.py:322 still calls self.router.route(query) without await | agent_core.py:322 | MEDIUM |
-| `f6ed8dd` | stream_classify() method is dead code | grep callsites: 0 | LOW |
-| `f6ed8dd` | router.py instantiates LLMClassifier directly; ROUTING_LLM_MODEL env var unused | router.py:63 | LOW |
-| Various | pyproject.toml version 1.4.4 stale (init says 1.4.5) | file diff | LOW |
-| Various | docs/ARCHITECTURE.md version 1.4.4 stale | file diff | LOW |
+| PR #96 merged | ARCHITECTURE.md routing descriptions stale post-TASK-40/41 | docs/ARCHITECTURE.md:142,144,149 | MEDIUM |
+| PR #96 merged | CHANGELOG 1.4.5 entry missing TASK-41 through TASK-47 | CHANGELOG.md — no PR #96 entries | LOW |
+| ROADMAP.md | LLM routing status shows "Planned" — now Complete | ROADMAP.md:10 | LOW |
+| Code audit | 12 env vars used in code, absent from .env.example | grep os.getenv | LOW |
+| Branch inventory | `master` local branch has 0 unique commits vs main | git branch | LOW |
 
 ---
 
@@ -106,11 +112,11 @@ Environment:  Python 3.11.14 | .venv active | portal 1.4.5 importable
 Dev tools:    ruff=0.15.4  pytest=9.0.2  mypy=1.19.1
 Tests:        PASS=890  FAIL=0  SKIP=1  ERROR=0
 Lint:         VIOLATIONS=0
-Mypy:         ERRORS=0 (97 source files; standard strict=false mode)
-Branches:     LOCAL=2 (claude/execute-codebase-review-mrIAM + stale master)
-              REMOTE=2 (origin/claude/... + origin/main)
-              master: stale local-only; all commits present in origin/main
-CLAUDE.md:    git policy PRESENT (Environment Setup section absent but non-critical)
+Mypy:         ERRORS=0 (97 source files; strict=false mode)
+Branches:     LOCAL=2 (claude/execute-codebase-review-Jdhwo + stale master)
+              REMOTE=2 (origin/claude/execute-codebase-review-Jdhwo + origin/main)
+              master: stale local-only; 0 unique commits vs origin/main
+CLAUDE.md:    git policy PRESENT
 API routes:   confirmed (/v1/chat/completions, /v1/models, /health, /metrics)
 Proceed:      YES
 ```
@@ -135,19 +141,18 @@ Proceed:      YES
 
 ## 6. File Inventory — DELTA
 
-All 97 source files from run 6 are unchanged except:
+Files changed since run 7:
 
 | File Path | LOC | Status |
 |-----------|-----|--------|
-| `src/portal/routing/llm_classifier.py` | 197 | UPDATED (lint+type fixed; stream_classify added — dead) |
-| `src/portal/routing/router.py` | 304 | UPDATED (resolve_model async, LLMClassifier wired) |
-| `src/portal/routing/intelligent_router.py` | 220 | COMMENT ONLY (comment added, no functional change) |
-| `src/portal/routing/router_rules.json` | 56 | UPDATED (classifier block added) |
-| `src/portal/__init__.py` | 12 | UPDATED (version 1.4.5) |
-| `tests/unit/test_llm_classifier.py` | 191 | NEW (16 tests) |
-| `tests/unit/test_router_auth.py` | 95 | UPDATED (async test adaptations) |
-| `.env.example` | 35 | UPDATED (ROUTING_LLM_MODEL added) |
-| `CHANGELOG.md` | ~350 | UPDATED (1.4.5 entry added) |
+| `src/portal/routing/intelligent_router.py` | 241 | UPDATED (route() async, LLMClassifier dual classification) |
+| `src/portal/routing/llm_classifier.py` | 187 | UPDATED (stream_classify removed, AsyncIterator import removed) |
+| `src/portal/routing/router.py` | 303 | UPDATED (create_classifier() call, unchanged LOC) |
+| `PORTAL_DOCUMENTATION_AGENT.md` | ~370 | NEW (documentation agent prompt — project artifact) |
+| `docs/ARCHITECTURE.md` | same | version only updated; routing description stale |
+| `pyproject.toml` | same | version synced to 1.4.5 |
+
+All other 91 source files unchanged from run 6. Total: 97 Python source files.
 
 ---
 
@@ -155,17 +160,20 @@ All 97 source files from run 6 are unchanged except:
 
 | File | Issue | Current Text | Required Correction | Impact |
 |------|-------|-------------|---------------------|--------|
-| `pyproject.toml:7` | Version stale | `version = "1.4.4"` | `version = "1.4.5"` | MED — packaging tools read this |
-| `docs/ARCHITECTURE.md:3` | Version stale | `**Version:** 1.4.4` | `**Version:** 1.4.5` | LOW |
-| `docs/ARCHITECTURE.md:443` | Version stale | `version = "1.4.4"` | `version = "1.4.5"` | LOW |
-| `docs/ARCHITECTURE.md:146` | LLM routing described as future | "Future unification...LLM-based" | Note partial implementation in proxy router | LOW |
-| `CHANGELOG.md` | TASK-41 pending not noted | 1.4.5 entry says "integrated" | Add note that IntelligentRouter still uses TaskClassifier | LOW |
+| `docs/ARCHITECTURE.md:142` | Proxy Router desc stale | "regex-based model selection" | "LLM classifier (qwen2.5:0.5b) with regex fallback" | MED |
+| `docs/ARCHITECTURE.md:144` | IntelligentRouter desc stale | "uses TaskClassifier (100+ regex patterns)" | "uses LLMClassifier (async) + TaskClassifier (metadata)" | MED |
+| `docs/ARCHITECTURE.md:149` | Future work claim stale | "Future unification is a Track B opportunity" | Remove — ROAD-P01 is complete | LOW |
+| `CHANGELOG.md:[1.4.5]` | Incomplete — TASK-41–47 absent | Only covers f6ed8dd | Add entries for PR #96 commits (b6f0671, fa8e5ae, 4ac58c8, 620d0a4, 0038dc5) | LOW |
+| `ROADMAP.md:10` | Status stale | `Status: Planned` (Item 1) | `Status: Complete` | LOW |
+| `.env.example` | 12 env vars absent | (missing entries) | Add REDIS_URL, MEM0_API_KEY, PORTAL_AUTH_DB, PORTAL_BOOTSTRAP_USER_ID/ROLE, RATE_LIMIT_DATA_DIR, PORTAL_VRAM_USAGE_MB, PORTAL_UNIFIED_MEMORY_USAGE_MB, PORTAL_ENV, PORTAL_MEMORY_DB, PORTAL_MEMORY_PROVIDER, TELEGRAM_USER_ID | LOW |
 
 ---
 
 ## 8. Dependency Heatmap — UNCHANGED
 
-No structural changes to module coupling since run 5.
+No structural changes to module coupling since run 5. The routing layer gained
+one new dependency direction: `intelligent_router.py` → `llm_classifier.py`
+(already present in proxy router since run 6). No circular dependencies.
 
 ---
 
@@ -173,12 +181,12 @@ No structural changes to module coupling since run 5.
 
 | # | File | Lines | Category | Finding | Action | Risk |
 |---|------|-------|----------|---------|--------|------|
-| 1 | intelligent_router.py | 49–80 | MISSING | route() still sync, still uses TaskClassifier; TASK-41 not implemented | Wire LLMClassifier per TASK-41 spec | MEDIUM |
-| 2 | agent_core.py | 322 | MISSING | self.router.route(query) not awaited (companion to finding 1) | Change to await when route() goes async | MEDIUM |
-| 3 | llm_classifier.py | 166–172 | DEAD_CODE | stream_classify() — speculative async generator, no callers, no tests | Remove the method | LOW |
-| 4 | router.py | 63 | CONFIG_HARDENING | LLMClassifier instantiated without model arg; ROUTING_LLM_MODEL env var unused | Use create_classifier(ollama_host=OLLAMA_HOST) instead | LOW |
-| 5 | pyproject.toml | 7 | DOCS | version 1.4.4 stale; __init__.py says 1.4.5 | Bump to 1.4.5 | LOW |
-| 6 | docs/ARCHITECTURE.md | 3,443 | DOCS | version 1.4.4 stale; should be 1.4.5 | Update both references | LOW |
+| 1 | docs/ARCHITECTURE.md | 142 | DOCS | Proxy Router desc says "regex-based" — LLMClassifier is now primary | Update desc | LOW |
+| 2 | docs/ARCHITECTURE.md | 144,149 | DOCS | IntelligentRouter desc says TaskClassifier only; future unification claim stale | Update desc | LOW |
+| 3 | CHANGELOG.md | [1.4.5] | DOCS | Entry missing TASK-41–47 (PR #96 commits b6f0671, fa8e5ae, 4ac58c8, 620d0a4, 0038dc5) | Add missing changelog entries | LOW |
+| 4 | ROADMAP.md | 10 | DOCS | LLM routing status "Planned" — now Complete | Mark Complete | LOW |
+| 5 | .env.example | — | CONFIG_HARDENING | 12 env vars read via os.getenv absent from .env.example | Add with comments | LOW |
+| 6 | master (local branch) | — | BRANCH | Stale local-only branch with 0 unique commits vs origin/main | Delete: `git branch -d master` | NONE |
 
 ---
 
@@ -186,40 +194,49 @@ No structural changes to module coupling since run 5.
 
 | Action | Target | Reason |
 |--------|--------|--------|
-| KEEP | tests/unit/test_llm_classifier.py (16 tests) | All 16 pass; cover all critical paths |
-| ADD_MISSING | stream_classify() — None (method should be removed) | N/A after TASK-46 |
-| KEEP | tests/unit/test_router_auth.py (7 tests) | Updated for async resolve_model; all pass |
-| KEEP | All 874 existing tests | Unchanged; all pass |
+| KEEP | tests/unit/test_intelligent_router.py (42 tests) | All pass; cover async route(), dual classification, all strategies |
+| KEEP | tests/unit/test_llm_classifier.py (16 tests) | All pass; cover LLMClassifier, create_classifier |
+| KEEP | All 832 other tests | Unchanged; all pass |
 
 **Test counts (collected/passing):**
 - Collected: 891 (27 deselected as e2e/integration needing Ollama)
 - Passing: 890 | Skip: 1 | Fail: 0
 
+**Coverage of new TASK-41 path:**
+- `test_intelligent_router.py` uses `AsyncMock` for `router.llm_classifier.classify`
+- All strategy paths tested with both TaskClassifier + LLMClassifier mocked
+- Workspace routing tested (still uses TaskClassifier only — correct by design)
+
 ---
 
 ## 11. Architecture Assessment
 
-### ROAD-P01 Integration Gap — Current State
+### ROAD-P01 Integration — FULLY COMPLETE
 
-**Proxy Router (`:8000` — router.py):** FULLY INTEGRATED (TASK-40 complete)
-- `resolve_model()` is now `async def`
-- Step 3: `_llm_classifier.classify(user_text)` called when `requested_model == "auto"`
-- Fallback chain: LLM classifier → regex rules → explicit model → default
-- Category-model map read from `router_rules.json["classifier"]["categories"]`
+**Proxy Router (`:8000` — router.py):** COMPLETE (since TASK-40, run 6)
+- `resolve_model()` async; LLMClassifier fires for `requested_model == "auto"`
+- Uses `create_classifier(ollama_host=OLLAMA_HOST)` — ROUTING_LLM_MODEL now respected
 
-**AgentCore Router (`:8081` — intelligent_router.py):** NOT INTEGRATED (TASK-41 still open)
-- `route()` is still `def` (synchronous)
-- Still uses `TaskClassifier` exclusively
-- `agent_core.py:322` still calls `self.router.route(query)` (no await)
-- This means all `/v1/chat/completions` requests routed through AgentCore still use regex heuristics
+**AgentCore Router (`:8081` — intelligent_router.py):** COMPLETE (TASK-41, PR #96)
+- `route()` is now `async def`
+- Dual classification: `task_class = self.classifier.classify(query)` (sync, metadata)
+  + `llm_class = await self.llm_classifier.classify(query)` (async, category override)
+- Category override map: LLMCategory.CODE→CODE, REASONING→ANALYSIS, CREATIVE→CREATIVE, etc.
+- `agent_core.py:322`: `decision = await self.router.route(query)` — awaited correctly
+- Workspace routing branch: still uses TaskClassifier only (correct — workspace = explicit selection)
 
-### ENV VAR Gap
-
-`ROUTING_LLM_MODEL` is documented in `.env.example` and used in `create_classifier()`, but
-`router.py:63` instantiates `LLMClassifier(ollama_host=OLLAMA_HOST)` directly — bypassing
-`create_classifier()`. The env var has no effect on the model actually used.
-
-**Fix:** `_llm_classifier = create_classifier(ollama_host=OLLAMA_HOST)` in router.py.
+**Routing Architecture:**
+```
+Request → AgentCore → IntelligentRouter.route()
+                           │
+          ┌────────────────┴──────────────────┐
+          │ Workspace?                          │ No
+          │ → TaskClassifier (metadata only)    │
+          │ → Workspace model                   │ → TaskClassifier (complexity, metadata)
+          └─────────────────────────────────────┤ + LLMClassifier (category override)
+                                                │ → Strategy → Model selection
+                                                └───────────────
+```
 
 ---
 
@@ -227,11 +244,15 @@ No structural changes to module coupling since run 5.
 
 | ID | Area | Current State | Target State | Priority |
 |----|------|--------------|--------------|----------|
-| EG-01 | LLM Routing (IntelligentRouter) | TaskClassifier only | LLMClassifier wired | P2-HIGH |
-| EG-02 | ENV var wiring for LLM model | ROUTING_LLM_MODEL inoperative | create_classifier() used | P3-MEDIUM |
-| EG-03 | Dead code removal | stream_classify() exists | Removed | P4-LOW |
-| EG-04 | Version sync | pyproject.toml / ARCHITECTURE.md stale | 1.4.5 everywhere | P3-MEDIUM |
-| EG-05 | MLX Backend | Ollama only | MLX server | P3-MEDIUM |
+| EG-01 | LLM Routing | COMPLETE (both routers) | N/A | DONE |
+| EG-02 | ENV var wiring | COMPLETE (create_classifier used) | N/A | DONE |
+| EG-03 | Dead code (stream_classify) | COMPLETE (removed) | N/A | DONE |
+| EG-04 | Version sync | COMPLETE (pyproject.toml + ARCHITECTURE.md) | N/A | DONE |
+| EG-05 | ARCHITECTURE.md routing desc | Stale (TaskClassifier-only) | Updated desc | P3-MEDIUM |
+| EG-06 | CHANGELOG completeness | [1.4.5] entry incomplete | All PR #96 changes listed | P3-MEDIUM |
+| EG-07 | ROADMAP.md status | Shows "Planned" | Shows "Complete" | P4-LOW |
+| EG-08 | .env.example completeness | 12 undocumented vars | All vars documented | P4-LOW |
+| EG-09 | MLX Backend | Ollama only | MLX server | P3-MEDIUM |
 
 ---
 
@@ -239,18 +260,18 @@ No structural changes to module coupling since run 5.
 
 | Dimension | Score | Narrative |
 |-----------|-------|-----------|
-| Env config separation | 4/5 | ROUTING_LLM_MODEL documented but inoperative |
-| Error handling / observability | 5/5 | Structured logging, trace IDs, circuit breaker |
-| Security posture | 5/5 | HMAC auth, rate limiting, CORS |
+| Env config separation | 4.2/5 | ROUTING_LLM_MODEL now respected; 12 vars undocumented |
+| Error handling / observability | 5/5 | Structured logging, trace IDs, circuit breaker, Prometheus |
+| Security posture | 5/5 | HMAC auth, rate limiting, CORS, input sanitization |
 | Dependency hygiene | 5/5 | All extras correct; 0 vulnerable pins |
-| Documentation completeness | 4/5 | pyproject.toml + ARCHITECTURE.md version stale |
-| Build / deploy hygiene | 5/5 | Multi-platform launchers; systemd + Docker |
-| Module boundary clarity | 5/5 | Clean DI; llm_classifier.py well-scoped |
-| Test coverage quality | 5/5 | 890 tests, all critical paths covered |
-| Evolution readiness | 4/5 | Proxy router LLM-ready; AgentCore still regex |
+| Documentation completeness | 3.5/5 | ARCHITECTURE.md routing stale, CHANGELOG incomplete, ROADMAP.md stale |
+| Build / deploy hygiene | 5/5 | Multi-platform launchers; systemd + Docker Compose |
+| Module boundary clarity | 5/5 | Clean DI; llm_classifier.py well-scoped; no circular deps |
+| Test coverage quality | 5/5 | 890 tests; all critical paths covered including async routing |
+| Evolution readiness | 5/5 | Both routing paths now use LLMClassifier — ROAD-P01 COMPLETE |
 | Type safety | 5/5 | 0 mypy errors (97 files, standard mode) |
 
-**Composite: 4.7/5 — PRODUCTION-READY**
+**Composite: 4.77/5 — 9.5/10 — PRODUCTION-READY**
 
-Existing Portal 1.4.5 production paths are clean. The remaining open work (TASK-41 +
-minor fixes) does not affect system stability or security — it completes ROAD-P01.
+All production paths are clean. Open work is documentation cleanup only —
+no functional defects, no security issues, no API contract changes.

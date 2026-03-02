@@ -1,6 +1,6 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 7)
+**Generated:** 2026-03-02 (delta update — run 8)
 **Current version:** 1.4.5
 **Maintained by:** ckindle-42
 
@@ -11,6 +11,7 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 8):** ROAD-P01 FULLY COMPLETE — IntelligentRouter.route() now async with dual LLMClassifier + TaskClassifier (TASK-41). TASK-44–47 complete (version sync, dead code removal, create_classifier fix). All prior open tasks resolved. New findings: ARCHITECTURE.md routing description stale, CHANGELOG 1.4.5 entry incomplete, ROADMAP.md status stale, 12 undocumented env vars, stale `master` branch. Health score 9.3 → 9.5/10. New tasks: TASK-48–52 (documentation only). PORTAL_DOCUMENTATION_AGENT.md added to repo (documentation agent prompt).
 - **2026-03-02 (run 7):** ROAD-P01 proxy router integration COMPLETE (TASK-40). IntelligentRouter still pending (TASK-41 — open). 3 new findings: dead stream_classify() method, ROUTING_LLM_MODEL env var inoperative, pyproject.toml + ARCHITECTURE.md version drift. Health score 9.0 → 9.3/10. Version 1.4.5 shipped. New tasks: TASK-44–47.
 - **2026-03-02 (run 6):** ROAD-P01 status changed PLANNED → IN-PROGRESS. Commit `0a7f28f` added `llm_classifier.py` (185 LOC) — the LLMClassifier module. Integration into `router.py` and `intelligent_router.py` not yet complete. 10 open findings (TASK-36 through TASK-43). Health score 10/10 → 9.0/10 (new code, open issues). Version target 1.4.5 on completion.
 - **2026-03-02 (run 5):** TASK-34 and TASK-35 confirmed complete (PR #90). Version bumped to 1.4.4. ARCHITECTURE.md version updated. CHANGELOG 1.4.4 entry added. Health score 9.5 → 10/10. **FULLY PRODUCTION-READY.**
@@ -24,6 +25,7 @@ Portal 1.4.5 is fully operational for its stated purpose:
 
 - **OpenAI-compatible REST API** at `:8081/v1/*` — works with Open WebUI and LibreChat
 - **Ollama proxy router** at `:8000` — workspace routing, LLM classifier (TASK-40), regex fallback
+- **IntelligentRouter** at `:8081` — dual LLM + regex routing (TASK-41 complete)
 - **Telegram interface** — polling mode, per-user auth, HITL confirmation, rate limiting
 - **Slack interface** — webhook events, channel whitelist, streaming replies
 - **MCP tool dispatch** — via mcpo proxy (openapi transport) and streamable-http
@@ -35,7 +37,7 @@ Portal 1.4.5 is fully operational for its stated purpose:
 - **WorkspaceRegistry** — virtual model names mapped to concrete Ollama models
 - **BackendRegistry** — named backend instances
 - **Structured logging** — JSON with trace IDs, secret redaction
-- **LLMClassifier** — async Ollama-based query classification with regex fallback (proxy router only)
+- **LLMClassifier** — async Ollama-based query classification with regex fallback (BOTH routers)
 - **Fully mypy-clean** — 0 type errors across 97 source files
 
 **CI status:** 890 tests passing, 0 lint violations, 0 mypy errors.
@@ -90,7 +92,7 @@ Description:  All aiohttp replaced with httpx in OllamaBackend and HTTPClientToo
 ```
 Status:       COMPLETE
 Priority:     P2-HIGH
-Description:  11x os.getenv() moved to Pydantic Settings
+Description:  11x os.getenv() moved to Pydantic Settings (core path)
 ```
 
 ### [ROAD-C07] BackendRegistry
@@ -184,42 +186,41 @@ Description:  LLMClassifier wired into proxy router resolve_model(). resolve_mod
 Evidence:     Commit f6ed8dd
 ```
 
+### [ROAD-C18] ROAD-P01 IntelligentRouter Integration (TASK-41)
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Description:  IntelligentRouter.route() made async. Dual classification added:
+              LLMClassifier (async, category override) + TaskClassifier (sync, metadata).
+              agent_core.py:322 updated to await self.router.route(query).
+              stream_classify() dead code removed. create_classifier() wiring fixed.
+              ROUTING_LLM_MODEL env var now respected in proxy router.
+Evidence:     PR #96 — commits b6f0671, fa8e5ae, 4ac58c8, 620d0a4, 0038dc5
+```
+
 ---
 
 ## 3. In Progress
 
-### [ROAD-P01] LLM-Based Intelligent Routing
-
-```
-Status:       IN-PROGRESS
-Priority:     P2-HIGH
-Effort:       S (one task remaining)
-Started:      2026-03-02 (commit 0a7f28f)
-```
-
-**What's done:**
-- `src/portal/routing/llm_classifier.py` — `LLMClassifier`, `LLMClassification`, `LLMCategory`, `create_classifier()` (197 LOC)
-- Fallback to `TaskClassifier` when Ollama unavailable
-- LRU cache for identical prompts
-- 16 unit tests (all passing)
-- `router.py::resolve_model()` — async; LLMClassifier integrated for "auto" model
-- `router_rules.json` — classifier block with category→model mapping
-- `.env.example` — ROUTING_LLM_MODEL documented
-- Version 1.4.5 shipped
-
-**What remains:**
-- TASK-41: Wire LLMClassifier into `intelligent_router.py::IntelligentRouter.route()`
-  and update `agent_core.py:322` to await the async route() call
-- TASK-44: Sync pyproject.toml version (1.4.4 → 1.4.5)
-- TASK-45: Sync docs/ARCHITECTURE.md version (1.4.4 → 1.4.5)
-- TASK-46: Remove stream_classify() dead code from llm_classifier.py
-- TASK-47: Fix router.py to use create_classifier() so ROUTING_LLM_MODEL env var works
-
-**Blocking issues:** None. Implementation path is clear.
+None. All active work is complete. Open items are documentation-only cleanup (see Section 4).
 
 ---
 
 ## 4. Planned — Core (Production Path)
+
+### [ROAD-P01] LLM-Based Intelligent Routing
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Effort:       DONE
+Description:  Full LLM-based routing implemented in both routing paths:
+              - Proxy Router (:8000): LLMClassifier primary, regex fallback (TASK-40)
+              - IntelligentRouter (:8081): dual LLMClassifier + TaskClassifier (TASK-41)
+              ROUTING_LLM_MODEL env var now respected via create_classifier().
+Evidence:     Commits f6ed8dd, 71ce797 (PR #96)
+```
 
 ### [ROAD-P02] MLX Backend for Apple Silicon
 
@@ -227,7 +228,7 @@ Started:      2026-03-02 (commit 0a7f28f)
 Status:       PLANNED
 Priority:     P3-MEDIUM
 Effort:       M
-Dependencies: ROAD-P01 complete (BackendRegistry already in place)
+Dependencies: ROAD-P01 complete (now done). BackendRegistry in place.
 Description:  Add MLXServerBackend targeting mlx_lm.server on :8800.
               Same HTTP adapter pattern as OllamaBackend.
               Only active when COMPUTE_BACKEND=mps.
@@ -240,6 +241,22 @@ Evidence:     ROADMAP.md §2, BackendRegistry (ROAD-C07)
 Status:       COMPLETE
 Priority:     P2-HIGH
 Description:  mypy 170 → 0 across all audit cycles
+```
+
+### [ROAD-P04] Documentation Refresh (TASK-48–52)
+
+```
+Status:       PLANNED
+Priority:     P3-MEDIUM
+Effort:       S
+Dependencies: None
+Description:  Documentation cleanup following ROAD-P01 completion:
+              - TASK-48: ARCHITECTURE.md routing descriptions updated
+              - TASK-49: CHANGELOG.md 1.4.5 entry completed with PR #96 entries
+              - TASK-50: ROADMAP.md LLM routing status marked Complete
+              - TASK-51: .env.example extended with 12 undocumented env vars
+              - TASK-52: Stale `master` local branch deleted
+Evidence:     PORTAL_AUDIT_REPORT.md run 8 (DOC-03 through DOC-06, ENV-01, BRANCH-01)
 ```
 
 ---
@@ -294,6 +311,20 @@ Priority:     P4-LOW
 Description:  In-memory fallback for single-instance deployments
 ```
 
+### [ROAD-F07] Portal Documentation Reference
+
+```
+Status:       DISCUSSED
+Priority:     P3-MEDIUM
+Effort:       L
+Dependencies: ROAD-P04 complete (docs current)
+Description:  Execute PORTAL_DOCUMENTATION_AGENT.md to produce PORTAL_HOW_IT_WORKS.md —
+              a comprehensive, verified technical reference for new developers.
+              Deferred until documentation cleanup (ROAD-P04) is complete so the
+              resulting doc reflects the current state accurately.
+Evidence:     PORTAL_DOCUMENTATION_AGENT.md added 2026-03-02 (commit 214b16c)
+```
+
 ---
 
 ## 6. Explicitly Deferred / Out of Scope
@@ -335,4 +366,4 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 ---
 
-*Last updated: 2026-03-02 (run 7) — ROAD-P01 proxy router COMPLETE; IntelligentRouter pending (TASK-41). Open: TASK-41, TASK-44–47. Version 1.4.5 shipped.*
+*Last updated: 2026-03-02 (run 8) — ROAD-P01 FULLY COMPLETE (both routing paths). Open: ROAD-P04 (documentation cleanup TASK-48–52). Health: 9.5/10. Version 1.4.5.*
