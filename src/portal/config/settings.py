@@ -240,6 +240,9 @@ class BackendsConfig(BaseModel):
     mlx_url: str = Field("http://localhost:8800", description="MLX-LM server API URL")
     enable_mlx: bool = Field(False, description="Enable MLX backend for Apple Silicon")
     timeout_seconds: int = Field(300, ge=1, le=3600, description="Request timeout in seconds")
+    auto_pull_models: bool = Field(
+        True, description="Auto-pull missing models from Ollama on startup"
+    )
 
     model_config = ConfigDict(extra="allow")
 

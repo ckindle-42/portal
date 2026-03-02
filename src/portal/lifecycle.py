@@ -160,10 +160,32 @@ class Runtime:
             )
             if newly_registered:
                 logger.info("Discovered %d Ollama model(s) at startup", len(newly_registered))
+
+            # Auto-pull missing models if enabled
+            await self._ensure_models_available(agent_core, settings)
         except Exception as _disc_err:
             logger.warning(
                 "Ollama model discovery failed (will use static registry): %s", _disc_err
             )
+
+    async def _ensure_models_available(self, agent_core: AgentCore, settings: Settings) -> None:
+        """Auto-pull defined models that aren't installed."""
+        backends = getattr(settings, "backends", None)
+        if not backends or not getattr(backends, "auto_pull_models", True):
+            return
+
+        try:
+            from portal.routing.model_puller import ModelPuller
+
+            puller = ModelPuller(
+                ollama_url=backends.ollama_url,
+                mlx_url=backends.mlx_url if getattr(backends, "enable_mlx", False) else None,
+            )
+            pulled = await puller.ensure_models_available(agent_core.model_registry, "ollama")
+            if pulled:
+                logger.info("Auto-pulled %d model(s)", len(pulled))
+        except Exception as e:
+            logger.warning("Auto-pull models failed: %s", e)
 
     async def _init_observability(
         self, settings: Settings
