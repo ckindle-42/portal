@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 6)
-**Current version:** 1.4.4 (targeting 1.4.5 on ROAD-P01 completion)
+**Generated:** 2026-03-02 (delta update — run 7)
+**Current version:** 1.4.5
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -11,6 +11,7 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 7):** ROAD-P01 proxy router integration COMPLETE (TASK-40). IntelligentRouter still pending (TASK-41 — open). 3 new findings: dead stream_classify() method, ROUTING_LLM_MODEL env var inoperative, pyproject.toml + ARCHITECTURE.md version drift. Health score 9.0 → 9.3/10. Version 1.4.5 shipped. New tasks: TASK-44–47.
 - **2026-03-02 (run 6):** ROAD-P01 status changed PLANNED → IN-PROGRESS. Commit `0a7f28f` added `llm_classifier.py` (185 LOC) — the LLMClassifier module. Integration into `router.py` and `intelligent_router.py` not yet complete. 10 open findings (TASK-36 through TASK-43). Health score 10/10 → 9.0/10 (new code, open issues). Version target 1.4.5 on completion.
 - **2026-03-02 (run 5):** TASK-34 and TASK-35 confirmed complete (PR #90). Version bumped to 1.4.4. ARCHITECTURE.md version updated. CHANGELOG 1.4.4 entry added. Health score 9.5 → 10/10. **FULLY PRODUCTION-READY.**
 - **2026-03-02 (run 4):** TASK-32 and TASK-33 confirmed complete (PR #88). mypy errors reduced 17 → 0 — first fully mypy-clean state. ROAD-P03 COMPLETE. New TASK-34 and TASK-35 added. Health score 9.0 → 9.5/10.
@@ -19,10 +20,10 @@ and completed work across the Portal project.
 
 ## 1. Current Release State
 
-Portal 1.4.4 is fully operational for its stated purpose:
+Portal 1.4.5 is fully operational for its stated purpose:
 
 - **OpenAI-compatible REST API** at `:8081/v1/*` — works with Open WebUI and LibreChat
-- **Ollama proxy router** at `:8000` — workspace routing, regex rules, virtual models
+- **Ollama proxy router** at `:8000` — workspace routing, LLM classifier (TASK-40), regex fallback
 - **Telegram interface** — polling mode, per-user auth, HITL confirmation, rate limiting
 - **Slack interface** — webhook events, channel whitelist, streaming replies
 - **MCP tool dispatch** — via mcpo proxy (openapi transport) and streamable-http
@@ -34,11 +35,11 @@ Portal 1.4.4 is fully operational for its stated purpose:
 - **WorkspaceRegistry** — virtual model names mapped to concrete Ollama models
 - **BackendRegistry** — named backend instances
 - **Structured logging** — JSON with trace IDs, secret redaction
-- **No backward-compat shims** — all legacy code removed
-- **Fully mypy-clean** — 0 type errors across 96 source files (2 new errors in llm_classifier.py pending fix)
+- **LLMClassifier** — async Ollama-based query classification with regex fallback (proxy router only)
+- **Fully mypy-clean** — 0 type errors across 97 source files
 
-**CI status:** 874 tests passing, 2 lint violations (llm_classifier.py), 2 mypy errors (llm_classifier.py).
-**Type safety:** 2 mypy errors (new file; down from 170 at project start — 98.8% reduction).
+**CI status:** 890 tests passing, 0 lint violations, 0 mypy errors.
+**Type safety:** 0 mypy errors (down from 170 at project start — 100% reduction).
 
 ---
 
@@ -172,6 +173,17 @@ Priority:     P2-HIGH
 Description:  mypy 17 → 0 (FULLY CLEAN)
 ```
 
+### [ROAD-C17] ROAD-P01 Proxy Router Integration (TASK-40)
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Description:  LLMClassifier wired into proxy router resolve_model(). resolve_model()
+              made async. LLM classifier fires for requested_model == "auto".
+              Regex rules preserved as fallback. router_rules.json classifier block added.
+Evidence:     Commit f6ed8dd
+```
+
 ---
 
 ## 3. In Progress
@@ -181,27 +193,27 @@ Description:  mypy 17 → 0 (FULLY CLEAN)
 ```
 Status:       IN-PROGRESS
 Priority:     P2-HIGH
-Effort:       M
+Effort:       S (one task remaining)
 Started:      2026-03-02 (commit 0a7f28f)
-Description:  Replace regex-based task classification with LLM classifier.
-              Uses qwen2.5:0.5b via Ollama for semantic query classification.
-              Falls back to TaskClassifier when Ollama unavailable.
 ```
 
 **What's done:**
-- `src/portal/routing/llm_classifier.py` — `LLMClassifier`, `LLMClassification`, `LLMCategory`, `create_classifier()` (185 LOC)
+- `src/portal/routing/llm_classifier.py` — `LLMClassifier`, `LLMClassification`, `LLMCategory`, `create_classifier()` (197 LOC)
 - Fallback to `TaskClassifier` when Ollama unavailable
 - LRU cache for identical prompts
+- 16 unit tests (all passing)
+- `router.py::resolve_model()` — async; LLMClassifier integrated for "auto" model
+- `router_rules.json` — classifier block with category→model mapping
+- `.env.example` — ROUTING_LLM_MODEL documented
+- Version 1.4.5 shipped
 
-**What remains (TASK-36 through TASK-43):**
-- Fix 2 lint violations in `llm_classifier.py` (TASK-36)
-- Fix 2 mypy errors in `create_classifier()` (TASK-37)
-- Add unit tests for `LLMClassifier` (TASK-38)
-- Document `ROUTING_LLM_MODEL` in `.env.example` (TASK-39)
-- Integrate into `router.py::resolve_model()` — async, replace regex step (TASK-40)
-- Integrate into `intelligent_router.py::route()` — async, update agent_core.py caller (TASK-41)
-- Add `classifier` config block to `router_rules.json` (TASK-42)
-- Bump version to 1.4.5, update CHANGELOG (TASK-43)
+**What remains:**
+- TASK-41: Wire LLMClassifier into `intelligent_router.py::IntelligentRouter.route()`
+  and update `agent_core.py:322` to await the async route() call
+- TASK-44: Sync pyproject.toml version (1.4.4 → 1.4.5)
+- TASK-45: Sync docs/ARCHITECTURE.md version (1.4.4 → 1.4.5)
+- TASK-46: Remove stream_classify() dead code from llm_classifier.py
+- TASK-47: Fix router.py to use create_classifier() so ROUTING_LLM_MODEL env var works
 
 **Blocking issues:** None. Implementation path is clear.
 
@@ -323,4 +335,4 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 ---
 
-*Last updated: 2026-03-02 (run 6) — ROAD-P01 IN-PROGRESS. llm_classifier.py added. Integration pending (TASK-36 through TASK-43). Version target 1.4.5.*
+*Last updated: 2026-03-02 (run 7) — ROAD-P01 proxy router COMPLETE; IntelligentRouter pending (TASK-41). Open: TASK-41, TASK-44–47. Version 1.4.5 shipped.*
