@@ -1,6 +1,6 @@
 # Portal Architecture
 
-**Version:** 1.4.4
+**Version:** 1.4.5
 **Last updated:** March 2026
 
 ---
@@ -440,7 +440,7 @@ with per-callback timeouts and active-task draining.
 ```
 portal/
 ├── src/portal/
-│   ├── __init__.py             version = "1.4.4"
+│   ├── __init__.py             version = "1.4.5"
 │   ├── cli.py
 │   ├── lifecycle.py
 │   ├── agent/
