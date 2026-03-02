@@ -31,6 +31,9 @@ class TaskCategory(Enum):
     SUMMARIZATION = "summarization"
     TOOL_USE = "tool_use"
     GENERAL = "general"
+    SECURITY = "security"
+    IMAGE_GEN = "image_gen"
+    AUDIO_GEN = "audio_gen"
 
 
 @dataclass
@@ -116,6 +119,34 @@ class TaskClassifier:
         r"\b(transcribe|speech|audio|voice)\b",
     ]
 
+    # Security / offensive / defensive patterns
+    SECURITY_PATTERNS = [
+        r"\b(exploit|payload|bypass|nmap|shellcode|pentest|pentesting)\b",
+        r"\b(red\s*team|blue\s*team|attack\s*chain|lateral\s*movement)\b",
+        r"\b(cve|vulnerability|vuln|privilege\s*escalation|priv\s*esc)\b",
+        r"\b(reverse\s*shell|bind\s*shell|meterpreter|cobalt\s*strike)\b",
+        r"\b(active\s*directory|ad\s*attack|kerberoast|mimikatz|bloodhound)\b",
+        r"\b(malware|ransomware|rootkit|backdoor|c2|command\s*and\s*control)\b",
+        r"\b(osint|reconnaissance|recon|enumeration|footprint)\b",
+        r"\b(buffer\s*overflow|heap\s*spray|rop\s*chain|format\s*string)\b",
+        r"\b(waf\s*bypass|edr\s*bypass|amsi\s*bypass|etw\s*patch)\b",
+    ]
+
+    # Image generation patterns
+    IMAGE_PATTERNS = [
+        r"\b(draw|sketch|illustrate|paint|render)\b",
+        r"\b(generate\s+(an?\s+)?image|create\s+(an?\s+)?image)\b",
+        r"\b(flux|stable\s*diffusion|lora|img2img|txt2img)\b",
+        r"\b(portrait|landscape|concept\s*art|illustration)\b",
+    ]
+
+    # Audio generation patterns
+    AUDIO_PATTERNS = [
+        r"\b(tts|text\s*to\s*speech|voice\s*clone|voice\s*synthesis)\b",
+        r"\b(sing|singing|music\s*gen|sound\s*effect|audio\s*gen)\b",
+        r"\b(cosyvoice|fish\s*speech|bark|tortoise)\b",
+    ]
+
     # Question patterns
     QUESTION_PATTERNS = [
         r"\?$",  # Ends with question mark
@@ -132,6 +163,9 @@ class TaskClassifier:
         self._creative_re = [re.compile(p, re.IGNORECASE) for p in self.CREATIVE_PATTERNS]
         self._tool_re = [re.compile(p, re.IGNORECASE) for p in self.TOOL_PATTERNS]
         self._question_re = [re.compile(p, re.IGNORECASE) for p in self.QUESTION_PATTERNS]
+        self._security_re = [re.compile(p, re.IGNORECASE) for p in self.SECURITY_PATTERNS]
+        self._image_re = [re.compile(p, re.IGNORECASE) for p in self.IMAGE_PATTERNS]
+        self._audio_re = [re.compile(p, re.IGNORECASE) for p in self.AUDIO_PATTERNS]
 
     def _match_all_patterns(self, query: str) -> dict[str, int]:
         """Return match counts for each pattern group against query."""
@@ -141,6 +175,9 @@ class TaskClassifier:
             "analysis": sum(1 for p in self._analysis_re if p.search(query)),
             "creative": sum(1 for p in self._creative_re if p.search(query)),
             "tool": sum(1 for p in self._tool_re if p.search(query)),
+            "security": sum(1 for p in self._security_re if p.search(query)),
+            "image": sum(1 for p in self._image_re if p.search(query)),
+            "audio": sum(1 for p in self._audio_re if p.search(query)),
         }
 
     def classify(self, query: str) -> TaskClassification:
@@ -193,6 +230,12 @@ class TaskClassifier:
 
     def _detect_category(self, counts: dict, query: str) -> "TaskCategory":
         """Map pattern match counts to a task category."""
+        if counts.get("security", 0) >= 1:
+            return TaskCategory.SECURITY
+        if counts.get("image", 0) >= 1:
+            return TaskCategory.IMAGE_GEN
+        if counts.get("audio", 0) >= 1:
+            return TaskCategory.AUDIO_GEN
         if counts["code"] >= 2:
             return TaskCategory.CODE
         if counts["math"] >= 2:
@@ -266,6 +309,9 @@ class TaskClassifier:
             TaskCategory.CREATIVE: 1.5,
             TaskCategory.ANALYSIS: 1.3,
             TaskCategory.MATH: 0.8,
+            TaskCategory.SECURITY: 1.4,
+            TaskCategory.IMAGE_GEN: 0.6,
+            TaskCategory.AUDIO_GEN: 0.6,
         }
 
         base = base_tokens.get(complexity, 200)

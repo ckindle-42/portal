@@ -22,6 +22,11 @@ class ModelCapability(Enum):
     SPEED = "speed"
     VISION = "vision"
     FUNCTION_CALLING = "function_calling"
+    SECURITY = "security"
+    CREATIVE = "creative"
+    IMAGE_GENERATION = "image_generation"
+    AUDIO = "audio"
+    MULTIMODAL = "multimodal"
 
 
 class SpeedClass(Enum):
@@ -60,6 +65,7 @@ class ModelMetadata:
     general_quality: float = 0.7
     code_quality: float = 0.5
     reasoning_quality: float = 0.5
+    security_quality: float = 0.3
 
     # Cost factor (0.0-1.0, higher = more expensive)
     cost: float = 0.5
@@ -146,6 +152,7 @@ class ModelRegistry:
             ModelCapability.GENERAL: lambda m: m.general_quality,
             ModelCapability.CODE: lambda m: m.code_quality,
             ModelCapability.REASONING: lambda m: m.reasoning_quality,
+            ModelCapability.SECURITY: lambda m: m.security_quality,
         }
 
         quality_fn = quality_map.get(capability, lambda m: m.general_quality)

@@ -48,7 +48,7 @@ class TestDiscoverFromOllama:
     @pytest.mark.asyncio
     async def test_marks_others_unavailable(self) -> None:
         registry = ModelRegistry()
-        existing = registry.get_model("ollama_qwen25_05b")
+        existing = registry.get_model("ollama_dolphin_llama3_8b")
         assert existing is not None
         assert existing.available is True
 

@@ -25,6 +25,9 @@ class LLMCategory(Enum):
     REASONING = "reasoning"
     CREATIVE = "creative"
     TOOL_USE = "tool_use"
+    SECURITY = "security"
+    IMAGE_GEN = "image_gen"
+    AUDIO_GEN = "audio_gen"
 
 
 @dataclass
@@ -51,6 +54,9 @@ class LLMClassifier:
 - reasoning: Analysis, math, logic problems
 - creative: Writing, brainstorming, storytelling
 - tool_use: Using tools like QR codes, conversions, file operations
+- security: Hacking, exploits, pentesting, red team, blue team, CTF, CVE analysis
+- image_gen: Image creation, illustration, drawing, rendering
+- audio_gen: Text-to-speech, voice cloning, music generation, sound effects
 
 Respond with ONLY the category name (e.g., "code").
 Query: {query}"""
@@ -117,6 +123,9 @@ Query: {query}"""
             TaskCategory.ANALYSIS: LLMCategory.REASONING,
             TaskCategory.CREATIVE: LLMCategory.CREATIVE,
             TaskCategory.TOOL_USE: LLMCategory.TOOL_USE,
+            TaskCategory.SECURITY: LLMCategory.SECURITY,
+            TaskCategory.IMAGE_GEN: LLMCategory.IMAGE_GEN,
+            TaskCategory.AUDIO_GEN: LLMCategory.AUDIO_GEN,
             TaskCategory.GREETING: LLMCategory.GENERAL,
             TaskCategory.QUESTION: LLMCategory.GENERAL,
             TaskCategory.SUMMARIZATION: LLMCategory.GENERAL,

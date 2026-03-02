@@ -189,3 +189,34 @@ class TestCreateClassifier:
 
         assert classifier.ollama_host == "http://custom:11434"
         assert classifier.model == "llama3:8b"
+
+
+class TestLLMCategoryNewValues:
+    """Tests for newly added LLMCategory values."""
+
+    def test_security_category_defined(self):
+        assert LLMCategory.SECURITY.value == "security"
+
+    def test_image_gen_category_defined(self):
+        assert LLMCategory.IMAGE_GEN.value == "image_gen"
+
+    def test_audio_gen_category_defined(self):
+        assert LLMCategory.AUDIO_GEN.value == "audio_gen"
+
+    def test_fallback_maps_security_task_category(self):
+        """TaskCategory.SECURITY falls back to LLMCategory.SECURITY."""
+        classifier = LLMClassifier()
+        result = classifier._fallback_to_regex("explain kerberoasting and mimikatz usage")
+        assert result.category == LLMCategory.SECURITY
+
+    def test_fallback_maps_image_gen_task_category(self):
+        """TaskCategory.IMAGE_GEN falls back to LLMCategory.IMAGE_GEN."""
+        classifier = LLMClassifier()
+        result = classifier._fallback_to_regex("generate an image of a sunset landscape")
+        assert result.category == LLMCategory.IMAGE_GEN
+
+    def test_fallback_maps_audio_gen_task_category(self):
+        """TaskCategory.AUDIO_GEN falls back to LLMCategory.AUDIO_GEN."""
+        classifier = LLMClassifier()
+        result = classifier._fallback_to_regex("use tts to convert this text to speech")
+        assert result.category == LLMCategory.AUDIO_GEN

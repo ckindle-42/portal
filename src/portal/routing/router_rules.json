@@ -1,56 +1,80 @@
 {
-  "version": "1.0",
-  "default_model": "qwen2.5:7b",
-  "warm_model": "qwen2.5:7b",
+  "version": "2.0",
+  "default_model": "dolphin-llama3:8b",
+  "warm_model": "dolphin-llama3:8b",
   "workspaces": {
     "auto": {
-      "model": "qwen2.5:7b",
+      "model": "dolphin-llama3:8b",
       "lock": false,
-      "fallback": ["qwen2.5:7b"]
+      "fallback": ["dolphin-llama3:8b"]
     },
     "auto-coding": {
-      "model": "qwen2.5-coder:32b",
+      "model": "qwen3-coder-next:30b-q5",
       "lock": true,
-      "fallback": ["qwen2.5:14b", "qwen2.5:7b"]
+      "fallback": ["devstral:24b", "dolphin-llama3:8b"]
     },
     "auto-reasoning": {
-      "model": "deepseek-r1:32b",
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
       "lock": true,
-      "fallback": ["qwen2.5:14b", "qwen2.5:7b"]
+      "fallback": ["dolphin-llama3:70b", "dolphin-llama3:8b"]
+    },
+    "auto-security": {
+      "model": "xploiter/the-xploiter",
+      "lock": true,
+      "fallback": ["lazarevtill/Llama-3-WhiteRabbitNeo-8B-v2.0:q4_0", "dolphin-llama3:70b"]
+    },
+    "auto-creative": {
+      "model": "dolphin-llama3:70b",
+      "lock": true,
+      "fallback": ["dolphin-llama3:8b"]
+    },
+    "auto-multimodal": {
+      "model": "qwen3-omni:30b",
+      "lock": true,
+      "fallback": ["dolphin-llama3:8b"]
     },
     "auto-fast": {
-      "model": "qwen2.5:7b",
+      "model": "dolphin-llama3:8b",
       "lock": false,
-      "fallback": ["qwen2.5:7b"]
+      "fallback": ["dolphin-llama3:8b"]
     }
   },
   "classifier": {
-    "model": "qwen2.5:0.5b",
+    "model": "dolphin-llama3:8b",
     "categories": {
-      "general": "qwen2.5:7b",
-      "code": "qwen2.5-coder:32b",
-      "reasoning": "deepseek-r1:32b",
-      "tool_use": "qwen2.5:7b",
-      "creative": "qwen2.5:14b"
+      "general": "dolphin-llama3:8b",
+      "code": "qwen3-coder-next:30b-q5",
+      "reasoning": "huihui_ai/tongyi-deepresearch-abliterated:30b",
+      "creative": "dolphin-llama3:70b",
+      "tool_use": "dolphin-llama3:8b",
+      "security": "xploiter/the-xploiter",
+      "image_gen": "dolphin-llama3:8b",
+      "audio_gen": "dolphin-llama3:8b"
     }
   },
   "regex_rules": [
     {
-      "name": "splunk",
-      "keywords": ["(?i)\\b(splunk|es notable|tstats|cim\\b)"],
-      "model": "deepseek-r1:32b",
+      "name": "offensive_security",
+      "keywords": ["(?i)\\b(exploit|shellcode|bypass|payload|reverse.?shell|pentest|red.?team|priv.?esc|kerberoast|mimikatz|bloodhound|meterpreter)\\b"],
+      "model": "xploiter/the-xploiter",
+      "priority": 10
+    },
+    {
+      "name": "defensive_security",
+      "keywords": ["(?i)\\b(blue.?team|siem|detection|ioc|threat.?hunt|yara|sigma|splunk|es notable|tstats|cim\\b)"],
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
       "priority": 10
     },
     {
       "name": "coding",
-      "keywords": ["(?i)\\b(write|debug|function|class|def |import |async def)\\b"],
-      "model": "qwen2.5-coder:32b",
+      "keywords": ["(?i)\\b(write|debug|function|class|def |import |async def|refactor)\\b"],
+      "model": "qwen3-coder-next:30b-q5",
       "priority": 8
     },
     {
       "name": "reasoning",
       "keywords": ["(?i)\\b(analyze|reason|think through|explain why|step by step)\\b"],
-      "model": "deepseek-r1:32b",
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
       "priority": 7
     }
   ],

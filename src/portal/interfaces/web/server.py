@@ -10,6 +10,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -431,6 +432,7 @@ class WebInterface(BaseInterface):
             message=incoming.text,
             interface=InterfaceType.WEB,
             user_context={"user_id": user_id},
+            workspace_id=selected_model,
         )
         elapsed = time.perf_counter() - start
         tokens = result.completion_tokens or max(len(result.response.split()), 1)
@@ -462,35 +464,45 @@ class WebInterface(BaseInterface):
         return {"text": out.get("text", "")}
 
     async def _handle_list_models(self, auth: dict) -> dict:
-        """Handle /v1/models — return available Ollama models with OpenAI schema."""
+        """Handle /v1/models — workspace virtual models prepended, then live Ollama models."""
+        created = int(time.time())
+        models: list[dict] = []
+
+        # 1. Add virtual workspace models (these trigger intelligent routing)
+        try:
+            rules_path = Path(__file__).parents[2] / "routing" / "router_rules.json"
+            if rules_path.exists():
+                rules = json.loads(rules_path.read_text())
+                for ws_name in rules.get("workspaces", {}):
+                    models.append({
+                        "id": ws_name,
+                        "object": "model",
+                        "created": created,
+                        "owned_by": "portal-workspace",
+                    })
+        except Exception as e:
+            logger.warning("Failed to load workspace models: %s", e)
+
+        # 2. Add real Ollama models
         try:
             client = self._ollama_client or httpx.AsyncClient(timeout=3.0)
             resp = await client.get(f"{self._ollama_host}/api/tags")
             data = resp.json()
-            return {
-                "object": "list",
-                "data": [
-                    {
-                        "id": m["name"],
-                        "object": "model",
-                        "created": int(time.time()),
-                        "owned_by": "portal",
-                    }
-                    for m in data.get("models", [])
-                ],
-            }
+            for m in data.get("models", []):
+                models.append({
+                    "id": m["name"],
+                    "object": "model",
+                    "created": created,
+                    "owned_by": "portal",
+                })
         except (httpx.HTTPError, json.JSONDecodeError):
-            return {
-                "object": "list",
-                "data": [
-                    {
-                        "id": "auto",
-                        "object": "model",
-                        "created": int(time.time()),
-                        "owned_by": "portal",
-                    }
-                ],
-            }
+            pass
+
+        # Fallback: always have at least "auto"
+        if not models:
+            models.append({"id": "auto", "object": "model", "created": created, "owned_by": "portal"})
+
+        return {"object": "list", "data": models}
 
     def _register_utility_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
         @app.get("/metrics")

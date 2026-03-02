@@ -379,4 +379,45 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 ---
 
-*Last updated: 2026-03-02 (run 9) — ROAD-F07 COMPLETE (PORTAL_HOW_IT_WORKS.md produced). Open: ROAD-P04 IN-PROGRESS (TASK-53: wire K8s probes, TASK-54: metrics port + .env.example). Health: 9.4/10. Version 1.4.5.*
+### [ROAD-F01] mflux Image Generation Tool Integration
+
+```
+Status:       PLANNED
+Priority:     P3-MEDIUM
+Effort:       M
+Dependencies: TASK-7 stub complete
+Description:  Wire mflux CLI into image_generator.py. Dolphin invokes via function calling.
+```
+
+### [ROAD-F02] CosyVoice2/MOSS-TTS Audio Tool Integration
+
+```
+Status:       PLANNED
+Priority:     P3-MEDIUM
+Effort:       M
+Dependencies: TASK-7 stub complete
+Description:  Wire CosyVoice2 or MOSS-TTS into audio_generator.py.
+```
+
+### [ROAD-F03] Lily-Cybersecurity-7B GGUF Integration
+
+```
+Status:       DISCUSSED
+Priority:     P4-LOW
+Effort:       S
+Dependencies: GGUF → Modelfile conversion
+Description:  Add Lily-Cybersecurity-7B as additional security model (GGUF, needs custom Modelfile).
+```
+
+### [ROAD-F04] Ollama Model Pull Automation
+
+```
+Status:       DISCUSSED
+Priority:     P3-MEDIUM
+Effort:       S
+Description:  Script to pull all models defined in default_models.json. Currently manual.
+```
+
+---
+
+*Last updated: 2026-03-02 (run 10) — Model expansion complete: security/creative/multimodal routing stack, workspace wire-up to Open WebUI, media tool stubs. Health: 9.4/10. Version 1.4.5.*
