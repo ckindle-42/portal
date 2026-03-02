@@ -1,6 +1,6 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 15)
+**Generated:** 2026-03-02 (delta update — run 16)
 **Current version:** 1.4.6
 **Maintained by:** ckindle-42
 
@@ -11,6 +11,14 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 16):** PORTAL_DOCUMENTATION_AGENT_v2.md executed. Full verification:
+  - Dependencies: 38 OK, 0 missing
+  - Module imports: 99 OK, 0 failed
+  - Tests: 914 passed, 1 skipped
+  - Lint: 0 violations
+  - Mypy: 0 errors
+  - D-01 added: "test" extra not defined in pyproject.toml (benign warning)
+  - D-02 added: sentence-transformers warning on import (non-blocking)
 - **2026-03-02 (run 15):** Both regressions from run 14 FIXED (commit `921c38d`). TASK-57: test now exempts `huggingface` backend alongside `mlx`. TASK-58: mypy type ignore added to `server.py:784`. Health score restored to 10/10. Branch hygiene: cleaned 3 stale remote branches. Portal 1.4.6 fully production-ready. Documentation review (PORTAL_DOCUMENTATION_AGENT) ran — verified all endpoints, config contract, and test coverage; added D-06 (health/ready behavior) and D-07 (optional deps) to discrepancy log.
 - **2026-03-02 (run 14):** Two regressions detected from run 13. BUG-01: `test_all_models_available_by_default` fails due to HuggingFace model with `available: false` not being excluded like MLX models (introduced by commit `6d4c0a1`). BUG-02: mypy error in `server.py:784` — `Settings` assigned to `dict[Any, Any] | None` parameter (introduced by commit `0713218`). Health score reduced to 9.0/10. Both are shallow fixes. Run 13 incorrectly claimed 0 test failures and 0 mypy errors due to using "sample verified" rather than running full suite.
 - **2026-03-02 (run 13):** Auto-pull models (ROAD-F06) added — ModelPuller class automatically downloads missing Ollama models on startup. Docker image updates — OpenWebUI/LibreChat now use latest with pull_policy:always. Portal claimed fully production-ready at 10/10 (NOTE: run 14 found this was inaccurate due to incomplete verification).
@@ -418,4 +426,4 @@ Description:  Existing CLI + third-party UIs cover the use case
 
 ---
 
-*Last updated: 2026-03-02 (run 15) — All regressions resolved. Health: 10/10. Portal 1.4.6 fully production-ready.*
+*Last updated: 2026-03-02 (run 16) — Documentation verification complete. Health: 10/10. Portal 1.4.6 fully production-ready.*
