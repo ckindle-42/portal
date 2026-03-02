@@ -26,6 +26,7 @@ from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry
 from .context_manager import ContextManager
 from .event_bus import EventBus, EventEmitter, EventType
 from .exceptions import ModelNotAvailableError, PortalError, ToolExecutionError
+from .orchestrator import TaskOrchestrator
 from .prompt_manager import PromptManager
 from .structured_logger import TraceContext, get_logger
 from .types import IncomingMessage, InterfaceType, ProcessingResult
@@ -76,6 +77,12 @@ class AgentCore:
         self.hitl_middleware = self._init_hitl_middleware(config)
         self.events = EventEmitter(self.event_bus)
 
+        # Initialize orchestrator for multi-step tasks
+        self._orchestrator = TaskOrchestrator(
+            llm_executor=self._call_llm,
+            tool_executor=self._call_tool,
+        )
+
         loaded, failed = self.tool_registry.discover_and_load()
         self.stats = self._initial_stats()
 
@@ -109,6 +116,55 @@ class AgentCore:
             "errors": 0,
         }
 
+    def _is_multi_step(self, message: str) -> bool:
+        """Detect if a message is a multi-step request that should use the orchestrator.
+
+        Heuristics:
+        - Contains "then", "after that", "and also", "next step"
+        - Contains 2+ distinct action verbs
+        - Explicit multi-step keywords
+        """
+        message_lower = message.lower()
+
+        # Explicit multi-step markers
+        multi_step_markers = [
+            "then", "after that", "afterwards", "next step", "and also",
+            "first", "second", "finally", "lastly", "step 1", "step 2",
+            "do both", "combine", "chain", "sequence",
+        ]
+        for marker in multi_step_markers:
+            if marker in message_lower:
+                return True
+
+        # Count distinct action verbs
+        action_verbs = [
+            "write", "create", "generate", "make", "build", "analyze",
+            "research", "find", "search", "explain", "summarize", "convert",
+            "calculate", "draw", "compose", "produce", "develop",
+        ]
+        verb_count = sum(1 for verb in action_verbs if verb in message_lower)
+
+        return verb_count >= 2
+
+    async def _call_llm(self, prompt: str) -> str:
+        """Execute an LLM call for the orchestrator."""
+        # Use the default model and generate a response
+        response = await self.execution_engine.execute(
+            query=prompt,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.response
+
+    async def _call_tool(self, name: str, args: dict) -> dict:
+        """Execute a tool call for the orchestrator."""
+        tool = self.tool_registry.get_tool(name)
+        if not tool:
+            raise ToolExecutionError(name, f"Tool not found: {name}")
+
+        # Execute the tool directly (bypass confirmation for orchestrator)
+        result = await tool.execute(args)
+        return result
+
     async def process_message(
         self,
         chat_id: str,
@@ -122,6 +178,20 @@ class AgentCore:
         start_time = time.perf_counter()
         user_context = user_context or {}
         interface = self._normalize_interface(interface)
+
+        # Check for multi-step request and use orchestrator if detected
+        if self._is_multi_step(message):
+            try:
+                return await self._handle_orchestrated_request(
+                    chat_id, message, interface, user_context, workspace_id, start_time
+                )
+            except Exception as e:
+                # Fall back to normal processing if orchestrator fails
+                logger.warning(
+                    "Orchestrator failed, falling back to normal processing",
+                    error=str(e),
+                    chat_id=chat_id,
+                )
 
         with TraceContext() as trace_id:
             try:
@@ -262,6 +332,43 @@ class AgentCore:
                 "tool_results": tool_results,
             },
             trace_id=trace_id,
+        )
+
+    async def _handle_orchestrated_request(
+        self,
+        chat_id: str,
+        message: str,
+        interface: InterfaceType,
+        user_context: dict | None,
+        workspace_id: str | None,
+        start_time: float,
+    ) -> ProcessingResult:
+        """Handle a multi-step request using the TaskOrchestrator."""
+
+        logger.info("Using orchestrator for multi-step request", chat_id=chat_id, prompt=message[:50])
+
+        # Build and execute the plan
+        plan = self._orchestrator.build_plan(message)
+        await self._orchestrator.execute(plan)
+
+        # Collect results from all steps
+        responses = []
+        for step in plan.steps:
+            if step.completed and step.result:
+                responses.append(f"Step {step.step_id} ({step.description}): {step.result}")
+
+        combined_response = "\n\n".join(responses) if responses else "Multi-step task completed."
+
+        # Save to context
+        await self._save_message(chat_id, "user", message, interface.value)
+        await self._save_message(chat_id, "assistant", combined_response, interface.value)
+
+        # Return as ProcessingResult
+        return ProcessingResult(
+            response=combined_response,
+            model_used="orchestrator",
+            prompt_tokens=0,
+            completion_tokens=len(combined_response.split()),
         )
 
     async def _handle_processing_error(

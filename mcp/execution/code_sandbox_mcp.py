@@ -134,32 +134,7 @@ async def run_python(
         dict with success, stdout, stderr, exit_code, timed_out
     """
     timeout = min(timeout, 120)
-    return await _run_in_docker(
-        image=PYTHON_IMAGE,
-        command=["python", "-c", code],
-        code=code,
-        timeout=timeout,
-    )
-
-
-@mcp.tool()
-async def run_python_file(
-    code: str,
-    timeout: int = DEFAULT_TIMEOUT,
-) -> dict:
-    """
-    Execute a Python script file in an isolated Docker sandbox.
-    Equivalent to run_python but writes code to /code and runs as a script.
-    Better for multi-line code with indentation.
-
-    Args:
-        code: Python script content
-        timeout: Execution timeout in seconds (default 30, max 120)
-
-    Returns:
-        dict with success, stdout, stderr, exit_code, timed_out
-    """
-    timeout = min(timeout, 120)
+    # Use file-based execution to avoid shell escaping issues
     return await _run_in_docker(
         image=PYTHON_IMAGE,
         command=["python", "/code"],
@@ -187,9 +162,10 @@ async def run_node(
         dict with success, stdout, stderr, exit_code, timed_out
     """
     timeout = min(timeout, 120)
+    # Use file-based execution to avoid shell escaping issues
     return await _run_in_docker(
         image=NODE_IMAGE,
-        command=["node", "-e", code],
+        command=["node", "/code"],
         code=code,
         timeout=timeout,
     )
@@ -214,9 +190,10 @@ async def run_bash(
         dict with success, stdout, stderr, exit_code, timed_out
     """
     timeout = min(timeout, 60)  # Stricter timeout for shell
+    # Use file-based execution to avoid shell escaping issues
     return await _run_in_docker(
         image=BASH_IMAGE,
-        command=["sh", "-c", code],
+        command=["sh", "/code"],
         code=code,
         timeout=timeout,
     )

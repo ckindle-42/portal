@@ -83,6 +83,10 @@ class TestStreamSecurityGate:
 
         limiter = RateLimiter(max_requests=2, window_seconds=60)
 
+        # Clear any existing state for this test user to ensure isolation
+        limiter.requests.clear()
+        limiter.violations.clear()
+
         # Consume both available slots
         allowed1, _ = await limiter.check_limit("test-user")
         allowed2, _ = await limiter.check_limit("test-user")

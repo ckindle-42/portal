@@ -58,12 +58,25 @@ class EnhancedKnowledgeTool(BaseTool):
     _db_path: Path | None = None
     _embeddings_model: Any | None = None
 
-    def __init__(self) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        """Initialize the knowledge base tool.
+
+        Args:
+            config: Optional configuration dict with keys:
+                - embedding_model: str (default: all-MiniLM-L6-v2)
+                - knowledge_base_dir: str (default: data/knowledge)
+                - auto_download_embeddings: bool (default: True)
+        """
         super().__init__()
+
+        # Use config values if provided, otherwise use defaults
+        embedding_model = (config or {}).get("embedding_model", "all-MiniLM-L6-v2")
+        knowledge_base_dir = (config or {}).get("knowledge_base_dir", "data/knowledge")
+        auto_download = (config or {}).get("auto_download_embeddings", True)
 
         # Initialize database path
         if EnhancedKnowledgeTool._db_path is None:
-            data_dir = Path.home() / ".telegram_agent" / "knowledge_base"
+            data_dir = Path(knowledge_base_dir)
             data_dir.mkdir(parents=True, exist_ok=True)
             EnhancedKnowledgeTool._db_path = data_dir / "knowledge_base.db"
 
@@ -72,9 +85,23 @@ class EnhancedKnowledgeTool(BaseTool):
 
         # Load embeddings model (lazy load)
         if EMBEDDINGS_AVAILABLE and EnhancedKnowledgeTool._embeddings_model is None:
-            logger.info("Loading embeddings model...")
-            EnhancedKnowledgeTool._embeddings_model = SentenceTransformer("all-MiniLM-L6-v2")
-            logger.info("Embeddings model loaded")
+            logger.info(f"Loading embeddings model: {embedding_model}...")
+            try:
+                EnhancedKnowledgeTool._embeddings_model = SentenceTransformer(embedding_model)
+                logger.info("Embeddings model loaded")
+            except Exception as e:
+                if auto_download:
+                    logger.warning(f"Failed to load {embedding_model}, will try auto-download: {e}")
+                    try:
+                        EnhancedKnowledgeTool._embeddings_model = SentenceTransformer(embedding_model)
+                        logger.info("Embeddings model auto-downloaded and loaded")
+                    except Exception as download_error:
+                        logger.error(f"Failed to auto-download embedding model: {download_error}")
+                else:
+                    raise RuntimeError(
+                        f"Embedding model '{embedding_model}' not found. "
+                        f"Set auto_download_embeddings=true to auto-download, or install manually."
+                    ) from e
 
     METADATA = {
         "name": "knowledge_base_enhanced",

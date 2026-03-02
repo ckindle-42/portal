@@ -1,5 +1,5 @@
 #!/bin/bash
-# Launch all generation MCP servers
+# Launch code sandbox MCP server
 set -euo pipefail
 
 PORTAL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -10,16 +10,18 @@ source "$VENV/bin/activate"
 # Load env
 [ -f "$PORTAL_ROOT/.env" ] && { set -a; source "$PORTAL_ROOT/.env"; set +a; }
 
-GENERATION_SERVICES="${GENERATION_SERVICES:-false}"
+SANDBOX_ENABLED="${SANDBOX_ENABLED:-false}"
 
-if [ "$GENERATION_SERVICES" != "true" ]; then
-    echo "[generation-mcps] GENERATION_SERVICES=false — skipping"
+if [ "$SANDBOX_ENABLED" != "true" ]; then
+    echo "[sandbox-mcp] SANDBOX_ENABLED=false — skipping"
     exit 0
 fi
 
+SANDBOX_MCP_PORT="${SANDBOX_MCP_PORT:-8914}"
+
 launch_server() {
-    local name="$1"
-    local script="$2"
+    local name="sandbox"
+    local script="code_sandbox_mcp.py"
     local pid_file="/tmp/portal-mcp-${name}.pid"
     local log_file="$HOME/.portal/logs/mcp-${name}.log"
 
@@ -30,14 +32,11 @@ launch_server() {
         return
     fi
 
-    nohup python "$PORTAL_ROOT/mcp/generation/$script" >> "$log_file" 2>&1 &
+    SANDBOX_MCP_PORT=$SANDBOX_MCP_PORT nohup python "$PORTAL_ROOT/mcp/execution/$script" >> "$log_file" 2>&1 &
     echo $! > "$pid_file"
-    echo "[mcp-${name}] started (PID $(cat "$pid_file"))"
+    echo "[mcp-${name}] started (PID $(cat "$pid_file"), port $SANDBOX_MCP_PORT)"
 }
 
-launch_server "comfyui" "comfyui_mcp.py"
-launch_server "whisper" "whisper_mcp.py"
-launch_server "video" "video_mcp.py"
-launch_server "music" "music_mcp.py"
+launch_server
 
-echo "[generation-mcps] all servers launched"
+echo "[sandbox-mcp] server launched"

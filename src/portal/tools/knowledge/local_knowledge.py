@@ -32,8 +32,19 @@ class LocalKnowledgeTool(BaseTool):
     # Use config from environment or fallback to default
     DB_PATH = Path(os.getenv("KNOWLEDGE_BASE_DIR", "data")) / "knowledge_base.json"
 
-    def __init__(self) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        """Initialize the local knowledge tool.
+
+        Args:
+            config: Optional configuration dict with keys:
+                - knowledge_base_dir: str (default: data)
+        """
         super().__init__()
+
+        # Update DB_PATH from config if provided
+        if config and "knowledge_base_dir" in config:
+            LocalKnowledgeTool.DB_PATH = Path(config["knowledge_base_dir"]) / "knowledge_base.json"
+
         # Load database only once
         if not LocalKnowledgeTool._db_loaded:
             self._load_db()

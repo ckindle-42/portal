@@ -4,7 +4,6 @@ import pytest
 
 from portal.core.orchestrator import MAX_STEPS, StepType, TaskOrchestrator, TaskPlan, TaskStep
 
-
 # ---------------------------------------------------------------------------
 # TaskStep tests
 # ---------------------------------------------------------------------------
@@ -192,7 +191,7 @@ async def test_execute_handles_tool_failure_gracefully() -> None:
         ],
     )
     # Should not raise — failed steps are recorded, not raised
-    result = await orch.execute(plan)
+    await orch.execute(plan)
 
     assert plan.failed_steps
     assert plan.failed_steps[0].error is not None

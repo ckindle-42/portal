@@ -33,7 +33,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.responses import FileResponse, Response
 
 from portal import __version__
 from portal.agent.dispatcher import CentralDispatcher
@@ -580,6 +580,59 @@ class WebInterface(BaseInterface):
             return JSONResponse(
                 {"status": "not_ready", "reason": "agent_not_healthy"},
                 status_code=503,
+            )
+
+        # File delivery endpoints
+        @app.get("/v1/files")
+        async def list_files():
+            """List recently generated files."""
+
+            generated_dir = Path("data/generated")
+            if not generated_dir.exists():
+                return {"files": []}
+
+            files = []
+            try:
+                for f in sorted(generated_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+                    if f.is_file():
+                        files.append({
+                            "name": f.name,
+                            "size": f.stat().st_size,
+                            "modified": f.stat().st_mtime,
+                        })
+            except OSError:
+                pass
+
+            return {"files": files[:50]}  # Limit to 50 most recent
+
+        @app.get("/v1/files/{filename}")
+        async def get_file(filename: str):
+            """Serve a generated file with proper MIME type and download headers."""
+
+            # Security: reject path traversal attempts
+            if ".." in filename or "/" in filename or "\\" in filename:
+                return JSONResponse({"error": "Invalid filename"}, status_code=400)
+
+            generated_dir = Path("data/generated")
+            file_path = generated_dir / filename
+
+            # Only serve files from the generated directory
+            if not file_path.exists() or not file_path.is_file():
+                return JSONResponse({"error": "File not found"}, status_code=404)
+
+            # Determine MIME type
+            import mimetypes
+            content_type, _ = mimetypes.guess_type(str(file_path))
+            content_type = content_type or "application/octet-stream"
+
+            # Add Content-Disposition for document types
+            document_types = {".docx", ".pptx", ".xlsx", ".pdf", ".txt", ".md"}
+            disposition = "attachment" if file_path.suffix.lower() in document_types else "inline"
+
+            return FileResponse(
+                file_path,
+                media_type=content_type,
+                headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
             )
 
     def _register_websocket_route(self, app: FastAPI) -> None:
