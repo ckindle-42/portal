@@ -92,7 +92,7 @@ class ExecutionEngine:
     ) -> ExecutionResult:
         """Execute query with routing and fallback. Returns ExecutionResult."""
         start_time = time.time()
-        decision = self.router.route(query, max_cost)
+        decision = await self.router.route(query, max_cost)
         model_chain = [decision.model_id] + decision.fallback_models
         fallbacks_used = 0
         last_error = None
@@ -205,7 +205,7 @@ class ExecutionEngine:
         calls each backend's generate_stream() so tokens flow to the caller as
         they are produced by Ollama rather than being buffered.
         """
-        decision = self.router.route(query)
+        decision = await self.router.route(query)
         model_chain = [decision.model_id] + decision.fallback_models
 
         for model_id in model_chain:

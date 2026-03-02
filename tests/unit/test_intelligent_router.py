@@ -11,7 +11,7 @@ Covers:
 """
 
 import logging
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -20,6 +20,7 @@ from portal.routing.intelligent_router import (
     RoutingDecision,
     RoutingStrategy,
 )
+from portal.routing.llm_classifier import LLMCategory, LLMClassification
 from portal.routing.model_registry import ModelCapability, ModelMetadata, ModelRegistry, SpeedClass
 from portal.routing.task_classifier import TaskCategory, TaskClassification, TaskComplexity
 
@@ -178,38 +179,46 @@ class TestRouteDispatch:
         reg.register(slow)
         return IntelligentRouter(reg, strategy=strategy)
 
-    def test_route_returns_routing_decision(self):
+    async def test_route_returns_routing_decision(self):
         router = self._setup_router(RoutingStrategy.AUTO)
-        decision = router.route("hello")
+        decision = await router.route("hello")
         assert isinstance(decision, RoutingDecision)
         assert decision.strategy_used is RoutingStrategy.AUTO
 
     @pytest.mark.parametrize("strategy", [RoutingStrategy.SPEED, RoutingStrategy.COST_OPTIMIZED])
-    def test_route_speed_and_cost_selects_fast(self, strategy):
+    async def test_route_speed_and_cost_selects_fast(self, strategy):
         router = self._setup_router(strategy)
-        decision = router.route("hello")
+        decision = await router.route("hello")
         assert decision.model_id == "fast"
 
-    def test_route_quality_selects_best(self):
+    async def test_route_quality_selects_best(self):
         router = self._setup_router(RoutingStrategy.QUALITY)
         # Use a general analysis query so quality routing uses GENERAL capability
         cls = _classification(category=TaskCategory.GENERAL)
+        llm_cls = LLMClassification(category=LLMCategory.GENERAL, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("Tell me something interesting")
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("Tell me something interesting")
         assert decision.model_id == "slow"
 
-    def test_route_balanced_simple_prefers_speed(self):
+    async def test_route_balanced_simple_prefers_speed(self):
         router = self._setup_router(RoutingStrategy.BALANCED)
-        decision = router.route("hi")
+        decision = await router.route("hi")
         assert decision.model_id == "fast"
 
-    def test_route_balanced_complex_prefers_quality(self):
+    async def test_route_balanced_complex_prefers_quality(self):
         router = self._setup_router(RoutingStrategy.BALANCED)
         # Force COMPLEX classification with GENERAL category so quality routing
         # picks the highest general_quality model
         cls = _classification(complexity=TaskComplexity.COMPLEX, category=TaskCategory.GENERAL)
+        llm_cls = LLMClassification(category=LLMCategory.GENERAL, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("complex task")
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("complex task")
         assert decision.model_id == "slow"
 
 
@@ -219,7 +228,7 @@ class TestRouteDispatch:
 
 
 class TestRouteAuto:
-    def test_prefers_configured_model(self):
+    async def test_prefers_configured_model(self):
         reg = _empty_registry()
         preferred = _make_model("preferred", cost=0.2)
         other = _make_model("other", cost=0.1)
@@ -227,10 +236,10 @@ class TestRouteAuto:
         reg.register(other)
         prefs = {"simple": ["preferred"], "trivial": ["preferred"]}
         router = IntelligentRouter(reg, model_preferences=prefs)
-        decision = router.route("what is 2+2?")
+        decision = await router.route("what is 2+2?")
         assert decision.model_id == "preferred"
 
-    def test_skips_unavailable_preferred_model(self):
+    async def test_skips_unavailable_preferred_model(self):
         reg = _empty_registry()
         unavail = _make_model("preferred", available=False)
         fallback = _make_model("fallback", cost=0.1)
@@ -238,10 +247,10 @@ class TestRouteAuto:
         reg.register(fallback)
         prefs = {"simple": ["preferred"], "trivial": ["preferred"]}
         router = IntelligentRouter(reg, model_preferences=prefs)
-        decision = router.route("what is 2+2?")
+        decision = await router.route("what is 2+2?")
         assert decision.model_id == "fallback"
 
-    def test_skips_preferred_model_exceeding_cost(self):
+    async def test_skips_preferred_model_exceeding_cost(self):
         reg = _empty_registry()
         expensive = _make_model("expensive", cost=0.9)
         cheap = _make_model("cheap", cost=0.1)
@@ -252,11 +261,15 @@ class TestRouteAuto:
         router = IntelligentRouter(reg, model_preferences=prefs)
         # Force a SIMPLE classification so it looks up the "simple" preference
         cls = _classification(complexity=TaskComplexity.SIMPLE, category=TaskCategory.GENERAL)
+        llm_cls = LLMClassification(category=LLMCategory.GENERAL, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("what time is it?", max_cost=0.5)
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("what time is it?", max_cost=0.5)
         assert decision.model_id == "cheap"
 
-    def test_code_task_uses_code_preferences(self):
+    async def test_code_task_uses_code_preferences(self):
         reg = _empty_registry()
         code_model = _make_model(
             "coder", capabilities=[ModelCapability.CODE, ModelCapability.GENERAL]
@@ -266,10 +279,10 @@ class TestRouteAuto:
         reg.register(general)
         prefs = {"code": ["coder"], "simple": ["general"], "moderate": ["general"]}
         router = IntelligentRouter(reg, model_preferences=prefs)
-        decision = router.route("Write a Python function to sort a list using code")
+        decision = await router.route("Write a Python function to sort a list using code")
         assert decision.model_id == "coder"
 
-    def test_code_fallback_via_capability_when_no_pref_match(self):
+    async def test_code_fallback_via_capability_when_no_pref_match(self):
         reg = _empty_registry()
         code_model = _make_model(
             "coder", capabilities=[ModelCapability.CODE], speed_class=SpeedClass.FAST
@@ -280,8 +293,12 @@ class TestRouteAuto:
             reg, model_preferences={"code": [], "simple": [], "moderate": []}
         )
         cls = _classification(requires_code=True, category=TaskCategory.CODE)
+        llm_cls = LLMClassification(category=LLMCategory.CODE, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("implement a function")
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("implement a function")
         assert decision.model_id == "coder"
 
 
@@ -298,7 +315,7 @@ class TestRouteSpeed:
             (ModelCapability.MATH, SpeedClass.FAST, {"requires_math": True}),
         ],
     )
-    def test_selects_fastest_with_capability(self, capability, fast_speed, cls_kwargs):
+    async def test_selects_fastest_with_capability(self, capability, fast_speed, cls_kwargs):
         reg = _empty_registry()
         fast = _make_model("fast", speed_class=fast_speed, capabilities=[capability])
         slow = _make_model("slow", speed_class=SpeedClass.SLOW, capabilities=[capability])
@@ -306,18 +323,26 @@ class TestRouteSpeed:
         reg.register(slow)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.SPEED)
         cls = _classification(**cls_kwargs)
+        llm_cls = LLMClassification(category=LLMCategory.GENERAL, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("task")
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("task")
         assert decision.model_id == "fast"
 
-    def test_falls_back_when_no_fastest(self):
+    async def test_falls_back_when_no_fastest(self):
         reg = _empty_registry()
         m = _make_model("only", capabilities=[ModelCapability.GENERAL])
         reg.register(m)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.SPEED)
         cls = _classification(requires_code=True)
+        llm_cls = LLMClassification(category=LLMCategory.CODE, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("code task")
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("code task")
         # No CODE-capable model, falls back to any available
         assert decision.model_id == "only"
 
@@ -361,17 +386,31 @@ class TestRouteQuality:
             ),
         ],
     )
-    def test_selects_best_model_for_category(self, model_a, model_b, category, expected):
+    async def test_selects_best_model_for_category(self, model_a, model_b, category, expected):
         reg = _empty_registry()
         reg.register(_make_model(**model_a))
         reg.register(_make_model(**model_b))
         router = IntelligentRouter(reg, strategy=RoutingStrategy.QUALITY)
         cls = _classification(category=category)
+        # Map TaskCategory → LLMCategory so the routing logic sees the correct category
+        _task_to_llm = {
+            TaskCategory.GENERAL: LLMCategory.GENERAL,
+            TaskCategory.ANALYSIS: LLMCategory.REASONING,
+            TaskCategory.CODE: LLMCategory.CODE,
+            TaskCategory.CREATIVE: LLMCategory.CREATIVE,
+            TaskCategory.TOOL_USE: LLMCategory.TOOL_USE,
+        }
+        llm_cls = LLMClassification(
+            category=_task_to_llm.get(category, LLMCategory.GENERAL), confidence=0.9
+        )
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("question")
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("question")
         assert decision.model_id == expected
 
-    def test_respects_max_cost(self):
+    async def test_respects_max_cost(self):
         reg = _empty_registry()
         expensive = _make_model(
             "expensive", general_quality=0.99, cost=0.9, capabilities=[ModelCapability.GENERAL]
@@ -383,8 +422,12 @@ class TestRouteQuality:
         reg.register(cheap)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.QUALITY)
         cls = _classification(category=TaskCategory.GENERAL)
+        llm_cls = LLMClassification(category=LLMCategory.GENERAL, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("tell me something", max_cost=0.5)
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("tell me something", max_cost=0.5)
         assert decision.model_id == "cheap"
 
 
@@ -394,19 +437,23 @@ class TestRouteQuality:
 
 
 class TestRouteBalanced:
-    def test_moderate_delegates_to_auto_with_reduced_cost(self):
+    async def test_moderate_delegates_to_auto_with_reduced_cost(self):
         reg = _empty_registry()
         m = _make_model("m1", cost=0.3)
         reg.register(m)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.BALANCED)
         cls = _classification(complexity=TaskComplexity.MODERATE)
+        llm_cls = LLMClassification(category=LLMCategory.GENERAL, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            with patch.object(router, "_route_auto", wraps=router._route_auto) as spy:
-                router.route("moderate task")
-                spy.assert_called_once()
-                # max_cost passed should be 1.0 * 0.7 = 0.7
-                call_args = spy.call_args
-                assert call_args[0][1] == pytest.approx(0.7)
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                with patch.object(router, "_route_auto", wraps=router._route_auto) as spy:
+                    await router.route("moderate task")
+                    spy.assert_called_once()
+                    # max_cost passed should be 1.0 * 0.7 = 0.7
+                    call_args = spy.call_args
+                    assert call_args[0][1] == pytest.approx(0.7)
 
 
 # ---------------------------------------------------------------------------
@@ -415,7 +462,7 @@ class TestRouteBalanced:
 
 
 class TestRouteCostOptimized:
-    def test_picks_cheapest_available(self):
+    async def test_picks_cheapest_available(self):
         reg = _empty_registry()
         expensive = _make_model("expensive", cost=0.8)
         cheap = _make_model("cheap", cost=0.1)
@@ -424,10 +471,10 @@ class TestRouteCostOptimized:
         reg.register(cheap)
         reg.register(mid)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.COST_OPTIMIZED)
-        decision = router.route("hi")
+        decision = await router.route("hi")
         assert decision.model_id == "cheap"
 
-    def test_prefers_code_capable_for_code_tasks(self):
+    async def test_prefers_code_capable_for_code_tasks(self):
         reg = _empty_registry()
         cheap_no_code = _make_model("cheap", cost=0.05, capabilities=[ModelCapability.GENERAL])
         cheap_code = _make_model("code", cost=0.2, capabilities=[ModelCapability.CODE])
@@ -435,11 +482,15 @@ class TestRouteCostOptimized:
         reg.register(cheap_code)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.COST_OPTIMIZED)
         cls = _classification(requires_code=True, category=TaskCategory.CODE)
+        llm_cls = LLMClassification(category=LLMCategory.CODE, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("write code")
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("write code")
         assert decision.model_id == "code"
 
-    def test_cheapest_code_model_selected(self):
+    async def test_cheapest_code_model_selected(self):
         reg = _empty_registry()
         cheap_code = _make_model("cheap_code", cost=0.1, capabilities=[ModelCapability.CODE])
         expensive_code = _make_model("exp_code", cost=0.9, capabilities=[ModelCapability.CODE])
@@ -447,16 +498,20 @@ class TestRouteCostOptimized:
         reg.register(cheap_code)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.COST_OPTIMIZED)
         cls = _classification(requires_code=True, category=TaskCategory.CODE)
+        llm_cls = LLMClassification(category=LLMCategory.CODE, confidence=0.9)
         with patch.object(router.classifier, "classify", return_value=cls):
-            decision = router.route("write code")
+            with patch.object(
+                router.llm_classifier, "classify", new_callable=AsyncMock, return_value=llm_cls
+            ):
+                decision = await router.route("write code")
         assert decision.model_id == "cheap_code"
 
-    def test_no_available_falls_back(self):
+    async def test_no_available_falls_back(self):
         reg = _empty_registry()
         unavail = _make_model("unavail", available=False)
         reg.register(unavail)
         router = IntelligentRouter(reg, strategy=RoutingStrategy.COST_OPTIMIZED)
-        decision = router.route("hi")
+        decision = await router.route("hi")
         # _get_any_available_model will return the first model even if unavailable
         assert decision.model_id == "unavail"
 
@@ -587,33 +642,33 @@ class TestGenerateReasoning:
 
 
 class TestRouteEndToEnd:
-    def test_decision_has_all_fields(self):
+    async def test_decision_has_all_fields(self):
         reg = _empty_registry()
         m = _make_model("m1")
         reg.register(m)
         router = IntelligentRouter(reg)
-        decision = router.route("hello world")
+        decision = await router.route("hello world")
         assert decision.model_id
         assert decision.model_metadata is not None
         assert decision.classification is not None
         assert isinstance(decision.fallback_models, list)
         assert isinstance(decision.reasoning, str)
 
-    def test_route_with_default_registry(self):
+    async def test_route_with_default_registry(self):
         """Ensure routing works with the full default model catalog."""
         reg = ModelRegistry()
         router = IntelligentRouter(reg)
-        decision = router.route("Write a Python function to parse JSON")
+        decision = await router.route("Write a Python function to parse JSON")
         assert decision.model_id
         assert decision.classification.requires_code
 
-    def test_route_with_all_strategies(self):
+    async def test_route_with_all_strategies(self):
         reg = _empty_registry()
         m = _make_model("m1")
         reg.register(m)
         for strategy in RoutingStrategy:
             router = IntelligentRouter(reg, strategy=strategy)
-            decision = router.route("hello")
+            decision = await router.route("hello")
             assert decision.strategy_used is strategy
 
     def test_verify_preferences_warns_on_four_or_more_missing(self, caplog):

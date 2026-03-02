@@ -137,7 +137,7 @@ class TestExecute:
         engine = _build_engine()
         model = _make_model("m1")
         engine.registry.register(model)
-        engine.router.route.return_value = _make_routing_decision("m1", model)
+        engine.router.route = AsyncMock(return_value=_make_routing_decision("m1", model))
         engine.backends["ollama"].is_available.return_value = True
         engine.backends["ollama"].generate.return_value = _make_gen_result()
         result = await engine.execute("hello")
@@ -150,7 +150,9 @@ class TestExecute:
         fallback = _make_model("fallback", "ollama")
         engine.registry.register(primary)
         engine.registry.register(fallback)
-        engine.router.route.return_value = _make_routing_decision("primary", primary, ["fallback"])
+        engine.router.route = AsyncMock(
+            return_value=_make_routing_decision("primary", primary, ["fallback"])
+        )
         engine.backends["ollama"].is_available.return_value = True
         engine.backends["ollama"].generate.side_effect = [
             _make_gen_result(success=False),
@@ -164,7 +166,7 @@ class TestExecute:
         engine = _build_engine()
         model = _make_model("m1")
         engine.registry.register(model)
-        engine.router.route.return_value = _make_routing_decision("m1", model)
+        engine.router.route = AsyncMock(return_value=_make_routing_decision("m1", model))
         engine.backends["ollama"].is_available.return_value = True
         engine.backends["ollama"].generate.return_value = _make_gen_result(success=False)
         result = await engine.execute("hello")
@@ -182,7 +184,7 @@ class TestExecute:
         engine = _build_engine()
         if model_id != "nonexistent":
             engine.registry.register(_make_model(model_id, backend))
-        engine.router.route.return_value = _make_routing_decision(model_id)
+        engine.router.route = AsyncMock(return_value=_make_routing_decision(model_id))
         result = await engine.execute("hello")
         assert not result.success
 
@@ -191,7 +193,7 @@ class TestExecute:
         engine = _build_engine()
         model = _make_model("m1")
         engine.registry.register(model)
-        engine.router.route.return_value = _make_routing_decision("m1", model)
+        engine.router.route = AsyncMock(return_value=_make_routing_decision("m1", model))
         engine.circuit_breaker.states["ollama"] = CircuitState.OPEN
         import time
 
@@ -204,7 +206,7 @@ class TestExecute:
         engine = _build_engine()
         model = _make_model("m1")
         engine.registry.register(model)
-        engine.router.route.return_value = _make_routing_decision("m1", model)
+        engine.router.route = AsyncMock(return_value=_make_routing_decision("m1", model))
         engine.backends["ollama"].is_available.return_value = True
         engine.backends["ollama"].generate.side_effect = RuntimeError("boom")
         result = await engine.execute("hello")
@@ -215,7 +217,7 @@ class TestExecute:
         engine = _build_engine()
         model = _make_model("m1")
         engine.registry.register(model)
-        engine.router.route.return_value = _make_routing_decision("m1", model)
+        engine.router.route = AsyncMock(return_value=_make_routing_decision("m1", model))
         engine.backends["ollama"].is_available.return_value = True
         tool_calls = [{"tool": "calc", "arguments": {"x": 1}}]
         engine.backends["ollama"].generate.return_value = _make_gen_result(tool_calls=tool_calls)
@@ -252,7 +254,7 @@ class TestGenerateStream:
         engine = _build_engine()
         model = _make_model("m1")
         engine.registry.register(model)
-        engine.router.route.return_value = _make_routing_decision("m1", model)
+        engine.router.route = AsyncMock(return_value=_make_routing_decision("m1", model))
         engine.backends["ollama"].is_available.return_value = True
 
         async def fake_stream(**kwargs):
@@ -270,8 +272,8 @@ class TestGenerateStream:
         fallback = _make_model("fallback_alt", "ollama")
         engine.registry.register(primary)
         engine.registry.register(fallback)
-        engine.router.route.return_value = _make_routing_decision(
-            "primary", primary, ["fallback_alt"]
+        engine.router.route = AsyncMock(
+            return_value=_make_routing_decision("primary", primary, ["fallback_alt"])
         )
         call_count = 0
 
@@ -292,7 +294,7 @@ class TestGenerateStream:
     @pytest.mark.asyncio
     async def test_stream_no_models_available(self):
         engine = _build_engine()
-        engine.router.route.return_value = _make_routing_decision("nonexistent")
+        engine.router.route = AsyncMock(return_value=_make_routing_decision("nonexistent"))
         tokens = [t async for t in engine.generate_stream("hello")]
         assert tokens == []
 

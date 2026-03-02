@@ -24,7 +24,7 @@ def _make_core_with_mcp(config=None):
     mock_routing_decision.fallback_models = []
     mock_routing_decision.classification = MagicMock()
     mock_routing_decision.classification.complexity = MagicMock(value="simple")
-    mock_router.route.return_value = mock_routing_decision
+    mock_router.route = AsyncMock(return_value=mock_routing_decision)
 
     mock_execution_engine = MagicMock()
     mock_prompt_manager = MagicMock()
@@ -183,7 +183,7 @@ async def test_mcp_loop_no_mcp_registry_skips_tools():
     mock_routing_decision.fallback_models = []
     mock_routing_decision.classification = MagicMock()
     mock_routing_decision.classification.complexity = MagicMock(value="simple")
-    mock_router.route.return_value = mock_routing_decision
+    mock_router.route = AsyncMock(return_value=mock_routing_decision)
 
     mock_execution_engine = MagicMock()
     mock_prompt_manager = MagicMock()
@@ -306,7 +306,7 @@ async def test_mcp_loop_preserves_context_on_final_execution():
     decision.classification = classification
     decision.fallback_models = []
 
-    core.router.route = MagicMock(return_value=decision)
+    core.router.route = AsyncMock(return_value=decision)
 
     result_with_tools = MagicMock(spec=ExecutionResult)
     result_with_tools.success = True
