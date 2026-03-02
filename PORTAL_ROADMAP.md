@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-01 (delta update — second run)
-**Current version:** 1.4.1 (1.4.2 pending TASK-27)
+**Generated:** 2026-03-02 (delta update — run 3)
+**Current version:** 1.4.2 (1.4.3 pending TASK-32)
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -12,6 +12,7 @@ file which contained only future design sketches.
 
 ## Changelog
 
+- **2026-03-02 (run 3):** All TASK-23R through TASK-31 confirmed complete (PR #86). mypy errors reduced 103 → 17. ROAD-C13 (runtime_metrics migration) COMPLETE. ROAD-C15 (TASK-28–31 type safety batch) added as COMPLETE. ROAD-P03 updated to NEARLY-COMPLETE (17 errors remain). Health score 8.5 → 9.0/10. New TASK-32 (version bump + CHANGELOG) and TASK-33 (final 17 mypy errors) added.
 - **2026-03-01 (run 2):** aiohttp dep gap found and fixed (pyproject.toml). ROAD-C13 status updated: runtime_metrics.py has 2 production callers — caller migration required before deletion (TASK-23R). TASK-24/25/26 confirmed complete. ROAD-C14 (aiohttp dep fix) added. ROAD-C15 (core mypy fixes) added. Health score stable at 8.5/10.
 - **2026-03-01:** Version bumped to 1.4.0 then 1.4.1. ROAD-C12 (security_module cleanup) COMPLETE. All TASK-20-26 completed (20-22 prior run; 24-26 this delta).
 - **2026-03-01 (prior):** Added ROAD-C12 (security_module cleanup — in progress). Updated TASK-20, TASK-21, TASK-22 in action prompt.
@@ -20,7 +21,7 @@ file which contained only future design sketches.
 
 ## 1. Current Release State
 
-Portal 1.4.1 is fully operational for its stated purpose:
+Portal 1.4.2 is fully operational for its stated purpose:
 
 - **OpenAI-compatible REST API** at `:8081/v1/*` — works with Open WebUI and LibreChat
 - **Ollama proxy router** at `:8000` — workspace routing, regex rules, virtual models
@@ -35,10 +36,11 @@ Portal 1.4.1 is fully operational for its stated purpose:
 - **WorkspaceRegistry** — virtual model names mapped to concrete Ollama models
 - **BackendRegistry** — named backend instances; ExecutionEngine accepts injected backends
 - **Structured logging** — JSON with trace IDs, secret redaction
+- **No backward-compat shims** — both `security_module.py` and `runtime_metrics.py` fully removed
 
 **CI status:** 874 tests passing, 0 lint errors, Python 3.11–3.14 matrix.
-**Type safety:** 103 mypy errors (down from 123 in prior audit — TASK-24/25/26 complete).
-**Dependency note:** `[slack]` extra now includes `aiohttp>=3.9.0` (required by slack_sdk async client).
+**Type safety:** 17 mypy errors (down from 103 in prior audit — 83% reduction in one PR).
+**Dependency note:** `[slack]` extra includes `aiohttp>=3.9.0` (required by slack_sdk async client).
 
 ---
 
@@ -201,6 +203,23 @@ Description:  Remove security_module.py re-export shim:
 Evidence:     e407996 (middleware.py update); TASK-20/21 (test files + deletion)
 ```
 
+### [ROAD-C13] runtime_metrics.py Caller Migration and Removal
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Effort:       XS
+Description:  observability/runtime_metrics.py backward-compat re-export shim.
+              Prior audit incorrectly identified it as dead code (TASK-23).
+              Correct action (TASK-23R) migrated callers then deleted the file:
+              1. agent_core.py:20 migrated to import MCP_TOOL_USAGE from metrics.py
+              2. server.py:44-48 migrated to import 4 symbols from metrics.py
+              3. runtime_metrics.py deleted
+              All former re-exports now consolidated in metrics.py (with comment).
+Evidence:     commit 1d872e3 (2026-03-02, PR #86); no remaining runtime_metrics
+              imports in src/portal/ (verified this audit run)
+```
+
 ### [ROAD-C14] aiohttp Dependency Declaration Fix
 
 ```
@@ -213,31 +232,37 @@ Description:  TASK-13 (v1.3.9) removed aiohttp from core dependencies when httpx
               accounted for. This caused test_registered_interfaces_accessible to
               fail in clean installs. Fixed by adding aiohttp>=3.9.0 to [slack]
               and [all] optional extras.
-Evidence:     commit 6cfa24d (2026-03-01, this audit run)
+Evidence:     commit 6cfa24d (2026-03-01)
+```
+
+### [ROAD-C15] Type Safety Batch (TASK-28 through TASK-31)
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Effort:       M
+Description:  Large batch of mypy fixes across 4 modules, reducing errors 103 → 17:
+              - TASK-28: core module — agent_interface.py metadata field, agent_core.py
+                health_check() return type + mcp_registry None guard, factories.py
+                MCPRegistry annotation. 5 errors resolved.
+              - TASK-29: security/middleware — middleware.py None list + re.search
+                patterns, docker_sandbox.py docker client None guards (7 errors),
+                user_store.py Path() annotation, tool_confirmation_middleware.py
+                Event None annotation. 13 errors resolved.
+              - TASK-30: observability — log_rotation.py logger.info kwargs → extra
+                pattern, config_watcher.py yaml/toml import-untyped suppression,
+                watchdog.py component type guards. 23 errors resolved.
+              - TASK-31: tools layer batch — document_processing, data_tools, git_tools,
+                docker_tools, automation_tools. 45+ errors resolved.
+Evidence:     commits cd4d12c, ba3d1b2, b434d3c, 17019f1, 16a08ae (PR #86)
+              mypy errors: 103 → 17 (83% reduction)
 ```
 
 ---
 
 ## 3. In Progress
 
-### [ROAD-C13] runtime_metrics.py Caller Migration and Removal
-
-```
-Status:       IN-PROGRESS
-Priority:     P2-HIGH
-Effort:       XS
-Description:  observability/runtime_metrics.py is a backward compatibility re-export
-              shim. Prior audit incorrectly identified it as dead code (TASK-23).
-              Correct action requires:
-              1. Migrate agent_core.py:20 to import MCP_TOOL_USAGE from metrics.py
-              2. Migrate server.py:44-48 to import 4 symbols from metrics.py
-              3. Verify no remaining imports of runtime_metrics
-              4. Delete runtime_metrics.py
-              See TASK-23R in ACTION_PROMPT_FOR_CODING_AGENT.md.
-Evidence:     F-02 from 2026-03-01 audit (this run); TASK-23R
-Current state: aiohttp fix committed; caller migration not yet started
-What remains: Execute TASK-23R steps 1-4
-```
+No tasks currently in progress. All prior open tasks were completed in PR #86.
 
 ---
 
@@ -298,26 +323,24 @@ Description:  Add MLXServerBackend(BaseHTTPBackend) targeting mlx_lm.server
 Evidence:     ROADMAP.md section 2 (designed 2026-02-28)
 ```
 
-### [ROAD-P03] mypy Error Reduction to < 30
+### [ROAD-P03] mypy Error Reduction to Zero
 
 ```
-Status:       PLANNED
+Status:       NEARLY-COMPLETE (was PLANNED)
 Priority:     P3-MEDIUM
-Effort:       M
-Dependencies: ROAD-C11 COMPLETE (provides foundation)
-Description:  Reduce mypy errors from 103 to under 30. Current 103 errors are
-              concentrated in:
-              - Core (5 errors): agent_core.py, agent_interface.py, factories.py
-              - Security (12 errors): middleware.py, docker_sandbox.py, user_store.py
-              - Observability (8 errors): log_rotation.py, config_watcher.py, watchdog.py
-              - Tools (60+ errors): document processing, math viz, git tools, docker tools
+Effort:       XS (was M)
+Dependencies: ROAD-C15 COMPLETE (provides foundation)
+Description:  17 mypy errors remain across 5 files after TASK-28–31:
+              - memory/manager.py:37 (1 error): Path() with str|None
+              - config/settings.py (9 errors): yaml stubs, Field default_factory
+                pattern, ConfigDict vs SettingsConfigDict, cascade errors
+              - routing/model_backends.py:205 (1 error): abstract async generator
+                return type mismatch
+              - routing/execution_engine.py:226 (1 error): cascade from above
+              - interfaces/web/server.py:727-728 (2 errors): _server None typing
 
-              Tasks:
-              - TASK-28: core module mypy fixes
-              - TASK-29: security/middleware mypy fixes
-              - TASK-30: observability mypy fixes
-              - TASK-31: tools layer batch mypy fixes
-Evidence:     2026-03-01 audit — mypy: 103 errors in 28 files
+              Full details and fix instructions in TASK-33 (ACTION_PROMPT).
+Evidence:     2026-03-02 audit — mypy: 17 errors in 5 files
 ```
 
 ---
@@ -465,5 +488,7 @@ Why deferred: Not needed; existing CLI + third-party UIs cover the use case.
 *This roadmap is maintained as part of the Portal source tree. Update it whenever a
 significant item is completed, started, or added.*
 
-*Last updated: 2026-03-01 (run 2) — aiohttp dep fix complete (ROAD-C14). runtime_metrics
-caller migration in progress (ROAD-C13, TASK-23R). mypy at 103 errors.*
+*Last updated: 2026-03-02 (run 3) — PR #86 complete: all TASK-23R through TASK-31 done.
+mypy: 103 → 17 errors. ROAD-C13 (runtime_metrics) COMPLETE. ROAD-C15 (TASK-28–31 type
+safety batch) COMPLETE. ROAD-P03 NEARLY-COMPLETE (17 errors remain — TASK-33 pending).
+Health score 8.5 → 9.0/10.*
