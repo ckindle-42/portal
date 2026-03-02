@@ -43,13 +43,14 @@ class TestDataDrivenRegistry:
         assert ModelCapability.MULTIMODAL in omni.capabilities
 
     def test_all_models_available_by_default(self):
-        """All default Ollama models should be marked available. MLX models are unavailable by default."""
+        """Ollama models available by default. MLX and HuggingFace models are not (require external setup)."""
         registry = ModelRegistry()
         for model in registry.get_all_models():
-            if model.backend == "mlx":
-                # MLX models require mlx_lm.server to be running
+            if model.backend in ("mlx", "huggingface"):
+                # MLX models require mlx_lm.server; HuggingFace models require manual GGUF import
                 assert not model.available, (
-                    f"{model.model_id} should be unavailable by default (requires MLX server)"
+                    f"{model.model_id} should be unavailable by default "
+                    f"(backend '{model.backend}' requires external setup)"
                 )
             else:
                 assert model.available, f"{model.model_id} should be available"
@@ -86,31 +87,40 @@ class TestTaskClassifierNewCategories:
     def classifier(self):
         return TaskClassifier()
 
-    @pytest.mark.parametrize("query", [
-        "explain kerberoasting and mimikatz",
-        "write a reverse shell exploit in python",
-        "perform recon on target using nmap",
-        "what is a buffer overflow and how do you exploit it",
-        "help me bypass EDR detection",
-    ])
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "explain kerberoasting and mimikatz",
+            "write a reverse shell exploit in python",
+            "perform recon on target using nmap",
+            "what is a buffer overflow and how do you exploit it",
+            "help me bypass EDR detection",
+        ],
+    )
     def test_security_queries_classify_as_security(self, classifier, query):
         result = classifier.classify(query)
         assert result.category == TaskCategory.SECURITY
 
-    @pytest.mark.parametrize("query", [
-        "generate an image of a mountain landscape",
-        "create an illustration of a robot",
-        "draw a portrait of a wizard",
-    ])
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "generate an image of a mountain landscape",
+            "create an illustration of a robot",
+            "draw a portrait of a wizard",
+        ],
+    )
     def test_image_queries_classify_as_image_gen(self, classifier, query):
         result = classifier.classify(query)
         assert result.category == TaskCategory.IMAGE_GEN
 
-    @pytest.mark.parametrize("query", [
-        "use tts to read this paragraph aloud",
-        "clone my voice using cosyvoice",
-        "generate audio with text to speech",
-    ])
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "use tts to read this paragraph aloud",
+            "clone my voice using cosyvoice",
+            "generate audio with text to speech",
+        ],
+    )
     def test_audio_queries_classify_as_audio_gen(self, classifier, query):
         result = classifier.classify(query)
         assert result.category == TaskCategory.AUDIO_GEN
