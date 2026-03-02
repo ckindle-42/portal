@@ -2,7 +2,7 @@
 
 **Project**: Portal — Local-First AI Platform
 **Repository**: https://github.com/ckindle-42/portal
-**Version**: 1.4.6
+**Version**: 1.4.7
 **Last Updated**: March 2, 2026
 
 ---
@@ -12,7 +12,7 @@
 Portal is a **local-first AI platform** that runs entirely on user hardware. It exposes an OpenAI-compatible `/v1/chat/completions` endpoint that web UIs (Open WebUI, LibreChat) connect to, with optional Telegram and Slack interfaces sharing the same AgentCore, routing, tools, and conversation context.
 
 **Hardware targets**: Apple M4 (primary), NVIDIA CUDA (Linux), WSL2.
-**Architecture**: Modular monolith under `src/portal/`. Interface → SecurityMiddleware → AgentCore → Router → ExecutionEngine → LLM Backend (Ollama/LMStudio/MLX).
+**Architecture**: Modular monolith under `src/portal/`. Interface → SecurityMiddleware → AgentCore → Router → ExecutionEngine → LLM Backend (Ollama/MLX).
 **Core values**: Privacy-first, hardware-efficient, fully local execution. New interfaces must remain addable in ≤50 lines of Python.
 
 ---

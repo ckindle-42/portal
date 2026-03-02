@@ -11,6 +11,17 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 20):** Finish-line implementation pass:
+  - ROAD-F09: Video generation MCP + tool + workspace/routing rules
+  - ROAD-F10: Music generation MCP + tool + workspace/routing rules
+  - ROAD-F11: Document MCP exposing Word/PPT/Excel tools
+  - ROAD-F12: Code execution sandbox MCP
+  - ROAD-F13: Embedding model config (PORTAL_EMBEDDING_MODEL)
+  - ROAD-F14: Multi-step task orchestrator (portal.core.orchestrator)
+  - Docs: HOW_IT_WORKS.md rewritten with accurate capability matrix
+  - Docs: CLAUDE.md version corrected to 1.4.7, LMStudio refs removed
+  - router_rules.json: 4 new workspaces + 4 new categories + 4 new regex rules
+
 - **2026-03-02 (run 19):** Implemented ROAD-F01, ROAD-F02, ROAD-F08; removed ROAD-D01, ROAD-D05:
   - ROAD-F01: Per-Workspace ACLs - added WorkspaceACL class with tool/user/rate limit controls
   - ROAD-F02: Streaming Memory Context - build_system_message() returns dedicated message dict
@@ -152,6 +163,84 @@ Description:  Different workspaces have different MCP tool access
 Status:       DISCUSSED
 Priority:     P3-MEDIUM
 Description:  Consider WS query param or subprotocol auth
+```
+
+### [ROAD-F09] Video Generation (F-01)
+
+```
+Status:       COMPLETE
+Priority:     P1-HIGH
+Description:  Video generation MCP + tool wrapping ComfyUI video workflows
+Evidence:     mcp/generation/video_mcp.py — FastMCP server wrapping ComfyUI video API
+              src/portal/tools/media_tools/video_generator.py — async tool wrapper
+              router_rules.json — auto-video workspace + video_gen category + regex rules
+Hardware:     CUDA GPU strongly recommended; M4 Mac possible with Mochi-small
+```
+
+### [ROAD-F10] Music Generation (F-02)
+
+```
+Status:       COMPLETE
+Priority:     P1-HIGH
+Description:  Music generation MCP + tool wrapping Meta AudioCraft/MusicGen
+Evidence:     mcp/generation/music_mcp.py — FastMCP server wrapping AudioCraft REST API
+              src/portal/tools/media_tools/music_generator.py — async tool wrapper
+              router_rules.json — auto-music workspace + music_gen category + regex rules
+Hardware:     16GB VRAM (CUDA) or M4 unified memory; models auto-downloaded
+```
+
+### [ROAD-F11] Document Tools as MCP Endpoints (F-05)
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Description:  Word/PowerPoint/Excel tools exposed as MCP endpoints with file handling
+Evidence:     mcp/documents/document_mcp.py — FastMCP server wrapping doc processors
+              router_rules.json — auto-documents workspace + document_gen category
+              Generated files saved to data/generated/ with unique IDs
+```
+
+### [ROAD-F12] Code Execution Sandbox MCP (F-06)
+
+```
+Status:       COMPLETE
+Priority:     P2-HIGH
+Description:  Full code execution sandbox as MCP endpoint using Docker isolation
+Evidence:     mcp/execution/code_sandbox_mcp.py — FastMCP server with run_python/run_node/run_bash
+              Security: network_mode none, resource limits, 30s timeout
+              Requires SANDBOX_ENABLED=true and Docker running
+```
+
+### [ROAD-F13] Embedding Model Management (F-07)
+
+```
+Status:       COMPLETE
+Priority:     P2-MEDIUM
+Description:  Configurable embedding model with auto-download and hardware-appropriate defaults
+Evidence:     settings.py KnowledgeConfig — PORTAL_EMBEDDING_MODEL config var
+              Default: all-MiniLM-L6-v2 (auto-downloaded from HuggingFace on first use)
+              .env.example updated with PORTAL_EMBEDDING_MODEL
+```
+
+### [ROAD-F14] Multi-Step Task Orchestration (F-04)
+
+```
+Status:       COMPLETE
+Priority:     P3-MEDIUM
+Description:  Linear task decomposition and sequential tool execution pipeline
+Evidence:     src/portal/core/orchestrator.py — TaskPlan, TaskStep, TaskOrchestrator
+              Orchestrator decomposes prompts into sequential tool/LLM steps
+              Results pass forward as context to subsequent steps
+              Linear chains implemented; DAG deferred to future iteration
+```
+
+### [ROAD-F15] Offline Search — SearXNG / Expanded RAG (F-03)
+
+```
+Status:       PLANNED
+Priority:     P3-MEDIUM
+Description:  Local search engine (SearXNG) or expanded RAG pipeline for offline-first search
+Approach:     Add SearXNG to docker-compose; update web_scrape_mcp_server.py to try local first
 ```
 
 ### [ROAD-F08] HuggingFace Model Auto-Import

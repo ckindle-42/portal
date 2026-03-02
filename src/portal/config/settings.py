@@ -263,6 +263,23 @@ class ToolsConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class KnowledgeConfig(BaseModel):
+    """Knowledge base and embedding configuration"""
+
+    embedding_model: str = Field(
+        "all-MiniLM-L6-v2",
+        description="Sentence-transformers model for embeddings (auto-downloaded on first use)",
+    )
+    knowledge_base_dir: str = Field(
+        "data/knowledge", description="Directory for knowledge base files"
+    )
+    auto_download_embeddings: bool = Field(
+        True, description="Auto-download embedding model on first use"
+    )
+
+    model_config = ConfigDict(extra="allow")
+
+
 class ContextConfig(BaseModel):
     """Context management configuration"""
 
@@ -340,6 +357,7 @@ class Settings(BaseSettings):
     context: ContextConfig = Field(default_factory=lambda: ContextConfig())
     logging: LoggingConfig = Field(default_factory=lambda: LoggingConfig())
     routing: RoutingConfig = Field(default_factory=lambda: RoutingConfig())
+    knowledge: KnowledgeConfig = Field(default_factory=lambda: KnowledgeConfig())
 
     # Project metadata
     project_name: str = Field("Portal", description="Project name")
@@ -485,6 +503,7 @@ __all__ = [
     "BackendsConfig",
     "ToolsConfig",
     "ContextConfig",
+    "KnowledgeConfig",
     "LoggingConfig",
     "RoutingConfig",
     "load_settings",

@@ -6,6 +6,7 @@ Exposes: generate_image, list_workflows, get_generation_status
 Requires: ComfyUI running at COMFYUI_URL (default :8188)
 Start with: python -m mcp.generation.comfyui_mcp
 """
+
 import asyncio
 import json
 import os
@@ -26,13 +27,28 @@ FLUX_WORKFLOW = {
     "6": {"inputs": {"text": "", "clip": ["30", 1]}, "class_type": "CLIPTextEncode"},
     "8": {"inputs": {"samples": ["31", 0], "vae": ["30", 2]}, "class_type": "VAEDecode"},
     "9": {"inputs": {"filename_prefix": "portal_", "images": ["8", 0]}, "class_type": "SaveImage"},
-    "27": {"inputs": {"width": 1024, "height": 1024, "batch_size": 1}, "class_type": "EmptySD3LatentImage"},
-    "30": {"inputs": {"ckpt_name": "flux1-schnell.safetensors"}, "class_type": "CheckpointLoaderSimple"},
-    "31": {"inputs": {
-        "model": ["30", 0], "conditioning": ["6", 0], "latent_image": ["27", 0],
-        "noise_seed": 42, "steps": 4, "cfg": 1, "sampler_name": "euler",
-        "scheduler": "simple", "denoise": 1,
-    }, "class_type": "KSampler"},
+    "27": {
+        "inputs": {"width": 1024, "height": 1024, "batch_size": 1},
+        "class_type": "EmptySD3LatentImage",
+    },
+    "30": {
+        "inputs": {"ckpt_name": "flux1-schnell.safetensors"},
+        "class_type": "CheckpointLoaderSimple",
+    },
+    "31": {
+        "inputs": {
+            "model": ["30", 0],
+            "conditioning": ["6", 0],
+            "latent_image": ["27", 0],
+            "noise_seed": 42,
+            "steps": 4,
+            "cfg": 1,
+            "sampler_name": "euler",
+            "scheduler": "simple",
+            "denoise": 1,
+        },
+        "class_type": "KSampler",
+    },
 }
 
 
@@ -105,10 +121,12 @@ async def list_workflows() -> list[str]:
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(f"{COMFYUI_URL}/object_info/CheckpointLoaderSimple")
         data = resp.json()
-        checkpoints = data.get("CheckpointLoaderSimple", {}) \
-                         .get("input", {}) \
-                         .get("required", {}) \
-                         .get("ckpt_name", [[]])[0]
+        checkpoints = (
+            data.get("CheckpointLoaderSimple", {})
+            .get("input", {})
+            .get("required", {})
+            .get("ckpt_name", [[]])[0]
+        )
         return checkpoints
 
 

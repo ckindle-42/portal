@@ -165,7 +165,13 @@ class ModelPuller:
             try:
                 # Download model files
                 result = subprocess.run(
-                    ["huggingface-cli", "download", model_path, "--local-dir", f"/tmp/{model_path.split('/')[-1]}"],
+                    [
+                        "huggingface-cli",
+                        "download",
+                        model_path,
+                        "--local-dir",
+                        f"/tmp/{model_path.split('/')[-1]}",
+                    ],
                     capture_output=True,
                     text=True,
                     timeout=600,
@@ -174,7 +180,16 @@ class ModelPuller:
                     # Try to import to Ollama
                     gguf_path = f"/tmp/{model_path.split('/')[-1]}/*.gguf"
                     import_result = subprocess.run(
-                        ["ollama", "import", "--source", "gguf", "--model", model_name, "--files", gguf_path],
+                        [
+                            "ollama",
+                            "import",
+                            "--source",
+                            "gguf",
+                            "--model",
+                            model_name,
+                            "--files",
+                            gguf_path,
+                        ],
                         capture_output=True,
                         text=True,
                         timeout=300,

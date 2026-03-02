@@ -14,6 +14,22 @@ services:
       timeout: 10s
       retries: 10
 
+  # Pull required models before portal-api starts (DC-05)
+  ollama-model-init:
+    image: ollama/ollama:latest
+    container_name: portal-ollama-init
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    command: >
+      sh -c "
+        ollama pull dolphin-llama3:8b &&
+        echo 'Model pull complete'
+      "
+    restart: "no"
+
   redis:
     image: redis:7-alpine
     container_name: portal-redis
@@ -55,6 +71,7 @@ services:
       - WEB_PORT=8081
       - PORTAL_BOOTSTRAP_API_KEY=${PORTAL_BOOTSTRAP_API_KEY:?Set PORTAL_BOOTSTRAP_API_KEY in .env}
       - PORTAL_BOOTSTRAP_USER_ID=${PORTAL_BOOTSTRAP_USER_ID:-open-webui}
+      - COMFYUI_URL=${COMFYUI_URL:-http://comfyui:8188}
     volumes:
       - ./data:/app/data
       - ./mcp:/app/mcp
@@ -71,6 +88,31 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+
+  # Proxy router for workspace-based routing (DC-03)
+  portal-router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-router
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - ROUTER_PORT=8000
+      - ROUTER_BIND_IP=0.0.0.0
+      - ROUTER_TOKEN=${ROUTER_TOKEN:-}
+    volumes:
+      - ./src/portal/routing/router_rules.json:/app/src/portal/routing/router_rules.json:ro
+    depends_on:
+      ollama:
+        condition: service_healthy
+    command: ["python", "-m", "portal.routing.router"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -91,6 +133,32 @@ services:
     container_name: portal-whisper
     ports:
       - "10300:10300"
+
+  # ComfyUI for image (and video) generation (DC-01)
+  # NOTE: Requires GPU passthrough. Enable with: docker-compose --profile gpu up
+  # For Mac bare-metal, run ComfyUI natively (see hardware/m4-mac/launch.sh)
+  comfyui:
+    image: ghcr.io/ai-dock/comfyui:latest-cuda
+    container_name: portal-comfyui
+    ports:
+      - "8188:8188"
+    volumes:
+      - comfyui_models:/opt/ComfyUI/models
+      - comfyui_output:/opt/ComfyUI/output
+    environment:
+      - COMFYUI_EXTRA_ARGS=--listen
+    # Uncomment for NVIDIA GPU:
+    # runtime: nvidia
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=all
+    #   - COMFYUI_EXTRA_ARGS=--listen --cuda-device 0
+    profiles:
+      - gpu
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8188/system_stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   mcp-filesystem:
     image: node:20-alpine
@@ -132,7 +200,120 @@ services:
       - ./scripts/mcp:/app/scripts/mcp:ro
       - ./src:/app/src:ro
 
+  # ComfyUI MCP server — bridges portal-api to ComfyUI (DC-02)
+  mcp-comfyui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-mcp-comfyui
+    working_dir: /app
+    environment:
+      - COMFYUI_URL=http://comfyui:8188
+      - COMFYUI_MCP_PORT=8910
+    command: ["python", "-m", "mcp.generation.comfyui_mcp"]
+    ports:
+      - "8910:8910"
+    volumes:
+      - ./mcp:/app/mcp:ro
+    depends_on:
+      - comfyui
+    profiles:
+      - gpu
+
+  # Whisper MCP server (DC-02)
+  mcp-whisper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-mcp-whisper
+    working_dir: /app
+    environment:
+      - WHISPER_URL=http://whisper:10300
+      - WHISPER_MCP_PORT=8915
+    command: ["python", "-m", "mcp.generation.whisper_mcp"]
+    ports:
+      - "8915:8915"
+    volumes:
+      - ./mcp:/app/mcp:ro
+    depends_on:
+      - whisper
+
+  # Video generation MCP (requires ComfyUI with video models)
+  mcp-video:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-mcp-video
+    working_dir: /app
+    environment:
+      - COMFYUI_URL=http://comfyui:8188
+      - VIDEO_MCP_PORT=8911
+    command: ["python", "-m", "mcp.generation.video_mcp"]
+    ports:
+      - "8911:8911"
+    volumes:
+      - ./mcp:/app/mcp:ro
+      - ./data/generated:/app/data/generated
+    depends_on:
+      - comfyui
+    profiles:
+      - gpu
+
+  # Music generation MCP (AudioCraft; models downloaded on first use)
+  mcp-music:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-mcp-music
+    working_dir: /app
+    environment:
+      - MUSIC_MCP_PORT=8912
+    command: ["python", "-m", "mcp.generation.music_mcp"]
+    ports:
+      - "8912:8912"
+    volumes:
+      - ./mcp:/app/mcp:ro
+      - ./data/generated:/app/data/generated
+    profiles:
+      - gpu
+
+  # Document tools MCP (Word/PowerPoint/Excel)
+  mcp-documents:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-mcp-documents
+    working_dir: /app
+    environment:
+      - DOCUMENTS_MCP_PORT=8913
+    command: ["python", "-m", "mcp.documents.document_mcp"]
+    ports:
+      - "8913:8913"
+    volumes:
+      - ./mcp:/app/mcp:ro
+      - ./src:/app/src:ro
+      - ./data/generated:/app/data/generated
+
+  # Code execution sandbox MCP (Docker-in-Docker; SANDBOX_ENABLED must be true)
+  mcp-sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-mcp-sandbox
+    working_dir: /app
+    environment:
+      - SANDBOX_MCP_PORT=8914
+    command: ["python", "-m", "mcp.execution.code_sandbox_mcp"]
+    ports:
+      - "8914:8914"
+    volumes:
+      - ./mcp:/app/mcp:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data/sandbox:/app/data/sandbox
+
 volumes:
   ollama_data:
   qdrant_data:
   openwebui_data:
+  comfyui_models:
+  comfyui_output:

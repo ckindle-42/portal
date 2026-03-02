@@ -28,6 +28,10 @@ class LLMCategory(Enum):
     SECURITY = "security"
     IMAGE_GEN = "image_gen"
     AUDIO_GEN = "audio_gen"
+    VIDEO_GEN = "video_gen"
+    MUSIC_GEN = "music_gen"
+    DOCUMENT_GEN = "document_gen"
+    RESEARCH = "research"
 
 
 @dataclass
@@ -56,7 +60,11 @@ class LLMClassifier:
 - tool_use: Using tools like QR codes, conversions, file operations
 - security: Hacking, exploits, pentesting, red team, blue team, CTF, CVE analysis
 - image_gen: Image creation, illustration, drawing, rendering
-- audio_gen: Text-to-speech, voice cloning, music generation, sound effects
+- audio_gen: Text-to-speech, voice cloning, narration
+- video_gen: Video creation, animation, video clip generation
+- music_gen: Music composition, song generation, soundtracks, beats, sound effects
+- document_gen: Creating Word documents, PowerPoint presentations, Excel spreadsheets, reports
+- research: Deep research, comprehensive analysis, in-depth investigation of a topic
 
 Respond with ONLY the category name (e.g., "code").
 Query: {query}"""
@@ -126,6 +134,10 @@ Query: {query}"""
             TaskCategory.SECURITY: LLMCategory.SECURITY,
             TaskCategory.IMAGE_GEN: LLMCategory.IMAGE_GEN,
             TaskCategory.AUDIO_GEN: LLMCategory.AUDIO_GEN,
+            TaskCategory.VIDEO_GEN: LLMCategory.VIDEO_GEN,
+            TaskCategory.MUSIC_GEN: LLMCategory.MUSIC_GEN,
+            TaskCategory.DOCUMENT_GEN: LLMCategory.DOCUMENT_GEN,
+            TaskCategory.RESEARCH: LLMCategory.RESEARCH,
             TaskCategory.GREETING: LLMCategory.GENERAL,
             TaskCategory.QUESTION: LLMCategory.GENERAL,
             TaskCategory.SUMMARIZATION: LLMCategory.GENERAL,

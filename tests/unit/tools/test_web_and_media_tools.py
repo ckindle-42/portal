@@ -174,9 +174,7 @@ class TestImageGenerator:
             with patch("asyncio.create_subprocess_exec") as mock_subprocess:
                 mock_process = AsyncMock()
                 mock_process.returncode = 0
-                mock_process.communicate = AsyncMock(
-                    return_value=(b"", b"")
-                )
+                mock_process.communicate = AsyncMock(return_value=(b"", b""))
                 mock_subprocess.return_value = mock_process
 
                 with patch("pathlib.Path.exists", return_value=True):
