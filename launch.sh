@@ -550,7 +550,24 @@ run_doctor() {
         local url="$2"
         local optional="${3:-false}"
         local log_hint="${4:-}"
-        if curl -sf "$url" >/dev/null 2>&1; then
+        local retries="${5:-1}"  # Number of retry attempts
+        local delay="${6:-2}"     # Delay between retries in seconds
+
+        local attempt=0
+        local success=false
+
+        while [ $attempt -lt $retries ]; do
+            if curl -sf "$url" >/dev/null 2>&1; then
+                success=true
+                break
+            fi
+            attempt=$((attempt + 1))
+            if [ $attempt -lt $retries ]; then
+                sleep "$delay"
+            fi
+        done
+
+        if [ "$success" = "true" ]; then
             printf "  [%-12s] \033[32mOK\033[0m\n" "$name"
         else
             if [ "$optional" = "true" ]; then
@@ -593,7 +610,8 @@ run_doctor() {
     check_service "web-ui" "http://localhost:8080" "true"
 
     if [ "${MCP_ENABLED:-true}" = "true" ]; then
-        check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}/openapi.json" "false" "mcpo"
+        # mcpo can take 30-50s to start, so retry up to 5 times with 10s delay
+        check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}/openapi.json" "false" "mcpo" "5" "10"
         check_process "scrapling" "scrapling" "false" "scrapling"
     fi
 

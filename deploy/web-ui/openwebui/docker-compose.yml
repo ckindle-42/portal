@@ -1,5 +1,3 @@
-version: "3.8"
-
 # Portal — Open WebUI Stack
 # Usage: docker compose up -d
 # Requires: Ollama running on host at :11434
