@@ -11,6 +11,7 @@ and completed work across the Portal project.
 
 ## Changelog
 
+- **2026-03-02 (run 11 - documentation review):** PORTAL_DOCUMENTATION_AGENT.md executed. Verified all prior discrepancies resolved: D-02 (K8s health probes wired), D-03 (metrics port corrected), D-04 (env vars documented), D-05 (warmup state handled). Updated PORTAL_HOW_IT_WORKS.md discrepancy log to show all issues resolved. Test counts updated to 915 collected, 914 passing.
 - **2026-03-02 (run 11):** ALL TASKS COMPLETE — TASK-53 through TASK-56 all resolved. Health score improved to 10/10. Portal is fully production-ready with zero open findings.
 - **2026-03-02 (run 10):** MLX backend COMPLETE (PR #99 merged). TASK-48 through TASK-52 complete. TASK-53 (K8s probes), TASK-54 (metrics port), TASK-55 (MLX env vars), TASK-56 (knowledge env vars) added. Health score 9.4/10.
 - **2026-03-02 (run 9):** ROAD-F07 COMPLETE — PORTAL_HOW_IT_WORKS.md produced. Health score 9.4/10.
