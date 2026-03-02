@@ -74,16 +74,26 @@ relative to 2-30s generation time. LRU cache avoids reclassifying repeated patte
 
 ## 2. MLX Backend for Apple Silicon
 
-**Status:** Planned
+**Status:** Complete (2026-03-01)
 **Priority:** Medium — performance optimization for M4 Mac users
 **Estimated effort:** 2-3 days
 **Prerequisite:** `pip install mlx-lm`; only relevant when `COMPUTE_BACKEND=mps`
 
-### Problem
+### Problem (addressed)
 
 On M4 Mac, all inference goes through Ollama (llama.cpp + Metal). Apple's MLX framework can
 offer better token throughput for certain model architectures on unified memory. The previous
 `MLXBackend` was a non-functional stub from PocketPortal (removed in 1.3.5).
+
+### Implementation (complete)
+
+The MLX backend has been implemented in PR #99:
+
+1. `MLXServerBackend` class in `model_backends.py` with full generate/generate_stream support
+2. Backend registration in `ExecutionEngine` factory when `enable_mlx: true` is set
+3. Three MLX models added to `default_models.json` (3B, 7B, 14B Qwen2.5 variants)
+4. `hardware/m4-mac/launch.sh` updated with optional MLX server startup
+5. Settings in `BackendsConfig` (`mlx_url`, `enable_mlx`)
 
 ### Design
 

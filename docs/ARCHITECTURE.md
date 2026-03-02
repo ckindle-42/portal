@@ -36,7 +36,7 @@ AgentCore and model backend.
        ▼
 ┌──────────────────────┐   ┌──────────────────────────┐
 │   IntelligentRouter  │   │     ExecutionEngine       │
-│   ModelRegistry      │   │  Ollama (MLX: planned)  │
+│   ModelRegistry      │   │  Ollama, MLX            │
 │   RoutingStrategy    │   │  circuit-breaker pattern   │
 └──────────────────────┘   └──────────────────────────┘
        │
@@ -121,8 +121,8 @@ http://localhost:8081/v1
 | `ModelRegistry` | Catalogue of local models with capability tags and speed classes; `discover_from_ollama()` for dynamic discovery |
 | `IntelligentRouter` | Classifies query complexity and selects optimal model |
 | `RoutingStrategy` | `AUTO` / `QUALITY` / `SPEED` / `BALANCED` |
-| `ExecutionEngine` | Calls Ollama backend; circuit-breaker pattern (MLX: planned - see ROADMAP.md) |
-| `BaseHTTPBackend` | Shared httpx session management; base class for `OllamaBackend` |
+| `ExecutionEngine` | Calls Ollama or MLX backend; circuit-breaker pattern |
+| `BaseHTTPBackend` | Shared httpx session management; base class for `OllamaBackend`, `MLXServerBackend` |
 
 Routing strategies:
 - **AUTO** — automatic complexity-based selection (default)
@@ -154,11 +154,11 @@ pulling a new model into Ollama makes it immediately available to the router.
 
 #### BaseHTTPBackend
 
-`OllamaBackend` inherits from `BaseHTTPBackend`
+`OllamaBackend` and `MLXServerBackend` inherit from `BaseHTTPBackend`
 (`src/portal/routing/model_backends.py`), which manages a shared `httpx`
 `AsyncClient` with connection pooling, configurable timeouts, and
-circuit-breaker state.  `MLXBackend` is a separate in-process backend for
-Apple Silicon (planned).
+circuit-breaker state.  `MLXServerBackend` connects to `mlx_lm.server`
+for Apple Silicon acceleration.
 
 ---
 
@@ -468,7 +468,7 @@ portal/
 │   ├── routing/
 │   │   ├── model_registry.py   ModelRegistry + discover_from_ollama()
 │   │   ├── intelligent_router.py
-│   │   ├── model_backends.py   BaseHTTPBackend, OllamaBackend (MLX: planned)
+│   │   ├── model_backends.py   BaseHTTPBackend, OllamaBackend, MLXServerBackend
 │   │   └── execution_engine.py
 │   ├── protocols/mcp/
 │   │   └── mcp_registry.py     MCPRegistry with retry transport

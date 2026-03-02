@@ -225,6 +225,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [Unreleased] — 2026-03-01 — MLX Backend for Apple Silicon
+
+### Summary
+
+Add MLX-LM server backend support for Apple Silicon Neural Engine acceleration.
+
+### Added
+
+- MLX backend support for Apple Silicon (#99)
+  - `MLXServerBackend` class in `model_backends.py` with generate/generate_stream support
+  - MLX configuration in `BackendsConfig` (`mlx_url`, `enable_mlx`)
+  - Three MLX model entries in `default_models.json` (3B, 7B, 14B Qwen2.5 variants)
+  - Optional MLX server startup in `hardware/m4-mac/launch.sh`
+
+---
+
 ## [Unreleased] — 2026-02-28 — Modularization & Production Hardening
 
 ### Summary
