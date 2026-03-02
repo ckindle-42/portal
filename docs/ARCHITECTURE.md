@@ -295,7 +295,7 @@ them to `MCPRegistry`.
 |-----------|---------|
 | `Watchdog` | Health-checks registered components; auto-restarts on failure |
 | `LogRotator` | Time- and size-based log rotation with optional gzip compression |
-| `metrics.py` | Prometheus metrics endpoint (`:9090/metrics`) |
+| `metrics.py` | Prometheus metrics endpoint (`:8081/metrics`) |
 | `config_watcher.py` | File-system watcher for live config reloads |
 
 ---

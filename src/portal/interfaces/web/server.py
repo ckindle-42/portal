@@ -552,6 +552,30 @@ class WebInterface(BaseInterface):
             body["mcp"] = mcp_status
             return JSONResponse(body, status_code=200)
 
+        @app.get("/health/live")
+        async def liveness():
+            """Liveness probe - returns OK if the service is running."""
+            return {"status": "ok"}
+
+        @app.get("/health/ready")
+        async def readiness():
+            """Readiness probe - returns OK if the agent is ready to serve requests."""
+            if not _agent_ready.is_set():
+                return JSONResponse(
+                    {"status": "not_ready", "reason": "agent_warming_up"},
+                    status_code=503,
+                )
+            try:
+                healthy = await self.agent_core.health_check()
+            except (TimeoutError, RuntimeError):
+                healthy = False
+            if healthy:
+                return {"status": "ready"}
+            return JSONResponse(
+                {"status": "not_ready", "reason": "agent_not_healthy"},
+                status_code=503,
+            )
+
     def _register_websocket_route(self, app: FastAPI) -> None:
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket) -> None:

@@ -68,7 +68,6 @@ class TestDataDrivenRegistry:
         )
         registry.register(custom)
         assert registry.get_model("custom_test") is not None
-<<<<<<< HEAD
         # 10 Ollama + 3 MLX + 1 custom = 14 (after merge)
         assert len(registry.get_all_models()) >= 13
 
