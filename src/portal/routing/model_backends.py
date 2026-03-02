@@ -251,3 +251,97 @@ class OllamaBackend(BaseHTTPBackend):
         except Exception as e:
             logger.error("Failed to list Ollama models: %s", e)
         return []
+
+
+class MLXServerBackend(BaseHTTPBackend):
+    """MLX-LM server backend adapter for Apple Silicon."""
+
+    def __init__(self, base_url: str = "http://localhost:8800") -> None:
+        super().__init__(base_url)
+
+    async def generate(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> GenerationResult:
+        """Generate text using MLX-LM server /v1/chat/completions."""
+        start_time = time.time()
+        try:
+            payload = {
+                "model": model_name,
+                "messages": self._build_chat_messages(prompt, system_prompt, messages),
+                "stream": False,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            status, data = await self._post_json("/v1/chat/completions", payload)
+            if status == 200:
+                msg = data.get("choices", [{}])[0].get("message", {})
+                return GenerationResult(
+                    text=msg.get("content", ""),
+                    tokens_generated=data.get("usage", {}).get("completion_tokens", 0),
+                    time_ms=(time.time() - start_time) * 1000,
+                    model_id=model_name,
+                    success=True,
+                    tool_calls=None,
+                )
+            return self._error_result(model_name, start_time, f"HTTP {status}: {data}")
+        except Exception as e:
+            logger.error("MLX generation error: %s", e)
+            return self._error_result(model_name, start_time, str(e))
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream generation from MLX-LM server /v1/chat/completions."""
+        try:
+            payload = {
+                "model": model_name,
+                "messages": self._build_chat_messages(prompt, system_prompt, messages),
+                "stream": True,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            async for line in self._stream_content("/v1/chat/completions", payload):
+                try:
+                    data = json.loads(line)
+                    if data.get("choices"):
+                        content = data["choices"][0].get("delta", {}).get("content", "")
+                        if content:
+                            yield content
+                except json.JSONDecodeError:
+                    continue
+        except (httpx.HTTPError, json.JSONDecodeError, TimeoutError) as e:
+            logger.error("Stream error from MLX: %s", e, exc_info=True)
+            raise
+
+    async def is_available(self) -> bool:
+        """Check if MLX-LM server is available."""
+        try:
+            session = await self._get_session()
+            response = await session.get(f"{self.base_url}/v1/models")
+            return response.status_code == 200
+        except (httpx.HTTPError, OSError):
+            return False
+
+    async def list_models(self) -> list:
+        """List available MLX models."""
+        try:
+            session = await self._get_session()
+            response = await session.get(f"{self.base_url}/v1/models")
+            if response.status_code == 200:
+                data = response.json()
+                return [m["id"] for m in data.get("data", [])]
+        except Exception as e:
+            logger.error("Failed to list MLX models: %s", e)
+        return []
