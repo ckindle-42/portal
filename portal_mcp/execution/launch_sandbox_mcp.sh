@@ -10,6 +10,9 @@ source "$VENV/bin/activate"
 # Load env
 [ -f "$PORTAL_ROOT/.env" ] && { set -a; source "$PORTAL_ROOT/.env"; set +a; }
 
+# Add portal_mcp to Python path
+export PYTHONPATH="${PORTAL_ROOT}:${PYTHONPATH:-}"
+
 SANDBOX_ENABLED="${SANDBOX_ENABLED:-false}"
 
 if [ "$SANDBOX_ENABLED" != "true" ]; then
@@ -32,7 +35,7 @@ launch_server() {
         return
     fi
 
-    SANDBOX_MCP_PORT=$SANDBOX_MCP_PORT nohup python "$PORTAL_ROOT/mcp/execution/$script" >> "$log_file" 2>&1 &
+    SANDBOX_MCP_PORT=$SANDBOX_MCP_PORT nohup python "$PORTAL_ROOT/portal_mcp/execution/$script" >> "$log_file" 2>&1 &
     echo $! > "$pid_file"
     echo "[mcp-${name}] started (PID $(cat "$pid_file"), port $SANDBOX_MCP_PORT)"
 }

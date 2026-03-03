@@ -82,6 +82,11 @@ case "$COMMAND" in
         if [ "$GENERATION_SERVICES" = "true" ]; then
             bash "$PORTAL_ROOT/portal_mcp/generation/launch_generation_mcps.sh" || true
         fi
+
+        # 6. Start sandbox MCP if enabled
+        if [ "${SANDBOX_ENABLED:-false}" = "true" ]; then
+            bash "$PORTAL_ROOT/portal_mcp/execution/launch_sandbox_mcp.sh" || true
+        fi
     fi
 
     echo ""
