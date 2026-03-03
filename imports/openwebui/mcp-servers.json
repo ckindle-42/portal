@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "description": "Portal MCP Tool Server configurations for Open WebUI",
+  "tool_servers": [
+    {
+      "name": "Portal Music",
+      "url": "http://host.docker.internal:8912/mcp",
+      "api_key": ""
+    },
+    {
+      "name": "Portal Documents",
+      "url": "http://host.docker.internal:8913/mcp",
+      "api_key": ""
+    },
+    {
+      "name": "Portal Code",
+      "url": "http://host.docker.internal:8914/mcp",
+      "api_key": ""
+    },
+    {
+      "name": "Portal TTS",
+      "url": "http://host.docker.internal:8916/mcp",
+      "api_key": ""
+    }
+  ]
+}
