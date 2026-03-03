@@ -41,7 +41,7 @@ Portal is a **local-first AI platform** that runs entirely on user hardware. It 
 src/portal/
 ├── agent/            # CentralDispatcher (interface registry)
 ├── config/           # Pydantic v2 settings (Settings, load_settings)
-├── core/             # AgentCore, EventBus, ContextManager, types, factories
+├── core/             # AgentCore, EventBus, ContextManager, types, factories, tool_schema_builder
 ├── interfaces/       # Web (FastAPI :8081), Telegram, Slack — all active
 ├── memory/           # MemoryManager (Mem0 or SQLite)
 ├── middleware/       # HITL approval, tool confirmation

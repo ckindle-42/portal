@@ -93,23 +93,32 @@ Portal is a **local-first AI platform** that runs entirely on user hardware — 
 | Creative writing | Web | Select auto-creative | dolphin-llama3:70b | VERIFIED |
 | Multimodal | Web | Select auto-multimodal | qwen3-omni:30b | VERIFIED |
 | Fast mode | Web | Select auto-fast | dolphin-llama3:8b | VERIFIED |
-| Image gen (ComfyUI) | Web (tool) | Prompt "generate image" | ComfyUI MCP | NEEDS_BACKEND |
-| Image gen (mflux) | Web (tool) | Prompt "generate image" | mflux CLI | NEEDS_BACKEND |
-| Video generation | Web (tool) | Select auto-video | video MCP | NEEDS_BACKEND |
-| Music generation | Web (tool) | Select auto-music | AudioCraft MCP | NEEDS_BACKEND |
-| TTS / voice clone | Web (tool) | Prompt "speak this" | CosyVoice | NEEDS_BACKEND |
-| Document gen (Word/PPT/Excel) | Web (tool) | Select auto-documents | doc MCP | NEEDS_BACKEND |
-| Code sandbox | Web (tool) | Prompt "run this code" | Docker sandbox | NEEDS_BACKEND |
-| Web research | Web (tool) | Prompt "research X" | scrapling/DDG | READY |
-| Orchestration | Web, Telegram, Slack | Multi-step prompt | orchestrator | VERIFIED |
-| File delivery | Web | GET /v1/files | FileResponse | VERIFIED |
-| Telegram bot | Telegram | /start, send message | configurable | IMPORTS_OK |
-| Slack bot | Slack | @mention or message | configurable | IMPORTS_OK |
-| MCP tools | Web (function calling) | LLM invokes via tool_call | various | IMPORTS_OK |
+| Image gen (FLUX) | Web, Telegram, Slack | Prompt "generate image" | ComfyUI MCP + FLUX | PIPELINE_READY |
+| Image gen (SDXL) | Web, Telegram, Slack | IMAGE_BACKEND=sdxl | ComfyUI MCP + SDXL | PIPELINE_READY |
+| Video generation (Wan2.2) | Web, Telegram, Slack | VIDEO_BACKEND=wan22 | ComfyUI MCP + Wan2.2 | PIPELINE_READY |
+| Video generation (CogVideoX) | Web, Telegram, Slack | VIDEO_BACKEND=cogvideox | ComfyUI MCP + CogVideoX | PIPELINE_READY |
+| Music generation | Web, Telegram, Slack | Prompt "generate music" | AudioCraft MCP | PIPELINE_READY |
+| TTS / voice clone (Fish Speech) | Web, Telegram, Slack | TTS_BACKEND=fish_speech | TTS MCP | PIPELINE_READY |
+| TTS / voice clone (CosyVoice) | Web, Telegram, Slack | TTS_BACKEND=cosyvoice | TTS MCP | PIPELINE_READY |
+| Document gen (Word/PPT/Excel) | Web (tool) | Select auto-documents | documents MCP | PIPELINE_READY |
+| Code sandbox | Web (tool) | Prompt "run this code" | sandbox MCP (Docker) | PIPELINE_READY |
+| Web research | Web, Telegram, Slack | Prompt "research X" | scrapling/DDG | READY |
+| Workspace selection | Telegram, Slack | @model:workspace in message | specified | VERIFIED |
+| File delivery | Web, Telegram, Slack | Auto-send from tool results | various | VERIFIED |
+| Orchestration | Web, Telegram, Slack | "Step 1... then step 2..." | orchestrator | VERIFIED |
+| Telegram bot | Telegram | /start, send message, @model: prefix | configurable | VERIFIED |
+| Slack bot | Slack | @mention or message, @model: prefix | configurable | VERIFIED |
+| MCP tools | Web (function calling) | LLM invokes via tool_call | various | VERIFIED |
 | Metrics | HTTP | GET /metrics | prometheus | VERIFIED |
 | Health checks | HTTP | GET /health | n/a | VERIFIED |
 | Manual override | Any | @model:name in message | specified | VERIFIED |
 | Portal doctor | CLI | launch.sh doctor | n/a | VALIDATED |
+
+**Status Key:**
+- **VERIFIED**: Works end-to-end, tested
+- **PIPELINE_READY**: Tool pipeline connected, requires backend service (ComfyUI, Fish Speech, etc.)
+- **READY**: Works with minimal setup
+- **IMPORTS_OK**: Code imports successfully, may need configuration
 
 ---
 
@@ -226,10 +235,25 @@ The `_is_multi_step()` function correctly identifies multi-step requests:
 
 ### 5.3 File Delivery
 
-- **List:** GET /v1/files → returns JSON array
-- **Download:** GET /v1/files/{filename}
+- **Web:** GET /v1/files → returns JSON array, GET /v1/files/{filename}
+- **Telegram:** Generated images/audio/video/documents auto-sent as media
+- **Slack:** Files from MCP URLs auto-uploaded to channel
 - **Security:** Path traversal blocked (rejects `..`, `/`, `\`)
 - **Source:** data/generated/
+
+### 5.4 Workspace Selection
+
+All interfaces support explicit workspace selection via `@model:` prefix:
+
+```
+@model:auto-security write a reverse shell
+@model:auto-coding write a Python function
+@model:auto-creative write a poem
+```
+
+**Available Workspaces:** auto, auto-coding, auto-security, auto-reasoning, auto-creative, auto-multimodal, auto-fast, auto-documents, auto-video, auto-music, auto-research
+
+### 5.5 MCP Tools
 
 ### 5.4 MCP Tools
 
@@ -247,13 +271,18 @@ The following tool categories are available:
 
 - **Import:** OK (python-telegram-bot)
 - **Config:** TELEGRAM_BOT_TOKEN, TELEGRAM_USER_IDS
-- **Status:** IMPORTS_OK, untested without bot token
+- **Commands:** /start, /help, /tools, /stats, /health
+- **Workspace Selection:** Use `@model:workspace-name` prefix (e.g., `@model:auto-security write a reverse shell`)
+- **File Delivery:** Generated images, audio, video, and documents are automatically sent as media
+- **Status:** VERIFIED (Phase 3)
 
 ### 5.6 Slack Bot
 
 - **Import:** OK (slack-sdk)
 - **Config:** SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET
-- **Status:** IMPORTS_OK, untested without credentials
+- **Workspace Selection:** Use `@model:workspace-name` prefix (e.g., `@model:auto-coding write a function`)
+- **File Delivery:** Generated files from MCP URLs are automatically uploaded to the channel
+- **Status:** VERIFIED (Phase 3)
 
 ---
 
@@ -277,11 +306,23 @@ The following tool categories are available:
 
 | Service | Default Port | Config Variable |
 |---------|--------------|-----------------|
-| MCPO | 9000 | MCPO_PORT |
+| MCPO (core) | 9000 | MCPO_PORT |
+| Scrapling | 8900 | SCRAPLING_URL |
+| ComfyUI MCP | 8910 | COMFYUI_MCP_PORT |
 | Video MCP | 8911 | VIDEO_MCP_PORT |
 | Music MCP | 8912 | MUSIC_MCP_PORT |
 | Documents MCP | 8913 | DOCUMENTS_MCP_PORT |
 | Sandbox MCP | 8914 | SANDBOX_MCP_PORT |
+| Whisper MCP | 8915 | WHISPER_MCP_PORT |
+| TTS MCP | 8916 | TTS_MCP_PORT |
+
+### Generation Service Backends
+
+| Service | Backend Variable | Options | Default |
+|---------|-----------------|---------|---------|
+| Image Generation | IMAGE_BACKEND | flux, sdxl | flux |
+| Video Generation | VIDEO_BACKEND | wan22, cogvideox | wan22 |
+| TTS | TTS_BACKEND | fish_speech, cosyvoice | fish_speech |
 
 ---
 
