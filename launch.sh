@@ -518,7 +518,11 @@ start_extended_services() {
         local gen_script="$PORTAL_ROOT/portal_mcp/generation/launch_generation_mcps.sh"
         if [ -f "$gen_script" ]; then
             echo "[generation] starting..."
-            bash "$gen_script" || true
+            if ! bash "$gen_script" 2>&1; then
+                echo "[generation] WARNING: failed to start — check logs: bash launch.sh logs mcp-comfyui"
+            fi
+        else
+            echo "[generation] ERROR: script not found: $gen_script"
         fi
     fi
 }
@@ -632,14 +636,19 @@ run_doctor() {
         check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}/openapi.json" "false" "mcpo" "5" "10"
         check_process "scrapling" "scrapling" "false" "scrapling"
         # Docker MCP services - check port is open (they don't expose /health endpoints)
-        check_port "mcp-music" "${MUSIC_MCP_PORT:-8912}" "true"
-        check_port "mcp-documents" "${DOCUMENTS_MCP_PORT:-8913}" "true"
-        check_port "mcp-tts" "${TTS_MCP_PORT:-8916}" "true"
+        # Docker MCP services - required when GENERATION_SERVICES=true
+        local mcp_optional="true"
+        if [ "${GENERATION_SERVICES:-false}" = "true" ]; then
+            mcp_optional="false"
+        fi
+        check_port "mcp-music" "${MUSIC_MCP_PORT:-8912}" "$mcp_optional"
+        check_port "mcp-documents" "${DOCUMENTS_MCP_PORT:-8913}" "$mcp_optional"
+        check_port "mcp-tts" "${TTS_MCP_PORT:-8916}" "$mcp_optional"
         # Native generation MCP services (when GENERATION_SERVICES=true)
         if [ "${GENERATION_SERVICES:-false}" = "true" ]; then
-            check_port "mcp-comfyui" "${COMFYUI_MCP_PORT:-8910}" "true"
-            check_port "mcp-video" "${VIDEO_MCP_PORT:-8911}" "true"
-            check_port "mcp-whisper" "${WHISPER_MCP_PORT:-8915}" "true"
+            check_port "mcp-comfyui" "${COMFYUI_MCP_PORT:-8910}" "false"
+            check_port "mcp-video" "${VIDEO_MCP_PORT:-8911}" "false"
+            check_port "mcp-whisper" "${WHISPER_MCP_PORT:-8915}" "false"
         fi
     fi
 
@@ -704,14 +713,35 @@ stop_all() {
 
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 tail_logs() {
-    local service="${1:-portal-api}"
+    local service="${1:-}"
+    if [ -z "$service" ]; then
+        echo "Usage: bash launch.sh logs <service>"
+        echo ""
+        echo "Available services:"
+        ls -1 "$LOG_DIR"/*.log 2>/dev/null | xargs -I{} basename {} .log | sort | while read -r log; do
+            echo "  $log"
+        done
+        echo ""
+        echo "Examples:"
+        echo "  bash launch.sh logs portal-api"
+        echo "  bash launch.sh logs router"
+        echo "  bash launch.sh logs mcpo"
+        echo "  bash launch.sh logs mcp-comfyui"
+        echo "  bash launch.sh logs scrapling"
+        exit 0
+    fi
+
     local log_file="$LOG_DIR/${service}.log"
     if [ ! -f "$log_file" ]; then
         echo "No log file found: $log_file"
+        echo ""
         echo "Available logs:"
-        ls "$LOG_DIR"/*.log 2>/dev/null | xargs -I{} basename {} .log || echo "  (none)"
+        ls -1 "$LOG_DIR"/*.log 2>/dev/null | xargs -I{} basename {} .log | sort | while read -r log; do
+            echo "  $log"
+        done
         exit 1
     fi
+    echo "Tailing: $log_file (Ctrl+C to exit)"
     tail -f "$log_file"
 }
 
