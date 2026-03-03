@@ -52,6 +52,7 @@ class ModelBackend(ABC):
         max_tokens: int = 2048,
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> GenerationResult:
         """Generate text from model"""
         pass
@@ -65,6 +66,7 @@ class ModelBackend(ABC):
         max_tokens: int = 2048,
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[str]:
         """Stream text generation"""
         ...
@@ -176,6 +178,7 @@ class OllamaBackend(BaseHTTPBackend):
         max_tokens: int = 2048,
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> GenerationResult:
         """Generate text using Ollama /api/chat (supports tool calls)."""
         start_time = time.time()
@@ -186,6 +189,8 @@ class OllamaBackend(BaseHTTPBackend):
                 "stream": False,
                 "options": {"num_predict": max_tokens, "temperature": temperature},
             }
+            if tools:
+                payload["tools"] = tools
             status, data = await self._post_json("/api/chat", payload)
             if status == 200:
                 msg = data.get("message", {})
@@ -210,6 +215,7 @@ class OllamaBackend(BaseHTTPBackend):
         max_tokens: int = 2048,
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream generation from Ollama /api/chat."""
         try:
@@ -219,6 +225,8 @@ class OllamaBackend(BaseHTTPBackend):
                 "stream": True,
                 "options": {"num_predict": max_tokens, "temperature": temperature},
             }
+            if tools:
+                payload["tools"] = tools
             async for line in self._stream_content("/api/chat", payload):
                 try:
                     data = json.loads(line)
@@ -267,6 +275,7 @@ class MLXServerBackend(BaseHTTPBackend):
         max_tokens: int = 2048,
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> GenerationResult:
         """Generate text using MLX-LM server /v1/chat/completions."""
         start_time = time.time()
@@ -302,6 +311,7 @@ class MLXServerBackend(BaseHTTPBackend):
         max_tokens: int = 2048,
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream generation from MLX-LM server /v1/chat/completions."""
         try:

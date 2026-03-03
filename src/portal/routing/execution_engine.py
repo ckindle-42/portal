@@ -90,6 +90,7 @@ class ExecutionEngine:
         max_cost: float = 1.0,
         messages: list[dict[str, Any]] | None = None,
         workspace_id: str | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> ExecutionResult:
         """Execute query with routing and fallback. Returns ExecutionResult."""
         start_time = time.time()
@@ -118,6 +119,7 @@ class ExecutionEngine:
                     max_tokens=max_tokens,
                     temperature=temperature,
                     messages=messages,
+                    tools=tools,
                 )
                 if result.success:
                     if self.circuit_breaker:
@@ -164,6 +166,7 @@ class ExecutionEngine:
         max_tokens: int,
         temperature: float,
         messages: list[dict[str, Any]] | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> GenerationResult:
         """Execute with timeout handling"""
 
@@ -176,6 +179,7 @@ class ExecutionEngine:
                     max_tokens=max_tokens,
                     temperature=temperature,
                     messages=messages,
+                    tools=tools,
                 ),
                 timeout=self.timeout_seconds,
             )
@@ -199,6 +203,7 @@ class ExecutionEngine:
         temperature: float = 0.7,
         messages: list[dict[str, Any]] | None = None,
         workspace_id: str | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[str]:
         """
         Stream generation token-by-token from the best available backend.
@@ -232,6 +237,7 @@ class ExecutionEngine:
                     max_tokens=max_tokens,
                     temperature=temperature,
                     messages=messages,
+                    tools=tools,
                 ):
                     yielded = True
                     yield token

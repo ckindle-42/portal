@@ -29,6 +29,7 @@ from .exceptions import ModelNotAvailableError, PortalError, ToolExecutionError
 from .orchestrator import TaskOrchestrator
 from .prompt_manager import PromptManager
 from .structured_logger import TraceContext, get_logger
+from .tool_schema_builder import build_tool_schemas
 from .types import IncomingMessage, InterfaceType, ProcessingResult
 
 if TYPE_CHECKING:
@@ -86,6 +87,9 @@ class AgentCore:
         loaded, failed = self.tool_registry.discover_and_load()
         self.stats = self._initial_stats()
 
+        # Build and cache tool schemas for OpenAI function-calling format
+        self._tool_schemas: list[dict[str, Any]] | None = None
+
         logger.info(
             "AgentCore initialized successfully",
             routing_strategy=router.strategy.value if hasattr(router, "strategy") else "unknown",
@@ -116,6 +120,16 @@ class AgentCore:
             "errors": 0,
         }
 
+    def get_tool_schemas(self) -> list[dict[str, Any]]:
+        """Get cached tool schemas for OpenAI function-calling format. Builds on first call."""
+        if self._tool_schemas is None:
+            self._tool_schemas = build_tool_schemas(
+                tool_registry=self.tool_registry,
+                mcp_registry=self.mcp_registry,
+            )
+            logger.info("Built tool schemas", count=len(self._tool_schemas))
+        return self._tool_schemas
+
     def _is_multi_step(self, message: str) -> bool:
         """Detect ONLY explicitly structured multi-step requests.
 
@@ -143,9 +157,11 @@ class AgentCore:
     async def _call_llm(self, prompt: str) -> str:
         """Execute an LLM call for the orchestrator."""
         # Use the default model and generate a response
+        tools = self.get_tool_schemas()
         response = await self.execution_engine.execute(
             query=prompt,
             messages=[{"role": "user", "content": prompt}],
+            tools=tools if tools else None,
         )
         return response.response
 
@@ -444,8 +460,10 @@ class AgentCore:
         await self.event_bus.publish(
             EventType.MODEL_GENERATING, chat_id, {"model": decision.model_id}, trace_id
         )
+        tools = self.get_tool_schemas()
         result = await self.execution_engine.execute(
-            query=query, system_prompt=system_prompt, messages=messages, workspace_id=workspace_id
+            query=query, system_prompt=system_prompt, messages=messages, workspace_id=workspace_id,
+            tools=tools if tools else None,
         )
         if not result.success:
             raise ModelNotAvailableError(
@@ -488,10 +506,12 @@ class AgentCore:
 
         for _ in range(max_rounds):
             loop_messages = messages if not tool_messages else (messages or []) + tool_messages
+            tools = self.get_tool_schemas()
             preflight = await self.execution_engine.execute(
                 query=query,
                 system_prompt=system_prompt,
                 messages=loop_messages,
+                tools=tools if tools else None,
             )
             if not preflight.success:
                 break

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry, RoutingStrategy
@@ -151,6 +152,32 @@ class DependencyContainer:
         await registry.register(
             name="scrapling", url=scrapling_url + "/mcp", transport="streamable-http"
         )
+
+        # Document tools (always available — lightweight, no GPU needed)
+        documents_url = os.getenv("DOCUMENTS_MCP_URL", f"http://localhost:{os.getenv('DOCUMENTS_MCP_PORT', '8913')}")
+        await registry.register(name="documents", url=documents_url, transport="streamable-http")
+
+        # Generation services (when GENERATION_SERVICES=true)
+        generation_enabled = os.getenv("GENERATION_SERVICES", "false").lower() == "true"
+
+        if generation_enabled:
+            comfyui_url = os.getenv("COMFYUI_MCP_URL", "http://localhost:8910")
+            await registry.register(name="comfyui", url=comfyui_url, transport="streamable-http")
+
+            whisper_url = os.getenv("WHISPER_MCP_URL", "http://localhost:8915")
+            await registry.register(name="whisper", url=whisper_url, transport="streamable-http")
+
+            video_url = os.getenv("VIDEO_MCP_URL", f"http://localhost:{os.getenv('VIDEO_MCP_PORT', '8911')}")
+            await registry.register(name="video", url=video_url, transport="streamable-http")
+
+            music_url = os.getenv("MUSIC_MCP_URL", f"http://localhost:{os.getenv('MUSIC_MCP_PORT', '8912')}")
+            await registry.register(name="music", url=music_url, transport="streamable-http")
+
+        # Sandbox (when SANDBOX_ENABLED=true)
+        if os.getenv("SANDBOX_ENABLED", "false").lower() == "true":
+            sandbox_url = os.getenv("SANDBOX_MCP_URL", f"http://localhost:{os.getenv('SANDBOX_MCP_PORT', '8914')}")
+            await registry.register(name="sandbox", url=sandbox_url, transport="streamable-http")
+
         self.mcp_registry = registry
         return registry
 
