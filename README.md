@@ -16,6 +16,21 @@ It provides a unified brain (AgentCore) behind whichever interface you prefer:
 All interfaces share the same routing system, MCP tools, and conversation context.
 Adding a 4th interface is ~50 lines of Python.
 
+## Capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Chat** | OpenAI-compatible `/v1/chat/completions` with streaming (SSE) |
+| **Image Generation** | ComfyUI integration for AI image generation |
+| **Video Generation** | Video generation via video_mcp |
+| **Music Generation** | Music/audio generation via music_mcp |
+| **Document Creation** | Word, PowerPoint, Excel via document_mcp |
+| **Code Sandbox** | Secure Python/Node/Bash execution in Docker |
+| **Web Research** | Targeted web search when models need current info |
+| **Multi-Step Tasks** | Task orchestrator for sequential multi-step requests |
+| **File Delivery** | Download generated files via `/v1/files` |
+| **Voice** | Audio transcription via Whisper |
+
 ## Hardware
 
 | Target | Status |

@@ -10,10 +10,10 @@ class TestMultiStepDetection:
     @pytest.fixture
     def agent_core(self):
         """Create AgentCore instance with minimal deps for testing"""
-        from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry
         from portal.core.context_manager import ContextManager
         from portal.core.event_bus import EventBus
         from portal.core.prompt_manager import PromptManager
+        from portal.routing import ExecutionEngine, IntelligentRouter, ModelRegistry
         from portal.tools import ToolRegistry
 
         # Minimal setup - we just need the agent_core instance to test _is_multi_step

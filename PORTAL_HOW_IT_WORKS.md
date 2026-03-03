@@ -87,9 +87,9 @@ Portal is a **total inclusive offline AI platform** that runs entirely on user h
 | Blue team / SIEM | READY | Ollama | All |
 | Creative writing | READY | Ollama | All |
 | Deep reasoning | READY | Ollama | All |
-| Web search | PARTIAL (needs internet) | DuckDuckGo API | All |
+| Web search | READY (internet required) | DuckDuckGo / Scrapling | All |
 | Local knowledge / RAG | NEEDS BACKEND | sentence-transformers | All |
-| Code execution sandbox | NEEDS BACKEND | Docker | All |
+| Code execution sandbox | READY | Docker | All |
 | Multimodal (vision/audio) | READY | Ollama (qwen3-omni) | All |
 
 **Status legend:**
@@ -654,8 +654,8 @@ bash launch.sh doctor
 | Telegram bot | Telegram | /start, send message | configurable | READY |
 | Slack bot | Slack | @mention or message | configurable | READY |
 | MCP tools | Web (function calling) | LLM invokes via tool_call | various | READY |
-| Code execution sandbox | Web (tool) | Ask to run code | Docker sandbox | NEEDS BACKEND |
-| Web search | Web (tool) | Ask to search | DuckDuckGo | PARTIAL (internet) |
+| Code execution sandbox | Web (tool) | Ask to run code | Docker sandbox | READY |
+| Web search | Web (tool) | Ask to search | DuckDuckGo / Scrapling | READY (internet) |
 | RAG/knowledge | Web | Tool call | sentence-transformers | NEEDS BACKEND |
 | Metrics | HTTP | GET /metrics | prometheus | READY |
 | Health checks | HTTP | GET /health | n/a | READY |

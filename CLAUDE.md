@@ -79,6 +79,7 @@ These facts prevent wasted effort and accidental breakage:
 - `interfaces/telegram/` and `interfaces/slack/` — optional but actively maintained interfaces.
 - `conftest.py` (root) — shared pytest fixtures, not a duplicate of `tests/conftest.py`.
 - `mcp/` — MCP server configurations used by the platform.
+- `src/portal/core/orchestrator.py` — TaskOrchestrator for multi-step requests.
 - This file (`CLAUDE.md`) — authoritative config for Claude Code sessions.
 
 ---

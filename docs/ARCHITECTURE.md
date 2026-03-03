@@ -1,6 +1,6 @@
 # Portal Architecture
 
-**Version:** 1.4.6
+**Version:** 1.5.0
 **Last updated:** March 2026
 
 ---
@@ -64,6 +64,8 @@ The central processing engine.  All interfaces funnel requests through here.
 | `health_check()` | Returns `True` if the execution engine is reachable |
 | `execute_tool(tool_name, parameters, ...)` | Direct tool execution with optional human-in-the-loop confirmation |
 | `_dispatch_mcp_tools(tool_calls, ...)` | Dispatches LLM-requested tool calls to MCPRegistry |
+| `_is_multi_step(message)` | Detects explicitly multi-step prompts for orchestration |
+| `_handle_orchestrated_request(message)` | Routes multi-step requests to TaskOrchestrator |
 
 **Dependencies (all injected via DependencyContainer):**
 - `ModelRegistry` — catalogue of available models and their capabilities
@@ -90,6 +92,8 @@ All concrete interfaces inherit from `BaseInterface`
 - **GET `/v1/models`** — virtual model list proxied from the Ollama router
 - **WS `/ws`** — WebSocket streaming chat
 - **GET `/health`** — live health check; calls `AgentCore.health_check()`
+- **GET `/v1/files`** — list generated files from `data/generated/`
+- **GET `/v1/files/{filename}`** — download generated files (with path traversal protection)
 
 Open WebUI and LibreChat connect here via "Custom OpenAI Endpoint":
 ```
@@ -282,6 +286,10 @@ sub-URL (e.g. `http://localhost:9000/filesystem`) so the path resolves to
 | `scrapling` | streamable-http | Web scraping via Scrapling at :8900 |
 | ComfyUI | openapi | Image generation at :8188 |
 | Whisper | openapi | Audio transcription at :5002 |
+| `video_mcp` | streamable-http | Video generation at :8911 |
+| `music_mcp` | streamable-http | Music/audio generation at :8912 |
+| `document_mcp` | streamable-http | Document creation (Word, PowerPoint, Excel) at :8913 |
+| `code_sandbox_mcp` | streamable-http | Secure code execution in Docker at :8914 |
 
 MCP dispatch into `AgentCore.process_message()` is fully wired: `OllamaBackend.generate()`
 surfaces `tool_calls` from the LLM response and `AgentCore._dispatch_mcp_tools()` routes
