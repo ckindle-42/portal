@@ -574,6 +574,9 @@ start_comfyui() {
         echo "[comfyui] not found at $comfy_dir"
         echo "[comfyui] installing..."
 
+        # Clear any existing comfy workspace config to avoid path conflicts
+        rm -rf "$HOME/.comfyui" 2>/dev/null || true
+
         # Use venv pip to avoid PEP 668 (externally managed environment) error
         if [ -f "$venv_pip" ]; then
             "$venv_pip" install -q comfy-cli
@@ -593,6 +596,8 @@ start_comfyui() {
         fi
 
         # Clone ComfyUI directly to our desired path
+        # Remove existing directory if it exists (might be partial clone)
+        rm -rf "$comfy_dir" 2>/dev/null || true
         echo "[comfyui] cloning ComfyUI to $comfy_dir..."
         if ! git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git "$comfy_dir" 2>/dev/null; then
             echo "[comfyui] ERROR: failed to clone ComfyUI"
