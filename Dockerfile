@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install into a virtualenv so we can copy it cleanly to the runtime stage
 COPY pyproject.toml ./
 COPY src/ ./src/
+COPY portal_mcp/ ./portal_mcp/
 
 RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
@@ -31,9 +32,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy venv from builder and source tree
 COPY --from=builder /opt/venv /opt/venv
 COPY --chown=portal:portal src/ ./src/
+COPY --chown=portal:portal portal_mcp/ ./portal_mcp/
 
 ENV PATH=/opt/venv/bin:$PATH \
-    PYTHONPATH=/app/src
+    PYTHONPATH=/app/src:/app/portal_mcp
 
 USER portal
 

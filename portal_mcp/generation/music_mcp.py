@@ -13,7 +13,7 @@ import logging
 import os
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("music-generation")
 
@@ -144,4 +144,6 @@ async def list_music_models() -> dict:
 
 if __name__ == "__main__":
     port = int(os.getenv("MUSIC_MCP_PORT", "8912"))
-    mcp.run(transport="streamable-http", port=port)
+    mcp.settings.port = port
+    mcp.settings.host = "0.0.0.0"
+    mcp.run(transport="streamable-http")

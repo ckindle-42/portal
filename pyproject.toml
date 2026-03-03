@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "portal"
-version = "3.0.2"
+version = "3.0.3"
 description = "Local-first AI platform. Web-primary. Multi-interface. Hardware-agnostic."
 readme = "README.md"
 license = { text = "MIT" }
@@ -47,6 +47,8 @@ mcp = [
     "scrapling>=0.2",
     "playwright>=1.40.0",
     "curl-cffi>=0.6.0",
+    # MCP SDK for MCP servers
+    "mcp>=1.0.0",
     # scrapling transitive deps not declared in its extras
     "browserforge",
     "msgspec",
@@ -62,6 +64,8 @@ all = [
     "scrapling>=0.2",
     "playwright>=1.40.0",
     "curl-cffi>=0.6.0",
+    # MCP SDK for MCP servers
+    "mcp>=1.0.0",
     # scrapling transitive deps not declared in its extras
     "browserforge",
     "msgspec",

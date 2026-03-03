@@ -175,8 +175,6 @@ services:
     # environment:
     #   - NVIDIA_VISIBLE_DEVICES=all
     #   - COMFYUI_EXTRA_ARGS=--listen --cuda-device 0
-    profiles:
-      - gpu
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8188/system_stats"]
       interval: 30s
@@ -240,8 +238,6 @@ services:
       - ./mcp:/app/mcp:ro
     depends_on:
       - comfyui
-    profiles:
-      - gpu
 
   # Whisper MCP server (DC-02)
   mcp-whisper:
@@ -279,8 +275,6 @@ services:
       - ./data/generated:/app/data/generated
     depends_on:
       - comfyui
-    profiles:
-      - gpu
 
   # Music generation MCP (AudioCraft; models downloaded on first use)
   mcp-music:
@@ -297,8 +291,6 @@ services:
     volumes:
       - ./mcp:/app/mcp:ro
       - ./data/generated:/app/data/generated
-    profiles:
-      - gpu
 
   # Document tools MCP (Word/PowerPoint/Excel)
   mcp-documents:
@@ -351,8 +343,6 @@ services:
     volumes:
       - ./mcp:/app/mcp:ro
       - ./data/generated:/app/data/generated
-    profiles:
-      - gpu
 
 volumes:
   ollama_data:

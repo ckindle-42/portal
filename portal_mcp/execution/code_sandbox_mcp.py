@@ -18,7 +18,7 @@ import os
 import uuid
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("code-sandbox")
 
@@ -232,4 +232,6 @@ async def sandbox_status() -> dict:
 
 if __name__ == "__main__":
     port = int(os.getenv("SANDBOX_MCP_PORT", "8914"))
-    mcp.run(transport="streamable-http", port=port)
+    mcp.settings.port = port
+    mcp.settings.host = "0.0.0.0"
+    mcp.run(transport="streamable-http")

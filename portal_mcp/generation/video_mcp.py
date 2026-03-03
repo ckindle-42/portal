@@ -15,7 +15,7 @@ import time
 import uuid
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("video-generation")
 
@@ -293,4 +293,6 @@ async def list_video_models() -> list[str]:
 
 if __name__ == "__main__":
     port = int(os.getenv("VIDEO_MCP_PORT", "8911"))
-    mcp.run(transport="streamable-http", port=port)
+    mcp.settings.port = port
+    mcp.settings.host = "0.0.0.0"
+    mcp.run(transport="streamable-http")

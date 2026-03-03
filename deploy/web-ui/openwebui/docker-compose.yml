@@ -93,5 +93,57 @@ services:
       start_period: 60s
       retries: 3
 
+# -----------------------------------------------------------------------
+  # MCP Services - Standalone (no external dependencies)
+  # -----------------------------------------------------------------------
+  # Document tools MCP (Word/PowerPoint/Excel generation)
+  mcp-documents:
+    build:
+      context: ../../../
+      dockerfile: Dockerfile
+    container_name: portal-mcp-documents
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - DOCUMENTS_MCP_PORT=8913
+    command: ["python", "-m", "portal_mcp.documents.document_mcp"]
+    ports:
+      - "8913:8913"
+    volumes:
+      - ${HOME}/AI_Output:/app/data/generated
+
+  # Music generation MCP (AudioCraft/MusicGen)
+  mcp-music:
+    build:
+      context: ../../../
+      dockerfile: Dockerfile
+    container_name: portal-mcp-music
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - MUSIC_MCP_PORT=8912
+    command: ["python", "-m", "portal_mcp.generation.music_mcp"]
+    ports:
+      - "8912:8912"
+    volumes:
+      - ${HOME}/AI_Output:/app/data/generated
+
+  # TTS MCP (Fish Speech / CosyVoice)
+  mcp-tts:
+    build:
+      context: ../../../
+      dockerfile: Dockerfile
+    container_name: portal-mcp-tts
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - TTS_MCP_PORT=8916
+      - TTS_BACKEND=${TTS_BACKEND:-fish_speech}
+    command: ["python", "-m", "portal_mcp.generation.tts_mcp"]
+    ports:
+      - "8916:8916"
+    volumes:
+      - ${HOME}/AI_Output:/app/data/generated
+
 volumes:
   open-webui-data:

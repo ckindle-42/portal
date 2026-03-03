@@ -12,7 +12,7 @@ import logging
 import os
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("tts-generation")
 
@@ -386,4 +386,6 @@ async def list_voices() -> dict:
 
 if __name__ == "__main__":
     port = int(os.getenv("TTS_MCP_PORT", "8916"))
-    mcp.run(transport="streamable-http", port=port)
+    mcp.settings.port = port
+    mcp.settings.host = "0.0.0.0"
+    mcp.run(transport="streamable-http")

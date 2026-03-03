@@ -7,7 +7,7 @@ import asyncio
 import os
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("whisper-transcription")
 

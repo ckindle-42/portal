@@ -12,9 +12,10 @@ import os
 import uuid
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from portal_mcp.mcp_server.fastmcp import FastMCP
 
-mcp = FastMCP("document-tools")
+port = int(os.getenv("DOCUMENTS_MCP_PORT", "8913"))
+mcp = FastMCP("document-tools", port=port)
 
 logger = logging.getLogger(__name__)
 
@@ -245,5 +246,5 @@ def list_generated_files() -> list[dict]:
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("DOCUMENTS_MCP_PORT", "8913"))
-    mcp.run(transport="streamable-http", port=port)
+    mcp.settings.host = "0.0.0.0"
+    mcp.run(transport="streamable-http")
