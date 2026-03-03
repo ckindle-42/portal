@@ -1099,7 +1099,8 @@ case "$COMMAND" in
         # 9. Print access URLs
         print_access_urls
 
-        # 10. Run doctor check automatically
+        # 10. Wait for services to fully initialize then run doctor
+        sleep 5
         run_doctor
         ;;
 
