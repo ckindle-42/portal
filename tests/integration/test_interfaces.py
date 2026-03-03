@@ -11,9 +11,9 @@ These tests use mocked AgentCore to verify the interface layer works correctly.
 import hashlib
 import hmac
 import time
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestTelegramInterfaceIntegration:
@@ -311,7 +311,7 @@ class TestInterfaceErrorHandling:
         interface.client = AsyncMock()
 
         # Test that send_message handles errors gracefully
-        result = await interface.send_message("C12345", "test")
+        await interface.send_message("C12345", "test")
         # Should return False or handle error
 
 
