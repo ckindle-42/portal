@@ -48,6 +48,7 @@ class IncomingMessage:
     history: list[dict[str, Any]] = field(default_factory=list)
     source: str = "web"
     metadata: dict[str, Any] = field(default_factory=dict)
+    workspace_id: str | None = None
 
 
 @dataclass

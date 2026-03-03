@@ -546,7 +546,7 @@ class AgentCore:
 
         collected_response = []
         final_messages = (messages or []) + tool_messages if tool_messages else messages
-        workspace_id = incoming.model if incoming.model else None
+        workspace_id = incoming.workspace_id if incoming.workspace_id else incoming.model
 
         async for token in self.execution_engine.generate_stream(
             query=query,

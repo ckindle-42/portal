@@ -24,6 +24,7 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
+import httpx
 from fastapi import HTTPException, Request
 from slack_sdk.web.async_client import AsyncWebClient
 
@@ -130,6 +131,13 @@ class SlackInterface(BaseInterface):
         if text.startswith("<@"):
             text = text.split(">", 1)[-1].strip()
 
+        # Parse @model: prefix for workspace selection
+        workspace_id = None
+        if text.startswith("@model:"):
+            parts = text.split(" ", 1)
+            workspace_id = parts[0].replace("@model:", "")
+            text = parts[1] if len(parts) > 1 else ""
+
         if not text:
             return
 
@@ -138,6 +146,7 @@ class SlackInterface(BaseInterface):
             text=text,
             model="auto",
             source="slack",
+            workspace_id=workspace_id,
             metadata={"channel": channel, "user": user, "thread_ts": thread_ts},
         )
 
@@ -153,6 +162,32 @@ class SlackInterface(BaseInterface):
                 thread_ts=thread_ts,
                 text=response_text,
             )
+
+            # Upload generated files if URLs detected in response
+            # MCP servers return URLs like http://localhost:8080/images/filename
+            import re
+            from urllib.parse import urlparse
+
+            urls = re.findall(r"https?://[^\s<>\"']+", response_text)
+            for url in urls:
+                try:
+                    parsed = urlparse(url)
+                    path = parsed.path
+                    if path.startswith("/images/") or path.startswith("/view?"):
+                        # This is a file URL - download and upload to Slack
+                        async with httpx.AsyncClient(timeout=30.0) as client:
+                            resp = await client.get(url)
+                            if resp.status_code == 200:
+                                filename = path.split("/")[-1].split("?")[0]
+                                await self.client.files_upload_v2(
+                                    channel=channel,
+                                    file=resp.content,
+                                    filename=filename,
+                                    title=f"Generated: {filename}",
+                                )
+                except Exception as upload_err:
+                    logger.debug("Failed to upload file from %s: %s", url, upload_err)
+
         except Exception as e:
             logger.error("Slack response failed: %s", e)
             await self.client.chat_postMessage(

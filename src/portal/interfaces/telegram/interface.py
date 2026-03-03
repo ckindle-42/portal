@@ -484,6 +484,14 @@ class TelegramInterface:
         message = update.message.text
         if message is None:
             return
+
+        # Parse @model: prefix for workspace selection
+        workspace_id = None
+        if message.startswith("@model:"):
+            parts = message.split(" ", 1)
+            workspace_id = parts[0].replace("@model:", "")
+            message = parts[1] if len(parts) > 1 else ""
+
         chat_id = f"telegram_{update.effective_chat.id}"
 
         logger.info("Received message from user %s: %s...", user_id, message[:50])
@@ -498,6 +506,7 @@ class TelegramInterface:
                 message=message,
                 interface=InterfaceType.TELEGRAM,
                 user_context={"user_id": user_id},
+                workspace_id=workspace_id,
             )
 
             # Show warnings if any
@@ -529,6 +538,34 @@ class TelegramInterface:
                     await update.message.reply_text(chunk, parse_mode="Markdown")
             else:
                 await update.message.reply_text(response_text, parse_mode="Markdown")
+
+            # Send generated files if any
+            if result.tool_results:
+                for tool_result in result.tool_results:
+                    file_path = (
+                        tool_result.get("path")
+                        or tool_result.get("image_path")
+                        or tool_result.get("audio_path")
+                        or tool_result.get("video_path")
+                        or tool_result.get("file_path")
+                    )
+                    if file_path:
+                        from pathlib import Path
+
+                        file_p = Path(file_path)
+                        if file_p.exists():
+                            suffix = file_p.suffix.lower()
+                            try:
+                                if suffix in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+                                    await update.message.reply_photo(open(file_p, "rb"))
+                                elif suffix in (".wav", ".mp3", ".ogg", ".flac"):
+                                    await update.message.reply_audio(open(file_p, "rb"))
+                                elif suffix in (".mp4", ".webm", ".mov"):
+                                    await update.message.reply_video(open(file_p, "rb"))
+                                else:
+                                    await update.message.reply_document(open(file_p, "rb"))
+                            except Exception as e:
+                                logger.warning("Failed to send file %s: %s", file_path, e)
 
         except Exception as e:
             logger.error("Error handling message: %s", e, exc_info=True)
