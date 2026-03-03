@@ -557,7 +557,7 @@ start_extended_services() {
 # ─── Start ComfyUI ──────────────────────────────────────────────────────────────
 start_comfyui() {
     local profile="$1"
-    local comfy_dir="${COMFYUI_DIR:-$HOME/ComfyUI}"
+    local comfy_dir="${COMFYUI_DIR:-$PORTAL_ROOT/ComfyUI}"
     local comfy_port="${COMFYUI_PORT:-8188}"
     local venv_pip="$PORTAL_ROOT/.venv/bin/pip"
     local venv_bin="$PORTAL_ROOT/.venv/bin"
