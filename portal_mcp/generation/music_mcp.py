@@ -24,6 +24,41 @@ mcp = FastMCP("music-generation")
 async def health_check(request):
     return JSONResponse({"status": "ok", "service": "music-mcp"})
 
+
+# Tool manifest for discovery
+TOOLS_MANIFEST = [
+    {
+        "name": "generate_music",
+        "description": "Generate music using Meta AudioCraft/MusicGen",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string", "description": "Description of the music to generate"},
+                "duration": {"type": "number", "description": "Duration in seconds", "default": 10},
+                "model": {"type": "string", "description": "Model size (small, medium, large)", "default": "medium"},
+            },
+            "required": ["prompt"],
+        },
+    },
+    {
+        "name": "generate_continuation",
+        "description": "Continue a melody pattern",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "melody": {"type": "string", "description": "Melody pattern as comma-separated note values"},
+                "duration": {"type": "number", "description": "Duration in seconds", "default": 10},
+            },
+            "required": ["melody"],
+        },
+    },
+]
+
+
+@mcp.custom_route("/tools", methods=["GET"])
+async def list_tools(request):
+    return JSONResponse({"tools": TOOLS_MANIFEST})
+
 logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = Path(os.getenv("GENERATED_FILES_DIR", "data/generated"))

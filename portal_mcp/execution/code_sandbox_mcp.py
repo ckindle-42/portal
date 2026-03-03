@@ -29,6 +29,52 @@ mcp = FastMCP("code-sandbox")
 async def health_check(request):
     return JSONResponse({"status": "ok", "service": "sandbox-mcp"})
 
+
+# Tool manifest for discovery
+TOOLS_MANIFEST = [
+    {
+        "name": "execute_python",
+        "description": "Execute Python code in an isolated Docker container",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "Python code to execute"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 30},
+            },
+            "required": ["code"],
+        },
+    },
+    {
+        "name": "execute_nodejs",
+        "description": "Execute Node.js code in an isolated Docker container",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "Node.js code to execute"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 30},
+            },
+            "required": ["code"],
+        },
+    },
+    {
+        "name": "execute_bash",
+        "description": "Execute Bash commands in an isolated Docker container",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {"type": "string", "description": "Bash command to execute"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 30},
+            },
+            "required": ["command"],
+        },
+    },
+]
+
+
+@mcp.custom_route("/tools", methods=["GET"])
+async def list_tools(request):
+    return JSONResponse({"tools": TOOLS_MANIFEST})
+
 logger = logging.getLogger(__name__)
 
 SANDBOX_DIR = Path(os.getenv("SANDBOX_DIR", "data/sandbox"))

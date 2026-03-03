@@ -23,6 +23,46 @@ mcp = FastMCP("tts-generation")
 async def health_check(request):
     return JSONResponse({"status": "ok", "service": "tts-mcp"})
 
+
+# Tool manifest for discovery
+TOOLS_MANIFEST = [
+    {
+        "name": "speak",
+        "description": "Convert text to speech using Fish Speech or CosyVoice",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "Text to speak"},
+                "voice": {"type": "string", "description": "Voice name (e.g., female_zhang, male_yun)", "default": "female_zhang"},
+                "backend": {"type": "string", "description": "TTS backend (fish_speech or cosyvoice)", "default": "fish_speech"},
+            },
+            "required": ["text"],
+        },
+    },
+    {
+        "name": "clone_voice",
+        "description": "Clone a voice from reference audio",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "reference_audio": {"type": "string", "description": "Path to reference audio file"},
+                "text": {"type": "string", "description": "Text to speak with cloned voice"},
+            },
+            "required": ["reference_audio", "text"],
+        },
+    },
+    {
+        "name": "list_voices",
+        "description": "List available TTS voices",
+        "parameters": {"type": "object", "properties": {}},
+    },
+]
+
+
+@mcp.custom_route("/tools", methods=["GET"])
+async def list_tools(request):
+    return JSONResponse({"tools": TOOLS_MANIFEST})
+
 logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = Path(os.getenv("GENERATED_FILES_DIR", "data/generated"))

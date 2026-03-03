@@ -26,6 +26,49 @@ mcp = FastMCP("comfyui-generation")
 async def health_check(request):
     return JSONResponse({"status": "ok", "service": "comfyui-mcp"})
 
+
+# Tool manifest for discovery
+TOOLS_MANIFEST = [
+    {
+        "name": "generate_image",
+        "description": "Generate an image using FLUX.1 or SDXL via ComfyUI",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string", "description": "Text description of the image to generate"},
+                "width": {"type": "integer", "description": "Image width in pixels", "default": 1024},
+                "height": {"type": "integer", "description": "Image height in pixels", "default": 1024},
+                "steps": {"type": "integer", "description": "Number of diffusion steps", "default": 4},
+                "cfg": {"type": "number", "description": "CFG scale", "default": 1.0},
+                "negative_prompt": {"type": "string", "description": "Negative prompt", "default": ""},
+                "seed": {"type": "integer", "description": "Random seed (-1 for random)", "default": -1},
+            },
+            "required": ["prompt"],
+        },
+    },
+    {
+        "name": "list_workflows",
+        "description": "List available ComfyUI workflows",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_generation_status",
+        "description": "Check the status of a generation task",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "The task ID to check"},
+            },
+            "required": ["task_id"],
+        },
+    },
+]
+
+
+@mcp.custom_route("/tools", methods=["GET"])
+async def list_tools(request):
+    return JSONResponse({"tools": TOOLS_MANIFEST})
+
 COMFYUI_URL = os.getenv("COMFYUI_URL", "http://localhost:8188")
 IMAGE_BACKEND = os.getenv("IMAGE_BACKEND", "flux")  # "flux" or "sdxl"
 OUTPUT_DIR = Path.home() / "AI_Output" / "images"

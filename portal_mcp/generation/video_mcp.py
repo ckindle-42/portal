@@ -26,6 +26,41 @@ mcp = FastMCP("video-generation")
 async def health_check(request):
     return JSONResponse({"status": "ok", "service": "video-mcp"})
 
+
+# Tool manifest for discovery
+TOOLS_MANIFEST = [
+    {
+        "name": "generate_video",
+        "description": "Generate a video using ComfyUI with a local video model (Wan2.2 or CogVideoX)",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string", "description": "Text description of the video to generate"},
+                "width": {"type": "integer", "description": "Video width in pixels", "default": 832},
+                "height": {"type": "integer", "description": "Video height in pixels", "default": 480},
+                "frames": {"type": "integer", "description": "Number of frames", "default": 81},
+                "fps": {"type": "integer", "description": "Frames per second", "default": 16},
+                "steps": {"type": "integer", "description": "Number of inference steps", "default": 20},
+                "cfg": {"type": "number", "description": "CFG scale", "default": 6.0},
+                "negative_prompt": {"type": "string", "description": "Negative prompt", "default": ""},
+                "model": {"type": "string", "description": "Model name (optional)"},
+                "seed": {"type": "integer", "description": "Random seed", "default": -1},
+            },
+            "required": ["prompt"],
+        },
+    },
+    {
+        "name": "list_video_models",
+        "description": "List available video model checkpoints in ComfyUI",
+        "parameters": {"type": "object", "properties": {}},
+    },
+]
+
+
+@mcp.custom_route("/tools", methods=["GET"])
+async def list_tools(request):
+    return JSONResponse({"tools": TOOLS_MANIFEST})
+
 COMFYUI_URL = os.getenv("COMFYUI_URL", "http://localhost:8188")
 VIDEO_BACKEND = os.getenv("VIDEO_BACKEND", "wan22")  # "wan22" or "cogvideox"
 

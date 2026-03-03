@@ -24,6 +24,64 @@ mcp = FastMCP("document-tools", port=port)
 async def health_check(request):
     return JSONResponse({"status": "ok", "service": "documents-mcp"})
 
+
+# Tool manifest for discovery
+TOOLS_MANIFEST = [
+    {
+        "name": "create_word_document",
+        "description": "Create a Word document",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "content": {"type": "string", "description": "Document content (markdown supported)"},
+                "title": {"type": "string", "description": "Document title"},
+            },
+            "required": ["content"],
+        },
+    },
+    {
+        "name": "create_powerpoint",
+        "description": "Create a PowerPoint presentation",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "slides": {"type": "array", "description": "List of slide content"},
+                "title": {"type": "string", "description": "Presentation title"},
+            },
+            "required": ["slides"],
+        },
+    },
+    {
+        "name": "create_excel",
+        "description": "Create an Excel spreadsheet",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "data": {"type": "array", "description": "Array of rows"},
+                "sheet_name": {"type": "string", "description": "Sheet name"},
+            },
+            "required": ["data"],
+        },
+    },
+    {
+        "name": "convert_document",
+        "description": "Convert between document formats using pandoc",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "input_file": {"type": "string", "description": "Input file path"},
+                "output_format": {"type": "string", "description": "Output format (docx, pdf, html, etc.)"},
+            },
+            "required": ["input_file", "output_format"],
+        },
+    },
+]
+
+
+@mcp.custom_route("/tools", methods=["GET"])
+async def list_tools(request):
+    return JSONResponse({"tools": TOOLS_MANIFEST})
+
 logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = Path(os.getenv("GENERATED_FILES_DIR", "data/generated"))
