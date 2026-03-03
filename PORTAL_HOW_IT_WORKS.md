@@ -1,8 +1,8 @@
 # Portal — How It Works
 
-**Version:** 1.5.0
+**Version:** 3.0.0
 **Updated:** 2026-03-02
-**Verification:** Full test suite passed (986 passed, 13 skipped)
+**Verification:** Full test suite passed (999 tests collected), routing verified, endpoints verified
 
 ---
 

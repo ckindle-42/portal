@@ -2,7 +2,7 @@
 
 **Generated:** 2026-03-02
 **Agent:** PORTAL_DOCUMENTATION_AGENT_v4.md
-**Portal Version:** 1.5.0
+**Portal Version:** 3.0.0
 
 ---
 
@@ -278,6 +278,82 @@ Module imports:  102 OK, 1 failed
 Tests:           986 passed, 13 skipped, 27 deselected
 Lint:            0 violations
 Type check:      0 errors (notes only)
+```
+
+---
+
+## Additional Verification (March 2, 2026 - v4)
+
+### Module Import Verification (Updated)
+```
+OK: 73 modules
+FAILED: 1 (dev_toolsthon_env_manager - typo in filename)
+```
+
+### Component Instantiation Tests
+```
+ModelRegistry(): OK - 16 models
+WorkspaceRegistry(): OK - 11 workspaces
+IntelligentRouter(): OK - initialized
+ExecutionEngine(): OK - initialized
+CircuitBreaker(): OK - initialized
+TaskClassifier(): OK - initialized
+```
+
+### Multi-Step Detection Test
+```
+Expected False (single turn):
+  "Write a Python function that generates CSV files" -> False [PASS]
+  "First, let me explain quantum computing" -> False [PASS]
+  "Find and summarize the key points" -> False [PASS]
+  "Create a detailed report on market trends" -> False [PASS]
+  "Explain why transformers work" -> False [PASS]
+
+Expected True (multi-step):
+  "Step 1: research quantum. Step 2: create presentation" -> True [PASS]
+  "First research, then write, finally create slides" -> True [PASS]
+  "Do both: write code and create documentation" -> True [PASS]
+
+Overall: ALL TESTS PASSED
+```
+
+### Routing Verification
+```
+Query: 'hello' workspace=None -> model=ollama_dolphin_llama3_8b, category=TaskCategory.GENERAL
+Query: 'write a python sort function' workspace=None -> model=ollama_whiterabbitneo_8b, category=TaskCategory.CODE
+Query: 'deep research quantum computing' workspace=None -> model=ollama_dolphin_llama3_8b, category=TaskCategory.RESEARCH
+Query: 'hello' workspace=auto-coding -> model=ollama_dolphin_llama3_8b, category=TaskCategory.GENERAL
+```
+
+Note: Workspace routing appears to work but category remains GENERAL for all workspace queries.
+
+### Endpoint Verification (TestClient)
+```
+GET /health -> 200
+GET /health/live -> 200
+GET /health/ready -> 503 (Ollama not running)
+GET /v1/models -> 200
+GET /metrics -> 200
+GET /v1/files -> 200
+GET /v1/files/../../etc/passwd -> 404 (blocked)
+POST /v1/chat/completions -> 503 (Ollama not running)
+```
+
+### Configuration Audit
+```
+Environment Variables in Code: 38
+In code but NOT in .env.example:
+  - COMFYUI_MCP_URL, DOCUMENTS_MCP_URL, MUSIC_MCP_URL
+  - SANDBOX_MCP_URL, TTS_MCP_URL, VIDEO_MCP_URL, WHISPER_MCP_URL
+```
+
+### Launch Script Validation
+All 11 scripts pass bash -n syntax check.
+
+### Type Check
+```
+src/portal/core/tool_schema_builder.py:178: error: "Coroutine[Any, Any, list[dict[Any, Any]]]" has no attribute "__iter__"
+Found 1 error in 1 file (checked 104 source files)
 ```
 
 ---

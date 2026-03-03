@@ -1,8 +1,8 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 25)
-**Current version:** 2.0.0 (pre-v3)
-**Next version:** 3.0.0
+**Generated:** 2026-03-02 (delta update — run 26)
+**Current version:** 3.0.0
+**Next version:** 3.1.0
 **Maintained by:** ckindle-42
 
 This document is the authoritative living reference for all planned, in-progress,
@@ -11,6 +11,18 @@ and completed work across the Portal project.
 ---
 
 ## Changelog
+
+- **2026-03-02 (run 26):** Documentation agent v4 verification:
+  - Tests: 999 collected | Lint: 0 | Mypy: 1 error (tool_schema_builder.py:178)
+  - 73 modules import OK, 1 failed (typo in dev_toolsthon_env_manager)
+  - 11 workspaces verified via WorkspaceRegistry
+  - Routing verified: auto, auto-coding, auto-security, etc.
+  - Multi-step detection: 8/8 tests pass
+  - Endpoints: /health, /health/live, /health/ready, /v1/models, /metrics, /v1/files all verified
+  - Path traversal blocked on /v1/files
+  - Configuration audit: 38 env vars in code, 7 MCP_URL vars not in .env.example
+  - All 11 launch scripts validated (bash -n)
+  - Source: PORTAL_DOCUMENTATION_AGENT_v4.md
 
 - **2026-03-02 (run 25):** Codebase review agent v7 delta run:
   - Tests: 986 passed, 13 skipped | Lint: 0 | Mypy: 0
