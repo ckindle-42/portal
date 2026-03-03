@@ -3,6 +3,12 @@
 # Requires: Ollama running on host at :11434
 #           Portal router running on host at :8000
 #           Portal WebInterface running on host at :8081
+#
+# Workspace Setup:
+# 1. Enable auth below (WEBUI_AUTH=true)
+# 2. Start stack: docker compose up -d
+# 3. First user to sign up becomes admin
+# 4. Admin can create workspaces in UI (Admin Panel → Workspaces)
 
 services:
   # -----------------------------------------------------------------------
@@ -50,7 +56,20 @@ services:
       # Also expose direct Ollama access for model management
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-portal-secret-change-me}
-      - WEBUI_AUTH=${WEBUI_AUTH:-false}
+      # Enable authentication — first user to sign up becomes admin
+      # Set to 'false' for open access (no workspaces)
+      - WEBUI_AUTH=${WEBUI_AUTH:-true}
+      # Workspace settings
+      - ENABLE_WORKSPACE=true
+      - WORKSPACE_TRUST_ENABLED=true
+      # Admin settings
+      - DEFAULT_ADMIN_ROLE=admin
+      # Security
+      - JWT_EXPIRY=24h
+      - SESSIONExpiry=86400
+      # Model management
+      - ENABLE_MODEL_SWITCH=false
+      - ENABLE_AUTO_MODEL_TRACKING=false
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
