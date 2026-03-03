@@ -559,6 +559,7 @@ start_comfyui() {
     local profile="$1"
     local comfy_dir="${COMFYUI_DIR:-$HOME/ComfyUI}"
     local comfy_port="${COMFYUI_PORT:-8188}"
+    local venv_pip="$PORTAL_ROOT/.venv/bin/pip"
 
     # Check if ComfyUI is already running
     if nc -z localhost "$comfy_port" 2>/dev/null; then
@@ -569,12 +570,27 @@ start_comfyui() {
     # Check if ComfyUI is installed
     if [ ! -d "$comfy_dir" ]; then
         echo "[comfyui] not found at $comfy_dir"
-        echo "[comfyui] skipping auto-install (requires manual setup on first run)"
-        echo "[comfyui] To install manually:"
-        echo "    pip3 install comfy-cli"
-        echo "    comfy install"
-        echo "[comfyui] Then restart: bash launch.sh up"
-        return 0  # Don't fail - let user install manually
+        echo "[comfyui] installing..."
+
+        # Use venv pip to avoid PEP 668 (externally managed environment) error
+        if [ -f "$venv_pip" ]; then
+            "$venv_pip" install -q comfy-cli
+        elif command -v pip3 &>/dev/null; then
+            # Fallback to system pip with --break-system-packages
+            pip3 install --break-system-packages -q comfy-cli
+        else
+            echo "[comfyui] ERROR: pip not found"
+            return 1
+        fi
+
+        # Run comfy install to download ComfyUI
+        if command -v comfy &>/dev/null; then
+            cd "$HOME"
+            comfy install
+        else
+            echo "[comfyui] WARNING: comfy command not available after install"
+            return 1
+        fi
     fi
 
     # Build ComfyUI launch args based on profile
@@ -727,7 +743,7 @@ run_doctor() {
 
     # Check ComfyUI (required for image generation)
     if [ "${GENERATION_SERVICES:-false}" = "true" ]; then
-        check_service "comfyui" "http://localhost:${COMFYUI_PORT:-8188}/object_info" "true" "comfyui" "3" "5"
+        check_service "comfyui" "http://localhost:${COMFYUI_PORT:-8188}/object_info" "false" "comfyui" "3" "5"
     fi
 
     if [ "${MCP_ENABLED:-true}" = "true" ]; then
