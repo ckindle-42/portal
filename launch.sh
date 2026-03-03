@@ -534,16 +534,88 @@ start_extended_services() {
 
     # Start generation services if enabled
     if [ "${GENERATION_SERVICES:-false}" = "true" ]; then
+        # Start ComfyUI first (required for image generation)
+        start_comfyui "$profile"
+
+        # Then start the MCP bridges
         local gen_script="$PORTAL_ROOT/portal_mcp/generation/launch_generation_mcps.sh"
         if [ -f "$gen_script" ]; then
-            echo "[generation] starting..."
+            echo "[generation-mcp] starting..."
             if ! bash "$gen_script" 2>&1; then
-                echo "[generation] WARNING: failed to start — check logs: bash launch.sh logs mcp-comfyui"
+                echo "[generation-mcp] WARNING: failed to start — check logs: bash launch.sh logs mcp-comfyui"
             fi
         else
-            echo "[generation] ERROR: script not found: $gen_script"
+            echo "[generation-mcp] ERROR: script not found: $gen_script"
         fi
     fi
+}
+
+# ─── Start ComfyUI ──────────────────────────────────────────────────────────────
+start_comfyui() {
+    local profile="$1"
+    local comfy_dir="${COMFYUI_DIR:-$HOME/ComfyUI}"
+    local comfy_port="${COMFYUI_PORT:-8188}"
+
+    # Check if ComfyUI is already running
+    if nc -z localhost "$comfy_port" 2>/dev/null; then
+        echo "[comfyui] already running on port $comfy_port"
+        return 0
+    fi
+
+    # Check if ComfyUI is installed
+    if [ ! -d "$comfy_dir" ]; then
+        echo "[comfyui] not found at $comfy_dir"
+        echo "[comfyui] installing..."
+        if command -v pip3 &>/dev/null; then
+            pip3 install comfy-cli
+            cd "$HOME"
+            comfy install
+        else
+            echo "[comfyui] ERROR: pip3 not found — please install ComfyUI manually"
+            echo "  See: https://docs.comfyui.org/"
+            return 1
+        fi
+    fi
+
+    # Build ComfyUI launch args based on profile
+    local comfy_args="--listen 0.0.0.0 --port $comfy_port"
+    case "$profile" in
+        m4-mac)
+            comfy_args="$comfy_args --use-pytorch-cross-attention --mps --highvram"
+            ;;
+        linux-bare)
+            comfy_args="$comfy_args --cuda"
+            ;;
+        linux-wsl2)
+            comfy_args="$comfy_args --cuda"
+            ;;
+    esac
+
+    # Start ComfyUI
+    echo "[comfyui] starting on port $comfy_port..."
+    cd "$comfy_dir"
+    nohup python main.py $comfy_args >> "$LOG_DIR/comfyui.log" 2>&1 &
+    local comfy_pid=$!
+    echo "$comfy_pid" > /tmp/portal-comfyui.pid
+
+    # Wait for ComfyUI to be ready (with timeout)
+    local attempts=0
+    local max_attempts=30
+    while [ $attempts -lt $max_attempts ]; do
+        if nc -z localhost "$comfy_port" 2>/dev/null; then
+            # Verify the API is responsive
+            if curl -sf "http://localhost:$comfy_port/object_info" >/dev/null 2>&1; then
+                echo "[comfyui] ready (PID $comfy_pid)"
+                return 0
+            fi
+        fi
+        sleep 2
+        attempts=$((attempts + 1))
+        echo "[comfyui] waiting for startup... ($attempts/$max_attempts)"
+    done
+
+    echo "[comfyui] WARNING: failed to start within 60s — check logs: bash launch.sh logs comfyui"
+    return 1
 }
 
 # ─── Print access URLs ────────────────────────────────────────────────────────
@@ -560,6 +632,9 @@ print_access_urls() {
     if [ "${MCP_ENABLED:-true}" = "true" ]; then
         echo "  MCP proxy:    http://localhost:${MCPO_PORT:-9000}"
         echo "  Scrapling:    http://localhost:${SCRAPLING_PORT:-8900}"
+    fi
+    if [ "${GENERATION_SERVICES:-false}" = "true" ]; then
+        echo "  ComfyUI:      http://localhost:${COMFYUI_PORT:-8188}"
     fi
     echo ""
 }
@@ -650,6 +725,11 @@ run_doctor() {
     check_service "portal-api" "http://localhost:8081/health"
     check_service "web-ui" "http://localhost:8080" "true"
 
+    # Check ComfyUI (required for image generation)
+    if [ "${GENERATION_SERVICES:-false}" = "true" ]; then
+        check_service "comfyui" "http://localhost:${COMFYUI_PORT:-8188}/object_info" "false" "comfyui" "3" "5"
+    fi
+
     if [ "${MCP_ENABLED:-true}" = "true" ]; then
         # mcpo can take 30-50s to start, so retry up to 5 times with 10s delay
         check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}/openapi.json" "false" "mcpo" "5" "10"
@@ -723,6 +803,8 @@ stop_all() {
     pkill -f "tts_mcp" 2>/dev/null && echo "[tts_mcp] stopped" || true
     pkill -f "document_mcp" 2>/dev/null && echo "[document_mcp] stopped" || true
     pkill -f "code_sandbox_mcp" 2>/dev/null && echo "[code_sandbox_mcp] stopped" || true
+    pkill -f "ComfyUI" 2>/dev/null && echo "[comfyui] stopped" || true
+    rm -f /tmp/portal-comfyui.pid
 
     # Broad fallback for uvicorn processes
     pkill -f "uvicorn.*portal\." 2>/dev/null || true

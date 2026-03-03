@@ -39,6 +39,11 @@ slack = [
 generation = [
     "faster-whisper>=1.0.0",
     "pillow>=10.3.0",
+    # Music generation
+    "audiocraft>=0.0.2",
+    # TTS / Voice cloning
+    "fish-speech>=1.0.0",
+    "cosyvoice>=0.1.0",
 ]
 redis = [
     "redis>=5.0.0",
@@ -60,6 +65,11 @@ all = [
     "aiohttp>=3.9.0",
     "faster-whisper>=1.0.0",
     "pillow>=10.3.0",
+    # Music generation
+    "audiocraft>=0.0.2",
+    # TTS / Voice cloning
+    "fish-speech>=1.0.0",
+    "cosyvoice>=0.1.0",
     "redis>=5.0.0",
     "scrapling>=0.2",
     "playwright>=1.40.0",
