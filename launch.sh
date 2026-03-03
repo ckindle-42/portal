@@ -515,7 +515,7 @@ start_extended_services() {
 
     # Start generation services if enabled
     if [ "${GENERATION_SERVICES:-false}" = "true" ]; then
-        local gen_script="$PORTAL_ROOT/hardware/$profile/launch_generation.sh"
+        local gen_script="$PORTAL_ROOT/portal_mcp/generation/launch_generation_mcps.sh"
         if [ -f "$gen_script" ]; then
             echo "[generation] starting..."
             bash "$gen_script" || true
