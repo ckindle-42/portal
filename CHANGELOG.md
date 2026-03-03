@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [3.0.4] - 2026-03-03 — HuggingFace Token Support
+
+### Added
+- **HuggingFace Token Support**: Added `huggingface_token` field to `BackendsConfig` for
+  authenticating to HuggingFace when pulling private models. Set via environment variable
+  `PORTAL_BACKENDS__HUGGINGFACE_TOKEN` or in YAML config.
+
+---
+
 ## [1.4.6] - 2026-03-02 — MLX Backend, Model Expansion & Runtime Features
 
 ### Added

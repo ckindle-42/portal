@@ -285,6 +285,7 @@ Default model is set via `DEFAULT_MODEL` in `.env` (ships as `qwen2.5:7b`).
 | `RATE_LIMIT_PER_MINUTE` | Default `60` — adjust for your use case |
 | `APPROVAL_REQUIRED` | Default `true` — shell MCP requires human approval |
 | `SANDBOX_ENABLED` | Default `false` — enable for untrusted environments |
+| `PORTAL_BACKENDS__HUGGINGFACE_TOKEN` | HuggingFace token for pulling private models (optional) |
 
 ---
 

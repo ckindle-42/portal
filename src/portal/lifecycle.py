@@ -180,6 +180,7 @@ class Runtime:
             puller = ModelPuller(
                 ollama_url=backends.ollama_url,
                 mlx_url=backends.mlx_url if getattr(backends, "enable_mlx", False) else None,
+                huggingface_token=getattr(backends, "huggingface_token", None),
             )
             pulled = await puller.ensure_models_available(agent_core.model_registry, "ollama")
             if pulled:

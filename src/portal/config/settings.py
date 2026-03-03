@@ -243,6 +243,10 @@ class BackendsConfig(BaseModel):
     auto_pull_models: bool = Field(
         True, description="Auto-pull missing models from Ollama on startup"
     )
+    huggingface_token: str | None = Field(
+        None,
+        description="HuggingFace access token for pulling private models (optional)",
+    )
 
     model_config = ConfigDict(extra="allow")
 

@@ -6,6 +6,7 @@ already installed in Ollama. Supports HuggingFace to Ollama conversion.
 """
 
 import logging
+import os
 import shutil
 import subprocess
 
@@ -19,9 +20,10 @@ logger = logging.getLogger(__name__)
 class ModelPuller:
     """Handles auto-pulling models from Ollama and HuggingFace."""
 
-    def __init__(self, ollama_url: str, mlx_url: str | None = None):
+    def __init__(self, ollama_url: str, mlx_url: str | None = None, huggingface_token: str | None = None):
         self.ollama_url = ollama_url.rstrip("/")
         self.mlx_url = mlx_url
+        self.huggingface_token = huggingface_token
 
     async def ensure_models_available(
         self,
@@ -163,6 +165,11 @@ class ModelPuller:
         # Method 2: Try using huggingface-cli to download and convert
         if shutil.which("huggingface-cli") or shutil.which("huggingface"):
             try:
+                # Build environment with token if provided
+                env = os.environ.copy()
+                if self.huggingface_token:
+                    env["HF_TOKEN"] = self.huggingface_token
+
                 # Download model files
                 result = subprocess.run(
                     [
@@ -175,6 +182,7 @@ class ModelPuller:
                     capture_output=True,
                     text=True,
                     timeout=600,
+                    env=env,
                 )
                 if result.returncode == 0:
                     # Try to import to Ollama
