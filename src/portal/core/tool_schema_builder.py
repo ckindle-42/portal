@@ -174,7 +174,7 @@ def _get_cached_mcp_tools(mcp_registry: "MCPRegistry") -> list[dict[str, Any]]:
         for server_name in servers:
             # Try to get cached tools for this server
             try:
-                server_tools = mcp_registry.list_tools(server_name)
+                server_tools = mcp_registry.list_tools_sync(server_name)
                 for tool in server_tools:
                     schema = _convert_mcp_tool(server_name, tool)
                     if schema:

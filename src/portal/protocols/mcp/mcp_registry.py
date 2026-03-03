@@ -127,6 +127,10 @@ class MCPRegistry:
             logger.warning("list_tools failed for %r: %s", server_name, exc)
             return []
 
+    def list_tools_sync(self, server_name: str) -> list[dict]:
+        """Synchronous wrapper for list_tools (for use in non-async contexts)."""
+        return asyncio.get_event_loop().run_until_complete(self.list_tools(server_name))
+
     async def call_tool(
         self,
         server_name: str,
