@@ -2,7 +2,7 @@
 
 **Generated:** 2026-03-02 (run 26)
 **Source audit:** PORTAL_DOCUMENTATION_AGENT_v4.md (same date)
-**Current version:** 3.0.0
+**Current version:** 3.0.1
 
 ---
 
@@ -40,7 +40,7 @@ All 6 phases of feature-complete implementation are now complete:
 **RESOLVED TASK-01 (Version Bump)**
 - File: `pyproject.toml`, `CLAUDE.md`, `PORTAL_ROADMAP.md`
 - Category: VERSION_BUMP
-- Status: RESOLVED - Version is 3.0.0 in all files
+- Status: RESOLVED - Version is 3.0.1 in all files
 
 **TASK-02 (Branch Cleanup)**
 - File: git remote branches
@@ -70,7 +70,7 @@ python3 -m pytest tests/ -v --tb=short      # expect 999 collected, 27 deselecte
 
 ## Notes
 
-- Portal 3.0.0 is fully production-ready
+- Portal 3.0.1 is fully production-ready
 - All Code Findings Register items resolved
 - Known issue: 1 mypy error in tool_schema_builder.py:178 (needs await)
 - Health score: 10/10 — FULLY PRODUCTION-READY

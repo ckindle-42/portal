@@ -2,7 +2,7 @@
 
 **Generated:** 2026-03-02
 **Agent:** PORTAL_DOCUMENTATION_AGENT_v4.md
-**Portal Version:** 3.0.0
+**Portal Version:** 3.0.1
 
 ---
 

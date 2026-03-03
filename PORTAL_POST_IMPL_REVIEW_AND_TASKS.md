@@ -1,7 +1,7 @@
 # Portal — Post-Implementation Honest Review & Targeted Corrections
 
 **Reviewed:** commit c556209 (after all Phase 0-6 implementation)
-**Version:** 3.0.0
+**Version:** 3.0.1
 **Date:** 2026-03-02
 
 ---

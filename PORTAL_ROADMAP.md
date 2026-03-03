@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
 **Generated:** 2026-03-02 (delta update — run 26)
-**Current version:** 3.0.0
+**Current version:** 3.0.1
 **Next version:** 3.1.0
 **Maintained by:** ckindle-42
 
@@ -31,7 +31,7 @@ and completed work across the Portal project.
   - Multi-step detection: 8/8 correct
   - File delivery: path traversal blocked
   - Health score: 10/10 - FULLY PRODUCTION-READY
-  - **ALL 6 PHASES COMPLETE** - ready for v3.0.0 release
+  - **ALL 6 PHASES COMPLETE** - ready for v3.0.1 release
 
 - **2026-03-02 (run 24):** Codebase review agent v7 verification complete:
   - Tests: 986 passed, 13 skipped | Lint: 0 | Mypy: 0
@@ -124,7 +124,7 @@ All work items from previous runs are complete. Key completed items:
 
 ## 3. In Progress
 
-None — all items complete. Ready for v3.0.0 release.
+None — all items complete. Ready for v3.0.1 release.
 
 ---
 
@@ -227,6 +227,6 @@ Description:  Existing CLI + third-party UIs (Open WebUI, LibreChat) cover the u
 | 1.0.0 | 2025-XX-XX | Initial release |
 | 1.5.0 | 2026-03-02 | Pre-feature-complete state |
 | 2.0.0 | 2026-03-02 | **ALL PHASES COMPLETE** - ready for v3 |
-| 3.0.0 | PENDING | **NEXT RELEASE** - major version bump |
+| 3.0.1 | PENDING | **NEXT RELEASE** - major version bump |
 
-*Last updated: 2026-03-02 (run 25) — Codebase review agent v7 delta complete. Health: 10/10. Portal 2.0.0 ready for v3.0.0 release.*
+*Last updated: 2026-03-02 (run 25) — Codebase review agent v7 delta complete. Health: 10/10. Portal 2.0.0 ready for v3.0.1 release.*
