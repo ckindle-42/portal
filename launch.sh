@@ -151,6 +151,15 @@ bootstrap_env() {
             ;;
     esac
 
+    # --- HuggingFace (optional) ---
+    HF_TOKEN=""
+    read -rp "HuggingFace token for private models? [Enter to skip]: " hf_input
+    if [ -n "$hf_input" ]; then
+        HF_TOKEN="$hf_input"
+        echo "  -> Token configured"
+    fi
+    echo ""
+
     # --- Auto-generate all secrets ---
     echo "Generating secrets..."
     local MCP_API_KEY PORTAL_BOOTSTRAP_API_KEY WEB_API_KEY
@@ -258,6 +267,11 @@ bootstrap_env() {
             echo "SLACK_SIGNING_SECRET=$SLACK_SIGNING_SECRET_VAL"
         fi
         echo ""
+        echo "# --- HuggingFace ---"
+        if [ -n "$HF_TOKEN" ]; then
+            echo "PORTAL_BACKENDS__HUGGINGFACE_TOKEN=$HF_TOKEN"
+        fi
+        echo ""
         echo "# --- Observability ---"
         echo "LOG_LEVEL=INFO"
         echo "METRICS_ENABLED=true"
@@ -273,6 +287,11 @@ bootstrap_env() {
     echo "  Auth:         $WEBUI_AUTH"
     echo "  Telegram:     $TELEGRAM_ENABLED"
     echo "  Slack:        $SLACK_ENABLED"
+    if [ -n "$HF_TOKEN" ]; then
+        echo "  HuggingFace:  configured"
+    else
+        echo "  HuggingFace:  not configured"
+    fi
     echo "  Secrets:      6 keys auto-generated"
     echo ""
     echo "  Starting Portal now..."
