@@ -305,6 +305,7 @@ class RoutingConfig(BaseModel):
     bind_ip: str = Field("0.0.0.0", description="IP address to bind the router service")
     port: int = Field(8000, ge=1, le=65535, description="Router service port")
     ollama_host: str = Field("http://localhost:11434", description="Ollama API URL for the router")
+    personas_dir: Path | None = Field(None, description="Directory containing persona YAML files")
 
     model_config = ConfigDict(extra="allow")
 

@@ -3,10 +3,86 @@
   "default_model": "dolphin-llama3:8b",
   "warm_model": "dolphin-llama3:8b",
   "workspaces": {
+    "_comment_personas": "Auto-generated workspace entries from prompts.chat import. Edit persona YAMLs in config/personas/ to change behavior.",
     "auto": {
       "model": "dolphin-llama3:8b",
       "lock": false,
       "fallback": ["dolphin-llama3:8b"]
+    },
+    "cybersecurityspecialist": {
+      "model": "xploiter/the-xploiter",
+      "description": "Cyber Security Specialist - specialized AI assistant for security tasks",
+      "persona": "cybersecurityspecialist"
+    },
+    "networkengineer": {
+      "model": "xploiter/the-xploiter",
+      "description": "Network Engineer - specialized AI assistant for security tasks",
+      "persona": "networkengineer"
+    },
+    "linuxterminal": {
+      "model": "qwen3-coder-next:30b-q5",
+      "description": "Linux Terminal - specialized AI assistant for systems tasks",
+      "persona": "linuxterminal"
+    },
+    "pythoninterpreter": {
+      "model": "qwen3-coder-next:30b-q5",
+      "description": "Python Interpreter - specialized AI assistant for development tasks",
+      "persona": "pythoninterpreter"
+    },
+    "sqlterminal": {
+      "model": "qwen3-coder-next:30b-q5",
+      "description": "SQL Terminal - specialized AI assistant for systems tasks",
+      "persona": "sqlterminal"
+    },
+    "codereviewer": {
+      "model": "qwen3-coder-next:30b-q5",
+      "description": "Code Reviewer - specialized AI assistant for development tasks",
+      "persona": "codereviewer"
+    },
+    "devopsengineer": {
+      "model": "qwen3-coder-next:30b-q5",
+      "description": "Devops Engineer - specialized AI assistant for development tasks",
+      "persona": "devopsengineer"
+    },
+    "githubexpert": {
+      "model": "qwen3-coder-next:30b-q5",
+      "description": "GitHub Expert - specialized AI assistant for development tasks",
+      "persona": "githubexpert"
+    },
+    "datascientist": {
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
+      "description": "Data Scientist - specialized AI assistant for data tasks",
+      "persona": "datascientist"
+    },
+    "machinelearningengineer": {
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
+      "description": "Machine Learning Engineer - specialized AI assistant for data tasks",
+      "persona": "machinelearningengineer"
+    },
+    "dataanalyst": {
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
+      "description": "Data Analyst - specialized AI assistant for data tasks",
+      "persona": "dataanalyst"
+    },
+    "statistician": {
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
+      "description": "Statistician - specialized AI assistant for data tasks",
+      "persona": "statistician"
+    },
+    "itarchitect": {
+      "model": "huihui_ai/tongyi-deepresearch-abliterated:30b",
+      "description": "IT Architect - specialized AI assistant for architecture tasks",
+      "persona": "itarchitect"
+    },
+    "itexpert": {
+      "model": "dolphin-llama3:8b",
+      "description": "IT Expert - specialized AI assistant for general tasks",
+      "persona": "itexpert"
+    },
+    "techwriter": {
+      "model": "dolphin-llama3:8b",
+      "description": "Tech Writer - specialized AI assistant for writing tasks",
+      "persona": "techwriter"
     },
     "auto-coding": {
       "model": "qwen3-coder-next:30b-q5",

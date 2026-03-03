@@ -102,10 +102,11 @@ def create_event_bus_instance(config: dict[str, Any]) -> EventBus:
 
 
 def create_prompt_manager(config: dict[str, Any]) -> PromptManager:
-    """Return a PromptManager, optionally loading from *prompts_dir*."""
+    """Return a PromptManager, optionally loading from *prompts_dir* and *personas_dir*."""
     prompts_dir = config.get("prompts_dir")
-    logger.info("Creating PromptManager", prompts_dir=prompts_dir)
-    return PromptManager(prompts_dir=prompts_dir)
+    personas_dir = config.get("personas_dir")
+    logger.info("Creating PromptManager", prompts_dir=prompts_dir, personas_dir=personas_dir)
+    return PromptManager(prompts_dir=prompts_dir, personas_dir=personas_dir)
 
 
 def create_tool_registry(config: dict[str, Any]) -> ToolRegistry:  # noqa: ARG001

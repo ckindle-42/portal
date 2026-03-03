@@ -50,6 +50,8 @@ class TestRouterRulesCompleteness:
             rules = json.load(f)
         workspaces = rules.get("workspaces", {})
         for name, config in workspaces.items():
+            if name.startswith("_"):
+                continue  # Skip comment/meta keys
             assert "model" in config, f"Workspace {name} missing model"
 
     def test_expected_workspace_count(self):

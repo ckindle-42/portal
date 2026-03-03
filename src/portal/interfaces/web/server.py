@@ -376,6 +376,11 @@ class WebInterface(BaseInterface):
         async def list_models(auth=Depends(self._auth_context)):
             return await self._handle_list_models(auth)
 
+        @app.get("/v1/personas")
+        async def list_personas(auth=Depends(self._auth_context)):
+            """List available personas from config/personas/."""
+            return await self._handle_list_personas(auth)
+
     async def _handle_chat_completions(
         self,
         payload: ChatCompletionRequest,
@@ -509,6 +514,18 @@ class WebInterface(BaseInterface):
             )
 
         return {"object": "list", "data": models}
+
+    async def _handle_list_personas(self, auth: dict) -> dict:
+        """Handle /v1/personas — list available personas from config/personas/."""
+        from portal.core.prompt_manager import PersonaLibrary
+
+        try:
+            personas_lib = PersonaLibrary()
+            personas = personas_lib.list_personas()
+            return {"object": "list", "data": personas}
+        except Exception as e:
+            logger.warning("Failed to load personas: %s", e)
+            return {"object": "list", "data": []}
 
     def _register_utility_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
         @app.get("/metrics")
