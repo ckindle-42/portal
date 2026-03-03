@@ -592,13 +592,17 @@ start_comfyui() {
             comfy_cmd="comfy"
         fi
 
-        # Run comfy install to download ComfyUI (auto-accept tracking prompt)
-        if [ -n "$comfy_cmd" ]; then
-            cd "$HOME"
-            yes | "$comfy_cmd" install
-        else
-            echo "[comfyui] ERROR: comfy command not available after install"
+        # Clone ComfyUI directly to our desired path
+        echo "[comfyui] cloning ComfyUI to $comfy_dir..."
+        if ! git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git "$comfy_dir" 2>/dev/null; then
+            echo "[comfyui] ERROR: failed to clone ComfyUI"
             return 1
+        fi
+
+        # Install ComfyUI requirements using the venv's pip
+        echo "[comfyui] installing ComfyUI requirements..."
+        if [ -f "$venv_pip" ]; then
+            "$venv_pip" install -r "$comfy_dir/requirements.txt" 2>/dev/null || true
         fi
     fi
 
