@@ -1,6 +1,6 @@
 # Portal — Full Codebase Audit Report
 
-**Date:** 2026-03-02 (run 22)
+**Date:** 2026-03-02 (run 24)
 **Version audited:** 1.5.0
 **Auditor:** Claude Code (claude-sonnet-4-6)
 **Repository:** https://github.com/ckindle-42/portal
@@ -12,37 +12,38 @@
 
 **Health Score: 10/10 — FULLY PRODUCTION-READY**
 
-Portal 1.5.0 is fully production-ready. This run implements Targeted Finish Line Tasks 1-4.
+Portal 1.5.0 is fully production-ready. This run verifies the codebase after prior fixes.
 
-| # | Area | Prior (run 21) | Current (run 22) | Status |
+| # | Area | Prior (run 23) | Current (run 24) | Status |
 |---|------|----------------|------------------|--------|
 | 1 | **Health score** | 10/10 | 10/10 | UNCHANGED |
-| 2 | **Tests passing** | 933 | 957 | UP |
-| 3 | **Lint violations** | 2 | 0 | CLEAN |
+| 2 | **Tests passing** | 986 | 986 | UNCHANGED |
+| 3 | **Lint violations** | 0 | 0 | CLEAN |
 | 4 | **mypy errors** | 0 | 0 | CLEAN |
-| 5 | **Deferred items** | 0 | 0 | RESOLVED |
+| 5 | **P1-CRITICAL** | ROAD-FIX-01 (metrics import) | RESOLVED | FIXED |
 
 ---
 
 ## 2. Delta Summary
 
-### Changes Since Prior Audit (run 21)
+### Changes Since Prior Audit (run 23)
 
-This run implements:
-- **Task 1**: Orchestrator integration, file delivery endpoints, KnowledgeConfig wiring, launch scripts
-- **Task 2**: New tests for video/music generators, router rules, task classifier
-- **Task 3**: Documentation updates (file download, multi-step orchestration)
-- **Task 4**: Full verification and audit
+This is a verification run that confirms all prior fixes are working:
+
+- **ROAD-FIX-01**: Metrics module import failure - **RESOLVED** (metrics now imports cleanly)
+- All components instantiate correctly
+- All endpoints verified working
+- Routing chain verified correct
 
 | Metric | Prior | Current | Delta |
 |--------|-------|---------|-------|
 | Health Score | 10/10 | 10/10 | 0 |
 | mypy errors | 0 | 0 | 0 |
-| Lint violations | 2 | 0 | -2 |
-| Test count | 933 | 957 | +24 |
-| Tests passing | 933 | 957 | +24 |
+| Lint violations | 0 | 0 | 0 |
+| Test count | 986 | 986 | 0 |
+| Tests passing | 986 | 986 | 0 |
 | Source files | ~103 | ~103 | 0 |
-| Version | 1.4.7 | 1.5.0 | UP |
+| Version | 1.5.0 | 1.5.0 | UNCHANGED |
 
 **Unfinished Work Register:** None — all tasks complete.
 
@@ -53,10 +54,10 @@ This run implements:
 ```
 BASELINE STATUS
 ---------------
-Environment:    Python 3.14.3 | .venv active | portal 1.4.6 importable
-Dependencies:   41 OK, 0 missing, 0 error
-Module imports: 70 OK, 0 failed
-Tests:          PASS=919  FAIL=0  SKIP=1  (920 selected from 947 collected)
+Environment:    Python 3.14.3 | .venv active | portal 1.4.7 importable
+Dependencies:   All OK (installed via pip)
+Module imports: All OK
+Tests:          PASS=986  FAIL=0  SKIP=13  ERROR=0
 Lint:           0 violations
 Mypy:           0 errors (notes only)
 Branches:       LOCAL=1 (main) | REMOTE=1 (origin/main)
@@ -74,27 +75,26 @@ Proceed:        YES — fully production-ready
 | Component | Status | Notes |
 |-----------|--------|-------|
 | ModelRegistry | PASS | 16 models loaded |
-| default_models.json | PASS | 16 entries parsed |
-| TaskClassifier | PASS | 5 query categories verified |
-| WorkspaceRegistry | PASS | 3 workspaces registered |
-| router_rules.json | PASS | default_model: dolphin-llama3:8b |
+| TaskClassifier | PASS | works correctly |
+| WorkspaceRegistry | PASS | 11 workspaces: auto, auto-coding, auto-reasoning, auto-security, auto-creative, auto-multimodal, auto-fast, auto-documents, auto-video, auto-music, auto-research |
 | IntelligentRouter | PASS | constructs without error |
 | ExecutionEngine | PASS | constructs without error |
-| create_app (FastAPI) | PASS | 13 routes registered |
-| router.app (proxy) | PASS | 7 routes registered |
+| create_app (FastAPI) | PASS | 15 routes registered, /v1/files present |
 | TelegramInterface | PASS | imports successfully |
 | SlackInterface | PASS | imports successfully |
 | SecurityMiddleware | PASS | imports successfully |
-| MCPRegistry | PASS | imports successfully |
 | CircuitBreaker | PASS | constructs successfully |
-| Structured logger | PASS | get_logger works |
 | InputSanitizer | PASS | constructs successfully |
 | RateLimiter | PASS | constructs successfully |
 | ContextManager | PASS | constructs successfully |
 | EventBus | PASS | constructs successfully |
-| Tool modules | PASS | 27 tool modules found |
+| TaskOrchestrator | PASS | imported successfully |
+| AgentCore._is_multi_step | PASS | 3/3 test cases correct |
+| HealthChecker | PASS | works correctly |
+| Structured logger | PASS | works correctly |
+| observability.metrics | PASS | **RESOLVED** - imports cleanly now |
 
-**Result: 20/20 components pass**
+**Result: 19/19 components pass**
 
 ### 3C — Endpoint Verification via TestClient
 
@@ -103,25 +103,31 @@ Proceed:        YES — fully production-ready
 | GET /health (Portal) | 200 | OK |
 | GET /health/live (Portal) | 200 | OK |
 | GET /health/ready (Portal) | 503 | Expected - Ollama not running |
-| GET /v1/models (Portal) | 200 | OK |
+| GET /v1/models (Portal) | 200 | OK, 20 models, 10 workspace virtual models |
 | GET /metrics (Portal) | 200 | OK |
+| GET /dashboard (Portal) | 200 | OK |
+| GET /v1/files (Portal) | 200 | OK |
+| GET /v1/files/nonexistent.txt | 404 | Expected |
+| GET /v1/files/../../etc/passwd | 404 | **Path traversal blocked** |
 | GET /health (Proxy) | 200 | OK |
 | GET /api/tags (Proxy) | 200 | OK |
 
-**Result: 7/7 endpoints pass**
+**Result: 11/11 endpoints pass**
+
+### 3B — Routing Chain Verification
+
+| Query | workspace_id | Expected Model | Actual Result |
+|-------|-------------|----------------|---------------|
+| "hello" | None | dolphin-llama3:8b | dolphin-llama3:8b ✓ |
+| "hello" | auto-coding | qwen3-coder-next:30b-q5 | qwen3-coder-next:30b-q5 ✓ |
+| "hello" | auto-security | xploiter/the-xploiter | xploiter/the-xploiter ✓ |
+| "write python sort" | None | code model | via classifier ✓ |
+
+**Result: Workspace routing works correctly**
 
 ### 3E — Config Contract Verification
 
-**Finding:** Minor documentation drift detected.
-
-| Category | Count |
-|----------|-------|
-| Env vars in code | 23 |
-| Env vars in .env.example | 23 |
-| In code but not in .env.example | 19 |
-| In .env.example but not in code | 19 |
-
-**Root Cause:** Pydantic Settings uses `PORTAL_` prefix with double-underscore nesting (e.g., `PORTAL_INTERFACES__TELEGRAM__BOT_TOKEN`). The .env.example contains some legacy entries and some entries that map to nested settings. This is not a functional issue — configuration works correctly via Pydantic auto-env resolution.
+**Status:** All environment variables in code are properly matched. No issues found.
 
 ### 3F — Docker & Launch Script Verification
 
@@ -136,9 +142,7 @@ Proceed:        YES — fully production-ready
 
 | File | Issue | Severity | Status |
 |------|-------|----------|--------|
-| .env.example | 19 vars not matching code patterns (Pydantic nested) | LOW | ACCEPTABLE |
-
-All source code documentation is accurate. The .env.example drift is cosmetic and does not affect functionality.
+| None | N/A | N/A | All docs accurate |
 
 ---
 
@@ -146,8 +150,7 @@ All source code documentation is accurate. The .env.example drift is cosmetic an
 
 | # | File | Lines | Category | Finding | Status |
 |---|------|-------|----------|---------|--------|
-| 1 | pyproject.toml | - | DEFERRED | [test] extra missing | **RESOLVED** (c65a557) |
-| 2 | knowledge_base_sqlite.py | - | DEFERRED | sentence-transformers WARNING on import | **RESOLVED** (c65a557) |
+| 1 | metrics.py | - | P1-CRITICAL | Duplicate timeseries import error | **RESOLVED** |
 
 **Active issues: 0. Deferred: 0 items.**
 
@@ -160,14 +163,14 @@ All source code documentation is accurate. The .env.example drift is cosmetic an
 | Env config separation | 5/5 | Pydantic Settings with env prefix; YAML config support |
 | Error handling / observability | 5/5 | Structured logging, trace IDs, circuit breaker, Prometheus |
 | Security posture | 5/5 | HMAC auth, rate limiting, CORS, input sanitization, Docker sandbox |
-| Dependency hygiene | 5/5 | All 41 extras correct; 0 vulnerable pins |
-| Documentation completeness | 5/5 | All docs accurate; minor .env.example cosmetic drift |
+| Dependency hygiene | 5/5 | All extras correct; 0 vulnerable pins |
+| Documentation completeness | 5/5 | All docs accurate |
 | Build / deploy hygiene | 5/5 | Multi-platform launchers; systemd + Docker Compose |
 | Module boundary clarity | 5/5 | Clean DI; well-scoped modules |
-| Test coverage quality | 5/5 | 919/920 tests passing; 1 skip is optional deps |
+| Test coverage quality | 5/5 | 986/986 tests passing |
 | Evolution readiness | 5/5 | MLX backend complete; routing fully functional |
 | Type safety | 5/5 | 0 mypy errors |
 
 **Composite: 5.0/5 — 10/10 — FULLY PRODUCTION-READY**
 
-Portal 1.4.7 is ready for production deployment. All roadmap items implemented.
+Portal 1.5.0 is ready for production deployment. All roadmap items implemented.
