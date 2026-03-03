@@ -381,6 +381,11 @@ class WebInterface(BaseInterface):
             """List available personas from config/personas/."""
             return await self._handle_list_personas(auth)
 
+        @app.get("/tools")
+        async def list_all_tools(auth=Depends(self._auth_context)):
+            """List all available tools from internal registry and MCP servers."""
+            return await self._handle_list_tools(auth)
+
     async def _handle_chat_completions(
         self,
         payload: ChatCompletionRequest,
@@ -526,6 +531,38 @@ class WebInterface(BaseInterface):
         except Exception as e:
             logger.warning("Failed to load personas: %s", e)
             return {"object": "list", "data": []}
+
+    async def _handle_list_tools(self, auth: dict) -> dict:
+        """Handle /tools — list all available tools from internal registry and MCP servers."""
+        tools = []
+
+        # Get internal tools from AgentCore
+        internal_tools = self.agent_core.get_tool_list()
+        for tool in internal_tools:
+            tools.append({
+                "name": tool["name"],
+                "description": tool["description"],
+                "category": tool["category"],
+                "source": "internal",
+            })
+
+        # Get MCP server tools if registry is available
+        if self.agent_core.mcp_registry:
+            try:
+                mcp_servers = self.agent_core.mcp_registry._servers
+                for server_name in mcp_servers:
+                    server_tools = await self.agent_core.mcp_registry.list_tools(server_name)
+                    for tool in server_tools:
+                        tools.append({
+                            "name": tool.get("name", "unknown"),
+                            "description": tool.get("description", ""),
+                            "category": "mcp",
+                            "source": f"mcp:{server_name}",
+                        })
+            except Exception as e:
+                logger.warning("Failed to load MCP tools: %s", e)
+
+        return {"object": "list", "data": tools}
 
     def _register_utility_routes(self, app: FastAPI, _agent_ready: asyncio.Event) -> None:
         @app.get("/metrics")

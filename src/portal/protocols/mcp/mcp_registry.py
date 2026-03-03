@@ -69,24 +69,84 @@ class MCPRegistry:
 
     async def health_check(self, name: str) -> bool:
         """Return True if the named server is reachable."""
+        result = await self.health_check_detailed(name)
+        return result["status"] == "healthy"
+
+    async def health_check_detailed(self, name: str) -> dict:
+        """Return detailed health status for the named server.
+
+        Returns:
+            dict with keys: status ("healthy" | "degraded" | "unreachable" | "not_found"),
+                           message, server_url, error_type (optional)
+        """
         server = self._servers.get(name)
         if not server:
-            return False
+            return {
+                "status": "not_found",
+                "message": f"MCP server '{name}' is not registered",
+                "server_name": name,
+            }
 
         headers = self._auth_headers(server)
         url = f"{server['url']}/openapi.json" if server["transport"] == "openapi" else server["url"]
+
         try:
             resp = await self._request("GET", url, headers=headers, timeout=5.0)
-            return resp.status_code < 500
+            if resp.status_code < 500:
+                return {
+                    "status": "healthy",
+                    "message": "Server is reachable",
+                    "server_url": server["url"],
+                    "status_code": resp.status_code,
+                }
+            elif resp.status_code >= 500:
+                return {
+                    "status": "unreachable",
+                    "message": f"Server returned {resp.status_code}",
+                    "server_url": server["url"],
+                    "status_code": resp.status_code,
+                    "error_type": "server_error",
+                }
+        except httpx.ConnectError as exc:
+            return {
+                "status": "unreachable",
+                "message": f"Connection failed: {exc}",
+                "server_url": server["url"],
+                "error_type": "connection_error",
+            }
+        except httpx.TimeoutException as exc:
+            return {
+                "status": "degraded",
+                "message": f"Connection timed out: {exc}",
+                "server_url": server["url"],
+                "error_type": "timeout",
+            }
         except Exception as exc:
-            logger.debug("Health check failed for %r: %s", name, exc)
-            return False
+            return {
+                "status": "unreachable",
+                "message": str(exc),
+                "server_url": server["url"],
+                "error_type": type(exc).__name__,
+            }
+
+        return {
+            "status": "unreachable",
+            "message": "Unknown error",
+            "server_url": server["url"],
+        }
 
     async def health_check_all(self) -> dict[str, bool]:
         """Check all registered servers. Returns {name: is_healthy}."""
         results = {}
         for name in self._servers:
             results[name] = await self.health_check(name)
+        return results
+
+    async def health_check_all_detailed(self) -> dict[str, dict]:
+        """Check all registered servers with detailed status. Returns {name: details}."""
+        results = {}
+        for name in self._servers:
+            results[name] = await self.health_check_detailed(name)
         return results
 
     async def list_tools(self, server_name: str) -> list[dict]:
