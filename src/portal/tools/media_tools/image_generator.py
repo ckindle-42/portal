@@ -41,7 +41,7 @@ def _get_output_path(output_dir: str) -> Path:
 
 async def generate_image(
     prompt: str,
-    output_dir: str = "~/AI_Output/images",
+    output_dir: str = os.getenv("GENERATED_FILES_DIR", "data/generated"),
     steps: int = 20,
     model: str = "dev",
     width: int = 1024,

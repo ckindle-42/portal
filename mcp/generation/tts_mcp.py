@@ -18,7 +18,7 @@ mcp = FastMCP("tts-generation")
 
 logger = logging.getLogger(__name__)
 
-OUTPUT_DIR = Path.home() / "AI_Output" / "tts"
+OUTPUT_DIR = Path(os.getenv("GENERATED_FILES_DIR", "data/generated"))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 TTS_BACKEND = os.getenv("TTS_BACKEND", "fish_speech")  # "fish_speech" or "cosyvoice"

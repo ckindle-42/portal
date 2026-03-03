@@ -77,6 +77,26 @@ The central processing engine.  All interfaces funnel requests through here.
 - `ToolRegistry` — discovers and manages local Python tools
 - `MCPRegistry` — registry of connected MCP servers (optional at startup)
 
+#### Tool Schema Builder (`src/portal/core/tool_schema_builder.py`)
+
+Builds OpenAI-compatible tool schemas from both internal tools (ToolRegistry) and MCP servers:
+
+- `build_tool_schemas(tool_registry, mcp_registry)` — combined tool definitions for LLM
+- `_convert_internal_tool(tool)` — converts BaseTool to OpenAI function schema
+- `_convert_mcp_tool(server_name, tool)` — converts MCP tool manifest to OpenAI format
+
+The resulting schemas are passed to `OllamaBackend.generate()` via the `tools` parameter.
+
+---
+
+### TaskOrchestrator (`src/portal/core/orchestrator.py`)
+
+Handles multi-step requests by breaking complex prompts into sequential steps:
+
+- `build_plan(message)` — analyzes request and creates execution plan
+- `execute(plan)` — runs each step, collects results
+- Conservative detection: Only triggers for clearly multi-step queries
+
 ---
 
 ### Interfaces
@@ -94,6 +114,7 @@ All concrete interfaces inherit from `BaseInterface`
 - **GET `/health`** — live health check; calls `AgentCore.health_check()`
 - **GET `/v1/files`** — list generated files from `data/generated/`
 - **GET `/v1/files/{filename}`** — download generated files (with path traversal protection)
+- **File delivery:** All generated content (images, audio, video, documents) is saved to `data/generated/` by default, making it accessible via these endpoints
 
 Open WebUI and LibreChat connect here via "Custom OpenAI Endpoint":
 ```
@@ -284,12 +305,15 @@ sub-URL (e.g. `http://localhost:9000/filesystem`) so the path resolves to
 |--------|-----------|---------|
 | `core` | mcpo/openapi | Filesystem, Time (via mcpo proxy at :9000) |
 | `scrapling` | streamable-http | Web scraping via Scrapling at :8900 |
+| `documents` | streamable-http | Document creation (Word, PowerPoint, Excel) at :8913 |
 | ComfyUI | openapi | Image generation at :8188 |
-| Whisper | openapi | Audio transcription at :5002 |
-| `video_mcp` | streamable-http | Video generation at :8911 |
-| `music_mcp` | streamable-http | Music/audio generation at :8912 |
-| `document_mcp` | streamable-http | Document creation (Word, PowerPoint, Excel) at :8913 |
-| `code_sandbox_mcp` | streamable-http | Secure code execution in Docker at :8914 |
+| `whisper` | streamable-http | Audio transcription at :8915 |
+| `video` | streamable-http | Video generation (Wan2.2/CogVideoX) at :8911 |
+| `music` | streamable-http | Music generation (AudioCraft) at :8912 |
+| `tts` | streamable-http | Text-to-speech (Fish Speech/CosyVoice) at :8916 |
+| `sandbox` | streamable-http | Secure code execution in Docker at :8914 |
+
+> **Note:** Generation services (video, music, tts, comfyui, whisper) require `GENERATION_SERVICES=true` environment variable.
 
 MCP dispatch into `AgentCore.process_message()` is fully wired: `OllamaBackend.generate()`
 surfaces `tool_calls` from the LLM response and `AgentCore._dispatch_mcp_tools()` routes

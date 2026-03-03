@@ -190,21 +190,57 @@ def register_metrics_endpoint(app, metrics: MetricsCollector) -> None:
 # ---------------------------------------------------------------------------
 
 if PROMETHEUS_AVAILABLE:
-    REQUESTS_PER_MINUTE = Gauge("portal_requests_per_minute", "Rolling requests per minute")
-    ACTIVE_USERS = Gauge("portal_active_users", "Unique users seen in process lifetime")
-    TOKENS_PER_SECOND = Histogram(
-        "portal_tokens_per_second",
-        "Tokens/sec during completion",
-        buckets=(1, 5, 10, 20, 40, 80),
-    )
-    TTFT_MS = Histogram(
-        "portal_ttft_ms",
-        "Time to first token",
-        buckets=(10, 50, 100, 250, 500, 1000, 2000, 5000),
-    )
-    MCP_TOOL_USAGE = Counter("portal_mcp_tool_usage_total", "MCP tool calls", ["tool_name"])
-    VRAM_MB = Gauge("portal_vram_usage_mb", "VRAM usage in MB")
-    UNIFIED_MEM_MB = Gauge("portal_unified_memory_usage_mb", "Unified memory usage in MB")
+    # Try to register metrics; if they already exist, catch the error and continue
+    # This handles cases where the module is imported multiple times (e.g., during testing)
+    try:
+        REQUESTS_PER_MINUTE = Gauge("portal_requests_per_minute", "Rolling requests per minute")
+    except ValueError:
+        logger.debug("portal_requests_per_minute already registered, using existing")
+        REQUESTS_PER_MINUTE = Gauge("portal_requests_per_minute_noop")
+
+    try:
+        ACTIVE_USERS = Gauge("portal_active_users", "Unique users seen in process lifetime")
+    except ValueError:
+        logger.debug("portal_active_users already registered, using existing")
+        ACTIVE_USERS = Gauge("portal_active_users_noop")
+
+    try:
+        TOKENS_PER_SECOND = Histogram(
+            "portal_tokens_per_second",
+            "Tokens/sec during completion",
+            buckets=(1, 5, 10, 20, 40, 80),
+        )
+    except ValueError:
+        logger.debug("portal_tokens_per_second already registered, using existing")
+        TOKENS_PER_SECOND = Histogram("portal_tokens_per_second_noop")
+
+    try:
+        TTFT_MS = Histogram(
+            "portal_ttft_ms",
+            "Time to first token",
+            buckets=(10, 50, 100, 250, 500, 1000, 2000, 5000),
+        )
+    except ValueError:
+        logger.debug("portal_ttft_ms already registered, using existing")
+        TTFT_MS = Histogram("portal_ttft_ms_noop")
+
+    try:
+        MCP_TOOL_USAGE = Counter("portal_mcp_tool_usage_total", "MCP tool calls", ["tool_name"])
+    except ValueError:
+        logger.debug("portal_mcp_tool_usage_total already registered, using existing")
+        MCP_TOOL_USAGE = Counter("portal_mcp_tool_usage_total_noop")
+
+    try:
+        VRAM_MB = Gauge("portal_vram_usage_mb", "VRAM usage in MB")
+    except ValueError:
+        logger.debug("portal_vram_usage_mb already registered, using existing")
+        VRAM_MB = Gauge("portal_vram_usage_mb_noop")
+
+    try:
+        UNIFIED_MEM_MB = Gauge("portal_unified_memory_usage_mb", "Unified memory usage in MB")
+    except ValueError:
+        logger.debug("portal_unified_memory_usage_mb already registered, using existing")
+        UNIFIED_MEM_MB = Gauge("portal_unified_memory_usage_mb_noop")
 else:
     # Stubs so importers don't crash when prometheus_client is absent
     class _Stub:

@@ -210,79 +210,478 @@ The `_is_multi_step()` function correctly identifies multi-step requests:
 
 ## 5. Feature Catalog
 
-### 5.1 Web Interface (Open WebUI / LibreChat)
+### 5.1 Text Chat
 
-- **URL:** http://localhost:8081/v1 (direct) or http://localhost:8080 (via Caddy)
-- **Setup:** Point Open WebUI's "OpenAI API Base URL" to http://localhost:8081/v1
-- **Auth:** Bearer token from WEB_API_KEY (or disabled if not set)
-- **Streaming:** POST /v1/chat/completions with `stream: true`
-- **Status:** VERIFIED via TestClient
+**What it is:** Core chat functionality via OpenAI-compatible `/v1/chat/completions` endpoint.
 
-### 5.2 Endpoint Verification
+**How to use it:** Send a POST request to `/v1/chat/completions` with messages array, or use any OpenAI-compatible client (Open WebUI, LibreChat, curl).
 
-| Endpoint | Status | Code |
-|----------|--------|------|
-| GET /health | OK | 200 |
-| GET /health/live | OK | 200 |
-| GET /health/ready | OK | 503* |
-| GET /v1/models | OK | 200 |
-| GET /metrics | OK | 200 |
-| GET /v1/files | OK | 200 |
-| GET /v1/files/../../etc/passwd | BLOCKED | 404 |
-| GET /v1/files/nonexistent.txt | NOT FOUND | 404 |
+**What happens internally:**
+1. Request hits `server.py` → `ChatManager`
+2. `AgentCore.process_message()` routes to appropriate model
+3. Response streamed or returned as JSON
 
-*Note: /health/ready returns 503 because Ollama is not running (expected in test environment without LLM)
+**Prerequisites:** Ollama running with at least one model pulled.
 
-### 5.3 File Delivery
+**Works via:** Web API, Telegram, Slack.
 
-- **Web:** GET /v1/files → returns JSON array, GET /v1/files/{filename}
-- **Telegram:** Generated images/audio/video/documents auto-sent as media
-- **Slack:** Files from MCP URLs auto-uploaded to channel
-- **Security:** Path traversal blocked (rejects `..`, `/`, `\`)
-- **Source:** data/generated/
-
-### 5.4 Workspace Selection
-
-All interfaces support explicit workspace selection via `@model:` prefix:
-
-```
-@model:auto-security write a reverse shell
-@model:auto-coding write a Python function
-@model:auto-creative write a poem
+**Example:**
+```bash
+curl -X POST http://localhost:8081/v1/chat/completions \
+  -H "Authorization: Bearer $WEB_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "llama3", "messages": [{"role": "user", "content": "Hello!"}]}'
 ```
 
-**Available Workspaces:** auto, auto-coding, auto-security, auto-reasoning, auto-creative, auto-multimodal, auto-fast, auto-documents, auto-video, auto-music, auto-research
+---
 
-### 5.5 MCP Tools
+### 5.2 Code Generation
 
-### 5.4 MCP Tools
+**What it is:** Automatic routing to code-specialized models for programming tasks.
 
-The following tool categories are available:
+**How to use it:** Chat normally, or explicitly select `@model:auto-coding` workspace.
 
-| Category | Tools | Status |
-|----------|-------|--------|
-| Document Processing | docx, pptx, excel, pdf | IMPORTS_OK |
-| Media Tools | image, audio, video generators | IMPORTS_OK |
-| Dev Tools | git operations | IMPORTS_OK |
-| System Tools | process monitor, clipboard | IMPORTS_OK |
-| Web Tools | http client, search | IMPORTS_OK |
+**What happens internally:** Router classifies query as "code" and selects model from `auto-coding` workspace.
 
-### 5.5 Telegram Bot
+**Prerequisites:** Code model in Ollama (e.g., codellama, deepseek-coder).
 
-- **Import:** OK (python-telegram-bot)
-- **Config:** TELEGRAM_BOT_TOKEN, TELEGRAM_USER_IDS
-- **Commands:** /start, /help, /tools, /stats, /health
-- **Workspace Selection:** Use `@model:workspace-name` prefix (e.g., `@model:auto-security write a reverse shell`)
-- **File Delivery:** Generated images, audio, video, and documents are automatically sent as media
-- **Status:** VERIFIED (Phase 3)
+**Works via:** Web API, Telegram, Slack.
 
-### 5.6 Slack Bot
+**Example:**
+```
+@model:auto-coding write a Python function to reverse a string
+```
 
-- **Import:** OK (slack-sdk)
-- **Config:** SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET
-- **Workspace Selection:** Use `@model:workspace-name` prefix (e.g., `@model:auto-coding write a function`)
-- **File Delivery:** Generated files from MCP URLs are automatically uploaded to the channel
-- **Status:** VERIFIED (Phase 3)
+---
+
+### 5.3 Image Generation (FLUX + SDXL + mflux)
+
+**What it is:** Generate images from text prompts using FLUX (fast) or SDXL (quality/LoRA).
+
+**How to use it:**
+- Via MCP: Call `generate_image` tool on ComfyUI MCP server
+- Via internal tool: `image_generator.generate_image()`
+
+**What happens internally:**
+1. Tool call triggers ComfyUI MCP
+2. FLUX or SDXL workflow executed on ComfyUI
+3. Image saved to `data/generated/` (configurable via `GENERATED_FILES_DIR`)
+4. File delivered to user via interface
+
+**Prerequisites:**
+- ComfyUI running (`launch.sh start-comfyui` or manual)
+- ComfyUI MCP server: `python -m mcp.generation.comfyui_mcp`
+- FLUX models or SDXL + LoRA models
+
+**Setup commands:**
+```bash
+# Start ComfyUI (M4 optimized)
+./launch.sh start-comfyui
+
+# Or manually:
+cd ComfyUI
+python main.py --listen 0.0.0.0 --port 8188 --mps --highvram
+
+# Start ComfyUI MCP
+export COMFYUI_MCP_PORT=8910
+python -m mcp.generation.comfyui_mcp
+
+# Download FLUX models (if not using ComfyUI manager)
+huggingface-cli download black-forest-labs/FLUX.1-schnell --local-dir ~/ComfyUI/models/checkpoints/
+```
+
+**Environment variables:**
+- `IMAGE_BACKEND=flux` (default) or `IMAGE_BACKEND=sdxl`
+- `COMFYUI_MCP_URL=http://localhost:8910`
+
+**Works via:** Web API, Telegram (as photo), Slack (as file).
+
+**Example prompt:** "Generate a futuristic cityscape at sunset, cyberpunk style"
+
+---
+
+### 5.4 Video Generation (Wan2.2 + CogVideoX)
+
+**What it is:** Generate videos from text prompts using Wan2.2 (M4 optimized) or CogVideoX (CUDA).
+
+**How to use it:** Call `generate_video` tool via MCP or internal tool.
+
+**What happens internally:**
+1. Tool call triggers Video MCP (`video_mcp.py`) or internal tool
+2. Wan2.2 or CogVideoX workflow executed on ComfyUI
+3. Video returned as ComfyUI URL or saved locally
+
+**Prerequisites:**
+- ComfyUI running with video generation models
+- Video MCP server: `python -m mcp.generation.video_mcp`
+
+**Setup commands:**
+```bash
+# Download Wan2.2 models (M4 optimized)
+huggingface-cli download Wau/UMT5-XXL-FP8-E4M3 --local-dir ~/ComfyUI/models/clip/
+huggingface-cli download Wau/Wan2.2_VAE --local-dir ~/ComfyUI/models/vae/
+huggingface-cli download Wau/Wan2.2_T2V_5B --local-dir ~/ComfyUI/models/unet/
+
+# Or CogVideoX (CUDA)
+huggingface-cli download THUDM/CogVideoX-5b --local-dir ~/ComfyUI/models/checkpoints/
+```
+
+**Environment variables:**
+- `VIDEO_BACKEND=wan22` (default, M4) or `VIDEO_BACKEND=cogvideox` (CUDA)
+- `VIDEO_TEXT_ENCODER=umt5_xxl_fp8_e4m3fn_scaled.safetensors`
+- `VIDEO_VAE=wan2.2_vae.safetensors`
+
+**Works via:** Web API, Telegram (as video), Slack (as file).
+
+**Example prompt:** "Generate a flowing waterfall with mist rising, cinematic quality"
+
+---
+
+### 5.5 Music Generation (AudioCraft)
+
+**What it is:** Generate music from text descriptions using Meta's AudioCraft/MusicGen.
+
+**How to use it:** Call `generate_music` tool on Music MCP server.
+
+**What happens internally:**
+1. Tool call triggers Music MCP (`music_mcp.py`)
+2. AudioCraft generates audio based on prompt and duration
+3. Audio saved to `data/generated/music/`
+
+**Prerequisites:**
+- AudioCraft installed: `pip install audiocraft`
+- Music MCP server: `python -m mcp.generation.music_mcp`
+
+**Setup commands:**
+```bash
+# Install AudioCraft
+pip install audiocraft
+
+# Start Music MCP
+export MUSIC_MCP_PORT=8912
+python -m mcp.generation.music_mcp
+```
+
+**Environment variables:**
+- `MUSIC_MODEL_SIZE=small|medium|large` (default: medium)
+- `GENERATED_FILES_DIR=data/generated` (default)
+
+**Works via:** Web API, Telegram (as audio), Slack (as file).
+
+**Example prompt:** "Generate an upbeat electronic dance track with strong bass and synth melodies"
+
+---
+
+### 5.6 TTS / Voice Cloning (Fish Speech + CosyVoice)
+
+**What it is:** Convert text to speech using Fish Speech (recommended) or CosyVoice.
+
+**How to use it:** Call `speak` or `clone_voice` tools on TTS MCP server.
+
+**What happens internally:**
+1. Tool call triggers TTS MCP (`tts_mcp.py`)
+2. Fish Speech or CosyVoice generates audio
+3. Audio saved to `data/generated/`
+
+**Prerequisites:**
+- Fish Speech installed and running (recommended)
+- Or CosyVoice installed
+- TTS MCP server: `python -m mcp.generation.tts_mcp`
+
+**Setup commands:**
+```bash
+# Fish Speech setup (recommended for M4)
+# See: https://github.com/fishaudio/fish-speech
+
+# Start TTS MCP
+export TTS_MCP_PORT=8916
+python -m mcp.generation.tts_mcp
+```
+
+**Environment variables:**
+- `TTS_BACKEND=fish_speech` (default) or `cosyvoice`
+- `FISH_SPEECH_MODEL_PATH=models/fish_speech/fish-speech-1.4`
+
+**Works via:** Web API, Telegram (as audio), Slack (as file).
+
+**Available voices:** female_zhang, female_ning, male_yun, male_jun (Fish Speech)
+
+---
+
+### 5.7 Speech-to-Text (Whisper)
+
+**What it is:** Transcribe audio files to text using OpenAI Whisper.
+
+**How to use it:** Call `transcribe_audio` tool on Whisper MCP server.
+
+**What happens internally:**
+1. Tool call triggers Whisper MCP
+2. Audio transcribed to text
+3. Transcription returned as tool result
+
+**Prerequisites:**
+- Whisper MCP server: `python -m mcp.generation.whisper_mcp`
+
+**Setup commands:**
+```bash
+# Start Whisper MCP
+export WHISPER_MCP_PORT=8915
+python -m mcp.generation.whisper_mcp
+
+# Models auto-downloaded on first use
+```
+
+**Works via:** Web API, Telegram (voice messages), Slack.
+
+---
+
+### 5.8 Document Creation (Word, PowerPoint, Excel)
+
+**What it is:** Generate documents, presentations, and spreadsheets programmatically.
+
+**How to use it:** Call `create_document`, `create_presentation`, or `create_spreadsheet` on Documents MCP.
+
+**What happens internally:**
+1. Tool call triggers Documents MCP (`document_mcp.py`)
+2. python-docx/pptx/openpyxl generates file
+3. File saved to `data/generated/documents/`
+
+**Prerequisites:**
+- python-docx, python-pptx, openpyxl installed
+- Documents MCP server: `python -m mcp.generation.document_mcp`
+
+**Setup commands:**
+```bash
+pip install python-docx python-pptx openpyxl
+
+export DOCUMENTS_MCP_PORT=8913
+python -m mcp.generation.document_mcp
+```
+
+**Works via:** Web API, Telegram (as document), Slack (as file).
+
+---
+
+### 5.9 Code Execution Sandbox
+
+**What it is:** Execute untrusted code in an isolated Docker container.
+
+**How to use it:** Enable `SANDBOX_ENABLED=true` and call sandbox tools.
+
+**What happens internally:**
+1. Tool call triggers Sandbox MCP
+2. Code executed in Docker container
+3. Output returned, container destroyed
+
+**Prerequisites:**
+- Docker running
+- `SANDBOX_ENABLED=true`
+
+**Setup commands:**
+```bash
+export SANDBOX_ENABLED=true
+export SANDBOX_MCP_PORT=8914
+python -m mcp.generation.code_sandbox_mcp
+```
+
+**Environment variables:**
+- `SANDBOX_DOCKER_IMAGE=python:3.11-slim` (default)
+
+**Security:** Code runs in isolated container with no network access.
+
+---
+
+### 5.10 Red Team / Offensive Security
+
+**What it is:** Specialized workspace for security testing with appropriate guardrails.
+
+**How to use it:** Use `@model:auto-security` prefix or chat with auto-security workspace.
+
+**What happens internally:** Router directs to `xploiter/the-xploiter` model with auto-security rules.
+
+**Prerequisites:** Security model pulled in Ollama.
+
+**Works via:** Web API, Telegram, Slack.
+
+**Example:**
+```
+@model:auto-security test this SQL injection payload
+```
+
+---
+
+### 5.11 Blue Team / Defensive Security / Splunk
+
+**What it is:** Security analysis and SIEM integration for defensive operations.
+
+**How to use it:** Use `@model:security-analysis` workspace (if configured).
+
+**Prerequisites:** Splunk MCP server or custom security tools.
+
+---
+
+### 5.12 Creative Writing
+
+**What it is:** Creative content generation with specialized models.
+
+**How to use it:** Use `@model:auto-creative` prefix or let auto-routing select creative model.
+
+**Works via:** Web API, Telegram, Slack.
+
+---
+
+### 5.13 Deep Reasoning / Research
+
+**What it is:** Complex reasoning and analysis with deep-thinking models.
+
+**How to use it:** Use `@model:auto-reasoning` prefix.
+
+**Prerequisites:** Deep reasoning model in Ollama (e.g., deepseek-r1).
+
+---
+
+### 5.14 Web Research (Scrapling/DDG)
+
+**What it is:** Search the web and scrape web pages for research tasks.
+
+**How to use it:** Built-in tools for HTTP requests and web scraping.
+
+**What happens internally:**
+1. Tool calls Scrapling MCP for web scraping
+2. DDG integration for search
+3. Results fed back to LLM
+
+**Prerequisites:** Scrapling MCP running (`scrapling` in mcpo)
+
+**Setup:** Included in default MCP configuration.
+
+**Works via:** Web API, Telegram, Slack.
+
+---
+
+### 5.15 RAG / Knowledge Base
+
+**What it is:** Retrieve relevant context from documents before generating responses.
+
+**How to use it:** Enable RAG in configuration, upload documents.
+
+**What happens internally:**
+1. Documents embedded via embedding model
+2. Similarity search retrieves relevant context
+3. Context injected into prompt
+
+**Prerequisites:** Embedding model in Ollama.
+
+---
+
+### 5.16 Multi-Step Orchestration
+
+**What it is:** Automatically break complex requests into multiple steps.
+
+**How to use it:** Enabled by default for complex queries. Can be triggered explicitly.
+
+**What happens internally:**
+1. `TaskOrchestrator.build_plan()` breaks request into steps
+2. `TaskOrchestrator.execute()` runs each step
+3. Results combined into final response
+
+**Conservative detection:** Only triggers for clearly multi-step queries.
+
+---
+
+### 5.17 Multimodal (Qwen2-Omni)
+
+**What it is:** Process images, audio, and video alongside text.
+
+**How to use it:** Use `@model:auto-multimodal` or send messages with images/audio.
+
+**Prerequisites:** Qwen2-Omni model in Ollama.
+
+---
+
+### 5.18 Telegram Bot — Complete Setup Guide
+
+**Step 1: Create a Telegram Bot**
+1. Open Telegram and chat with @BotFather
+2. Send `/newbot` to create a new bot
+3. Follow prompts to name your bot
+4. Copy the bot token
+
+**Step 2: Get Your Chat ID**
+1. Chat with @userinfobot on Telegram
+2. Your ID is the number shown
+
+**Step 3: Configure Portal**
+```bash
+export TELEGRAM_BOT_TOKEN="your-bot-token-here"
+export TELEGRAM_USER_IDS="your-chat-id"
+```
+
+**Step 4: Start Portal**
+```bash
+./launch.sh start-telegram
+# Or manually:
+python -m portal.interfaces.telegram
+```
+
+**Step 5: Use the Bot**
+- Send `/start` to initialize
+- Send `/help` for commands
+- Send `/tools` to list available tools
+- Use `@model:workspace` to select model
+
+**Commands:**
+- `/start` - Start a conversation
+- `/help` - Show help
+- `/tools` - List available tools
+- `/stats` - Show usage stats
+- `/health` - Check health
+
+**Workspace Selection:**
+```
+@model:auto-security test this
+@model:creative write a poem
+```
+
+**File Delivery:** Images sent as photos, audio as voice/audio, videos as video, documents as files.
+
+---
+
+### 5.19 Slack Bot — Complete Setup Guide
+
+**Step 1: Create a Slack App**
+1. Go to https://api.slack.com/apps
+2. Click "Create New App" → "From scratch"
+3. Add bot token scope: `chat:write`, `files:write`, `channels:history`
+4. Install to workspace
+
+**Step 2: Get Bot Token**
+- Copy "Bot User OAuth Token" (starts with `xoxb-`)
+
+**Step 3: Configure Portal**
+```bash
+export SLACK_BOT_TOKEN="xoxb-your-token-here"
+export SLACK_SIGNING_SECRET="your-signing-secret"
+```
+
+**Step 4: Enable Events**
+1. In Slack app config, go to "Event Subscriptions"
+2. Enable events
+3. Subscribe to `message.channels`
+4. Request URL: `https://your-domain/slack/events`
+
+**Step 5: Start Portal**
+```bash
+./launch.sh start-slack
+# Or manually:
+python -m portal.interfaces.slack
+```
+
+**Usage:**
+- Mention bot or DM to chat
+- Use `@model:workspace` for workspace selection
+
+**File Delivery:** Generated files uploaded to channel via Slack API.
 
 ---
 

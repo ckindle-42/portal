@@ -617,6 +617,8 @@ run_doctor() {
         check_service "mcp-music" "http://localhost:${MUSIC_MCP_PORT:-8912}/health" "true"
         check_service "mcp-documents" "http://localhost:${DOCUMENTS_MCP_PORT:-8913}/health" "true"
         check_service "mcp-sandbox" "http://localhost:${SANDBOX_MCP_PORT:-8914}/health" "true"
+        check_service "mcp-tts" "http://localhost:${TTS_MCP_PORT:-8916}/health" "true"
+        check_service "mcp-whisper" "http://localhost:${WHISPER_MCP_PORT:-8915}/health" "true"
     fi
 
     echo ""
@@ -668,6 +670,7 @@ stop_all() {
     pkill -f "whisper_mcp" 2>/dev/null && echo "[whisper_mcp] stopped" || true
     pkill -f "video_mcp" 2>/dev/null && echo "[video_mcp] stopped" || true
     pkill -f "music_mcp" 2>/dev/null && echo "[music_mcp] stopped" || true
+    pkill -f "tts_mcp" 2>/dev/null && echo "[tts_mcp] stopped" || true
     pkill -f "document_mcp" 2>/dev/null && echo "[document_mcp] stopped" || true
     pkill -f "code_sandbox_mcp" 2>/dev/null && echo "[code_sandbox_mcp] stopped" || true
 

@@ -21,15 +21,23 @@ Adding a 4th interface is ~50 lines of Python.
 | Feature | Description |
 |---------|-------------|
 | **Chat** | OpenAI-compatible `/v1/chat/completions` with streaming (SSE) |
-| **Image Generation** | ComfyUI integration for AI image generation |
-| **Video Generation** | Video generation via video_mcp |
-| **Music Generation** | Music/audio generation via music_mcp |
-| **Document Creation** | Word, PowerPoint, Excel via document_mcp |
+| **Code Generation** | Specialized coding models (auto-coding workspace) |
+| **Image Generation** | FLUX (fast) and SDXL (quality/LoRA) via ComfyUI |
+| **Video Generation** | Wan2.2 (M4) or CogVideoX (CUDA) via ComfyUI |
+| **Music Generation** | AudioCraft/MusicGen for music creation |
+| **TTS / Voice Cloning** | Fish Speech (recommended) or CosyVoice |
+| **Speech-to-Text** | Whisper for audio transcription |
+| **Document Creation** | Word, PowerPoint, Excel via documents MCP |
 | **Code Sandbox** | Secure Python/Node/Bash execution in Docker |
-| **Web Research** | Targeted web search when models need current info |
-| **Multi-Step Tasks** | Task orchestrator for sequential multi-step requests |
+| **Red Team** | Security testing with auto-security workspace |
+| **Creative Writing** | Creative content generation (auto-creative) |
+| **Deep Reasoning** | Complex reasoning with auto-reasoning |
+| **Web Research** | Scrapling + DDG for targeted searches |
+| **RAG / Knowledge Base** | Document embedding and retrieval |
+| **Multi-Step Orchestration** | Task orchestrator for sequential steps |
+| **Multimodal** | Qwen2-Omni for image/audio/video understanding |
 | **File Delivery** | Download generated files via `/v1/files` |
-| **Voice** | Audio transcription via Whisper |
+| **Interfaces** | Web (Open WebUI/LibreChat), Telegram, Slack |
 
 ## Hardware
 

@@ -330,6 +330,7 @@ class AgentCore:
             model_used=result.model_used,
             execution_time=execution_time,
             tools_used=tools_used,
+            tool_results=tool_results,
             warnings=[],
             completion_tokens=result.tokens_generated or None,
             metadata={

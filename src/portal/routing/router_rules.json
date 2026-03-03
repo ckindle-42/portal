@@ -21,7 +21,7 @@
     "auto-security": {
       "model": "xploiter/the-xploiter",
       "lock": true,
-      "fallback": ["lazarevtill/Llama-3-WhiteRabbitNeo-8B-v2.0:q4_0", "dolphin-llama3:70b"]
+      "fallback": ["lazarevtill/Llama-3-WhiteRabbitNeo-8B-v2.0:q4_0", "huihui_ai/baronllm-abliterated", "dolphin-llama3:70b"]
     },
     "auto-creative": {
       "model": "dolphin-llama3:70b",
