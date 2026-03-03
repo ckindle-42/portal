@@ -592,10 +592,10 @@ start_comfyui() {
             comfy_cmd="comfy"
         fi
 
-        # Run comfy install to download ComfyUI
+        # Run comfy install to download ComfyUI (auto-accept tracking prompt)
         if [ -n "$comfy_cmd" ]; then
             cd "$HOME"
-            "$comfy_cmd" install
+            yes | "$comfy_cmd" install
         else
             echo "[comfyui] ERROR: comfy command not available after install"
             return 1
