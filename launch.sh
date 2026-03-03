@@ -615,7 +615,7 @@ start_comfyui() {
     local comfy_args="--listen 0.0.0.0 --port $comfy_port"
     case "$profile" in
         m4-mac)
-            comfy_args="$comfy_args --use-pytorch-cross-attention --mps --highvram"
+            comfy_args="$comfy_args --use-pytorch-cross-attention --highvram"
             ;;
         linux-bare)
             comfy_args="$comfy_args --cuda"
