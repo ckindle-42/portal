@@ -39,5 +39,6 @@ launch_server "comfyui" "comfyui_mcp.py"
 launch_server "whisper" "whisper_mcp.py"
 launch_server "video" "video_mcp.py"
 launch_server "music" "music_mcp.py"
+launch_server "tts" "tts_mcp.py"
 
 echo "[generation-mcps] all servers launched"

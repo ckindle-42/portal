@@ -173,6 +173,10 @@ class DependencyContainer:
             music_url = os.getenv("MUSIC_MCP_URL", f"http://localhost:{os.getenv('MUSIC_MCP_PORT', '8912')}")
             await registry.register(name="music", url=music_url, transport="streamable-http")
 
+            # TTS (Fish Speech or CosyVoice)
+            tts_url = os.getenv("TTS_MCP_URL", f"http://localhost:{os.getenv('TTS_MCP_PORT', '8916')}")
+            await registry.register(name="tts", url=tts_url, transport="streamable-http")
+
         # Sandbox (when SANDBOX_ENABLED=true)
         if os.getenv("SANDBOX_ENABLED", "false").lower() == "true":
             sandbox_url = os.getenv("SANDBOX_MCP_URL", f"http://localhost:{os.getenv('SANDBOX_MCP_PORT', '8914')}")
