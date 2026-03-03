@@ -4,7 +4,7 @@ Wraps ComfyUI video workflows for local video generation.
 Exposes: generate_video, list_video_models
 
 Requires: ComfyUI running at COMFYUI_URL with a video model installed
-          (CogVideoX, Wan2.1, or Mochi via ComfyUI Manager)
+          (CogVideoX, Wan2.2, or Mochi via ComfyUI Manager)
 Start with: python -m mcp.generation.video_mcp
 """
 
@@ -20,9 +20,71 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("video-generation")
 
 COMFYUI_URL = os.getenv("COMFYUI_URL", "http://localhost:8188")
+VIDEO_BACKEND = os.getenv("VIDEO_BACKEND", "wan22")  # "wan22" or "cogvideox"
 
-# CogVideoX workflow template — works with cogvideox_5b.safetensors
-_VIDEO_WORKFLOW: dict = {
+# Wan2.2 T2V workflow — uses UNETLoader, CLIPLoader, VAELoader, EmptyHunyuanLatentVideo
+_WAN22_T2V_WORKFLOW: dict = {
+    "1": {
+        "inputs": {"model_name": "wan2.2_ti2v_5B_fp16.safetensors"},
+        "class_type": "UNETLoader",
+    },
+    "2": {
+        "inputs": {"model_name": "clip_l.safetensors"},
+        "class_type": "CLIPLoader",
+    },
+    "3": {
+        "inputs": {"model_name": "wan2.2_vae.safetensors"},
+        "class_type": "VAELoader",
+    },
+    "4": {
+        "inputs": {"text": "", "clip": ["2", 1]},
+        "class_type": "CLIPTextEncode",
+    },
+    "5": {
+        "inputs": {"text": "", "clip": ["2", 1]},
+        "class_type": "CLIPTextEncode",
+    },
+    "6": {
+        "inputs": {
+            "width": 832,
+            "height": 480,
+            "video_frames": 81,
+            "batch_size": 1,
+        },
+        "class_type": "EmptyHunyuanLatentVideo",
+    },
+    "7": {
+        "inputs": {
+            "model": ["1", 0],
+            "positive": ["4", 0],
+            "negative": ["5", 0],
+            "latent_image": ["6", 0],
+            "seed": 42,
+            "steps": 20,
+            "cfg": 6.0,
+            "sampler_name": "euler",
+            "scheduler": "normal",
+            "denoise": 1.0,
+        },
+        "class_type": "KSampler",
+    },
+    "8": {
+        "inputs": {"samples": ["7", 0], "vae": ["3", 0]},
+        "class_type": "VAEDecode",
+    },
+    "9": {
+        "inputs": {
+            "filename_prefix": "portal_video_",
+            "images": ["8", 0],
+            "fps": 16,
+            "format": "video/h264-mp4",
+        },
+        "class_type": "VHS_VideoCombine",
+    },
+}
+
+# CogVideoX fallback workflow — works with cogvideox_5b.safetensors
+_COGVIDEOX_WORKFLOW: dict = {
     "1": {
         "inputs": {"ckpt_name": "cogvideox_5b.safetensors"},
         "class_type": "CheckpointLoaderSimple",
@@ -65,44 +127,74 @@ _VIDEO_WORKFLOW: dict = {
 }
 
 
+def _get_workflow() -> dict:
+    """Get the workflow based on VIDEO_BACKEND env var."""
+    if VIDEO_BACKEND == "cogvideox":
+        return _COGVIDEOX_WORKFLOW.copy()
+    return _WAN22_T2V_WORKFLOW.copy()
+
+
 @mcp.tool()
 async def generate_video(
     prompt: str,
-    width: int = 720,
+    width: int = 832,
     height: int = 480,
-    frames: int = 49,
-    fps: int = 8,
+    frames: int = 81,
+    fps: int = 16,
     steps: int = 20,
-    model: str = "cogvideox_5b.safetensors",
+    cfg: float = 6.0,
+    negative_prompt: str = "",
+    model: str = "",
     seed: int = -1,
 ) -> dict:
     """
-    Generate a video using ComfyUI with a local video model (CogVideoX, Wan2.1, Mochi).
+    Generate a video using ComfyUI with a local video model (Wan2.2 or CogVideoX).
 
     Returns a URL to the generated video served by ComfyUI.
 
     Args:
         prompt: Text description of the video to generate
-        width: Video width in pixels (default 720)
+        width: Video width in pixels (default 832)
         height: Video height in pixels (default 480)
-        frames: Number of frames (default 49, ≈6s at 8fps)
-        fps: Output frames per second (default 8)
+        frames: Number of frames (default 81, ≈5s at 16fps)
+        fps: Output frames per second (default 16)
         steps: Diffusion inference steps (default 20)
-        model: ComfyUI checkpoint filename (default cogvideox_5b.safetensors)
+        cfg: CFG scale (default 6.0)
+        negative_prompt: Things to avoid in the video
+        model: Override model name (optional, auto-detected from backend)
         seed: Random seed, -1 for random
     """
     if seed == -1:
         seed = int(time.time() * 1000) % (2**32)
 
-    workflow = json.loads(json.dumps(_VIDEO_WORKFLOW))
-    workflow["1"]["inputs"]["ckpt_name"] = model
-    workflow["2"]["inputs"]["text"] = prompt
-    workflow["3"]["inputs"]["width"] = width
-    workflow["3"]["inputs"]["height"] = height
-    workflow["3"]["inputs"]["video_frames"] = frames
-    workflow["4"]["inputs"]["noise_seed"] = seed
-    workflow["4"]["inputs"]["steps"] = steps
-    workflow["6"]["inputs"]["fps"] = fps
+    workflow = _get_workflow()
+
+    # Apply workflow-specific parameters
+    if VIDEO_BACKEND == "cogvideox":
+        # Use model param or default
+        model_name = model if model else "cogvideox_5b.safetensors"
+        workflow["1"]["inputs"]["ckpt_name"] = model_name
+        workflow["2"]["inputs"]["text"] = prompt
+        workflow["3"]["inputs"]["width"] = width
+        workflow["3"]["inputs"]["height"] = height
+        workflow["3"]["inputs"]["video_frames"] = frames
+        workflow["4"]["inputs"]["noise_seed"] = seed
+        workflow["4"]["inputs"]["steps"] = steps
+        workflow["4"]["inputs"]["cfg"] = cfg
+        workflow["6"]["inputs"]["fps"] = fps
+    else:
+        # Wan2.2 workflow
+        if model:
+            workflow["1"]["inputs"]["model_name"] = model
+        workflow["4"]["inputs"]["text"] = prompt
+        workflow["5"]["inputs"]["text"] = negative_prompt
+        workflow["6"]["inputs"]["width"] = width
+        workflow["6"]["inputs"]["height"] = height
+        workflow["6"]["inputs"]["video_frames"] = frames
+        workflow["7"]["inputs"]["seed"] = seed
+        workflow["7"]["inputs"]["steps"] = steps
+        workflow["7"]["inputs"]["cfg"] = cfg
+        workflow["9"]["inputs"]["fps"] = fps
 
     client_id = str(uuid.uuid4())
 
@@ -118,7 +210,7 @@ async def generate_video(
                 "success": False,
                 "error": (
                     f"ComfyUI not available at {COMFYUI_URL}: {e}. "
-                    "Install a video model via ComfyUI Manager (CogVideoX, Wan2.1, or Mochi)."
+                    "Install a video model via ComfyUI Manager (Wan2.2 or CogVideoX)."
                 ),
             }
 
@@ -156,20 +248,45 @@ async def generate_video(
 @mcp.tool()
 async def list_video_models() -> list[str]:
     """List available video model checkpoints in ComfyUI."""
+    video_keywords = ("cogvideo", "mochi", "wan2", "wan_2", "video")
+
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            resp = await client.get(f"{COMFYUI_URL}/object_info/CheckpointLoaderSimple")
-            data = resp.json()
-            checkpoints: list[str] = (
-                data.get("CheckpointLoaderSimple", {})
-                .get("input", {})
-                .get("required", {})
-                .get("ckpt_name", [[]])[0]
-            )
-            # Filter to likely video models by common name patterns
-            video_keywords = ("cogvideo", "mochi", "wan2", "wan_2", "video")
-            video_models = [c for c in checkpoints if any(k in c.lower() for k in video_keywords)]
-            return video_models if video_models else checkpoints
+            all_checkpoints: list[str] = []
+
+            # Check for Wan2.2 models (UNETLoader)
+            try:
+                resp = await client.get(f"{COMFYUI_URL}/object_info/UNETLoader")
+                data = resp.json()
+                checkpoints = (
+                    data.get("UNETLoader", {})
+                    .get("input", {})
+                    .get("required", {})
+                    .get("model_name", [[]])[0]
+                )
+                if checkpoints:
+                    all_checkpoints.extend(checkpoints)
+            except Exception:
+                pass  # UNETLoader not available
+
+            # Check for CogVideoX models (CheckpointLoaderSimple)
+            try:
+                resp = await client.get(f"{COMFYUI_URL}/object_info/CheckpointLoaderSimple")
+                data = resp.json()
+                checkpoints = (
+                    data.get("CheckpointLoaderSimple", {})
+                    .get("input", {})
+                    .get("required", {})
+                    .get("ckpt_name", [[]])[0]
+                )
+                if checkpoints:
+                    all_checkpoints.extend(checkpoints)
+            except Exception:
+                pass  # CheckpointLoaderSimple not available
+
+            # Filter to likely video models
+            video_models = [c for c in all_checkpoints if any(k in c.lower() for k in video_keywords)]
+            return video_models if video_models else all_checkpoints
         except Exception as e:
             return [f"Error listing models: {e}"]
 
