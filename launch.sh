@@ -359,6 +359,10 @@ setup_venv() {
     echo "[setup] Creating virtual environment..."
     if command -v uv &>/dev/null; then
         uv venv "$venv_dir"
+        echo "[setup] Updating dependency lock file..."
+        if ! (cd "$PORTAL_ROOT" && uv lock); then
+            echo "WARNING: Failed to update lock file, attempting sync anyway..."
+        fi
         echo "[setup] Installing dependencies with uv..."
         if ! (cd "$PORTAL_ROOT" && uv sync); then
             echo "ERROR: Dependency installation failed. Check Python version and try:"
