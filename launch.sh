@@ -560,6 +560,8 @@ start_comfyui() {
     local comfy_dir="${COMFYUI_DIR:-$HOME/ComfyUI}"
     local comfy_port="${COMFYUI_PORT:-8188}"
     local venv_pip="$PORTAL_ROOT/.venv/bin/pip"
+    local venv_bin="$PORTAL_ROOT/.venv/bin"
+    local comfy_cmd=""
 
     # Check if ComfyUI is already running
     if nc -z localhost "$comfy_port" 2>/dev/null; then
@@ -583,12 +585,19 @@ start_comfyui() {
             return 1
         fi
 
+        # Find the comfy command - check venv bin first, then PATH
+        if [ -x "$venv_bin/comfy" ]; then
+            comfy_cmd="$venv_bin/comfy"
+        elif command -v comfy &>/dev/null; then
+            comfy_cmd="comfy"
+        fi
+
         # Run comfy install to download ComfyUI
-        if command -v comfy &>/dev/null; then
+        if [ -n "$comfy_cmd" ]; then
             cd "$HOME"
-            comfy install
+            "$comfy_cmd" install
         else
-            echo "[comfyui] WARNING: comfy command not available after install"
+            echo "[comfyui] ERROR: comfy command not available after install"
             return 1
         fi
     fi
