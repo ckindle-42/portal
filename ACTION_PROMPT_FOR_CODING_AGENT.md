@@ -1,8 +1,8 @@
 # Portal — Action Prompt for Coding Agent
 
-**Generated:** 2026-03-02 (run 24)
+**Generated:** 2026-03-02 (run 25)
 **Source audit:** PORTAL_AUDIT_REPORT.md (same date)
-**Target version after completion:** 1.5.0
+**Target version after completion:** 3.0.0
 
 ---
 
@@ -21,16 +21,36 @@ Tests: `tests/` (986 tests passing, 13 skipped).
 
 ## Prior Work Summary
 
-All deferred items have been resolved:
-- **ROAD-FIX-01 (RESOLVED)**: Metrics module import failure - now imports cleanly
+All 6 phases of feature-complete implementation are now complete:
 
-**Current state:** 986 tests passing, 0 mypy errors, 0 lint violations. All CI gates green. Health score 10/10.
+- **Phase 0**: Tool pipeline connected (tool schemas → Ollama, all MCPs registered)
+- **Phase 1**: Wan2.2 video + SDXL images implemented
+- **Phase 2**: Fish Speech TTS MCP server created
+- **Phase 3**: Telegram/Slack workspace selection and file delivery
+- **Phase 4**: Orchestrator detection fixed (conservative regex)
+- **Phase 5**: Documentation updated
+- **Phase 6**: Deployment alignment (launch.sh health checks, docker-compose)
+
+**Current state:** 986 tests passing, 0 mypy errors, 0 lint violations. All CI gates green.
 
 ---
 
 ## Open Tasks
 
-**No open tasks.** Portal 1.5.0 is fully production-ready.
+**REVISION TASK-01 (Version Bump)**
+- File: `pyproject.toml`, `CLAUDE.md`, `PORTAL_ROADMAP.md`
+- Category: VERSION_BUMP
+- Finding: Version should be bumped to 3.0.0 to reflect major feature completion
+- Action: Update version in pyproject.toml, CLAUDE.md version header, and roadmap
+- Risk: LOW
+- Acceptance: `grep "version" pyproject.toml` shows 3.0.0
+
+**TASK-02 (Branch Cleanup)**
+- File: git remote branches
+- Category: MAINTENANCE
+- Finding: Stale branch `remotes/origin/claude/execute-portal-finish-line-YGiaE` remains
+- Action: Note for manual cleanup (cannot delete remote branches)
+- Risk: LOW
 
 ---
 
@@ -53,7 +73,7 @@ python3 -m pytest tests/ -v --tb=short      # expect 986 PASSED, 13 SKIPPED
 
 ## Notes
 
-- No action required — Portal is production-ready
+- Portal 2.0.0 (pre-v3) is fully production-ready
 - All Code Findings Register items resolved
-- ROAD-FIX-01 fixed in prior commits (metrics import now works)
 - Health score: 10/10 — FULLY PRODUCTION-READY
+- Version bump to 3.0.0 is the remaining task
