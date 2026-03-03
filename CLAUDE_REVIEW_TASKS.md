@@ -1,55 +1,53 @@
 # Code Agent Task List - Portal Review Issues
 
-## Issues Identified
+## Completed Items (Verified)
 
-### 1. ~~**HIGH PRIORITY: ComfyUI MCP Health Check Endpoint**~~
-- ~~**File**: `portal_mcp/generation/comfyui_mcp.py`~~
-- ~~**Issue**: ComfyUI MCP may not have a `/health` endpoint configured~~
-- ~~**Task**: Verify health check works at port 8910, add `/health` endpoint if missing~~
-- **Status**: FIXED - Added /health endpoints to all 7 MCP servers
+| ID | Issue | Status |
+|----|-------|--------|
+| 1 | ComfyUI MCP Health Check Endpoint | **FIXED** - All 9 MCP servers have /health and /tools endpoints |
+| - | All env vars in .env.example | **FIXED** - VIDEO_BACKEND, IMAGE_BACKEND, TTS_BACKEND, etc. all present |
 
-### 2. **HIGH PRIORITY: Video MCP Backend Dependency**
-- **File**: `portal_mcp/generation/video_mcp.py`
+## Remaining Items
+
+### 2. Video MCP Backend Dependency (MEDIUM)
+- **File**: `mcp/generation/video_mcp.py`
 - **Issue**: Video generation requires ComfyUI running with Wan2.2/CogVideoX workflows
-- **Task**: Document that ComfyUI must be running, verify workflow paths exist
+- **Status**: Documented in PORTAL_HOW_IT_WORKS.md Section 5.4
+- **Note**: Wan2.2 setup commands added to documentation
 
-### 2b. **HIGH PRIORITY: Music/Whisper MCP require MLX on Apple Silicon**
-- **Files**: `portal_mcp/generation/music_mcp.py`, `portal_mcp/generation/whisper_mcp.py`
+### 2b. Music/Whisper MLX Requirement (MEDIUM)
+- **Files**: `mcp/generation/music_mcp.py`, `mcp/generation/whisper_mcp.py`
 - **Issue**: Audio generation and transcription require MLX on Apple Silicon
-- **Task**: Ensure ENABLE_MLX=true in .env for M4 Mac
+- **Note**: ENABLE_MLX=true should be set in .env for M4 Mac
 
-### 3. **MEDIUM PRIORITY: TTS MCP Voice Cloning**
-- **File**: `portal_mcp/generation/tts_mcp.py`
+### 3. TTS MCP Voice Cloning (MEDIUM)
+- **File**: `mcp/generation/tts_mcp.py`
 - **Issue**: Voice cloning requires reference audio files
-- **Task**: Create sample reference audio files or document expected format/location
+- **Status**: Documented in PORTAL_HOW_IT_WORKS.md Section 5.6
 
-### 4. **MEDIUM PRIORITY: Shell Safety Tool**
+### 4. Shell Safety Tool (MEDIUM)
 - **File**: `src/portal/tools/automation_tools/shell_safety.py`
 - **Issue**: Shell commands are disabled by default (allowed_commands empty)
-- **Task**: Either configure a safe whitelist or document how to enable
+- **Status**: Documented - safe by design, configure whitelist if needed
 
-### 5. **MEDIUM PRIORITY: Docker Sandbox**
+### 5. Docker Sandbox (MEDIUM)
 - **File**: `src/portal/security/sandbox/docker_sandbox.py`
 - **Issue**: Sandbox is disabled by default (`sandbox_enabled: false`)
-- **Task**: Document how to enable Docker sandbox for code execution
+- **Status**: Documented in PORTAL_HOW_IT_WORKS.md Section 5.9
 
-### 6. **LOW PRIORITY: Scrapling MCP Optional**
-- **File**: `portal_mcp/scrapling/launch_scrapling.sh`
+### 6. Scrapling MCP Optional (LOW)
+- **File**: `mcp/scrapling/launch_scrapling.sh`
 - **Issue**: Scrapling is optional but not documented
-- **Task**: Add documentation for enabling web research
+- **Status**: Documented in PORTAL_HOW_IT_WORKS.md Section 5.14
 
-### 7. **LOW PRIORITY: External MCP Servers**
-- **File**: `portal_mcp/core/mcp_servers.json`
-- **Issue**: Filesystem and fetch MCP servers require external packages (`mcp-filesystem`, `mcp-fetch`)
-- **Task**: Document installation requirements or remove if not supported
-
-### 8. **CONFIG: Missing Environment Variables**
-- **Issue**: Multiple services use env vars without defaults
-- **Task**: Ensure `.env.example` is complete with all required variables
+### 7. External MCP Servers (LOW)
+- **File**: `mcp/core/mcp_servers.json`
+- **Issue**: Filesystem and fetch MCP servers require external packages
+- **Status**: Part of MCP configuration, documented in setup
 
 ---
 
-## Verification Tasks (Run These First)
+## Verification Commands
 
 ```bash
 # 1. Check all tools load correctly
@@ -68,10 +66,6 @@ curl -s http://localhost:8915/health || echo "whisper-mcp not responding"
 curl -s http://localhost:8916/health || echo "tts-mcp not responding"
 ```
 
-## Priority Order
+---
 
-1. Run doctor checks to identify actual issues
-2. Fix any MCP servers not responding
-3. Configure shell_safety if shell commands needed
-4. Enable sandbox if code execution needed
-5. Document feature requirements
+*Last Updated: 2026-03-03 (post Phase 0-6 + personas + health endpoints + integration tests)*

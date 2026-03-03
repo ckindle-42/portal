@@ -275,8 +275,10 @@ curl -X POST http://localhost:8081/v1/chat/completions \
 
 **Setup commands:**
 ```bash
-# Start ComfyUI (M4 optimized)
-./launch.sh start-comfyui
+# Install ComfyUI
+pip3 install comfy-cli
+comfy install
+comfy launch -- --mps --highvram
 
 # Or manually:
 cd ComfyUI
@@ -288,6 +290,10 @@ python -m mcp.generation.comfyui_mcp
 
 # Download FLUX models (if not using ComfyUI manager)
 huggingface-cli download black-forest-labs/FLUX.1-schnell --local-dir ~/ComfyUI/models/checkpoints/
+
+# Download SDXL models
+huggingface-cli download stabilityai/stable-diffusion-xl-base-1.0 --local-dir ~/ComfyUI/models/checkpoints/
+huggingface-cli download sdxl-vae --local-dir ~/ComfyUI/models/vae/
 ```
 
 **Environment variables:**
@@ -317,10 +323,26 @@ huggingface-cli download black-forest-labs/FLUX.1-schnell --local-dir ~/ComfyUI/
 
 **Setup commands:**
 ```bash
-# Download Wan2.2 models (M4 optimized)
-huggingface-cli download Wau/UMT5-XXL-FP8-E4M3 --local-dir ~/ComfyUI/models/clip/
-huggingface-cli download Wau/Wan2.2_VAE --local-dir ~/ComfyUI/models/vae/
-huggingface-cli download Wau/Wan2.2_T2V_5B --local-dir ~/ComfyUI/models/unet/
+# Install ComfyUI if not already done
+pip3 install comfy-cli
+comfy install
+
+# Download Wan2.2 models (M4 Mac — 5B starter)
+pip3 install huggingface_hub
+huggingface-cli download Comfy-Org/Wan_2.2_ComfyUI_Repackaged \
+  split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors \
+  --local-dir ~/ComfyUI/models/diffusion_models
+huggingface-cli download Comfy-Org/Wan_2.2_ComfyUI_Repackaged \
+  split_files/vae/wan2.2_vae.safetensors \
+  --local-dir ~/ComfyUI/models/vae
+huggingface-cli download Comfy-Org/Wan_2.1_ComfyUI_repackaged \
+  split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors \
+  --local-dir ~/ComfyUI/models/text_encoders
+
+# Download Wan2.2 14B (Production Quality — M4 64GB)
+huggingface-cli download Comfy-Org/Wan_2.2_ComfyUI_Repackaged \
+  split_files/diffusion_models/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors \
+  --local-dir ~/ComfyUI/models/diffusion_models
 
 # Or CogVideoX (CUDA)
 huggingface-cli download THUDM/CogVideoX-5b --local-dir ~/ComfyUI/models/checkpoints/
