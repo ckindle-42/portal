@@ -625,10 +625,10 @@ start_comfyui() {
             ;;
     esac
 
-    # Start ComfyUI
+    # Start ComfyUI using venv's python
     echo "[comfyui] starting on port $comfy_port..."
     cd "$comfy_dir"
-    nohup python main.py $comfy_args >> "$LOG_DIR/comfyui.log" 2>&1 &
+    nohup "$venv_bin/python" main.py $comfy_args >> "$LOG_DIR/comfyui.log" 2>&1 &
     local comfy_pid=$!
     echo "$comfy_pid" > /tmp/portal-comfyui.pid
 
