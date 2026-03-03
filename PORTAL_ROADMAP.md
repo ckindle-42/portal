@@ -1,7 +1,7 @@
 # Portal — Unified Roadmap
 
-**Generated:** 2026-03-02 (delta update — run 26)
-**Current version:** 3.0.1
+**Generated:** 2026-03-03 (delta update — run 27)
+**Current version:** 3.0.2
 **Next version:** 3.1.0
 **Maintained by:** ckindle-42
 

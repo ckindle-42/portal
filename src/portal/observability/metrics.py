@@ -196,13 +196,13 @@ if PROMETHEUS_AVAILABLE:
         REQUESTS_PER_MINUTE = Gauge("portal_requests_per_minute", "Rolling requests per minute")
     except ValueError:
         logger.debug("portal_requests_per_minute already registered, using existing")
-        REQUESTS_PER_MINUTE = Gauge("portal_requests_per_minute_noop")
+        REQUESTS_PER_MINUTE = Gauge("portal_requests_per_minute_noop", documentation="no-op fallback")
 
     try:
         ACTIVE_USERS = Gauge("portal_active_users", "Unique users seen in process lifetime")
     except ValueError:
         logger.debug("portal_active_users already registered, using existing")
-        ACTIVE_USERS = Gauge("portal_active_users_noop")
+        ACTIVE_USERS = Gauge("portal_active_users_noop", documentation="no-op fallback")
 
     try:
         TOKENS_PER_SECOND = Histogram(
@@ -212,7 +212,7 @@ if PROMETHEUS_AVAILABLE:
         )
     except ValueError:
         logger.debug("portal_tokens_per_second already registered, using existing")
-        TOKENS_PER_SECOND = Histogram("portal_tokens_per_second_noop")
+        TOKENS_PER_SECOND = Histogram("portal_tokens_per_second_noop", documentation="no-op fallback")
 
     try:
         TTFT_MS = Histogram(
@@ -222,25 +222,25 @@ if PROMETHEUS_AVAILABLE:
         )
     except ValueError:
         logger.debug("portal_ttft_ms already registered, using existing")
-        TTFT_MS = Histogram("portal_ttft_ms_noop")
+        TTFT_MS = Histogram("portal_ttft_ms_noop", documentation="no-op fallback")
 
     try:
         MCP_TOOL_USAGE = Counter("portal_mcp_tool_usage_total", "MCP tool calls", ["tool_name"])
     except ValueError:
         logger.debug("portal_mcp_tool_usage_total already registered, using existing")
-        MCP_TOOL_USAGE = Counter("portal_mcp_tool_usage_total_noop")
+        MCP_TOOL_USAGE = Counter("portal_mcp_tool_usage_total_noop", documentation="no-op fallback")
 
     try:
         VRAM_MB = Gauge("portal_vram_usage_mb", "VRAM usage in MB")
     except ValueError:
         logger.debug("portal_vram_usage_mb already registered, using existing")
-        VRAM_MB = Gauge("portal_vram_usage_mb_noop")
+        VRAM_MB = Gauge("portal_vram_usage_mb_noop", documentation="no-op fallback")
 
     try:
         UNIFIED_MEM_MB = Gauge("portal_unified_memory_usage_mb", "Unified memory usage in MB")
     except ValueError:
         logger.debug("portal_unified_memory_usage_mb already registered, using existing")
-        UNIFIED_MEM_MB = Gauge("portal_unified_memory_usage_mb_noop")
+        UNIFIED_MEM_MB = Gauge("portal_unified_memory_usage_mb_noop", documentation="no-op fallback")
 else:
     # Stubs so importers don't crash when prometheus_client is absent
     class _Stub:

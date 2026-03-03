@@ -2,8 +2,8 @@
 
 **Project**: Portal — Local-First AI Platform
 **Repository**: https://github.com/ckindle-42/portal
-**Version**: 3.0.1
-**Last Updated**: March 2, 2026
+**Version**: 3.0.2
+**Last Updated**: March 3, 2026
 
 ---
 

@@ -382,6 +382,7 @@ class AgentCore:
             model_used="orchestrator",
             prompt_tokens=0,
             completion_tokens=len(combined_response.split()),
+            tool_results=[],
         )
 
     async def _handle_processing_error(
