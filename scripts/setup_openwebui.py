@@ -143,6 +143,70 @@ def update_workspace(client: httpx.Client, url: str, api_key: str, workspace_id:
         return False
 
 
+def configure_mcp_servers(client: httpx.Client, url: str, api_key: str, mcp_file_path: str) -> bool:
+    """Read mcp-servers.json and register them via Open WebUI API.
+
+    Note: The MCP server configuration API is not well-documented in Open WebUI.
+    This attempts to use the settings endpoint but may need adjustment based on
+    the actual Open WebUI version and API structure.
+    """
+    mcp_file = Path(mcp_file_path)
+    if not mcp_file.exists():
+        print(f"  MCP config file not found: {mcp_file_path}")
+        return False
+
+    if not api_key:
+        print("  Skipping MCP config: no API key provided")
+        return False
+
+    try:
+        with open(mcp_file, "r") as f:
+            mcp_data = json.load(f)
+
+        # Get current settings
+        settings_url = f"{url}/api/v1/settings"
+        resp = client.get(settings_url, headers=get_auth_headers(api_key))
+
+        if resp.status_code == 401 or resp.status_code == 403:
+            print("  Skipping MCP config: authentication failed")
+            return False
+
+        if resp.status_code != 200:
+            print(f"  Failed to fetch settings: {resp.status_code}")
+            return False
+
+        current_settings = resp.json()
+        mcp_config = current_settings.get("mcp_servers", {})
+
+        # Add each MCP server from the config
+        for server in mcp_data.get("tool_servers", []):
+            # Use URL as key for the MCP server config
+            mcp_config[server["url"]] = {
+                "url": server["url"],
+                "name": server["name"],
+                "api_key": server.get("api_key", ""),
+            }
+            print(f"  Configuring: {server['name']} ({server['url']})")
+
+        # Push updated settings
+        update_resp = client.post(
+            settings_url,
+            json={"mcp_servers": mcp_config},
+            headers=get_auth_headers(api_key),
+        )
+
+        if update_resp.status_code == 200:
+            print(f"  Successfully configured {len(mcp_data.get('tool_servers', []))} MCP servers")
+            return True
+        else:
+            print(f"  Failed to update settings: {update_resp.status_code}")
+            return False
+
+    except Exception as e:
+        print(f"  Failed to configure MCP servers: {e}")
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(description="Setup Open WebUI workspaces")
     parser.add_argument("--url", default=os.environ.get("OPENWEBUI_URL", "http://localhost:8080"), help="Open WebUI URL")
@@ -198,6 +262,14 @@ def main():
             print(f"  Failed: {ws_config['name']}")
 
     print(f"\nDone. Created {created} workspace(s).")
+
+    # Automate MCP Server Configuration
+    script_dir = Path(__file__).parent
+    mcp_file = script_dir.parent / "imports" / "openwebui" / "mcp-servers.json"
+    if mcp_file.exists():
+        print("\nConfiguring MCP Tool Servers...")
+        configure_mcp_servers(client, args.url, args.api_key or "", str(mcp_file))
+
     client.close()
 
 
