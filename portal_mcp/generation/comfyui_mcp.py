@@ -15,9 +15,16 @@ import uuid
 from pathlib import Path
 
 import httpx
+from starlette.responses import JSONResponse
+
 from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("comfyui-generation")
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    return JSONResponse({"status": "ok", "service": "comfyui-mcp"})
 
 COMFYUI_URL = os.getenv("COMFYUI_URL", "http://localhost:8188")
 IMAGE_BACKEND = os.getenv("IMAGE_BACKEND", "flux")  # "flux" or "sdxl"

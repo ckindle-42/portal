@@ -7,9 +7,16 @@ import asyncio
 import os
 from pathlib import Path
 
+from starlette.responses import JSONResponse
+
 from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("whisper-transcription")
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    return JSONResponse({"status": "ok", "service": "whisper-mcp"})
 
 WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL", "base")
 _model = None

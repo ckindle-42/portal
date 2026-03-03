@@ -15,9 +15,16 @@ import time
 import uuid
 
 import httpx
+from starlette.responses import JSONResponse
+
 from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("video-generation")
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    return JSONResponse({"status": "ok", "service": "video-mcp"})
 
 COMFYUI_URL = os.getenv("COMFYUI_URL", "http://localhost:8188")
 VIDEO_BACKEND = os.getenv("VIDEO_BACKEND", "wan22")  # "wan22" or "cogvideox"

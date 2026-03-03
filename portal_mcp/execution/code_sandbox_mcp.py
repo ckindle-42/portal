@@ -18,9 +18,16 @@ import os
 import uuid
 from pathlib import Path
 
+from starlette.responses import JSONResponse
+
 from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("code-sandbox")
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    return JSONResponse({"status": "ok", "service": "sandbox-mcp"})
 
 logger = logging.getLogger(__name__)
 

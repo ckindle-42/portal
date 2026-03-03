@@ -13,9 +13,16 @@ import logging
 import os
 from pathlib import Path
 
+from starlette.responses import JSONResponse
+
 from portal_mcp.mcp_server.fastmcp import FastMCP
 
 mcp = FastMCP("music-generation")
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    return JSONResponse({"status": "ok", "service": "music-mcp"})
 
 logger = logging.getLogger(__name__)
 
