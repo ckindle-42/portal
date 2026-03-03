@@ -187,4 +187,6 @@ async def list_workflows() -> list[str]:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", port=int(os.getenv("COMFYUI_MCP_PORT", "8910")))
+    port = int(os.getenv("COMFYUI_MCP_PORT", "8910"))
+    mcp.settings.port = port
+    mcp.run(transport="streamable-http")

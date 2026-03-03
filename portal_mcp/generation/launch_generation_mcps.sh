@@ -7,6 +7,9 @@ VENV="$PORTAL_ROOT/.venv"
 
 source "$VENV/bin/activate"
 
+# Add portal_mcp to Python path
+export PYTHONPATH="${PORTAL_ROOT}:${PYTHONPATH:-}"
+
 # Load env
 [ -f "$PORTAL_ROOT/.env" ] && { set -a; source "$PORTAL_ROOT/.env"; set +a; }
 
@@ -30,7 +33,7 @@ launch_server() {
         return
     fi
 
-    nohup python "$PORTAL_ROOT/mcp/generation/$script" >> "$log_file" 2>&1 &
+    nohup python "$PORTAL_ROOT/portal_mcp/generation/$script" >> "$log_file" 2>&1 &
     echo $! > "$pid_file"
     echo "[mcp-${name}] started (PID $(cat "$pid_file"))"
 }

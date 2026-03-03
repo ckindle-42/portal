@@ -69,4 +69,6 @@ async def transcribe_audio(file_path: str, language: str | None = None) -> dict:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", port=int(os.getenv("WHISPER_MCP_PORT", "8911")))
+    port = int(os.getenv("WHISPER_MCP_PORT", "8915"))
+    mcp.settings.port = port
+    mcp.run(transport="streamable-http")

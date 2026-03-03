@@ -635,6 +635,12 @@ run_doctor() {
         check_port "mcp-music" "${MUSIC_MCP_PORT:-8912}" "true"
         check_port "mcp-documents" "${DOCUMENTS_MCP_PORT:-8913}" "true"
         check_port "mcp-tts" "${TTS_MCP_PORT:-8916}" "true"
+        # Native generation MCP services (when GENERATION_SERVICES=true)
+        if [ "${GENERATION_SERVICES:-false}" = "true" ]; then
+            check_port "mcp-comfyui" "${COMFYUI_MCP_PORT:-8910}" "true"
+            check_port "mcp-video" "${VIDEO_MCP_PORT:-8911}" "true"
+            check_port "mcp-whisper" "${WHISPER_MCP_PORT:-8915}" "true"
+        fi
     fi
 
     echo ""
