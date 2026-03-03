@@ -589,13 +589,13 @@ python -m mcp.generation.code_sandbox_mcp
 
 ---
 
-### 5.17 Multimodal (Qwen2-Omni)
+### 5.17 Multimodal (Qwen3-Omni)
 
 **What it is:** Process images, audio, and video alongside text.
 
 **How to use it:** Use `@model:auto-multimodal` or send messages with images/audio.
 
-**Prerequisites:** Qwen2-Omni model in Ollama.
+**Prerequisites:** Qwen3-Omni model in Ollama.
 
 ---
 
