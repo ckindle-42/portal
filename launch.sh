@@ -602,6 +602,24 @@ run_doctor() {
         fi
     }
 
+    # Check if a TCP port is listening
+    check_port() {
+        local name="$1"
+        local port="$2"
+        local optional="${3:-false}"
+
+        if nc -z localhost "$port" 2>/dev/null; then
+            printf "  [%-12s] \033[32mOK\033[0m\n" "$name"
+        else
+            if [ "$optional" = "true" ]; then
+                printf "  [%-12s] \033[33mUNREACHABLE\033[0m (optional)\n" "$name"
+            else
+                printf "  [%-12s] \033[31mFAIL\033[0m\n" "$name"
+                all_ok=false
+            fi
+        fi
+    }
+
     echo ""
     echo "=== Portal Doctor ==="
     check_service "ollama" "http://localhost:11434/api/tags"
@@ -613,12 +631,10 @@ run_doctor() {
         # mcpo can take 30-50s to start, so retry up to 5 times with 10s delay
         check_service "mcpo" "http://localhost:${MCPO_PORT:-9000}/openapi.json" "false" "mcpo" "5" "10"
         check_process "scrapling" "scrapling" "false" "scrapling"
-        check_service "mcp-video" "http://localhost:${VIDEO_MCP_PORT:-8911}/health" "true"
-        check_service "mcp-music" "http://localhost:${MUSIC_MCP_PORT:-8912}/health" "true"
-        check_service "mcp-documents" "http://localhost:${DOCUMENTS_MCP_PORT:-8913}/health" "true"
-        check_service "mcp-sandbox" "http://localhost:${SANDBOX_MCP_PORT:-8914}/health" "true"
-        check_service "mcp-tts" "http://localhost:${TTS_MCP_PORT:-8916}/health" "true"
-        check_service "mcp-whisper" "http://localhost:${WHISPER_MCP_PORT:-8915}/health" "true"
+        # Docker MCP services - check port is open (they don't expose /health endpoints)
+        check_port "mcp-music" "${MUSIC_MCP_PORT:-8912}" "true"
+        check_port "mcp-documents" "${DOCUMENTS_MCP_PORT:-8913}" "true"
+        check_port "mcp-tts" "${TTS_MCP_PORT:-8916}" "true"
     fi
 
     echo ""
