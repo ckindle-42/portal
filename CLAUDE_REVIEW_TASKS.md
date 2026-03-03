@@ -2,15 +2,21 @@
 
 ## Issues Identified
 
-### 1. **HIGH PRIORITY: ComfyUI MCP Health Check Endpoint**
-- **File**: `portal_mcp/generation/comfyui_mcp.py`
-- **Issue**: ComfyUI MCP may not have a `/health` endpoint configured
-- **Task**: Verify health check works at port 8910, add `/health` endpoint if missing
+### 1. ~~**HIGH PRIORITY: ComfyUI MCP Health Check Endpoint**~~
+- ~~**File**: `portal_mcp/generation/comfyui_mcp.py`~~
+- ~~**Issue**: ComfyUI MCP may not have a `/health` endpoint configured~~
+- ~~**Task**: Verify health check works at port 8910, add `/health` endpoint if missing~~
+- **Status**: FIXED - Added /health endpoints to all 7 MCP servers
 
 ### 2. **HIGH PRIORITY: Video MCP Backend Dependency**
 - **File**: `portal_mcp/generation/video_mcp.py`
 - **Issue**: Video generation requires ComfyUI running with Wan2.2/CogVideoX workflows
 - **Task**: Document that ComfyUI must be running, verify workflow paths exist
+
+### 2b. **HIGH PRIORITY: Music/Whisper MCP require MLX on Apple Silicon**
+- **Files**: `portal_mcp/generation/music_mcp.py`, `portal_mcp/generation/whisper_mcp.py`
+- **Issue**: Audio generation and transcription require MLX on Apple Silicon
+- **Task**: Ensure ENABLE_MLX=true in .env for M4 Mac
 
 ### 3. **MEDIUM PRIORITY: TTS MCP Voice Cloning**
 - **File**: `portal_mcp/generation/tts_mcp.py`
