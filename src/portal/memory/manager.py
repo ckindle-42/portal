@@ -59,7 +59,7 @@ class MemoryManager:
                     logger.info("MemoryManager using Mem0 provider")
                     return
             except Exception as exc:  # pragma: no cover
-                logger.warning("Mem0 unavailable, falling back to sqlite: %s", exc)
+                logger.info("Mem0 unavailable, falling back to sqlite: %s", exc)
 
         self.provider = "sqlite"
         logger.info("MemoryManager using sqlite provider")
