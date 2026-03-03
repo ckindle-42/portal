@@ -66,13 +66,13 @@ case "$COMMAND" in
 
         # 4. Start mcpo (Open WebUI path only)
         if [ "$WEB_UI" = "openwebui" ] && [ "${MCP_ENABLED:-true}" = "true" ]; then
-            bash "$PORTAL_ROOT/mcp/scrapling/launch_scrapling.sh" || true
+            bash "$PORTAL_ROOT/portal_mcp/scrapling/launch_scrapling.sh" || true
             if ! pgrep -f "mcpo" >/dev/null; then
                 echo "[mcpo] starting..."
                 uvx mcpo \
                     --port "${MCPO_PORT:-9000}" \
                     --api-key "${MCP_API_KEY:-changeme-mcp-secret}" \
-                    --config "$PORTAL_ROOT/mcp/core/mcp_servers.json" \
+                    --config "$PORTAL_ROOT/portal_mcp/core/mcp_servers.json" \
                     >> "$LOG_DIR/mcpo.log" 2>&1 &
                 echo "[mcpo] OK (PID $!)"
             fi
@@ -80,7 +80,7 @@ case "$COMMAND" in
 
         # 5. Start generation MCP wrappers
         if [ "$GENERATION_SERVICES" = "true" ]; then
-            bash "$PORTAL_ROOT/mcp/generation/launch_generation_mcps.sh" || true
+            bash "$PORTAL_ROOT/portal_mcp/generation/launch_generation_mcps.sh" || true
         fi
     fi
 

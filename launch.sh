@@ -476,7 +476,7 @@ start_extended_services() {
     # Start mcpo (MCP enabled)
     if [ "${MCP_ENABLED:-true}" = "true" ]; then
         # Start scrapling if script exists
-        local scrapling_script="$PORTAL_ROOT/mcp/scrapling/launch_scrapling.sh"
+        local scrapling_script="$PORTAL_ROOT/portal_mcp/scrapling/launch_scrapling.sh"
         if [ -f "$scrapling_script" ]; then
             bash "$scrapling_script" || true
         fi
@@ -487,7 +487,7 @@ start_extended_services() {
                 nohup uvx mcpo \
                     --port "${MCPO_PORT:-9000}" \
                     --api-key "${MCP_API_KEY}" \
-                    --config "$PORTAL_ROOT/mcp/core/mcp_servers.json" \
+                    --config "$PORTAL_ROOT/portal_mcp/core/mcp_servers.json" \
                     >> "$LOG_DIR/mcpo.log" 2>&1 &
             else
                 # uvx not available — install mcpo into venv and run directly
@@ -500,7 +500,7 @@ start_extended_services() {
                     nohup "$mcpo_bin" \
                         --port "${MCPO_PORT:-9000}" \
                         --api-key "${MCP_API_KEY}" \
-                        --config "$PORTAL_ROOT/mcp/core/mcp_servers.json" \
+                        --config "$PORTAL_ROOT/portal_mcp/core/mcp_servers.json" \
                         >> "$LOG_DIR/mcpo.log" 2>&1 &
                 else
                     echo "[mcpo] WARNING: Failed to install mcpo. MCP tools will be unavailable."
