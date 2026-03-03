@@ -569,16 +569,12 @@ start_comfyui() {
     # Check if ComfyUI is installed
     if [ ! -d "$comfy_dir" ]; then
         echo "[comfyui] not found at $comfy_dir"
-        echo "[comfyui] installing..."
-        if command -v pip3 &>/dev/null; then
-            pip3 install comfy-cli
-            cd "$HOME"
-            comfy install
-        else
-            echo "[comfyui] ERROR: pip3 not found — please install ComfyUI manually"
-            echo "  See: https://docs.comfyui.org/"
-            return 1
-        fi
+        echo "[comfyui] skipping auto-install (requires manual setup on first run)"
+        echo "[comfyui] To install manually:"
+        echo "    pip3 install comfy-cli"
+        echo "    comfy install"
+        echo "[comfyui] Then restart: bash launch.sh up"
+        return 0  # Don't fail - let user install manually
     fi
 
     # Build ComfyUI launch args based on profile
@@ -731,7 +727,7 @@ run_doctor() {
 
     # Check ComfyUI (required for image generation)
     if [ "${GENERATION_SERVICES:-false}" = "true" ]; then
-        check_service "comfyui" "http://localhost:${COMFYUI_PORT:-8188}/object_info" "false" "comfyui" "3" "5"
+        check_service "comfyui" "http://localhost:${COMFYUI_PORT:-8188}/object_info" "true" "comfyui" "3" "5"
     fi
 
     if [ "${MCP_ENABLED:-true}" = "true" ]; then
