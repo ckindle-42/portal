@@ -72,6 +72,16 @@ services:
       - PORTAL_BOOTSTRAP_API_KEY=${PORTAL_BOOTSTRAP_API_KEY:?Set PORTAL_BOOTSTRAP_API_KEY in .env}
       - PORTAL_BOOTSTRAP_USER_ID=${PORTAL_BOOTSTRAP_USER_ID:-open-webui}
       - COMFYUI_URL=${COMFYUI_URL:-http://comfyui:8188}
+      # MCP server URLs for tool calling
+      - COMFYUI_MCP_URL=http://mcp-comfyui:8910
+      - VIDEO_MCP_URL=http://mcp-video:8911
+      - MUSIC_MCP_URL=http://mcp-music:8912
+      - DOCUMENTS_MCP_URL=http://mcp-documents:8913
+      - SANDBOX_MCP_URL=http://mcp-sandbox:8914
+      - WHISPER_MCP_URL=http://mcp-whisper:8915
+      - TTS_MCP_URL=http://mcp-tts:8916
+      - GENERATION_SERVICES=${GENERATION_SERVICES:-false}
+      - SANDBOX_ENABLED=${SANDBOX_ENABLED:-false}
     volumes:
       - ./data:/app/data
       - ./mcp:/app/mcp
@@ -137,6 +147,19 @@ services:
   # ComfyUI for image (and video) generation (DC-01)
   # NOTE: Requires GPU passthrough. Enable with: docker-compose --profile gpu up
   # For Mac bare-metal, run ComfyUI natively (see hardware/m4-mac/launch.sh)
+  #
+  # Model download instructions for ComfyUI:
+  # 1. FLUX models (image generation):
+  #    - Download flux1-dev.safetensors from https://huggingface.co/black-forest-labs/FLUX.1-dev
+  #    - Place in: models/checkpoints/
+  # 2. SDXL models (alternative image generation):
+  #    - Download sd_xl_base_1.0.safetensors from https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
+  #    - Place in: models/checkpoints/
+  # 3. Wan2.2 models (video generation):
+  #    - Download wan2.2_t2v_5B_fp16.safetensors from https://huggingface.co/Wan-AI/Wan2.2-T2V-5B
+  #    - Download clip_l.safetensors and clip_g.safetensors from https://huggingface.co/comfyanonymous/flux_text_encoders
+  #    - Download sd3m.safetensors from https://huggingface.co/Comfy-Org/stable-diffusion-3-medium
+  #    - Place in: models/checkpoints/ and models/vae/
   comfyui:
     image: ghcr.io/ai-dock/comfyui:latest-cuda
     container_name: portal-comfyui
@@ -310,6 +333,26 @@ services:
       - ./mcp:/app/mcp:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - ./data/sandbox:/app/data/sandbox
+
+  # TTS MCP server (Fish Speech / CosyVoice)
+  # Models downloaded on first use - Fish Speech requires: https://github.com/fishaudio/fish-speech
+  mcp-tts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-mcp-tts
+    working_dir: /app
+    environment:
+      - TTS_MCP_PORT=8916
+      - TTS_BACKEND=${TTS_BACKEND:-fish_speech}
+    command: ["python", "-m", "mcp.generation.tts_mcp"]
+    ports:
+      - "8916:8916"
+    volumes:
+      - ./mcp:/app/mcp:ro
+      - ./data/generated:/app/data/generated
+    profiles:
+      - gpu
 
 volumes:
   ollama_data:

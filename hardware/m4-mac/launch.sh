@@ -127,6 +127,20 @@ case "$COMMAND" in
         curl -s "http://localhost:${MCPO_PORT:-9000}/docs" >/dev/null && echo "[mcpo] OK" || echo "[mcpo] FAIL"
         curl -s "http://localhost:${SCRAPLING_PORT:-8900}/mcp" >/dev/null && echo "[scrapling] OK" || echo "[scrapling] FAIL (optional)"
     }
+    # Check all MCP generation servers
+    if [ "$GENERATION_SERVICES" = "true" ]; then
+        curl -s "http://localhost:${COMFYUI_MCP_PORT:-8910}/health" >/dev/null 2>&1 && echo "[comfyui-mcp] OK" || echo "[comfyui-mcp] FAIL"
+        curl -s "http://localhost:${VIDEO_MCP_PORT:-8911}/health" >/dev/null 2>&1 && echo "[video-mcp] OK" || echo "[video-mcp] FAIL (optional)"
+        curl -s "http://localhost:${MUSIC_MCP_PORT:-8912}/health" >/dev/null 2>&1 && echo "[music-mcp] OK" || echo "[music-mcp] FAIL (optional)"
+        curl -s "http://localhost:${DOCUMENTS_MCP_PORT:-8913}/health" >/dev/null 2>&1 && echo "[documents-mcp] OK" || echo "[documents-mcp] FAIL"
+        curl -s "http://localhost:${TTS_MCP_PORT:-8916}/health" >/dev/null 2>&1 && echo "[tts-mcp] OK" || echo "[tts-mcp] FAIL (optional)"
+    fi
+    # Sandbox MCP (when enabled)
+    if [ "${SANDBOX_ENABLED:-false}" = "true" ]; then
+        curl -s "http://localhost:${SANDBOX_MCP_PORT:-8914}/health" >/dev/null 2>&1 && echo "[sandbox-mcp] OK" || echo "[sandbox-mcp] FAIL"
+    fi
+    # Whisper MCP
+    curl -s "http://localhost:${WHISPER_MCP_PORT:-8915}/health" >/dev/null 2>&1 && echo "[whisper-mcp] OK" || echo "[whisper-mcp] FAIL (optional)"
     ;;
 
   logs)
