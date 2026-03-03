@@ -50,11 +50,14 @@ services:
     volumes:
       - open-webui-data:/app/backend/data
     environment:
-      # Point to Portal WebInterface as the OpenAI-compatible backend
+      # Point to Portal WebInterface as the OpenAI-compatible backend (ONLY source)
       - OPENAI_API_BASE_URL=http://portal-core:8081/v1
       - OPENAI_API_KEY=portal
-      # Also expose direct Ollama access for model management
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      # REMOVED: OLLAMA_BASE_URL - Portal is the sole model source for routing
+      # Enable ComfyUI image generation (Open WebUI native integration)
+      - ENABLE_IMAGE_GENERATION=True
+      - IMAGE_GENERATION_ENGINE=comfyui
+      - COMFYUI_BASE_URL=http://host.docker.internal:8188
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-portal-secret-change-me}
       # Enable authentication — first user to sign up becomes admin
       # Set to 'false' for open access (no workspaces)

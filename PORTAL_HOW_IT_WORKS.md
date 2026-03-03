@@ -28,6 +28,23 @@ Portal is a **local-first AI platform** that runs entirely on user hardware — 
 
 *Note: `src.portal.observability.metrics` fails on import due to duplicate timeseries `portal_requests_per_minute` in CollectorRegistry.
 
+### Hybrid Architecture (Open WebUI Integration)
+
+Portal uses a **hybrid architecture** when integrated with Open WebUI:
+
+| Component | Responsibility |
+|-----------|---------------|
+| **Portal** | Model routing, intelligent classification, workspace selection, MCP tool dispatch |
+| **Open WebUI** | UI display, image generation (ComfyUI), native tool calling, TTS, RAG, search |
+
+**Key configuration:** Open WebUI connects ONLY to Portal (not direct Ollama). Set:
+- `OPENAI_API_BASE_URL=http://portal-core:8081/v1`
+- No `OLLAMA_BASE_URL` (removed)
+
+This ensures all LLM requests go through Portal's intelligent router. Portal's `/v1/models` returns only workspace and persona models (not raw Ollama model names) to enforce routing.
+
+See [deploy/web-ui/openwebui/README.md](../deploy/web-ui/openwebui/README.md) for full setup guide.
+
 ### Architecture
 
 ```
@@ -218,19 +235,22 @@ The `_is_multi_step()` function correctly identifies multi-step requests:
 
 **What happens internally:**
 1. Request hits `server.py` → `ChatManager`
-2. `AgentCore.process_message()` routes to appropriate model
-3. Response streamed or returned as JSON
+2. `AgentCore.process_message()` routes to appropriate model based on workspace selection
+3. Intelligent router selects best model (or uses `auto` workspace for automatic selection)
+4. Response streamed or returned as JSON
 
 **Prerequisites:** Ollama running with at least one model pulled.
 
 **Works via:** Web API, Telegram, Slack.
+
+**Open WebUI Usage:** Select a workspace from the dropdown (e.g., `auto`, `auto-coding`, `auto-creative`). The workspace selection triggers intelligent routing to specialized models.
 
 **Example:**
 ```bash
 curl -X POST http://localhost:8081/v1/chat/completions \
   -H "Authorization: Bearer $WEB_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "llama3", "messages": [{"role": "user", "content": "Hello!"}]}'
+  -d '{"model": "auto", "messages": [{"role": "user", "content": "Hello!"}]}'
 ```
 
 ---

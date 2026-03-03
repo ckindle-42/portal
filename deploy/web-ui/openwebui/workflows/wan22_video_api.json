@@ -1,0 +1,12 @@
+{
+  "nodes": [
+    {"id": 1, "type": "CheckpointLoader", "widgets_values": ["wan2.2_video_720p.safetensors"]},
+    {"id": 2, "type": "CLIPTextEncode", "widgets_values": ["video prompt"]},
+    {"id": 3, "type": "CLIPTextEncode", "widgets_values": ["negative prompt"]},
+    {"id": 4, "type": "EmptyVideoLatent", "widgets_values": [16, 720, 1280, 1]},
+    {"id": 5, "type": "KSampler", "widgets_values": [0, "fixed", 30, 5, "euler_ancestral", "normal", 1]},
+    {"id": 6, "type": "VideoDecode"},
+    {"id": 7, "type": "SaveVideo", "widgets_values": ["wan22_output.mp4"]}
+  ],
+  "version": 0.4
+}

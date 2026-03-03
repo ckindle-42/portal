@@ -474,7 +474,11 @@ class WebInterface(BaseInterface):
         return {"text": out.get("text", "")}
 
     async def _handle_list_models(self, auth: dict) -> dict:
-        """Handle /v1/models — workspace virtual models prepended, then live Ollama models."""
+        """Handle /v1/models — returns ONLY workspace and persona models (no raw Ollama models).
+
+        This ensures Open WebUI users see only virtual models that trigger intelligent routing.
+        Raw Ollama models are excluded to force all requests through Portal's router.
+        """
         created = int(time.time())
         models: list[dict] = []
 
@@ -495,24 +499,24 @@ class WebInterface(BaseInterface):
         except Exception as e:
             logger.warning("Failed to load workspace models: %s", e)
 
-        # 2. Add real Ollama models
+        # 2. Add persona models (for persona switching)
         try:
-            client = self._ollama_client or httpx.AsyncClient(timeout=3.0)
-            resp = await client.get(f"{self._ollama_host}/api/tags")
-            data = resp.json()
-            for m in data.get("models", []):
+            from portal.core.prompt_manager import PersonaLibrary
+
+            personas_lib = PersonaLibrary()
+            for persona in personas_lib.list_personas():
                 models.append(
                     {
-                        "id": m["name"],
+                        "id": persona["name"],
                         "object": "model",
                         "created": created,
-                        "owned_by": "portal",
+                        "owned_by": "portal-persona",
                     }
                 )
-        except (httpx.HTTPError, json.JSONDecodeError):
-            pass
+        except Exception as e:
+            logger.warning("Failed to load persona models: %s", e)
 
-        # Fallback: always have at least "auto"
+        # 3. Fallback: always have at least "auto" if no workspaces configured
         if not models:
             models.append(
                 {"id": "auto", "object": "model", "created": created, "owned_by": "portal"}
